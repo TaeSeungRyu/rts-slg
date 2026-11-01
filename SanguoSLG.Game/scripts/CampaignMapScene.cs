@@ -152,6 +152,10 @@ public sealed partial class CampaignMapScene : Node3D
     private readonly Dictionary<string, PackedScene> _prewarmedActiveVisuals = new();
     private int _animSkillEffectIdx;
     private readonly List<(double Time, int CasterUnitId, int TargetUnitId, ActiveSkill Skill)> _animSkillEffects = new();
+    private readonly Dictionary<int, Node3D> _preparedUnitSkillEffects = new();
+    private readonly Dictionary<int, Node3D> _preparedSiegeSkillEffects = new();
+    private int _nextUnitSkillEffectToPrepare;
+    private int _nextSiegeSkillEffectToPrepare;
     private int _animBeastEffectIdx;
     private readonly List<(double Time, int UnitId, EffectKind Kind)> _animBeastEffects = new();
     private int _animSiegeSkillEffectIdx;
@@ -726,8 +730,9 @@ public sealed partial class CampaignMapScene : Node3D
         if (args.Contains("--maptestgaugeprogressqa")) CallDeferred(nameof(RunActiveGaugeProgressQa));
         if (args.Contains("--maptestsiegeactivepresentationqa")) CallDeferred(nameof(RunSiegeActivePresentationQa));
         if (args.Contains("--maptestactivecasterqa")) CallDeferred(nameof(RunActiveCasterPortraitQa));
-        if (args.Contains("--maptestactivepacingqa")) CallDeferred(nameof(RunActiveVisualPacingQa));
+        if (args.Contains("--maptestactiveprepareqa")) CallDeferred(nameof(RunActiveVisualPreparationQa));
         if (args.Contains("--maptestactiveprewarmqa")) CallDeferred(nameof(RunActiveVisualPrewarmQa));
+        if (args.Contains("--maptestactiveburstprofileqa")) CallDeferred(nameof(RunActiveBurstProfileQa));
         if (args.Contains("--maptestbatchdeployqa")) CallDeferred(nameof(RunBatchDeployQa));
         if (args.Contains("--maptestsupplyreplenishmentqa")) CallDeferred(nameof(RunSupplyReplenishmentQa));
         if (args.Contains("--maptestsupplyfollowuiqa")) CallDeferred(nameof(RunSupplyFollowUiQa));
@@ -5069,37 +5074,69 @@ public sealed partial class CampaignMapScene : Node3D
         _animSkillEffects.Sort((a, b) => a.Time.CompareTo(b.Time));
         _animBeastEffects.Sort((a, b) => a.Time.CompareTo(b.Time));
         _animSiegeSkillEffects.Sort((a, b) => a.Time.CompareTo(b.Time));
-        SpaceActiveSkillVisuals(_animSkillEffects, _animSiegeSkillEffects);
+        _nextUnitSkillEffectToPrepare = 0;
+        _nextSiegeSkillEffectToPrepare = 0;
         _animRuinCounters.Sort((a, b) => a.Time.CompareTo(b.Time));
         _animRuinCaptures.Sort((a, b) => a.Time.CompareTo(b.Time));
         _animBuildingRemovals.Sort((a, b) => a.Time.CompareTo(b.Time));
         _animGaugeUpdates.Sort((a, b) => a.Time.CompareTo(b.Time));
     }
 
-    private static void SpaceActiveSkillVisuals(
-        List<(double Time, int CasterUnitId, int TargetUnitId, ActiveSkill Skill)> unitEffects,
-        List<(double Time, int CasterUnitId, Vector3 Target, ActiveSkill Skill)> siegeEffects)
+    private static bool CanPrepareSkillEffect(ActiveSkill skill)
+        => skill.Code is not ("breakthrough" or "tiger_strike" or "crush");
+
+    private void PrepareNextSkillEffect()
     {
-        var lastUnitEffect = new Dictionary<int, double>();
-        for (var i = 0; i < unitEffects.Count; i++)
+        if (_preparedUnitSkillEffects.Count + _preparedSiegeSkillEffects.Count >= 32) return;
+        while (_nextUnitSkillEffectToPrepare < _animSkillEffects.Count
+            || _nextSiegeSkillEffectToPrepare < _animSiegeSkillEffects.Count)
         {
-            var effect = unitEffects[i];
-            var time = lastUnitEffect.TryGetValue(effect.TargetUnitId, out var previous)
-                ? System.Math.Max(effect.Time, previous + 0.28) : effect.Time;
-            unitEffects[i] = effect with { Time = time };
-            lastUnitEffect[effect.TargetUnitId] = time;
+            var unitFirst = _nextUnitSkillEffectToPrepare < _animSkillEffects.Count
+                && (_nextSiegeSkillEffectToPrepare >= _animSiegeSkillEffects.Count
+                    || _animSkillEffects[_nextUnitSkillEffectToPrepare].Time
+                        <= _animSiegeSkillEffects[_nextSiegeSkillEffectToPrepare].Time);
+            var index = unitFirst ? _nextUnitSkillEffectToPrepare++ : _nextSiegeSkillEffectToPrepare++;
+            var skill = unitFirst ? _animSkillEffects[index].Skill : _animSiegeSkillEffects[index].Skill;
+            if (!CanPrepareSkillEffect(skill)) continue;
+            var staged = new Node3D { Visible = false, ProcessMode = ProcessModeEnum.Disabled };
+            AddChild(staged);
+            if (!ActiveSkillPresentation.AttachEffect(staged, skill))
+            {
+                staged.QueueFree();
+                continue;
+            }
+            if (unitFirst) _preparedUnitSkillEffects[index] = staged;
+            else _preparedSiegeSkillEffects[index] = staged;
+            return;
         }
-        unitEffects.Sort((a, b) => a.Time.CompareTo(b.Time));
-        var lastSiegeEffect = new Dictionary<Vector3, double>();
-        for (var i = 0; i < siegeEffects.Count; i++)
+    }
+
+    private bool ShowPreparedSkillEffect(int index, Node3D target, bool siege)
+    {
+        var prepared = siege ? _preparedSiegeSkillEffects : _preparedUnitSkillEffects;
+        if (!prepared.Remove(index, out var staged) || !GodotObject.IsInstanceValid(staged)) return false;
+        if (siege) staged.GlobalPosition = target.GlobalPosition;
+        else
         {
-            var effect = siegeEffects[i];
-            var time = lastSiegeEffect.TryGetValue(effect.Target, out var previous)
-                ? System.Math.Max(effect.Time, previous + 0.28) : effect.Time;
-            siegeEffects[i] = effect with { Time = time };
-            lastSiegeEffect[effect.Target] = time;
+            staged.Reparent(target, false);
+            staged.Position = Vector3.Zero;
         }
-        siegeEffects.Sort((a, b) => a.Time.CompareTo(b.Time));
+        staged.Visible = true;
+        staged.ProcessMode = ProcessModeEnum.Inherit;
+        if (siege)
+        {
+            var cleanup = GetTree().CreateTimer(4.0);
+            cleanup.Timeout += () => { if (GodotObject.IsInstanceValid(staged)) staged.QueueFree(); };
+        }
+        return true;
+    }
+
+    private void ClearPreparedSkillEffects()
+    {
+        foreach (var staged in _preparedUnitSkillEffects.Values.Concat(_preparedSiegeSkillEffects.Values))
+            if (GodotObject.IsInstanceValid(staged)) staged.QueueFree();
+        _preparedUnitSkillEffects.Clear();
+        _preparedSiegeSkillEffects.Clear();
     }
 
     private void BeginActiveVisualPrewarm()
@@ -5358,6 +5395,7 @@ public sealed partial class CampaignMapScene : Node3D
     // 애니메이션 종료 — 최종 상태를 반영하고 버튼·텍스트를 원복한다.
     private void FinishAdvance()
     {
+        ClearPreparedSkillEffects();
         _advancing = false;
         _playbackCityTroops.Clear();
         _advanceBtn.Busy = false;
@@ -6919,6 +6957,7 @@ public sealed partial class CampaignMapScene : Node3D
         if (_advancing)
         {
             _animT += delta;
+            PrepareNextSkillEffect();
             ApplyDuePlaybackSnapshots();
             ApplyDueCityVitals();
             while (_animDeploymentIdx < _animDeployments.Count
@@ -7024,14 +7063,17 @@ public sealed partial class CampaignMapScene : Node3D
                     activeVisualBudget--;
                     if (effect.Skill.Type is ActiveType.Defense or ActiveType.Heal
                         && _armyTokens.TryGetValue(effect.CasterUnitId, out var defenseCaster) && defenseCaster.Visible)
-                        ActiveSkillPresentation.AttachEffect(defenseCaster, effect.Skill, target.GlobalPosition);
+                    {
+                        if (!ShowPreparedSkillEffect(_animSkillEffectIdx, defenseCaster, false))
+                            ActiveSkillPresentation.AttachEffect(defenseCaster, effect.Skill, target.GlobalPosition);
+                    }
                     else if (effect.Skill.Code == "breakthrough"
                         && _armyTokens.TryGetValue(effect.CasterUnitId, out var caster) && caster.Visible)
                         ActiveSkillPresentation.ShowBreakthrough(caster, target);
                     else if (effect.Skill.Code == "tiger_strike"
                         && _armyTokens.TryGetValue(effect.CasterUnitId, out var tigerCaster) && tigerCaster.Visible)
                         ActiveSkillPresentation.ShowTigerStrike(tigerCaster, target);
-                    else
+                    else if (!ShowPreparedSkillEffect(_animSkillEffectIdx, target, false))
                         ActiveSkillPresentation.AttachEffect(target, effect.Skill);
                 }
                 _animSkillEffectIdx++;
@@ -7068,7 +7110,7 @@ public sealed partial class CampaignMapScene : Node3D
                         && _armyTokens.TryGetValue(effect.CasterUnitId, out var tigerCaster)
                         && tigerCaster.Visible)
                         ActiveSkillPresentation.ShowTigerStrike(tigerCaster, anchor);
-                    else
+                    else if (!ShowPreparedSkillEffect(_animSiegeSkillEffectIdx, anchor, true))
                         ActiveSkillPresentation.AttachEffect(anchor, effect.Skill);
                     var cleanup = GetTree().CreateTimer(4.0);
                     cleanup.Timeout += () => { if (IsInstanceValid(anchor)) anchor.QueueFree(); };
@@ -17597,27 +17639,41 @@ public sealed partial class CampaignMapScene : Node3D
         GetTree().Quit(passed ? 0 : 1);
     }
 
-    private void RunActiveVisualPacingQa()
+    private async void RunActiveVisualPreparationQa()
     {
-        var skill = _activeSkills.First();
-        var unitEffects = new List<(double Time, int CasterUnitId, int TargetUnitId, ActiveSkill Skill)>
+        var codes = new[] { "heavy_blow", "iron_wall", "lightning", "one_man_army" };
+        foreach (var code in codes)
         {
-            (1, 1, 10, skill), (1, 2, 10, skill), (1, 3, 10, skill), (1, 4, 11, skill),
-        };
-        var target = new Vector3(3, 0, 2);
-        var siegeEffects = new List<(double Time, int CasterUnitId, Vector3 Target, ActiveSkill Skill)>
-        {
-            (2, 1, target, skill), (2, 2, target, skill), (2, 3, target, skill),
-        };
-        SpaceActiveSkillVisuals(unitEffects, siegeEffects);
-        var sameTarget = unitEffects.Where(effect => effect.TargetUnitId == 10).ToList();
-        var passed = sameTarget.Count == 3
-            && System.Math.Abs(sameTarget[1].Time - sameTarget[0].Time - 0.28) < 0.001
-            && System.Math.Abs(sameTarget[2].Time - sameTarget[1].Time - 0.28) < 0.001
-            && unitEffects.Single(effect => effect.TargetUnitId == 11).Time == 1
-            && System.Math.Abs(siegeEffects[1].Time - siegeEffects[0].Time - 0.28) < 0.001;
-        GD.Print($"[maptestactivepacingqa] passed={passed} unitTimes={string.Join(',', sameTarget.Select(effect => effect.Time.ToString("F2")))} siegeTimes={string.Join(',', siegeEffects.Select(effect => effect.Time.ToString("F2")))}");
-        GetTree().Quit(passed ? 0 : 1);
+            var skill = _activeSkills.First(active => active.Code == code);
+            _animSkillEffects.Add((1, 1, 2, skill));
+        }
+        _animSiegeSkillEffects.Add((1, 1, new Vector3(2f, 0f, 2f),
+            _activeSkills.First(active => active.Code == "heavy_blow")));
+        _nextUnitSkillEffectToPrepare = 0;
+        _nextSiegeSkillEffectToPrepare = 0;
+        for (var index = 0; index < codes.Length + 1; index++) PrepareNextSkillEffect();
+        var staged = _preparedUnitSkillEffects.Count == codes.Length
+            && _preparedSiegeSkillEffects.Count == 1
+            && _preparedUnitSkillEffects.Values.All(effect => !effect.Visible
+                && effect.ProcessMode == ProcessModeEnum.Disabled && effect.GetChildCount() > 0);
+        for (var frame = 0; frame < 30; frame++)
+            await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        var retained = _preparedUnitSkillEffects.Values.Concat(_preparedSiegeSkillEffects.Values)
+            .All(effect => GodotObject.IsInstanceValid(effect) && effect.GetChildCount() > 0);
+        var target = new Node3D();
+        AddChild(target);
+        var clock = System.Diagnostics.Stopwatch.StartNew();
+        var activated = Enumerable.Range(0, codes.Length)
+            .All(index => ShowPreparedSkillEffect(index, target, false))
+            && ShowPreparedSkillEffect(0, target, true);
+        var activationMs = clock.ElapsedMilliseconds;
+        var passed = staged && retained && activated && target.GetChildCount() == codes.Length;
+        GD.Print($"[maptestactiveprepareqa] passed={passed} staged={staged} retained={retained} activated={activated} activationMs={activationMs}");
+        target.QueueFree();
+        _animSkillEffects.Clear();
+        _animSiegeSkillEffects.Clear();
+        if (passed) GetParent().CallDeferred("RequestGracefulShutdown");
+        else GetTree().Quit(1);
     }
 
     private async void RunActiveVisualPrewarmQa()
@@ -17628,6 +17684,32 @@ public sealed partial class CampaignMapScene : Node3D
         GD.Print($"[maptestactiveprewarmqa] passed={passed} loaded={_prewarmedActiveVisuals.Count} pending={_activeVisualLoads.Count}");
         if (passed) GetParent().CallDeferred("RequestGracefulShutdown");
         else GetTree().Quit(1);
+    }
+
+    private async void RunActiveBurstProfileQa()
+    {
+        for (var frame = 0; frame < 240 && _activeVisualLoads.Count > 0; frame++)
+            await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        var codes = new[] { "heavy_blow", "iron_wall", "lightning", "one_man_army" };
+        var sample = _state.Generals.First();
+        var anchor = new Node3D();
+        AddChild(anchor);
+        anchor.GlobalPosition = _camera.FocusPivot;
+        var clock = System.Diagnostics.Stopwatch.StartNew();
+        foreach (var code in codes)
+        {
+            var skill = _activeSkills.First(active => active.Code == code);
+            var start = clock.ElapsedMilliseconds;
+            ActiveSkillPresentation.ShowUnitToast(anchor, sample.Name, skill, CircularPortraitFor(sample.Id));
+            var toast = clock.ElapsedMilliseconds;
+            ActiveSkillPresentation.ShowCasterActivation(anchor);
+            var caster = clock.ElapsedMilliseconds;
+            ActiveSkillPresentation.AttachEffect(anchor, skill);
+            GD.Print($"[active-burst-profile] skill={code} toastMs={toast - start} casterMs={caster - toast} effectMs={clock.ElapsedMilliseconds - caster}");
+        }
+        GD.Print($"[active-burst-profile] totalMs={clock.ElapsedMilliseconds} nodes={anchor.GetChildCount()} prewarmed={_prewarmedActiveVisuals.Count}");
+        anchor.QueueFree();
+        GetParent().CallDeferred("RequestGracefulShutdown");
     }
 
     /// <summary>선봉·부관 교대 발동 시 배너가 실제 발동 장수의 초상을 고르는 회귀 QA.</summary>

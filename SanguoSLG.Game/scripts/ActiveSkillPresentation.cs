@@ -31,13 +31,27 @@ public static class ActiveSkillPresentation
 
     public static void ShowCasterActivation(Node3D caster)
     {
-        // Burst는 범용 EffectView에서 반복형 파티클이므로 loop 인자만으로는 스스로 사라지지 않는다.
-        // 발동 순간에만 보이도록 효과 루트에 수명 타이머를 붙여 확실히 정리한다.
-        var effect = EffectView.Attach(caster, EffectKind.Burst, 0.72f, loop: false);
-        var lifetime = new Godot.Timer { OneShot = true, WaitTime = 0.55 };
-        effect.AddChild(lifetime);
-        lifetime.Timeout += effect.QueueFree;
-        lifetime.Start();
+        var ring = new MeshInstance3D
+        {
+            Name = "ActiveSkillCasterFlash",
+            Mesh = new TorusMesh { InnerRadius = 0.27f, OuterRadius = 0.34f },
+            MaterialOverride = new StandardMaterial3D
+            {
+                AlbedoColor = new Color(1f, 0.75f, 0.28f, 0.82f),
+                EmissionEnabled = true,
+                Emission = new Color(0.95f, 0.55f, 0.18f),
+                ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded,
+                Transparency = BaseMaterial3D.TransparencyEnum.Alpha,
+            },
+            CastShadow = GeometryInstance3D.ShadowCastingSetting.Off,
+            Position = new Vector3(0f, 0.12f, 0f),
+            Scale = Vector3.One * 0.55f,
+        };
+        caster.AddChild(ring);
+        var tween = ring.CreateTween().SetParallel(true);
+        tween.TweenProperty(ring, "scale", Vector3.One * 1.45f, 0.38f);
+        tween.TweenProperty(ring, "transparency", 1f, 0.38f);
+        tween.Finished += ring.QueueFree;
     }
 
     public static bool AttachEffect(Node3D target, ActiveSkill skill, Vector3? facingPosition = null)
