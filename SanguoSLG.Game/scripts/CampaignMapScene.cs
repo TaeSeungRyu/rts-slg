@@ -7381,7 +7381,7 @@ public sealed partial class CampaignMapScene : Node3D
         }
         else if (cmd.Kind == CommandKind.DeclareWar)
         {
-            box.AddChild(MakeLabel("대상 성 주변 4칸에 아군 부대가 없어야 합니다. 포고는 100일간 유효하며 시야 밖에서도 대상 성이 흐리게 보입니다. 포고 없이 점령하면 기존 치안의 50~70%를 잃습니다.", 15, Parchment));
+            box.AddChild(MakeLabel("대상 성 주변 4칸에 아군 부대가 없어야 합니다. 포고는 100일간 유효하며 시야 밖에서도 대상 성이 흐리게 보입니다. 포고 없이 점령하면 기존 치안의 20~40%를 잃습니다.", 15, Parchment));
         }
         var cityData = _state.Cities.First(x => x.Id == city);
         if (cmd.Kind == CommandKind.Explore)
@@ -15890,7 +15890,7 @@ public sealed partial class CampaignMapScene : Node3D
             }
             var origin = _state.Cities.First(c => c.Id == city);
             var travelDays = CityStratagems.Days(origin.Position, targets[p].Position, _cb);
-            extra = $"\n대상: {targets[p].Name}\n사절 도착까지 {travelDays}일 · 도착 후 100일간 유효합니다. 포고 없이 점령하면 기존 치안의 50~70%를 잃습니다.";
+            extra = $"\n대상: {targets[p].Name}\n사절 도착까지 {travelDays}일 · 도착 후 100일간 유효합니다. 포고 없이 점령하면 기존 치안의 20~40%를 잃습니다.";
         }
         var confirmOfficer = general;
         string? confirmOfficerLine = null;

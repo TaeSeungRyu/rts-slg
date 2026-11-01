@@ -21,7 +21,7 @@ public sealed record CaptureReport(
 /// <summary>
 /// 캠페인 함락 처리(design-general-lifecycle §4·design-combat "함락 처리"). 성벽 0 + 수비 0 도시에
 /// 근접(거리 1) 적 공격 부대가 있으면 자동 입성·점거한다. 소유 전환 + 자원 전부 승계(인구 −10%·
-/// 포고 없이 점령하면 기존 치안의 50~70% 손실), 진행 중 명령 드롭, 비출전 장수는 원 세력 최근접 거점으로 후퇴한다.
+/// 포고 없이 점령하면 기존 치안의 20~40% 손실), 진행 중 명령 드롭, 비출전 장수는 원 세력 최근접 거점으로 후퇴한다.
 /// 원 세력 멸망 시에만 장수별로 70% 점거 세력 합류, 30% 타 세력 이동을 판정한다.
 /// </summary>
 public sealed class CityCapture
@@ -85,7 +85,7 @@ public sealed class CityCapture
     {
         var oldOwner = city.Owner;
         var declared = state.DeclaredWars.Any(w => w.ActiveOn(state.Day) && w.Attacker == captor && w.City == city.Id && w.Defender == oldOwner);
-        var securityLossPercent = declared ? 0 : System.Math.Clamp(random.Next(50, 71), 50, 70);
+        var securityLossPercent = declared ? 0 : System.Math.Clamp(random.Next(20, 41), 20, 40);
         var newSecurity = System.Math.Clamp(city.Security * (100 - securityLossPercent) / 100, 0, 100);
 
         // 1) 소유 전환 + 자원 전부 승계(인구 −10%·치안 30 리셋, 성벽은 0 유지).

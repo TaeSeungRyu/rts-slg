@@ -108,7 +108,7 @@ public class CityCaptureTests
     private sealed class NoRandom : IRandomSource
     {
         public int Next(int minInclusive, int maxExclusive)
-            => minInclusive == 50 && maxExclusive == 71 ? 50
+            => minInclusive == 20 && maxExclusive == 41 ? 20
                 : throw new Xunit.Sdk.XunitException("세력 존속 중 함락에는 장수 합류 난수를 쓰면 안 됩니다.");
     }
 
@@ -136,15 +136,15 @@ public class CityCaptureTests
             WarDeclarations = [new CityWarDeclaration(new FactionId(1), city.Id, city.Owner, 1)],
         };
 
-        var after = new CityCapture().ResolveAll(state, new FixedRandom(50), out _);
+        var after = new CityCapture().ResolveAll(state, new FixedRandom(20), out _);
 
-        Assert.Equal(40, after.Cities.Single().Security);
+        Assert.Equal(64, after.Cities.Single().Security);
     }
 
     [Theory]
-    [InlineData(50, 40)]
-    [InlineData(70, 24)]
-    public void 포고하지_않은_도시는_기존치안의_절반에서_칠십퍼센트를_잃는다(int roll, int expected)
+    [InlineData(20, 64)]
+    [InlineData(40, 48)]
+    public void 포고하지_않은_도시는_기존치안의_이십에서_사십퍼센트를_잃는다(int roll, int expected)
     {
         var city = Fallen(1, 2, new HexCoord(5, 0));
         var state = State([city], [Attacker(1, 1, new HexCoord(4, 0), city.Position)]);
@@ -212,7 +212,7 @@ public class CityCaptureTests
         Assert.Equal(5000, c.Gold);                        // 금 전부 승계
         Assert.Equal(3000, c.Provisions);                  // 군량 전부 승계
         Assert.Equal(180_000, c.Population);               // 인구 −10%
-        Assert.Equal(40, c.Security);                      // 포고 없이 점령: 기존 80의 50% 손실
+        Assert.Equal(64, c.Security);                      // 포고 없이 점령: 기존 80의 20% 손실
         Assert.Empty(after.Armies);                        // 입성 부대는 야전에서 빠짐
         var g = after.Garrisons.Single(x => x.City == c.Id);
         Assert.Equal(("swordsman", 8000, 60), (g.TroopCode, g.Troops, g.TrainingLevel));
