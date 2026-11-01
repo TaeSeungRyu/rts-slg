@@ -11,6 +11,7 @@ namespace SanguoSLG.Game;
 public partial class MapView3D : Node3D
 {
     private readonly Dictionary<TerrainType, PackedScene> _tiles = new();
+    private readonly Dictionary<TerrainType, PackedScene[]> _terrainVariants = new();
     private PackedScene _water = null!;
     private PackedScene _farmBroken = null!;
     private float _size = 1f;      // 헥사 중심~꼭짓점(월드 단위)
@@ -43,6 +44,10 @@ public partial class MapView3D : Node3D
     {
         _tiles[TerrainType.Plains] = GD.Load<PackedScene>("res://assets/models/grass.glb");
         _tiles[TerrainType.Forest] = GD.Load<PackedScene>("res://assets/models/grass-forest.glb");
+        _terrainVariants[TerrainType.Forest] = [
+            _tiles[TerrainType.Forest],
+            GD.Load<PackedScene>("res://assets/models/grass-forest-2.glb"),
+            GD.Load<PackedScene>("res://assets/models/grass-forest-3.glb")];
         _tiles[TerrainType.Mountain] = GD.Load<PackedScene>("res://assets/models/mountain-small.glb");
         _tiles[TerrainType.Desert] = GD.Load<PackedScene>("res://assets/models/sand.glb");
         _tiles[TerrainType.Rocks] = GD.Load<PackedScene>("res://assets/models/stone-rocks.glb");
@@ -83,6 +88,13 @@ public partial class MapView3D : Node3D
         TerrainType.Bridge => _bridge,
         _ => _tiles.TryGetValue(terrain, out var scene) ? scene : null,
     };
+
+    public PackedScene? TileScene(TerrainType terrain, HexCoord tile)
+    {
+        if (!_terrainVariants.TryGetValue(terrain, out var variants)) return TileScene(terrain);
+        var hash = unchecked(tile.Q * 73856093 ^ tile.R * 19349663);
+        return variants[(hash & int.MaxValue) % variants.Length];
+    }
 
     private static float MeasureTopY(PackedScene scene)
     {
@@ -160,7 +172,7 @@ public partial class MapView3D : Node3D
             // 밭은 킷 단일 메시라 런타임에 쪼갤 수 없다 — 부서지면 4조각 모델로 바꿔 끼운다.
             var scene = terrain == TerrainType.Farm && condition != TileCondition.Normal
                 ? _farmBroken
-                : _tiles[terrain];
+                : TileScene(terrain, tile)!;
             var instance = scene.Instantiate<Node3D>();
             instance.Position = HexToWorld(tile);
             if (terrain is not (TerrainType.Workshop or TerrainType.Village2))

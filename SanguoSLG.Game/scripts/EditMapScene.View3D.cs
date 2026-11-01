@@ -48,7 +48,7 @@ public sealed partial class EditMapScene
     {
         var code = _rows[tile.Y][tile.X];
         if (code == 'R') return (_waterTile, 0f);
-        if (code != 'B') return (TerrainScene(code), 0f);
+        if (code != 'B') return (_mapView.TileScene(PreviewTerrain[code], Axial(tile)) ?? TerrainScene(code), 0f);
         var center = Axial(tile);
         var angles = center.Neighbors().Select(neighbor => new
             {
