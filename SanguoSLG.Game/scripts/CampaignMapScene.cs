@@ -6919,6 +6919,9 @@ public sealed partial class CampaignMapScene : Node3D
     {
         if (_hudPanel is not null && _cityQuickPanel is not null)
             _cityQuickPanel.Position = new Vector2(12f, _hudPanel.Position.Y + _hudPanel.Size.Y + 5f);
+        if (_cityQuickPanel is not null && _sortieQuickPanel is not null)
+            _sortieQuickPanel.Position = new Vector2(12f,
+                _cityQuickPanel.Position.Y + _cityQuickPanel.Size.Y + 5f);
         PollActiveVisualPrewarm();
         if (_advancing && _generalTransferTargeting) StopGeneralTransferTargeting(false);
         RefreshGeneralTransferFog();
@@ -18869,7 +18872,7 @@ public sealed partial class CampaignMapScene : Node3D
 
         var scroll = new ScrollContainer
         {
-            CustomMinimumSize = new Vector2(318f, 232f),
+            CustomMinimumSize = new Vector2(318f, 150f),
             SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
             SizeFlagsVertical = Control.SizeFlags.ExpandFill,
             HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled,
@@ -18941,7 +18944,7 @@ public sealed partial class CampaignMapScene : Node3D
 
         var scroll = new ScrollContainer
         {
-            CustomMinimumSize = new Vector2(318f, 232f),
+            CustomMinimumSize = new Vector2(318f, 150f),
             SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
             SizeFlagsVertical = Control.SizeFlags.ExpandFill,
             HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled,
