@@ -239,6 +239,7 @@ public sealed partial class EditMapScene
             visual.Position = _mapView.HexToWorld(Axial(tile));
             visual.RotationDegrees = new Vector3(0f, rotation, 0f);
             if (_rows[row][col] == 'R') MapView3D.TintRiverTile(visual);
+            if (_rows[row][col] == 'B') MapView3D.TintBridgeTile(visual);
             _visibleTerrain.AddChild(visual);
             _visibleTiles[tile] = visual;
             ApplyTerrainFilterToVisual(visual, _rows[row][col]);
