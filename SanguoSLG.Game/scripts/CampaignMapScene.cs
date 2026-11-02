@@ -88,6 +88,8 @@ public sealed partial class CampaignMapScene : Node3D
     private Label _hudDate = null!;
     private TextureRect _hudFace = null!;
     private PanelContainer _hudFacePanel = null!;
+    private VBoxContainer _cityQuickList = null!;
+    private string _cityQuickListKey = "";
     private PanelContainer _reportPanel = null!;   // 좌하단 보고(삼국지11 오마주 결과창)
     private ScrollContainer _reportScroll = null!; // 보고 내용 스크롤(이전 내용 열람)
     private VBoxContainer _reportBox = null!;
@@ -861,6 +863,7 @@ public sealed partial class CampaignMapScene : Node3D
             var minCitySpacing = landCities.SelectMany((city, index) => landCities.Skip(index + 1)
                 .Select(other => city.Position.Distance(other.Position))).Min();
             var passed = renamedMapOk && cameraIntroOk && fogStable && _state.Factions.Count == 3 && _state.Cities.Count > 2
+                && _reportPanel.Visible && _cityQuickList.GetChildCount() == _state.Cities.Count(city => city.Owner == Player)
                 && _state.Placements.Count == _aiTestFixture?.MapPreset?.Sites.Count(site => site.Kind == "facility")
                 && _state.Cities.All(city => _map.Contains(city.Position))
                 && _state.Cities.Any(city => city.Owner == Player)
@@ -17447,6 +17450,7 @@ public sealed partial class CampaignMapScene : Node3D
         var rulerName = ruler?.Name ?? "미지정";
         var myCities = _state.CityCount(Player);
         _hudRuler.Text = $"{_state.Year}년 {_state.Month}월 {_state.DayOfMonth}일\n군주 {rulerName}\n점령 도시 {myCities}";
+        RefreshCityQuickList();
         _hudFace.Texture = ruler is not null ? CircularPortraitFor(ruler.Id) : null;
         _hudFacePanel.Visible = _hudFace.Texture is not null;
         _hudDate.Text = "";
@@ -18675,6 +18679,7 @@ public sealed partial class CampaignMapScene : Node3D
         AddMiniMapButton(top);
         AddClimateTestButtons(layer);
         AddAiTestCaseSelector(layer);
+        BuildCityQuickList(layer);
 
         // 좌상단 캐릭터 HUD에는 추가 텍스트를 붙이지 않는다.
         // _status/_log는 기존 코드의 상태 전달용 라벨로만 유지하고 화면 레이아웃에는 추가하지 않는다.
@@ -18831,6 +18836,64 @@ public sealed partial class CampaignMapScene : Node3D
     }
 
     // 좌하단 보고 패널(삼국지11 오마주) — 진행 결과·명령 발행 등 사건을 최근 순으로 쌓아 보여준다.
+    private void BuildCityQuickList(CanvasLayer layer)
+    {
+        var panel = new PanelContainer
+        {
+            Position = new Vector2(12f, 108f),
+            CustomMinimumSize = new Vector2(340f, 270f),
+        };
+        panel.AddThemeStyleboxOverride("panel", Frame(new Color(Ink, 0.94f), Gold, 2, 8, 9));
+        layer.AddChild(panel);
+
+        var content = new VBoxContainer();
+        content.AddThemeConstantOverride("separation", 2);
+        panel.AddChild(content);
+        content.AddChild(MakeLabel("도시목록", 13, Gold));
+        content.AddChild(GoldRule());
+
+        var scroll = new ScrollContainer
+        {
+            CustomMinimumSize = new Vector2(318f, 232f),
+            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+            SizeFlagsVertical = Control.SizeFlags.ExpandFill,
+            HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled,
+            VerticalScrollMode = ScrollContainer.ScrollMode.Auto,
+        };
+        content.AddChild(scroll);
+        _cityQuickList = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+        _cityQuickList.AddThemeConstantOverride("separation", 2);
+        scroll.AddChild(_cityQuickList);
+    }
+
+    private void RefreshCityQuickList()
+    {
+        var cities = _state.Cities.Where(city => city.Owner == Player)
+            .OrderBy(city => city.Name, StringComparer.CurrentCulture)
+            .ThenBy(city => city.Id.Value).ToArray();
+        var key = string.Join("|", cities.Select(city => $"{city.Id.Value}:{city.Name}"));
+        if (key == _cityQuickListKey) return;
+        _cityQuickListKey = key;
+        foreach (var child in _cityQuickList.GetChildren())
+        {
+            _cityQuickList.RemoveChild(child);
+            child.QueueFree();
+        }
+        foreach (var city in cities)
+        {
+            var destination = city.Position;
+            var button = MakeButton(city.IsPort ? $"{city.Name} · 항구" : city.Name);
+            button.Alignment = HorizontalAlignment.Left;
+            button.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+            button.Pressed += () =>
+            {
+                HidePanels();
+                _camera.FocusOn(_view.HexToWorld(destination));
+            };
+            _cityQuickList.AddChild(button);
+        }
+    }
+
     private void BuildReportPanel()
     {
         var layer = new CanvasLayer();
