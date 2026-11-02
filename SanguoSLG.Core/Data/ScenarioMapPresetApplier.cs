@@ -38,7 +38,6 @@ public static class ScenarioMapPresetApplier
     public static Scenario Apply(Scenario source, ScenarioMapPreset preset)
     {
         preset.Validate();
-        preset = preset.WithFlatSiteTerrain();
         if (!preset.Sites.Any(site => site.Kind is "city" or "port"))
             throw new InvalidDataException("게임 시작용 지도에는 성 또는 항구가 필요합니다.");
         var terrain = new Dictionary<HexCoord, TerrainType>();

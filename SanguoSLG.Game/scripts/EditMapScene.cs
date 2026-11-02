@@ -591,11 +591,18 @@ public sealed partial class EditMapScene : Control
         _painting = true;
         valid &= PaintTile(vacant);
         var occupiedTile = _sites.First(site => site.Kind == "city");
-        valid &= !PaintTile(new Vector2I(occupiedTile.Column, occupiedTile.Row));
+        var cityTile = new Vector2I(occupiedTile.Column, occupiedTile.Row);
+        var cityOriginal = _rows[cityTile.Y][cityTile.X];
+        _paintCode = cityOriginal == 'h' ? 'j' : 'h';
+        valid &= PaintTile(cityTile) && SiteAt(cityTile)?.Id == occupiedTile.Id;
         EndPaintStroke();
-        valid &= _rows[vacant.Y][vacant.X] == _paintCode && _draftChanged;
+        valid &= _rows[vacant.Y][vacant.X] != paintOriginal
+            && _rows[cityTile.Y][cityTile.X] == _paintCode && _draftChanged;
+        try { Draft().Validate(); }
+        catch (InvalidDataException) { valid = false; }
         UndoDraft();
-        valid &= _rows[vacant.Y][vacant.X] == paintOriginal;
+        valid &= _rows[vacant.Y][vacant.X] == paintOriginal
+            && _rows[cityTile.Y][cityTile.X] == cityOriginal;
         var portDraft = Enumerable.Range(0, _height)
             .SelectMany(row => Enumerable.Range(0, _width).SelectMany(column =>
                 Enumerable.Range(0, 6).Select(direction =>

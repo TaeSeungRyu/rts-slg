@@ -104,7 +104,7 @@ public sealed partial class EditMapScene
     private bool PaintTile(Vector2I tile)
     {
         if (!Inside(tile) || _rows[tile.Y][tile.X] == _paintCode
-            || !CanChangeTerrain(tile, _paintCode)) return false;
+            || !CanChangeTerrain(tile, _paintCode, true)) return false;
         var chars = _rows[tile.Y].ToCharArray();
         chars[tile.X] = _paintCode;
         _rows[tile.Y] = new string(chars);

@@ -33,31 +33,6 @@ public sealed record ScenarioMapPreset(int Version, int Width, int Height, IRead
         Sites = Sites.ToArray(),
     };
 
-    public ScenarioMapPreset WithFlatSiteTerrain()
-    {
-        var rows = Rows.Select(row => row.ToCharArray()).ToArray();
-        foreach (var site in Sites.Where(site => site.Kind is "city" or "port"))
-        {
-            var anchor = ToAxial(site.Column, site.Row);
-            var offsets = site.Kind == "city"
-                ? CastleFootprint.OffsetsFor(site.Size switch
-                {
-                    "large" => CastleSize.Large,
-                    "medium" => CastleSize.Medium,
-                    _ => CastleSize.Small,
-                })
-                : site.Size == "medium" ? FeatureFootprint.OffsetsFor(FeatureType.PortMedium)
-                    : [new HexCoord(0, 0)];
-            foreach (var offset in offsets)
-            {
-                var tile = anchor + CastleFootprint.Rotate(offset, site.Direction);
-                var (column, row) = ToOffset(tile);
-                rows[row][column] = 'P';
-            }
-        }
-        return this with { Rows = rows.Select(row => new string(row)).ToArray() };
-    }
-
     public void Validate()
     {
         if (Version != 1 || Width <= 0 || Height <= 0 || Rows.Count != Height ||
@@ -109,6 +84,7 @@ public sealed record ScenarioMapPreset(int Version, int Width, int Height, IRead
                 if (column < 0 || column >= Width || row < 0 || row >= Height ||
                     !(site.Kind == "landmark" ? "PFfgMmnDBSTNQHhjXC"
                         : site.Kind == "ruin" && MapRuinCatalog.Find(site.Size)!.Naval ? "WO"
+                        : site.Kind is "city" or "port" ? "PFfgMmnHhjDBSTNQ"
                         : "PFfgMmnDBSTNQ")
                         .Contains(Rows[row][column]) || !occupied.Add(tile))
                     throw new InvalidDataException("배치물 발자국이 지도 밖, 물/험산 또는 다른 배치물과 겹칩니다.");

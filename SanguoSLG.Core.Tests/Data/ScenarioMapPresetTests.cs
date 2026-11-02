@@ -8,7 +8,7 @@ using SanguoSLG.Core.Domain;
 public sealed class ScenarioMapPresetTests
 {
     [Fact]
-    public void TerrainVariantsKeepTheirRulesAndCityPortFootprintsBecomePlains()
+    public void TerrainVariantsKeepTheirRulesAndPaintedCityPortTerrain()
     {
         var source = new ScenarioLoader().LoadFromDirectory(TestData.DataDirectory());
         var preset = new ScenarioMapPreset(1, 9, 4,
@@ -16,8 +16,8 @@ public sealed class ScenarioMapPresetTests
             [new MapEditorSite(1, "변형 성", "city", "small", 0, 0),
                 new MapEditorSite(2, "변형 항", "port", "small", 5, 1)]);
         var applied = ScenarioMapPresetApplier.Apply(source, preset);
-        Assert.Equal('P', applied.MapPreset!.Rows[0][0]);
-        Assert.Equal('P', applied.MapPreset.Rows[1][5]);
+        Assert.Equal('f', applied.MapPreset!.Rows[0][0]);
+        Assert.Equal('M', applied.MapPreset.Rows[1][5]);
         var path = Path.Combine(Path.GetTempPath(), "terrain-variants-" + Guid.NewGuid() + ".json");
         try
         {
@@ -28,8 +28,8 @@ public sealed class ScenarioMapPresetTests
         {
             if (File.Exists(path)) File.Delete(path);
         }
-        Assert.Equal(TerrainType.Plains, applied.Map.TerrainAt(preset.ToAxial(0, 0)));
-        Assert.Equal(TerrainType.Plains, applied.Map.TerrainAt(preset.ToAxial(5, 1)));
+        Assert.Equal(TerrainType.Forest, applied.Map.TerrainAt(preset.ToAxial(0, 0)));
+        Assert.Equal(TerrainType.Mountain, applied.Map.TerrainAt(preset.ToAxial(5, 1)));
         foreach (var column in new[] { 1, 2 })
             Assert.Equal(TerrainType.Forest, applied.Map.TerrainAt(preset.ToAxial(column, 0)));
         foreach (var column in new[] { 3, 4, 5, 6 })

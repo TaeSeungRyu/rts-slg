@@ -138,7 +138,7 @@ public sealed partial class EditMapScene
         var path = PresetPath();
         try
         {
-            var draft = Draft().WithFlatSiteTerrain();
+            var draft = Draft();
             var protectedCities = ProtectedScenarioNames();
             if (protectedCities.Count > 0 && _activeMapVersion is { } linked
                 && linked.Preset.Sites.Any(site => site.Kind == "city"
@@ -260,6 +260,7 @@ public sealed partial class EditMapScene
             (candidate.Kind == "ruin" ? (MapRuinCatalog.Find(candidate.Size)?.Naval == true
                     ? _rows[cell.Y][cell.X] is 'W' or 'O' : IsLand(_rows[cell.Y][cell.X]))
                 : candidate.Kind == "landmark" ? IsLand(_rows[cell.Y][cell.X]) || _rows[cell.Y][cell.X] is 'H' or 'h' or 'j' or 'X' or 'C'
+                : candidate.Kind is "city" or "port" ? IsLand(_rows[cell.Y][cell.X]) || _rows[cell.Y][cell.X] is 'H' or 'h' or 'j'
                 : IsLand(_rows[cell.Y][cell.X])) &&
             !_sites.Where(site => site.Id != candidate.Id).Any(site => Footprint(site).Contains(cell)));
     }
@@ -823,10 +824,13 @@ public sealed partial class EditMapScene
         QueueRedraw();
     }
 
-    private bool CanChangeTerrain(Vector2I tile, char code)
+    private bool CanChangeTerrain(Vector2I tile, char code, bool painting = false)
     {
         if (!Inside(tile)) return false;
-        if (SiteAt(tile) is not null) return false;
+        var site = SiteAt(tile);
+        if (site is not null && (!painting || site.Kind is not ("city" or "port")
+            || code is not ('P' or 'F' or 'f' or 'g' or 'M' or 'm' or 'n' or 'H' or 'h' or 'j'
+                or 'D' or 'B' or 'S' or 'T' or 'N' or 'Q'))) return false;
         if (!IsLand(code) && _landRoutes.Any(route => route.Contains(tile))) return false;
         var original = _rows[tile.Y][tile.X];
         if (original == code) return true;
