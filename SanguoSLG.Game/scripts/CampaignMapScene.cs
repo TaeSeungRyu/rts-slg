@@ -18841,7 +18841,7 @@ public sealed partial class CampaignMapScene : Node3D
         var panel = new PanelContainer
         {
             Position = new Vector2(12f, 108f),
-            CustomMinimumSize = new Vector2(340f, 270f),
+            CustomMinimumSize = new Vector2(340f, 0f),
         };
         panel.AddThemeStyleboxOverride("panel", Frame(new Color(Ink, 0.94f), Gold, 2, 8, 9));
         layer.AddChild(panel);
@@ -18849,8 +18849,12 @@ public sealed partial class CampaignMapScene : Node3D
         var content = new VBoxContainer();
         content.AddThemeConstantOverride("separation", 2);
         panel.AddChild(content);
-        content.AddChild(MakeLabel("도시목록", 13, Gold));
-        content.AddChild(GoldRule());
+        var toggle = MakeButton("▸ 도시목록");
+        toggle.Alignment = HorizontalAlignment.Left;
+        content.AddChild(toggle);
+        var rule = GoldRule();
+        rule.Visible = false;
+        content.AddChild(rule);
 
         var scroll = new ScrollContainer
         {
@@ -18859,11 +18863,21 @@ public sealed partial class CampaignMapScene : Node3D
             SizeFlagsVertical = Control.SizeFlags.ExpandFill,
             HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled,
             VerticalScrollMode = ScrollContainer.ScrollMode.Auto,
+            Visible = false,
         };
         content.AddChild(scroll);
+        toggle.Pressed += () =>
+        {
+            scroll.Visible = !scroll.Visible;
+            rule.Visible = scroll.Visible;
+            toggle.Text = scroll.Visible ? "▾ 도시목록" : "▸ 도시목록";
+        };
+        var inset = new MarginContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+        inset.AddThemeConstantOverride("margin_right", 10);
+        scroll.AddChild(inset);
         _cityQuickList = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
         _cityQuickList.AddThemeConstantOverride("separation", 2);
-        scroll.AddChild(_cityQuickList);
+        inset.AddChild(_cityQuickList);
     }
 
     private void RefreshCityQuickList()
