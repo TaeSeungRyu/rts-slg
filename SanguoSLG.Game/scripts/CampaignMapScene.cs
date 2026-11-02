@@ -657,6 +657,12 @@ public sealed partial class CampaignMapScene : Node3D
             catch (System.Exception error) { GD.PushWarning($"장수 프리셋을 적용하지 못했습니다: {error.Message}"); }
         }
         var campaignGenerals = GeneralDataLayers.CreateCampaign(scenario.Generals, generalPreset);
+        var newMapFacilities = args.Contains("--newmap") && _aiTestFixture?.MapPreset is { } newMapPreset
+            ? newMapPreset.Sites.Where(site => site.Kind == "facility" && site.ParentCityId is not null)
+                .Select(site => new FacilityPlacement(new CityId(site.ParentCityId!.Value),
+                    newMapPreset.ToAxial(site.Column, site.Row), site.Size, FacilityHealth.Level1))
+                .ToArray()
+            : [];
         _state = _initial with
         {
             StartYear = _scenarioOverride is null ? 190 : _scenarioStartYear,
@@ -670,6 +676,7 @@ public sealed partial class CampaignMapScene : Node3D
             GarrisonForces = _aiTestFixture?.GarrisonsFor(_selectedAiTestCase, Player)
                 ?? _initial.GarrisonForces,
             FacilityPlacements = _scenarioOverride is not null ? scenario.InitialFacilities ?? []
+                : args.Contains("--newmap") ? newMapFacilities
                 : _aiTestFixture is null ? _initialFacilityPlacements : [],
             PortShipStocks = _aiTestFixture?.Ships ?? _initial.PortShipStocks,
             ScoutedCities = _aiTestFixture?.Intel ?? _initial.ScoutedCities,
@@ -854,6 +861,7 @@ public sealed partial class CampaignMapScene : Node3D
             var minCitySpacing = landCities.SelectMany((city, index) => landCities.Skip(index + 1)
                 .Select(other => city.Position.Distance(other.Position))).Min();
             var passed = renamedMapOk && cameraIntroOk && fogStable && _state.Factions.Count == 3 && _state.Cities.Count > 2
+                && _state.Placements.Count == _aiTestFixture?.MapPreset?.Sites.Count(site => site.Kind == "facility")
                 && _state.Cities.All(city => _map.Contains(city.Position))
                 && _state.Cities.Any(city => city.Owner == Player)
                 && _state.Cities.Any(city => city.Owner != Player)
@@ -866,7 +874,8 @@ public sealed partial class CampaignMapScene : Node3D
             GD.Print($"[newmap-qa] passed={passed} factions={_state.Factions.Count} "
                 + $"cities={_state.Cities.Count} cells={_map.Count} citySpacing={minCitySpacing} "
                 + $"visible={_visibleTiles.Count} scouted={_state.ScoutedCities?.Count ?? 0} "
-                + $"heroCandidates={_state.HeroUnlockDefinitions?.Count ?? 0} fogStable={fogStable} cameraIntro={cameraIntroOk} renamedMap={renamedMapOk}");
+                + $"heroCandidates={_state.HeroUnlockDefinitions?.Count ?? 0} fogStable={fogStable} cameraIntro={cameraIntroOk} renamedMap={renamedMapOk} "
+                + $"facilities={_state.Placements.Count}/{_aiTestFixture?.MapPreset?.Sites.Count(site => site.Kind == "facility")}");
             CallDeferred(nameof(QuitNewMapQa), passed);
         }
         if (args.Contains("--newmapstress100advanceqa"))
