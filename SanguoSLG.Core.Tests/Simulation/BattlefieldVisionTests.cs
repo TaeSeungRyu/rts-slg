@@ -24,9 +24,9 @@ public class BattlefieldVisionTests
             TroopCode: code, IsSupply: supply);
 
     [Theory]
-    [InlineData(CastleSize.Small, 4)]
-    [InlineData(CastleSize.Medium, 4)]
-    [InlineData(CastleSize.Large, 5)]
+    [InlineData(CastleSize.Small, 5)]
+    [InlineData(CastleSize.Medium, 5)]
+    [InlineData(CastleSize.Large, 6)]
     public void 성_크기별_헥사반경과_경계(CastleSize size, int radius)
     {
         var state = new GameState(1, 190, [], [City(1, 0, Player, size)], []);
@@ -97,11 +97,11 @@ public class BattlefieldVisionTests
     [Fact]
     public void 적부대는_시야를_주지않고_시야내에서만_조회가능()
     {
-        var unit = Unit("swordsman", Enemy, 5);
+        var unit = Unit("swordsman", Enemy, 6);
         var state = new GameState(1, 190, [], [City(1, 0, Player)], [], FieldArmies: [unit]);
         var visible = Vision.VisibleTiles(state, Player, Map);
         Assert.False(BattlefieldVision.CanSeeUnit(Player, unit, visible));
-        Assert.True(BattlefieldVision.CanSeeUnit(Player, unit with { Field = unit.Field.MoveTo(new HexCoord(4, 0)) }, visible));
+        Assert.True(BattlefieldVision.CanSeeUnit(Player, unit with { Field = unit.Field.MoveTo(new HexCoord(5, 0)) }, visible));
         Assert.False(BattlefieldVision.CanInspectCity(state, Player, City(2, 4, Enemy), visible));
         Assert.False(BattlefieldVision.CanInspectCity(state, Player, City(3, 5, Enemy), visible));
     }
