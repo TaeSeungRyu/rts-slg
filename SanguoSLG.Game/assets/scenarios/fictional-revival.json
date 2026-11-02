@@ -7,7 +7,7 @@
   "StartMonth": 1,
   "StartDay": 1,
   "MapId": "default-east-asia",
-  "MapRevision": "5ef331b804d4b5fb64a17eb8d6fd4e8e3111078d4c92eb09f6ffe67ebe7183a2",
+  "MapRevision": "246b373958c601ddc868bcec2a2bf1b3607b1df13ac952e0af01158d5e9ad920",
   "Factions": [
     {
       "Id": 1,
@@ -1462,6 +1462,31 @@
     },
     {
       "GeneralId": 109,
+      "FactionId": 14,
+      "SiteId": 32
+    },
+    {
+      "GeneralId": 453,
+      "FactionId": 6,
+      "SiteId": 110
+    },
+    {
+      "GeneralId": 345,
+      "FactionId": 8,
+      "SiteId": 29
+    },
+    {
+      "GeneralId": 314,
+      "FactionId": 10,
+      "SiteId": 140
+    },
+    {
+      "GeneralId": 351,
+      "FactionId": 12,
+      "SiteId": 60
+    },
+    {
+      "GeneralId": 310,
       "FactionId": 14,
       "SiteId": 32
     }

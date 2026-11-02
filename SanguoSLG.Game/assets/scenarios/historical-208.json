@@ -7,7 +7,7 @@
   "StartMonth": 10,
   "StartDay": 1,
   "MapId": "default-east-asia",
-  "MapRevision": "5ef331b804d4b5fb64a17eb8d6fd4e8e3111078d4c92eb09f6ffe67ebe7183a2",
+  "MapRevision": "246b373958c601ddc868bcec2a2bf1b3607b1df13ac952e0af01158d5e9ad920",
   "Factions": [
     {
       "Id": 1,
@@ -1970,6 +1970,356 @@
       "GeneralId": 143,
       "FactionId": 9,
       "SiteId": 97
+    },
+    {
+      "GeneralId": 352,
+      "FactionId": 1,
+      "SiteId": 138
+    },
+    {
+      "GeneralId": 322,
+      "FactionId": 1,
+      "SiteId": 138
+    },
+    {
+      "GeneralId": 337,
+      "FactionId": 1,
+      "SiteId": 137
+    },
+    {
+      "GeneralId": 335,
+      "FactionId": 1,
+      "SiteId": 137
+    },
+    {
+      "GeneralId": 336,
+      "FactionId": 1,
+      "SiteId": 144
+    },
+    {
+      "GeneralId": 329,
+      "FactionId": 1,
+      "SiteId": 144
+    },
+    {
+      "GeneralId": 311,
+      "FactionId": 1,
+      "SiteId": 132
+    },
+    {
+      "GeneralId": 331,
+      "FactionId": 1,
+      "SiteId": 133
+    },
+    {
+      "GeneralId": 306,
+      "FactionId": 1,
+      "SiteId": 3
+    },
+    {
+      "GeneralId": 345,
+      "FactionId": 1,
+      "SiteId": 15
+    },
+    {
+      "GeneralId": 354,
+      "FactionId": 1,
+      "SiteId": 125
+    },
+    {
+      "GeneralId": 326,
+      "FactionId": 1,
+      "SiteId": 134
+    },
+    {
+      "GeneralId": 521,
+      "FactionId": 1,
+      "SiteId": 13
+    },
+    {
+      "GeneralId": 453,
+      "FactionId": 1,
+      "SiteId": 17
+    },
+    {
+      "GeneralId": 439,
+      "FactionId": 1,
+      "SiteId": 115
+    },
+    {
+      "GeneralId": 414,
+      "FactionId": 1,
+      "SiteId": 110
+    },
+    {
+      "GeneralId": 402,
+      "FactionId": 1,
+      "SiteId": 104
+    },
+    {
+      "GeneralId": 533,
+      "FactionId": 1,
+      "SiteId": 136
+    },
+    {
+      "GeneralId": 375,
+      "FactionId": 1,
+      "SiteId": 22
+    },
+    {
+      "GeneralId": 372,
+      "FactionId": 1,
+      "SiteId": 112
+    },
+    {
+      "GeneralId": 387,
+      "FactionId": 1,
+      "SiteId": 120
+    },
+    {
+      "GeneralId": 523,
+      "FactionId": 1,
+      "SiteId": 16
+    },
+    {
+      "GeneralId": 363,
+      "FactionId": 1,
+      "SiteId": 135
+    },
+    {
+      "GeneralId": 478,
+      "FactionId": 1,
+      "SiteId": 114
+    },
+    {
+      "GeneralId": 366,
+      "FactionId": 1,
+      "SiteId": 20
+    },
+    {
+      "GeneralId": 367,
+      "FactionId": 1,
+      "SiteId": 131
+    },
+    {
+      "GeneralId": 365,
+      "FactionId": 1,
+      "SiteId": 23
+    },
+    {
+      "GeneralId": 495,
+      "FactionId": 1,
+      "SiteId": 116
+    },
+    {
+      "GeneralId": 494,
+      "FactionId": 1,
+      "SiteId": 113
+    },
+    {
+      "GeneralId": 507,
+      "FactionId": 1,
+      "SiteId": 117
+    },
+    {
+      "GeneralId": 349,
+      "FactionId": 2,
+      "SiteId": 57
+    },
+    {
+      "GeneralId": 486,
+      "FactionId": 2,
+      "SiteId": 109
+    },
+    {
+      "GeneralId": 417,
+      "FactionId": 2,
+      "SiteId": 93
+    },
+    {
+      "GeneralId": 405,
+      "FactionId": 2,
+      "SiteId": 56
+    },
+    {
+      "GeneralId": 512,
+      "FactionId": 2,
+      "SiteId": 54
+    },
+    {
+      "GeneralId": 527,
+      "FactionId": 2,
+      "SiteId": 95
+    },
+    {
+      "GeneralId": 377,
+      "FactionId": 2,
+      "SiteId": 55
+    },
+    {
+      "GeneralId": 308,
+      "FactionId": 3,
+      "SiteId": 49
+    },
+    {
+      "GeneralId": 342,
+      "FactionId": 3,
+      "SiteId": 105
+    },
+    {
+      "GeneralId": 347,
+      "FactionId": 3,
+      "SiteId": 50
+    },
+    {
+      "GeneralId": 339,
+      "FactionId": 3,
+      "SiteId": 46
+    },
+    {
+      "GeneralId": 356,
+      "FactionId": 3,
+      "SiteId": 106
+    },
+    {
+      "GeneralId": 442,
+      "FactionId": 3,
+      "SiteId": 48
+    },
+    {
+      "GeneralId": 325,
+      "FactionId": 4,
+      "SiteId": 103
+    },
+    {
+      "GeneralId": 532,
+      "FactionId": 4,
+      "SiteId": 103
+    },
+    {
+      "GeneralId": 446,
+      "FactionId": 4,
+      "SiteId": 101
+    },
+    {
+      "GeneralId": 437,
+      "FactionId": 4,
+      "SiteId": 101
+    },
+    {
+      "GeneralId": 434,
+      "FactionId": 4,
+      "SiteId": 147
+    },
+    {
+      "GeneralId": 416,
+      "FactionId": 4,
+      "SiteId": 147
+    },
+    {
+      "GeneralId": 415,
+      "FactionId": 4,
+      "SiteId": 36
+    },
+    {
+      "GeneralId": 466,
+      "FactionId": 4,
+      "SiteId": 100
+    },
+    {
+      "GeneralId": 473,
+      "FactionId": 4,
+      "SiteId": 102
+    },
+    {
+      "GeneralId": 396,
+      "FactionId": 4,
+      "SiteId": 34
+    },
+    {
+      "GeneralId": 426,
+      "FactionId": 4,
+      "SiteId": 37
+    },
+    {
+      "GeneralId": 310,
+      "FactionId": 5,
+      "SiteId": 121
+    },
+    {
+      "GeneralId": 309,
+      "FactionId": 5,
+      "SiteId": 121
+    },
+    {
+      "GeneralId": 474,
+      "FactionId": 5,
+      "SiteId": 111
+    },
+    {
+      "GeneralId": 392,
+      "FactionId": 5,
+      "SiteId": 111
+    },
+    {
+      "GeneralId": 391,
+      "FactionId": 5,
+      "SiteId": 32
+    },
+    {
+      "GeneralId": 542,
+      "FactionId": 6,
+      "SiteId": 27
+    },
+    {
+      "GeneralId": 482,
+      "FactionId": 6,
+      "SiteId": 27
+    },
+    {
+      "GeneralId": 369,
+      "FactionId": 6,
+      "SiteId": 30
+    },
+    {
+      "GeneralId": 459,
+      "FactionId": 7,
+      "SiteId": 28
+    },
+    {
+      "GeneralId": 393,
+      "FactionId": 7,
+      "SiteId": 29
+    },
+    {
+      "GeneralId": 537,
+      "FactionId": 8,
+      "SiteId": 140
+    },
+    {
+      "GeneralId": 384,
+      "FactionId": 8,
+      "SiteId": 1
+    },
+    {
+      "GeneralId": 351,
+      "FactionId": 9,
+      "SiteId": 99
+    },
+    {
+      "GeneralId": 357,
+      "FactionId": 9,
+      "SiteId": 99
+    },
+    {
+      "GeneralId": 361,
+      "FactionId": 9,
+      "SiteId": 60
+    },
+    {
+      "GeneralId": 362,
+      "FactionId": 9,
+      "SiteId": 58
     }
   ]
 }

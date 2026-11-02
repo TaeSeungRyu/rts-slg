@@ -5,6 +5,27 @@ using SanguoSLG.Core.Data;
 public sealed class HistoricalScenarioTests
 {
     [Fact]
+    public void SupportGeneralsKeepRecruitmentCandidatesInEveryScenario()
+    {
+        var root = Path.GetDirectoryName(TestData.DataDirectory())!;
+        var source = new ScenarioLoader().LoadFromDirectory(TestData.DataDirectory());
+        var support = source.Generals.Where(general => general.Id.Value is >= 306 and <= 544)
+            .Select(general => general.Id.Value).ToHashSet();
+        Assert.Equal(239, support.Count);
+        foreach (var id in support)
+            Assert.True(File.Exists(Path.Combine(root, "SanguoSLG.Game", "assets", "portraits", $"{id}.png")));
+
+        var directory = Path.Combine(root, "SanguoSLG.Game", "assets", "scenarios");
+        foreach (var path in Directory.GetFiles(directory, "*.json"))
+        {
+            var draft = ScenarioDraftStore.Load(path);
+            var placed = draft.Generals.Select(general => general.GeneralId).ToArray();
+            Assert.Equal(placed.Length, placed.Distinct().Count());
+            Assert.InRange(placed.Count(support.Contains), 1, support.Count - 1);
+        }
+    }
+
+    [Fact]
     public void BundledScenariosMatchDefaultMapAndCanStart()
     {
         var root = Path.GetDirectoryName(TestData.DataDirectory())!;
