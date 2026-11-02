@@ -88,6 +88,8 @@ public sealed partial class CampaignMapScene : Node3D
     private Label _hudDate = null!;
     private TextureRect _hudFace = null!;
     private PanelContainer _hudFacePanel = null!;
+    private PanelContainer _hudPanel = null!;
+    private PanelContainer _cityQuickPanel = null!;
     private VBoxContainer _cityQuickList = null!;
     private string _cityQuickListKey = "";
     private PanelContainer _reportPanel = null!;   // 좌하단 보고(삼국지11 오마주 결과창)
@@ -6912,6 +6914,8 @@ public sealed partial class CampaignMapScene : Node3D
     // 줌/이동 중에도 팔레트가 선택한 성을 따라가도록 갱신.
     public override void _Process(double delta)
     {
+        if (_hudPanel is not null && _cityQuickPanel is not null)
+            _cityQuickPanel.Position = new Vector2(12f, _hudPanel.Position.Y + _hudPanel.Size.Y + 5f);
         PollActiveVisualPrewarm();
         if (_advancing && _generalTransferTargeting) StopGeneralTransferTargeting(false);
         RefreshGeneralTransferFog();
@@ -18617,6 +18621,7 @@ public sealed partial class CampaignMapScene : Node3D
         panel.CustomMinimumSize = new Vector2(390, 0);
         panel.AddThemeStyleboxOverride("panel", Frame(new Color(0.035f, 0.028f, 0.024f, 0.88f), new Color(Gold, 0.42f), 1, 14, 8));
         layer.AddChild(panel);
+        _hudPanel = panel;
 
         var box = new VBoxContainer();
         box.AddThemeConstantOverride("separation", 0);
@@ -18845,6 +18850,7 @@ public sealed partial class CampaignMapScene : Node3D
         };
         panel.AddThemeStyleboxOverride("panel", Frame(new Color(Ink, 0.94f), Gold, 2, 8, 9));
         layer.AddChild(panel);
+        _cityQuickPanel = panel;
 
         var content = new VBoxContainer();
         content.AddThemeConstantOverride("separation", 2);
