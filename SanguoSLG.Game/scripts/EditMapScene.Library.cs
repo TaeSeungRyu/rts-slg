@@ -6,6 +6,7 @@ namespace SanguoSLG.Game;
 public sealed partial class EditMapScene
 {
     private Control? _mapLibrary;
+    private bool _mapSelectionMade;
 
     private static string RootMapPath()
         => ProjectSettings.GlobalizePath("user://map-presets/east-asia.json");
@@ -37,7 +38,7 @@ public sealed partial class EditMapScene
         titleLabel.AddThemeFontSizeOverride("font_size", 20);
         titleLabel.AddThemeColorOverride("font_color", new Color("e8c475"));
         header.AddChild(titleLabel);
-        var close = new Button { Text = "닫기" };
+        var close = new Button { Text = "×", TooltipText = "지도 목록 닫기" };
         close.Pressed += CloseMapLibrary;
         header.AddChild(close);
         content.AddChild(header);
@@ -120,6 +121,8 @@ public sealed partial class EditMapScene
     {
         _mapLibrary?.QueueFree();
         _mapLibrary = null;
+        if (!_mapSelectionMade && !OS.GetCmdlineUserArgs().Contains("--editmapqa"))
+            GetTree().Quit();
     }
 
     private void LoadSelectedMap(string path, ScenarioMapPreset preset, string? title = null)
@@ -127,6 +130,7 @@ public sealed partial class EditMapScene
         var version = MapArchive().SaveVersion(MapIdFor(path),
             title ?? (path == RootMapPath() ? "기본 지도" : Path.GetFileNameWithoutExtension(path)), preset);
         _selectedMapPath = path;
+        _mapSelectionMade = true;
         _activeMapVersion = version;
         _width = preset.Width;
         _height = preset.Height;

@@ -113,6 +113,18 @@ public sealed partial class EditMapScene : Control
         CallDeferred(nameof(FitMap));
         if (OS.GetCmdlineUserArgs().Contains("--editmapqa")) CallDeferred(nameof(RunQa));
         else CallDeferred(nameof(ShowMapLibrary));
+        if (OS.GetCmdlineUserArgs().Contains("--editmapcloseqa"))
+            CallDeferred(nameof(RunInitialCloseQa));
+    }
+
+    private void RunInitialCloseQa()
+    {
+        var close = _mapLibrary?.FindChildren("*", "Button", true, false)
+            .OfType<Button>().FirstOrDefault(button => button.Text == "×");
+        var passed = !_mapSelectionMade && close is not null;
+        GD.Print($"[editmap-close-qa] passed={passed} initialSelection={_mapSelectionMade}");
+        if (!passed) { GetTree().Quit(1); return; }
+        close!.EmitSignal(Button.SignalName.Pressed);
     }
 
     private void BuildInterface()
@@ -470,7 +482,8 @@ public sealed partial class EditMapScene : Control
         ShowMapLibrary();
         var libraryButtons = _mapLibrary?.FindChildren("*", "Button", true, false)
             .OfType<Button>().Select(button => button.Text).ToArray() ?? [];
-        valid &= libraryButtons.Contains("닫기") && libraryButtons.Contains("새 지도 추가 · 기본 지도에서 시작");
+        valid &= !_mapSelectionMade && libraryButtons.Contains("×")
+            && libraryButtons.Contains("새 지도 추가 · 기본 지도에서 시작");
         CloseMapLibrary();
         _terrainButtons.First(button => button.Text == "산1").EmitSignal(Button.SignalName.Pressed);
         valid &= _terrainFilter == 'M';
