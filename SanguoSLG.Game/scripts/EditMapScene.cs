@@ -138,15 +138,18 @@ public sealed partial class EditMapScene : Control
         content.AddChild(legend);
         var filterScroll = new ScrollContainer
         {
-            CustomMinimumSize = new Vector2(0, 31),
+            CustomMinimumSize = new Vector2(0, 42),
             SizeFlagsHorizontal = SizeFlags.ExpandFill,
             HorizontalScrollMode = ScrollContainer.ScrollMode.Auto,
             VerticalScrollMode = ScrollContainer.ScrollMode.Disabled,
         };
         content.AddChild(filterScroll);
+        var filterPadding = new MarginContainer { Name = "TerrainFilterPadding" };
+        filterPadding.AddThemeConstantOverride("margin_bottom", 11);
+        filterScroll.AddChild(filterPadding);
         var filters = new HBoxContainer();
         filters.AddThemeConstantOverride("separation", 6);
-        filterScroll.AddChild(filters);
+        filterPadding.AddChild(filters);
         var group = new ButtonGroup();
         AddTerrainFilter("전체", null);
         foreach (var (code, entry) in Terrain)
@@ -451,6 +454,8 @@ public sealed partial class EditMapScene : Control
             && _rows.Any(row => row.Contains('F')) && _rows.Any(row => row.Contains('H'))
             && _west >= 97.72 && _east <= 133
             && _terrainButtons.Count == Terrain.Count + 1 && _terrainButtons[0].ButtonPressed
+            && FindChild("TerrainFilterPadding", true, false) is MarginContainer filterPaddingQa
+            && filterPaddingQa.GetThemeConstant("margin_bottom") >= 10
             && FindChild("TerrainPaintPanel", true, false) is PanelContainer paintPanel
             && paintPanel.FindChild("TerrainPaintToggle", true, false) is Button
             && paintPanel.FindChild("TerrainPaintKind", true, false) is OptionButton
