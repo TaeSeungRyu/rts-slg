@@ -102,6 +102,9 @@ public sealed partial class EditMapScene
         ? Path.Combine(Path.GetTempPath(), $"editmap-qa-{System.Environment.ProcessId}.json")
         : _selectedMapPath ?? ProjectSettings.GlobalizePath("user://map-presets/east-asia.json");
 
+    private bool IsEditingRootMap()
+        => string.Equals(_selectedMapPath ?? RootMapPath(), RootMapPath(), StringComparison.OrdinalIgnoreCase);
+
     private static ScenarioMapArchive MapArchive() => new(
         ProjectSettings.GlobalizePath("user://maps"),
         ProjectSettings.GlobalizePath("user://scenarios"));
@@ -139,6 +142,13 @@ public sealed partial class EditMapScene
         try
         {
             var draft = Draft();
+            if (IsEditingRootMap() && path == RootMapPath() && File.Exists(path))
+            {
+                var original = ScenarioMapPresetStore.Load(path);
+                if (original.Sites.Any(site => site.Kind == "city"
+                    && !draft.Sites.Any(current => current.Kind == "city" && current.Id == site.Id)))
+                    throw new InvalidDataException("기본 지도에 있는 성은 제거할 수 없습니다.");
+            }
             var protectedCities = ProtectedScenarioNames();
             if (protectedCities.Count > 0 && _activeMapVersion is { } linked
                 && linked.Preset.Sites.Any(site => site.Kind == "city"
@@ -707,9 +717,14 @@ public sealed partial class EditMapScene
         };
         if (existing is not null)
         {
-            var remove = new Button { Text = "성 제거" };
+            var remove = new Button { Text = "성 제거", Disabled = IsEditingRootMap() };
             remove.Pressed += () =>
             {
+                if (IsEditingRootMap())
+                {
+                    ShowSaveResult("성 제거 불가", "기본 지도에 있는 성은 제거할 수 없습니다.");
+                    return;
+                }
                 var before = Draft();
                 _sites.Remove(existing);
                 _sites.RemoveAll(site => site.ParentCityId == existing.Id);
