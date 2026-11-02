@@ -18839,7 +18839,7 @@ public sealed partial class CampaignMapScene : Node3D
         // 좌하단 고정 크기 패널 — 내용이 늘어도 패널 자체는 커지지 않는다(리사이즈로 위치가 튀던 문제
         // 방지). 이전 내용은 내부 ScrollContainer로 스크롤해서 본다.
         const float panelW = 340f, panelH = 200f;
-        _reportPanel = new PanelContainer { Visible = false };
+        _reportPanel = new PanelContainer { Visible = true };
         _reportPanel.AddThemeStyleboxOverride("panel", Frame(new Color(Ink, 0.94f), Gold, 2, 8, 9));
         _reportPanel.AnchorLeft = 0f; _reportPanel.AnchorRight = 0f;
         _reportPanel.AnchorTop = 1f; _reportPanel.AnchorBottom = 1f;
