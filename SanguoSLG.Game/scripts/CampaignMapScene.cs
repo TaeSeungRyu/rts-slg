@@ -890,6 +890,8 @@ public sealed partial class CampaignMapScene : Node3D
             CallDeferred(nameof(RunNewMapStressAdvanceQa));
         if (args.Contains("--newmapaiqa"))
             CallDeferred(nameof(RunNewMapAiQa));
+        if (args.Contains("--newmapquicklistqa"))
+            CallDeferred(nameof(RunQuickListCollapseQa));
         if (args.Contains("--newmapadvanceprofileqa"))
             CallDeferred(nameof(RunNewMapAdvanceProfileQa));
         if (args.Contains("--mapreportqa")) CallDeferred(nameof(RunMapReportQa));
@@ -18885,6 +18887,7 @@ public sealed partial class CampaignMapScene : Node3D
             scroll.Visible = !scroll.Visible;
             rule.Visible = scroll.Visible;
             toggle.Text = scroll.Visible ? "▾ 도시목록" : "▸ 도시목록";
+            panel.ResetSize();
         };
         var inset = new MarginContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
         inset.AddThemeConstantOverride("margin_right", 10);
@@ -18957,6 +18960,7 @@ public sealed partial class CampaignMapScene : Node3D
             scroll.Visible = !scroll.Visible;
             rule.Visible = scroll.Visible;
             toggle.Text = scroll.Visible ? "▾ 출전 장수 목록" : "▸ 출전 장수 목록";
+            _sortieQuickPanel.ResetSize();
         };
         var inset = new MarginContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
         inset.AddThemeConstantOverride("margin_right", 10);
@@ -18998,6 +19002,28 @@ public sealed partial class CampaignMapScene : Node3D
             };
             _sortieQuickList.AddChild(button);
         }
+    }
+
+    private async void RunQuickListCollapseQa()
+    {
+        var cityToggle = _cityQuickPanel.FindChildren("*", "Button", true, false).OfType<Button>().First();
+        var sortieToggle = _sortieQuickPanel.FindChildren("*", "Button", true, false).OfType<Button>().First();
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        var cityClosed = _cityQuickPanel.Size.Y;
+        var sortieClosed = _sortieQuickPanel.Size.Y;
+        cityToggle.EmitSignal(Button.SignalName.Pressed);
+        sortieToggle.EmitSignal(Button.SignalName.Pressed);
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        var expanded = _cityQuickPanel.Size.Y > cityClosed + 100f
+            && _sortieQuickPanel.Size.Y > sortieClosed + 100f;
+        cityToggle.EmitSignal(Button.SignalName.Pressed);
+        sortieToggle.EmitSignal(Button.SignalName.Pressed);
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        var passed = expanded && _cityQuickPanel.Size.Y <= cityClosed + 2f
+            && _sortieQuickPanel.Size.Y <= sortieClosed + 2f;
+        GD.Print($"[newmap-quicklist-qa] passed={passed} city={cityClosed:F1}/{_cityQuickPanel.Size.Y:F1} "
+            + $"sortie={sortieClosed:F1}/{_sortieQuickPanel.Size.Y:F1}");
+        GetTree().Quit(passed ? 0 : 1);
     }
 
     private void BuildReportPanel()
