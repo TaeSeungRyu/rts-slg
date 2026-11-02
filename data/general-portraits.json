@@ -1,3 +1,1675 @@
 [
+{
+  "general_id": 306,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/306.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 307,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/307.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 308,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/308.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 309,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/309.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 310,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/310.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 311,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/311.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 312,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/312.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 313,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/313.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 314,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/314.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 315,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/315.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 316,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/316.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 317,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/317.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 318,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/318.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 319,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/319.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 320,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/320.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 321,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/321.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 322,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/322.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 323,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/323.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 324,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/324.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 325,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/325.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 326,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/326.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 327,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/327.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 328,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/328.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 329,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/329.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 330,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/330.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 331,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/331.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 332,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/332.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 333,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/333.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 334,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/334.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 335,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/335.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 336,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/336.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 337,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/337.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 338,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/338.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 339,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/339.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 340,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/340.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 341,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/341.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 342,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/342.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 343,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/343.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 344,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/344.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 345,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/345.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 346,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/346.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 347,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/347.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 348,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/348.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 349,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/349.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 350,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/350.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 351,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/351.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 352,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/352.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 353,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/353.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 354,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/354.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 355,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/355.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 356,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/356.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 357,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/357.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 358,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/358.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 359,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/359.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 360,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/360.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 361,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/361.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 362,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/362.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 363,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/363.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 364,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/364.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 365,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/365.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 366,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/366.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 367,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/367.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 368,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/368.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 369,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/369.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 370,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/370.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 371,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/371.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 372,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/372.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 373,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/373.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 374,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/374.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 375,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/375.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 376,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/376.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 377,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/377.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 378,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/378.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 379,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/379.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 380,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/380.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 381,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/381.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 382,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/382.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 383,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/383.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 384,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/384.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 385,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/385.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 386,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/386.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 387,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/387.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 388,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/388.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 389,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/389.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 390,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/390.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 391,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/391.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 392,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/392.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 393,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/393.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 394,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/394.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 395,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/395.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 396,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/396.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 397,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/397.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 398,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/398.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 399,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/399.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 400,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/400.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 401,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/401.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 402,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/402.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 403,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/403.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 404,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/404.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 405,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/405.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 406,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/406.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 407,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/407.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 408,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/408.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 409,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/409.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 410,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/410.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 411,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/411.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 412,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/412.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 413,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/413.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 414,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/414.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 415,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/415.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 416,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/416.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 417,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/417.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 418,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/418.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 419,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/419.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 420,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/420.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 421,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/421.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 422,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/422.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 423,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/423.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 424,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/424.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 425,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/425.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 426,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/426.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 427,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/427.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 428,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/428.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 429,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/429.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 430,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/430.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 431,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/431.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 432,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/432.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 433,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/433.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 434,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/434.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 435,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/435.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 436,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/436.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 437,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/437.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 438,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/438.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 439,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/439.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 440,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/440.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 441,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/441.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 442,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/442.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 443,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/443.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 444,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/444.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 445,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/445.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 446,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/446.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 447,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/447.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 448,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/448.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 449,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/449.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 450,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/450.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 451,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/451.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 452,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/452.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 453,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/453.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 454,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/454.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 455,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/455.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 456,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/456.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 457,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/457.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 458,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/458.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 459,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/459.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 460,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/460.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 461,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/461.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 462,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/462.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 463,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/463.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 464,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/464.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 465,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/465.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 466,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/466.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 467,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/467.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 468,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/468.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 469,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/469.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 470,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/470.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 471,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/471.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 472,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/472.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 473,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/473.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 474,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/474.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 475,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/475.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 476,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/476.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 477,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/477.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 478,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/478.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 479,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/479.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 480,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/480.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 481,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/481.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 482,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/482.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 483,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/483.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 484,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/484.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 485,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/485.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 486,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/486.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 487,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/487.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 488,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/488.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 489,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/489.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 490,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/490.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 491,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/491.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 492,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/492.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 493,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/493.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 494,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/494.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 495,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/495.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 496,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/496.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 497,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/497.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 498,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/498.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 499,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/499.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 500,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/500.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 501,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/501.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 502,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/502.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 503,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/503.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 504,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/504.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 505,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/505.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 506,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/506.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 507,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/507.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 508,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/508.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 509,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/509.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 510,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/510.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 511,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/511.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 512,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/512.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 513,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/513.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 514,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/514.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 515,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/515.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 516,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/516.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 517,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/517.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 518,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/518.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 519,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/519.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 520,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/520.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 521,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/521.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 522,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/522.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 523,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/523.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 524,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/524.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 525,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/525.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 526,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/526.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 527,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/527.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 528,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/528.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 529,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/529.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 530,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/530.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 531,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/531.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 532,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/532.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 533,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/533.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 534,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/534.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 535,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/535.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 536,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/536.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 537,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/537.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 538,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/538.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 539,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/539.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 540,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/540.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 541,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/541.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 542,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/542.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 543,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/543.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+},
+{
+  "general_id": 544,
+  "portrait_path": "SanguoSLG.Game/assets/portraits/544.png",
+  "face_center_x": 0.5,
+  "face_center_y": 0.35,
+  "face_zoom": 1
+}
 ]
-

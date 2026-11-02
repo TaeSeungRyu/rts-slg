@@ -48,7 +48,7 @@ public class GeneralDataTests
         Assert.Equal(5, All.Count(g => g.Region == "baekje"));
         Assert.Equal(5, All.Count(g => g.Region == "silla"));
         Assert.Contains(All, g => g.Name == "선덕여왕");
-        Assert.Equal(4, All.Count(g => g.Id.Value > 300));
+        Assert.Equal(243, All.Count(g => g.Id.Value > 300));
     }
 
     [Fact]

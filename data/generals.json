@@ -4016,5 +4016,7892 @@
   {"id": 140,"name": "공손연","birth": 201,"region": "youzhou","affiliation": "요동","desc": "공손강의 아들. 숙부 공손공을 대신해 요동을 장악했다 — 출생연도는 게임용 추정치","aptitudes": {"infantry": "B","archer": "B","cavalry": "A","elephant": "D","siege": "C","naval": "B","supply": "C","defense": "B"},"might": 73,"intellect": 71,"politics": 61,"battle_active": "breakthrough","battle_passives": [{"code": "momentum","tier": 1}]},
   {"id": 141,"name": "사섭","birth": 137,"region": "jiaozhou","affiliation": "교주","desc": "교지태수로 교주를 오랫동안 다스린 군주","aptitudes": {"infantry": "C","archer": "C","cavalry": "D","elephant": "C","siege": "C","naval": "B","supply": "A","defense": "B"},"might": 45,"intellect": 79,"politics": 89,"battle_passives": [{"code": "steadfast_guard","tier": 1}],"admin_passives": [{"code": "pacifier","tier": 2},{"code": "merchant","tier": 2}]},
   {"id": 142,"name": "감례","birth": 185,"region": "jiaozhou","affiliation": "교주","desc": "사섭 집안의 교주 세력에 속한 장수. 사휘를 따라 여대에 맞섰다 — 출생연도는 게임용 추정치","aptitudes": {"infantry": "B","archer": "B","cavalry": "C","elephant": "C","siege": "C","naval": "B","supply": "C","defense": "B"},"might": 72,"intellect": 56,"politics": 43,"battle_active": "rally","battle_passives": [{"code": "steadfast_guard","tier": 1}]},
-  {"id": 143,"name": "환린","birth": 180,"region": "jiaozhou","affiliation": "교주","desc": "사섭이 발탁한 교지의 관리. 사휘에게 새 태수를 맞이하도록 간했다 — 출생연도는 게임용 추정치","aptitudes": {"infantry": "C","archer": "C","cavalry": "D","elephant": "D","siege": "D","naval": "C","supply": "B","defense": "C"},"might": 37,"intellect": 74,"politics": 79,"admin_passives": [{"code": "pacifier","tier": 1}]}
+  {"id": 143,"name": "환린","birth": 180,"region": "jiaozhou","affiliation": "교주","desc": "사섭이 발탁한 교지의 관리. 사휘에게 새 태수를 맞이하도록 간했다 — 출생연도는 게임용 추정치","aptitudes": {"infantry": "C","archer": "C","cavalry": "D","elephant": "D","siege": "D","naval": "C","supply": "B","defense": "C"},"might": 37,"intellect": 74,"politics": 79,"admin_passives": [{"code": "pacifier","tier": 1}]},
+{
+  "id": 306,
+  "name": "가규",
+  "birth": 182,
+  "region": "yuzhou",
+  "desc": "조조 측의 문관. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "C",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "B",
+    "naval": "C",
+    "supply": "B",
+    "defense": "C"
+  },
+  "might": 29,
+  "intellect": 56,
+  "politics": 65,
+  "battle_active": null,
+  "battle_passives": [
+    {
+      "code": "steadfast_guard",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "tuntian",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 307,
+  "name": "가신",
+  "birth": 184,
+  "region": "yuzhou",
+  "desc": "조조 측의 문관. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "C",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "B",
+    "defense": "C"
+  },
+  "might": 35,
+  "intellect": 64,
+  "politics": 60,
+  "battle_active": null,
+  "battle_passives": [
+    {
+      "code": "steadfast_guard",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "tuntian",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 308,
+  "name": "간옹",
+  "birth": 172,
+  "region": "yizhou",
+  "desc": "유비 측의 문관. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "C",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "A",
+    "defense": "C"
+  },
+  "might": 46,
+  "intellect": 72,
+  "politics": 69,
+  "battle_active": null,
+  "battle_passives": [
+    {
+      "code": "steadfast_guard",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "tuntian",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 309,
+  "name": "강단",
+  "birth": 186,
+  "region": "yizhou",
+  "desc": "장로 측의 무장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "B",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "B"
+  },
+  "might": 53,
+  "intellect": 41,
+  "politics": 35,
+  "battle_active": "heavy_blow",
+  "battle_passives": [
+    {
+      "code": "drilled",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 310,
+  "name": "강서",
+  "birth": 186,
+  "region": "yizhou",
+  "desc": "장로 측의 무장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "A",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "C"
+  },
+  "might": 69,
+  "intellect": 50,
+  "politics": 43,
+  "battle_active": "heavy_blow",
+  "battle_passives": [
+    {
+      "code": "drilled",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 311,
+  "name": "견초",
+  "birth": 169,
+  "region": "jizhou",
+  "desc": "원소 측의 기병장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "C",
+    "archer": "C",
+    "cavalry": "B",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "B"
+  },
+  "might": 69,
+  "intellect": 49,
+  "politics": 42,
+  "battle_active": "heavy_blow",
+  "battle_passives": [
+    {
+      "code": "charge_drill",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 312,
+  "name": "경기",
+  "birth": 183,
+  "region": "yuzhou",
+  "desc": "조조 측의 문관. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "C",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "A",
+    "defense": "C"
+  },
+  "might": 40,
+  "intellect": 73,
+  "politics": 70,
+  "battle_active": null,
+  "battle_passives": [
+    {
+      "code": "steadfast_guard",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "tuntian",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 313,
+  "name": "계옹",
+  "birth": 172,
+  "region": "jizhou",
+  "desc": "원소 측의 무장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "B",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "B"
+  },
+  "might": 53,
+  "intellect": 42,
+  "politics": 51,
+  "battle_active": "heavy_blow",
+  "battle_passives": [
+    {
+      "code": "drilled",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 314,
+  "name": "공손범",
+  "birth": 167,
+  "region": "youzhou",
+  "desc": "공손찬 측의 무장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "B",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "C"
+  },
+  "might": 64,
+  "intellect": 40,
+  "politics": 41,
+  "battle_active": "heavy_blow",
+  "battle_passives": [
+    {
+      "code": "drilled",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 315,
+  "name": "공손속",
+  "birth": 165,
+  "region": "youzhou",
+  "desc": "공손찬 측의 무장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "B",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "C"
+  },
+  "might": 69,
+  "intellect": 41,
+  "politics": 34,
+  "battle_active": "heavy_blow",
+  "battle_passives": [
+    {
+      "code": "drilled",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 316,
+  "name": "공손월",
+  "birth": 167,
+  "region": "youzhou",
+  "desc": "공손찬 측의 무장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "B",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "C"
+  },
+  "might": 51,
+  "intellect": 40,
+  "politics": 46,
+  "battle_active": "heavy_blow",
+  "battle_passives": [
+    {
+      "code": "drilled",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 317,
+  "name": "공손황",
+  "birth": 189,
+  "region": "youzhou",
+  "desc": "공손강 측의 무장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "B",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "B"
+  },
+  "might": 69,
+  "intellect": 36,
+  "politics": 37,
+  "battle_active": "brace",
+  "battle_passives": [
+    {
+      "code": "drilled",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 318,
+  "name": "괴량",
+  "birth": 167,
+  "region": "yizhou",
+  "desc": "유비 측의 문관. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "C",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "B",
+    "defense": "C"
+  },
+  "might": 33,
+  "intellect": 63,
+  "politics": 64,
+  "battle_active": null,
+  "battle_passives": [
+    {
+      "code": "steadfast_guard",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "tuntian",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 319,
+  "name": "교모",
+  "birth": 165,
+  "region": "sili",
+  "desc": "하진 측의 무장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "B",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "C"
+  },
+  "might": 54,
+  "intellect": 53,
+  "politics": 51,
+  "battle_active": "heavy_blow",
+  "battle_passives": [
+    {
+      "code": "drilled",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 320,
+  "name": "구건",
+  "birth": 180,
+  "region": "sili",
+  "desc": "동탁 측의 무장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "B",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "C"
+  },
+  "might": 67,
+  "intellect": 53,
+  "politics": 44,
+  "battle_active": "heavy_blow",
+  "battle_passives": [
+    {
+      "code": "drilled",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 321,
+  "name": "구력거",
+  "birth": 156,
+  "region": "sili",
+  "desc": "하진 측의 무장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "B",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "C"
+  },
+  "might": 69,
+  "intellect": 49,
+  "politics": 39,
+  "battle_active": "brace",
+  "battle_passives": [
+    {
+      "code": "drilled",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 322,
+  "name": "국연",
+  "birth": 165,
+  "region": "yuzhou",
+  "desc": "조조 측의 문관. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "C",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "A",
+    "defense": "C"
+  },
+  "might": 30,
+  "intellect": 58,
+  "politics": 67,
+  "battle_active": null,
+  "battle_passives": [
+    {
+      "code": "steadfast_guard",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "tuntian",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 323,
+  "name": "금선",
+  "birth": 162,
+  "region": "sili",
+  "desc": "하진 측의 무장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "B",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "B"
+  },
+  "might": 54,
+  "intellect": 48,
+  "politics": 36,
+  "battle_active": "heavy_blow",
+  "battle_passives": [
+    {
+      "code": "drilled",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 324,
+  "name": "내민",
+  "birth": 162,
+  "region": "yizhou",
+  "desc": "유비 측의 문관. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "C",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "B",
+    "defense": "C"
+  },
+  "might": 28,
+  "intellect": 71,
+  "politics": 68,
+  "battle_active": null,
+  "battle_passives": [
+    {
+      "code": "steadfast_guard",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "pacifier",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 325,
+  "name": "냉포",
+  "birth": 190,
+  "region": "yizhou",
+  "desc": "유장 측의 무장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "B",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "B"
+  },
+  "might": 54,
+  "intellect": 53,
+  "politics": 45,
+  "battle_active": "brace",
+  "battle_passives": [
+    {
+      "code": "drilled",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 326,
+  "name": "노육",
+  "birth": 184,
+  "region": "yuzhou",
+  "desc": "조조 측의 문관. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "C",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "B",
+    "naval": "C",
+    "supply": "B",
+    "defense": "C"
+  },
+  "might": 28,
+  "intellect": 64,
+  "politics": 60,
+  "battle_active": null,
+  "battle_passives": [
+    {
+      "code": "steadfast_guard",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "pacifier",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 327,
+  "name": "누반",
+  "birth": 184,
+  "region": "youzhou",
+  "desc": "공손강 측의 기병장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "C",
+    "archer": "C",
+    "cavalry": "A",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "C"
+  },
+  "might": 60,
+  "intellect": 44,
+  "politics": 45,
+  "battle_active": "brace",
+  "battle_passives": [
+    {
+      "code": "charge_drill",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 328,
+  "name": "단경",
+  "birth": 162,
+  "region": "youzhou",
+  "desc": "공손찬 측의 기병장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "C",
+    "archer": "C",
+    "cavalry": "B",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "B"
+  },
+  "might": 67,
+  "intellect": 42,
+  "politics": 45,
+  "battle_active": "heavy_blow",
+  "battle_passives": [
+    {
+      "code": "charge_drill",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 329,
+  "name": "단외",
+  "birth": 165,
+  "region": "sili",
+  "desc": "동탁 측의 기병장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "C",
+    "archer": "C",
+    "cavalry": "B",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "C"
+  },
+  "might": 71,
+  "intellect": 45,
+  "politics": 30,
+  "battle_active": "heavy_blow",
+  "battle_passives": [
+    {
+      "code": "charge_drill",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 330,
+  "name": "동부",
+  "birth": 165,
+  "region": "yizhou",
+  "desc": "유언 측의 문관. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "C",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "B",
+    "defense": "C"
+  },
+  "might": 41,
+  "intellect": 65,
+  "politics": 73,
+  "battle_active": null,
+  "battle_passives": [
+    {
+      "code": "steadfast_guard",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "pacifier",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 331,
+  "name": "동소",
+  "birth": 172,
+  "region": "jizhou",
+  "desc": "원소 측의 문관. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "C",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "B",
+    "naval": "C",
+    "supply": "B",
+    "defense": "C"
+  },
+  "might": 41,
+  "intellect": 68,
+  "politics": 65,
+  "battle_active": null,
+  "battle_passives": [
+    {
+      "code": "steadfast_guard",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "tuntian",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 332,
+  "name": "동승",
+  "birth": 160,
+  "region": "sili",
+  "desc": "동탁 측의 기병장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "C",
+    "archer": "C",
+    "cavalry": "B",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "C"
+  },
+  "might": 59,
+  "intellect": 39,
+  "politics": 36,
+  "battle_active": "heavy_blow",
+  "battle_passives": [
+    {
+      "code": "charge_drill",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 333,
+  "name": "동형",
+  "birth": 192,
+  "region": "liangzhou",
+  "desc": "한수 측의 무장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "B",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "B"
+  },
+  "might": 56,
+  "intellect": 43,
+  "politics": 51,
+  "battle_active": "heavy_blow",
+  "battle_passives": [
+    {
+      "code": "drilled",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 334,
+  "name": "두경",
+  "birth": 166,
+  "region": "yizhou",
+  "desc": "유비 측의 문관. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "C",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "B",
+    "naval": "C",
+    "supply": "B",
+    "defense": "C"
+  },
+  "might": 41,
+  "intellect": 74,
+  "politics": 77,
+  "battle_active": null,
+  "battle_passives": [
+    {
+      "code": "steadfast_guard",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "tuntian",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 335,
+  "name": "두기",
+  "birth": 172,
+  "region": "yuzhou",
+  "desc": "조조 측의 문관. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "C",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "B",
+    "naval": "C",
+    "supply": "B",
+    "defense": "C"
+  },
+  "might": 39,
+  "intellect": 59,
+  "politics": 67,
+  "battle_active": null,
+  "battle_passives": [
+    {
+      "code": "steadfast_guard",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "tuntian",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 336,
+  "name": "두습",
+  "birth": 170,
+  "region": "yuzhou",
+  "desc": "조조 측의 문관. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "C",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "A",
+    "defense": "C"
+  },
+  "might": 45,
+  "intellect": 74,
+  "politics": 66,
+  "battle_active": null,
+  "battle_passives": [
+    {
+      "code": "steadfast_guard",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "tuntian",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 337,
+  "name": "루규",
+  "birth": 160,
+  "region": "yuzhou",
+  "desc": "조조 측의 문관. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "C",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "B",
+    "defense": "C"
+  },
+  "might": 43,
+  "intellect": 72,
+  "politics": 75,
+  "battle_active": null,
+  "battle_passives": [
+    {
+      "code": "steadfast_guard",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "tuntian",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 338,
+  "name": "맹건",
+  "birth": 190,
+  "region": "yuzhou",
+  "desc": "조조 측의 문관. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "C",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "B",
+    "naval": "C",
+    "supply": "B",
+    "defense": "C"
+  },
+  "might": 41,
+  "intellect": 62,
+  "politics": 60,
+  "battle_active": null,
+  "battle_passives": [
+    {
+      "code": "steadfast_guard",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "pacifier",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 339,
+  "name": "맹광",
+  "birth": 164,
+  "region": "sili",
+  "desc": "동탁 측의 문관. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "C",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "B",
+    "naval": "C",
+    "supply": "A",
+    "defense": "C"
+  },
+  "might": 40,
+  "intellect": 73,
+  "politics": 75,
+  "battle_active": null,
+  "battle_passives": [
+    {
+      "code": "steadfast_guard",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "tuntian",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 340,
+  "name": "무안국",
+  "birth": 169,
+  "region": "qingzhou",
+  "desc": "공융 측의 기병장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "C",
+    "archer": "C",
+    "cavalry": "B",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "C"
+  },
+  "might": 71,
+  "intellect": 40,
+  "politics": 42,
+  "battle_active": "brace",
+  "battle_passives": [
+    {
+      "code": "charge_drill",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 341,
+  "name": "문칙",
+  "birth": 164,
+  "region": "youzhou",
+  "desc": "공손찬 측의 무장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "B",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "C"
+  },
+  "might": 62,
+  "intellect": 42,
+  "politics": 43,
+  "battle_active": "brace",
+  "battle_passives": [
+    {
+      "code": "drilled",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 342,
+  "name": "미방",
+  "birth": 170,
+  "region": "xuzhou",
+  "desc": "도겸 측의 무장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "B",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "C"
+  },
+  "might": 59,
+  "intellect": 54,
+  "politics": 43,
+  "battle_active": "brace",
+  "battle_passives": [
+    {
+      "code": "drilled",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 343,
+  "name": "미축",
+  "birth": 162,
+  "region": "xuzhou",
+  "desc": "도겸 측의 문관. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "C",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "B",
+    "defense": "C"
+  },
+  "might": 35,
+  "intellect": 56,
+  "politics": 76,
+  "battle_active": null,
+  "battle_passives": [
+    {
+      "code": "steadfast_guard",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "tuntian",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 344,
+  "name": "변희",
+  "birth": 159,
+  "region": "jizhou",
+  "desc": "장각 측의 무장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "B",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "C"
+  },
+  "might": 52,
+  "intellect": 52,
+  "politics": 44,
+  "battle_active": "brace",
+  "battle_passives": [
+    {
+      "code": "drilled",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 345,
+  "name": "부간",
+  "birth": 164,
+  "region": "liangzhou",
+  "desc": "마등 측의 문관. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "C",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "B",
+    "naval": "C",
+    "supply": "B",
+    "defense": "C"
+  },
+  "might": 39,
+  "intellect": 59,
+  "politics": 75,
+  "battle_active": null,
+  "battle_passives": [
+    {
+      "code": "steadfast_guard",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "tuntian",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 346,
+  "name": "부동",
+  "birth": 186,
+  "region": "yizhou",
+  "desc": "유비 측의 무장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "B",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "C"
+  },
+  "might": 69,
+  "intellect": 44,
+  "politics": 46,
+  "battle_active": "heavy_blow",
+  "battle_passives": [
+    {
+      "code": "drilled",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 347,
+  "name": "부사인",
+  "birth": 190,
+  "region": "sili",
+  "desc": "동탁 측의 무장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "B",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "C"
+  },
+  "might": 62,
+  "intellect": 43,
+  "politics": 50,
+  "battle_active": "heavy_blow",
+  "battle_passives": [
+    {
+      "code": "drilled",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 348,
+  "name": "부손",
+  "birth": 165,
+  "region": "yizhou",
+  "desc": "유비 측의 문관. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "C",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "B",
+    "naval": "C",
+    "supply": "B",
+    "defense": "C"
+  },
+  "might": 35,
+  "intellect": 63,
+  "politics": 64,
+  "battle_active": null,
+  "battle_passives": [
+    {
+      "code": "steadfast_guard",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "tuntian",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 349,
+  "name": "부영",
+  "birth": 185,
+  "region": "yangzhou",
+  "desc": "손권 측의 무장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "B",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "C"
+  },
+  "might": 59,
+  "intellect": 43,
+  "politics": 48,
+  "battle_active": "brace",
+  "battle_passives": [
+    {
+      "code": "drilled",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 350,
+  "name": "사견",
+  "birth": 162,
+  "region": "yizhou",
+  "desc": "유비 측의 무장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "A",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "C"
+  },
+  "might": 58,
+  "intellect": 47,
+  "politics": 36,
+  "battle_active": "heavy_blow",
+  "battle_passives": [
+    {
+      "code": "drilled",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 351,
+  "name": "사광",
+  "birth": 183,
+  "region": "jiaozhou",
+  "desc": "사섭 측의 무장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "A",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "C"
+  },
+  "might": 53,
+  "intellect": 54,
+  "politics": 47,
+  "battle_active": "brace",
+  "battle_passives": [
+    {
+      "code": "drilled",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 352,
+  "name": "사마랑",
+  "birth": 171,
+  "region": "yuzhou",
+  "desc": "조조 측의 문관. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "C",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "A",
+    "defense": "C"
+  },
+  "might": 33,
+  "intellect": 63,
+  "politics": 74,
+  "battle_active": null,
+  "battle_passives": [
+    {
+      "code": "steadfast_guard",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "tuntian",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 353,
+  "name": "사마부",
+  "birth": 181,
+  "region": "yuzhou",
+  "desc": "조조 측의 문관. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "C",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "B",
+    "naval": "C",
+    "supply": "B",
+    "defense": "C"
+  },
+  "might": 28,
+  "intellect": 69,
+  "politics": 75,
+  "battle_active": null,
+  "battle_passives": [
+    {
+      "code": "steadfast_guard",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "pacifier",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 354,
+  "name": "사마지",
+  "birth": 187,
+  "region": "yuzhou",
+  "desc": "조조 측의 문관. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "C",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "B",
+    "naval": "C",
+    "supply": "B",
+    "defense": "C"
+  },
+  "might": 46,
+  "intellect": 59,
+  "politics": 70,
+  "battle_active": null,
+  "battle_passives": [
+    {
+      "code": "steadfast_guard",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "pacifier",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 355,
+  "name": "사손서",
+  "birth": 163,
+  "region": "sili",
+  "desc": "동탁 측의 문관. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "C",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "A",
+    "defense": "C"
+  },
+  "might": 36,
+  "intellect": 67,
+  "politics": 60,
+  "battle_active": null,
+  "battle_passives": [
+    {
+      "code": "steadfast_guard",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "pacifier",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 356,
+  "name": "사원",
+  "birth": 164,
+  "region": "yizhou",
+  "desc": "유비 측의 문관. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "C",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "B",
+    "defense": "C"
+  },
+  "might": 43,
+  "intellect": 58,
+  "politics": 67,
+  "battle_active": null,
+  "battle_passives": [
+    {
+      "code": "steadfast_guard",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "tuntian",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 357,
+  "name": "사일",
+  "birth": 186,
+  "region": "jiaozhou",
+  "desc": "사섭 측의 무장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "B",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "C"
+  },
+  "might": 52,
+  "intellect": 45,
+  "politics": 39,
+  "battle_active": "heavy_blow",
+  "battle_passives": [
+    {
+      "code": "drilled",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 358,
+  "name": "사적",
+  "birth": 183,
+  "region": "yangzhou",
+  "desc": "손권 측의 무장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "B",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "C"
+  },
+  "might": 55,
+  "intellect": 38,
+  "politics": 48,
+  "battle_active": "heavy_blow",
+  "battle_passives": [
+    {
+      "code": "drilled",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 359,
+  "name": "사지",
+  "birth": 188,
+  "region": "jiaozhou",
+  "desc": "사섭 측의 무장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "B",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "C"
+  },
+  "might": 52,
+  "intellect": 54,
+  "politics": 48,
+  "battle_active": "heavy_blow",
+  "battle_passives": [
+    {
+      "code": "drilled",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 360,
+  "name": "사환",
+  "birth": 169,
+  "region": "yuzhou",
+  "desc": "조조 측의 무장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "A",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "C"
+  },
+  "might": 54,
+  "intellect": 46,
+  "politics": 43,
+  "battle_active": "brace",
+  "battle_passives": [
+    {
+      "code": "drilled",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 361,
+  "name": "사휘",
+  "birth": 188,
+  "region": "jiaozhou",
+  "desc": "사섭 측의 무장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "B",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "C"
+  },
+  "might": 59,
+  "intellect": 46,
+  "politics": 48,
+  "battle_active": "heavy_blow",
+  "battle_passives": [
+    {
+      "code": "drilled",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 362,
+  "name": "사흠",
+  "birth": 189,
+  "region": "jiaozhou",
+  "desc": "사섭 측의 무장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "B",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "C"
+  },
+  "might": 67,
+  "intellect": 45,
+  "politics": 50,
+  "battle_active": "heavy_blow",
+  "battle_passives": [
+    {
+      "code": "drilled",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 363,
+  "name": "상림",
+  "birth": 182,
+  "region": "yuzhou",
+  "desc": "조조 측의 무장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "B",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "B"
+  },
+  "might": 69,
+  "intellect": 51,
+  "politics": 49,
+  "battle_active": "heavy_blow",
+  "battle_passives": [
+    {
+      "code": "drilled",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 364,
+  "name": "서구",
+  "birth": 159,
+  "region": "yuzhou",
+  "desc": "조조 측의 무장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "B",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "C"
+  },
+  "might": 56,
+  "intellect": 46,
+  "politics": 38,
+  "battle_active": "heavy_blow",
+  "battle_passives": [
+    {
+      "code": "drilled",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 365,
+  "name": "서막",
+  "birth": 184,
+  "region": "yuzhou",
+  "desc": "조조 측의 무장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "B",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "C"
+  },
+  "might": 61,
+  "intellect": 45,
+  "politics": 38,
+  "battle_active": "heavy_blow",
+  "battle_passives": [
+    {
+      "code": "drilled",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 366,
+  "name": "서상",
+  "birth": 185,
+  "region": "yuzhou",
+  "desc": "조조 측의 무장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "B",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "C"
+  },
+  "might": 53,
+  "intellect": 46,
+  "politics": 47,
+  "battle_active": "heavy_blow",
+  "battle_passives": [
+    {
+      "code": "drilled",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 367,
+  "name": "서선",
+  "birth": 182,
+  "region": "yuzhou",
+  "desc": "조조 측의 무장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "A",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "C"
+  },
+  "might": 57,
+  "intellect": 42,
+  "politics": 38,
+  "battle_active": "heavy_blow",
+  "battle_passives": [
+    {
+      "code": "drilled",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 368,
+  "name": "서혁",
+  "birth": 189,
+  "region": "yuzhou",
+  "desc": "조조 측의 무장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "B",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "C"
+  },
+  "might": 69,
+  "intellect": 48,
+  "politics": 41,
+  "battle_active": "heavy_blow",
+  "battle_passives": [
+    {
+      "code": "drilled",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 369,
+  "name": "성공영",
+  "birth": 171,
+  "region": "liangzhou",
+  "desc": "마등 측의 기병장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "C",
+    "archer": "C",
+    "cavalry": "B",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "C"
+  },
+  "might": 76,
+  "intellect": 38,
+  "politics": 37,
+  "battle_active": "heavy_blow",
+  "battle_passives": [
+    {
+      "code": "charge_drill",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 370,
+  "name": "성의",
+  "birth": 164,
+  "region": "liangzhou",
+  "desc": "마등 측의 기병장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "C",
+    "archer": "C",
+    "cavalry": "B",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "B"
+  },
+  "might": 72,
+  "intellect": 43,
+  "politics": 44,
+  "battle_active": "heavy_blow",
+  "battle_passives": [
+    {
+      "code": "charge_drill",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 371,
+  "name": "손건",
+  "birth": 171,
+  "region": "qingzhou",
+  "desc": "공융 측의 문관. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "C",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "B",
+    "naval": "C",
+    "supply": "B",
+    "defense": "C"
+  },
+  "might": 34,
+  "intellect": 63,
+  "politics": 66,
+  "battle_active": null,
+  "battle_passives": [
+    {
+      "code": "steadfast_guard",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "pacifier",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 372,
+  "name": "손관",
+  "birth": 157,
+  "region": "xuzhou",
+  "desc": "도겸 측의 무장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "B",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "B"
+  },
+  "might": 61,
+  "intellect": 37,
+  "politics": 49,
+  "battle_active": "heavy_blow",
+  "battle_passives": [
+    {
+      "code": "drilled",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 373,
+  "name": "손교",
+  "birth": 190,
+  "region": "yangzhou",
+  "desc": "손권 측의 궁장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "C",
+    "archer": "A",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "C"
+  },
+  "might": 57,
+  "intellect": 54,
+  "politics": 33,
+  "battle_active": "brace",
+  "battle_passives": [
+    {
+      "code": "drilled",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 374,
+  "name": "손랑",
+  "birth": 186,
+  "region": "yangzhou",
+  "desc": "손권 측의 무장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "B",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "C"
+  },
+  "might": 57,
+  "intellect": 48,
+  "politics": 39,
+  "battle_active": "heavy_blow",
+  "battle_passives": [
+    {
+      "code": "drilled",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 375,
+  "name": "손례",
+  "birth": 184,
+  "region": "yuzhou",
+  "desc": "조조 측의 무장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "B",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "C"
+  },
+  "might": 58,
+  "intellect": 40,
+  "politics": 37,
+  "battle_active": "heavy_blow",
+  "battle_passives": [
+    {
+      "code": "drilled",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 376,
+  "name": "손소",
+  "birth": 169,
+  "region": "qingzhou",
+  "desc": "공융 측의 문관. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "C",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "B",
+    "defense": "C"
+  },
+  "might": 28,
+  "intellect": 64,
+  "politics": 75,
+  "battle_active": null,
+  "battle_passives": [
+    {
+      "code": "steadfast_guard",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "tuntian",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 377,
+  "name": "손유",
+  "birth": 167,
+  "region": "yangzhou",
+  "desc": "손권 측의 무장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "B",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "B"
+  },
+  "might": 65,
+  "intellect": 36,
+  "politics": 51,
+  "battle_active": "brace",
+  "battle_passives": [
+    {
+      "code": "drilled",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 378,
+  "name": "손자",
+  "birth": 187,
+  "region": "yuzhou",
+  "desc": "조조 측의 문관. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "C",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "B",
+    "naval": "C",
+    "supply": "B",
+    "defense": "C"
+  },
+  "might": 45,
+  "intellect": 67,
+  "politics": 62,
+  "battle_active": null,
+  "battle_passives": [
+    {
+      "code": "steadfast_guard",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "pacifier",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 379,
+  "name": "손하",
+  "birth": 175,
+  "region": "sili",
+  "desc": "손책 측의 무장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "B",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "B"
+  },
+  "might": 63,
+  "intellect": 52,
+  "politics": 42,
+  "battle_active": "heavy_blow",
+  "battle_passives": [
+    {
+      "code": "drilled",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 380,
+  "name": "손환",
+  "birth": 195,
+  "region": "yangzhou",
+  "desc": "손권 측의 궁장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "C",
+    "archer": "A",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "C"
+  },
+  "might": 60,
+  "intellect": 53,
+  "politics": 34,
+  "battle_active": "heavy_blow",
+  "battle_passives": [
+    {
+      "code": "drilled",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 381,
+  "name": "송충",
+  "birth": 169,
+  "region": "jingzhou",
+  "desc": "유표 측의 문관. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "C",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "B",
+    "naval": "C",
+    "supply": "B",
+    "defense": "C"
+  },
+  "might": 46,
+  "intellect": 60,
+  "politics": 77,
+  "battle_active": null,
+  "battle_passives": [
+    {
+      "code": "steadfast_guard",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "pacifier",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 382,
+  "name": "송헌",
+  "birth": 166,
+  "region": "sili",
+  "desc": "동탁 측의 무장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "B",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "C"
+  },
+  "might": 51,
+  "intellect": 39,
+  "politics": 37,
+  "battle_active": "heavy_blow",
+  "battle_passives": [
+    {
+      "code": "drilled",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 383,
+  "name": "순상",
+  "birth": 164,
+  "region": "sili",
+  "desc": "하진 측의 문관. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "C",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "A",
+    "defense": "C"
+  },
+  "might": 35,
+  "intellect": 66,
+  "politics": 75,
+  "battle_active": null,
+  "battle_passives": [
+    {
+      "code": "steadfast_guard",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "pacifier",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 384,
+  "name": "순심",
+  "birth": 185,
+  "region": "youzhou",
+  "desc": "공손강 측의 문관. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "C",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "B",
+    "defense": "C"
+  },
+  "might": 31,
+  "intellect": 72,
+  "politics": 60,
+  "battle_active": null,
+  "battle_passives": [
+    {
+      "code": "steadfast_guard",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "tuntian",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 385,
+  "name": "순우경",
+  "birth": 158,
+  "region": "jizhou",
+  "desc": "원소 측의 기병장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "C",
+    "archer": "C",
+    "cavalry": "B",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "C"
+  },
+  "might": 66,
+  "intellect": 41,
+  "politics": 43,
+  "battle_active": "heavy_blow",
+  "battle_passives": [
+    {
+      "code": "charge_drill",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 386,
+  "name": "시의",
+  "birth": 171,
+  "region": "qingzhou",
+  "desc": "공융 측의 문관. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "C",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "A",
+    "defense": "C"
+  },
+  "might": 32,
+  "intellect": 62,
+  "politics": 71,
+  "battle_active": null,
+  "battle_passives": [
+    {
+      "code": "steadfast_guard",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "tuntian",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 387,
+  "name": "심영",
+  "birth": 171,
+  "region": "jizhou",
+  "desc": "원소 측의 무장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "B",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "B"
+  },
+  "might": 60,
+  "intellect": 38,
+  "politics": 47,
+  "battle_active": "heavy_blow",
+  "battle_passives": [
+    {
+      "code": "drilled",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 388,
+  "name": "양강",
+  "birth": 168,
+  "region": "yangzhou",
+  "desc": "원술 측의 무장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "B",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "B"
+  },
+  "might": 54,
+  "intellect": 38,
+  "politics": 39,
+  "battle_active": "heavy_blow",
+  "battle_passives": [
+    {
+      "code": "drilled",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 389,
+  "name": "양부",
+  "birth": 189,
+  "region": "liangzhou",
+  "desc": "한수 측의 문관. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "C",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "A",
+    "defense": "C"
+  },
+  "might": 30,
+  "intellect": 72,
+  "politics": 67,
+  "battle_active": null,
+  "battle_passives": [
+    {
+      "code": "steadfast_guard",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "tuntian",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 390,
+  "name": "양송",
+  "birth": 184,
+  "region": "yizhou",
+  "desc": "장로 측의 문관. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "C",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "B",
+    "defense": "C"
+  },
+  "might": 34,
+  "intellect": 63,
+  "politics": 67,
+  "battle_active": null,
+  "battle_passives": [
+    {
+      "code": "steadfast_guard",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "pacifier",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 391,
+  "name": "양앙",
+  "birth": 190,
+  "region": "yizhou",
+  "desc": "장로 측의 무장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "B",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "C"
+  },
+  "might": 58,
+  "intellect": 48,
+  "politics": 50,
+  "battle_active": "brace",
+  "battle_passives": [
+    {
+      "code": "drilled",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 392,
+  "name": "양임",
+  "birth": 188,
+  "region": "yizhou",
+  "desc": "장로 측의 무장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "B",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "B"
+  },
+  "might": 59,
+  "intellect": 46,
+  "politics": 52,
+  "battle_active": "heavy_blow",
+  "battle_passives": [
+    {
+      "code": "drilled",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 393,
+  "name": "양추",
+  "birth": 171,
+  "region": "liangzhou",
+  "desc": "마초 측의 기병장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "C",
+    "archer": "C",
+    "cavalry": "B",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "C"
+  },
+  "might": 64,
+  "intellect": 38,
+  "politics": 39,
+  "battle_active": "heavy_blow",
+  "battle_passives": [
+    {
+      "code": "charge_drill",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 394,
+  "name": "양표",
+  "birth": 165,
+  "region": "sili",
+  "desc": "하진 측의 문관. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "C",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "B",
+    "defense": "C"
+  },
+  "might": 42,
+  "intellect": 58,
+  "politics": 63,
+  "battle_active": null,
+  "battle_passives": [
+    {
+      "code": "steadfast_guard",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "pacifier",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 395,
+  "name": "양홍",
+  "birth": 168,
+  "region": "yangzhou",
+  "desc": "원술 측의 문관. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "C",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "B",
+    "defense": "C"
+  },
+  "might": 43,
+  "intellect": 69,
+  "politics": 75,
+  "battle_active": null,
+  "battle_passives": [
+    {
+      "code": "steadfast_guard",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "pacifier",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 396,
+  "name": "양회",
+  "birth": 188,
+  "region": "yizhou",
+  "desc": "유장 측의 무장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "B",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "B"
+  },
+  "might": 65,
+  "intellect": 39,
+  "politics": 37,
+  "battle_active": "heavy_blow",
+  "battle_passives": [
+    {
+      "code": "drilled",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 397,
+  "name": "양흥",
+  "birth": 170,
+  "region": "liangzhou",
+  "desc": "마초 측의 기병장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "C",
+    "archer": "C",
+    "cavalry": "B",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "C"
+  },
+  "might": 72,
+  "intellect": 36,
+  "politics": 37,
+  "battle_active": "heavy_blow",
+  "battle_passives": [
+    {
+      "code": "charge_drill",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 398,
+  "name": "엄강",
+  "birth": 165,
+  "region": "youzhou",
+  "desc": "공손찬 측의 기병장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "C",
+    "archer": "C",
+    "cavalry": "B",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "C"
+  },
+  "might": 73,
+  "intellect": 40,
+  "politics": 42,
+  "battle_active": "heavy_blow",
+  "battle_passives": [
+    {
+      "code": "charge_drill",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 399,
+  "name": "엄정",
+  "birth": 159,
+  "region": "jizhou",
+  "desc": "장각 측의 무장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "A",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "B"
+  },
+  "might": 56,
+  "intellect": 42,
+  "politics": 41,
+  "battle_active": "brace",
+  "battle_passives": [
+    {
+      "code": "drilled",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 400,
+  "name": "엄준",
+  "birth": 182,
+  "region": "yangzhou",
+  "desc": "손권 측의 문관. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "C",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "A",
+    "defense": "C"
+  },
+  "might": 41,
+  "intellect": 68,
+  "politics": 64,
+  "battle_active": null,
+  "battle_passives": [
+    {
+      "code": "steadfast_guard",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "tuntian",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 401,
+  "name": "여거",
+  "birth": 188,
+  "region": "yangzhou",
+  "desc": "손권 측의 무장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "B",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "C"
+  },
+  "might": 59,
+  "intellect": 52,
+  "politics": 40,
+  "battle_active": "brace",
+  "battle_passives": [
+    {
+      "code": "drilled",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 402,
+  "name": "여건",
+  "birth": 189,
+  "region": "yuzhou",
+  "desc": "조조 측의 무장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "B",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "B"
+  },
+  "might": 58,
+  "intellect": 42,
+  "politics": 38,
+  "battle_active": "heavy_blow",
+  "battle_passives": [
+    {
+      "code": "drilled",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 403,
+  "name": "여공",
+  "birth": 162,
+  "region": "jingzhou",
+  "desc": "유표 측의 무장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "B",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "C"
+  },
+  "might": 51,
+  "intellect": 53,
+  "politics": 38,
+  "battle_active": "heavy_blow",
+  "battle_passives": [
+    {
+      "code": "drilled",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 404,
+  "name": "여광",
+  "birth": 174,
+  "region": "jizhou",
+  "desc": "원소 측의 기병장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "C",
+    "archer": "C",
+    "cavalry": "B",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "C"
+  },
+  "might": 70,
+  "intellect": 51,
+  "politics": 41,
+  "battle_active": "brace",
+  "battle_passives": [
+    {
+      "code": "charge_drill",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 405,
+  "name": "여대",
+  "birth": 189,
+  "region": "yangzhou",
+  "desc": "손권 측의 궁장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "C",
+    "archer": "B",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "B"
+  },
+  "might": 61,
+  "intellect": 42,
+  "politics": 38,
+  "battle_active": "heavy_blow",
+  "battle_passives": [
+    {
+      "code": "drilled",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 406,
+  "name": "여범",
+  "birth": 166,
+  "region": "yangzhou",
+  "desc": "손권 측의 문관. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "C",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "B",
+    "defense": "C"
+  },
+  "might": 43,
+  "intellect": 59,
+  "politics": 67,
+  "battle_active": null,
+  "battle_passives": [
+    {
+      "code": "steadfast_guard",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "pacifier",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 407,
+  "name": "여상",
+  "birth": 171,
+  "region": "jizhou",
+  "desc": "원소 측의 무장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "A",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "B"
+  },
+  "might": 69,
+  "intellect": 51,
+  "politics": 52,
+  "battle_active": "heavy_blow",
+  "battle_passives": [
+    {
+      "code": "drilled",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 408,
+  "name": "여예",
+  "birth": 194,
+  "region": "yizhou",
+  "desc": "유비 측의 문관. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "C",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "B",
+    "naval": "C",
+    "supply": "B",
+    "defense": "C"
+  },
+  "might": 39,
+  "intellect": 67,
+  "politics": 72,
+  "battle_active": null,
+  "battle_passives": [
+    {
+      "code": "steadfast_guard",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "pacifier",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 409,
+  "name": "여위황",
+  "birth": 162,
+  "region": "jizhou",
+  "desc": "원소 측의 기병장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "C",
+    "archer": "C",
+    "cavalry": "B",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "C"
+  },
+  "might": 64,
+  "intellect": 36,
+  "politics": 30,
+  "battle_active": "heavy_blow",
+  "battle_passives": [
+    {
+      "code": "charge_drill",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 410,
+  "name": "염항",
+  "birth": 176,
+  "region": "liangzhou",
+  "desc": "한수 측의 기병장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "C",
+    "archer": "C",
+    "cavalry": "A",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "C"
+  },
+  "might": 74,
+  "intellect": 47,
+  "politics": 30,
+  "battle_active": "brace",
+  "battle_passives": [
+    {
+      "code": "charge_drill",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 411,
+  "name": "오거",
+  "birth": 169,
+  "region": "jingzhou",
+  "desc": "유표 측의 무장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "A",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "C"
+  },
+  "might": 65,
+  "intellect": 47,
+  "politics": 44,
+  "battle_active": "brace",
+  "battle_passives": [
+    {
+      "code": "drilled",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 412,
+  "name": "오경",
+  "birth": 170,
+  "region": "sili",
+  "desc": "손책 측의 무장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "B",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "C"
+  },
+  "might": 55,
+  "intellect": 50,
+  "politics": 52,
+  "battle_active": "heavy_blow",
+  "battle_passives": [
+    {
+      "code": "drilled",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 413,
+  "name": "오광",
+  "birth": 159,
+  "region": "yizhou",
+  "desc": "유언 측의 무장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "A",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "C"
+  },
+  "might": 57,
+  "intellect": 46,
+  "politics": 36,
+  "battle_active": "brace",
+  "battle_passives": [
+    {
+      "code": "drilled",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 414,
+  "name": "오돈",
+  "birth": 180,
+  "region": "yuzhou",
+  "desc": "조조 측의 무장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "B",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "B"
+  },
+  "might": 65,
+  "intellect": 47,
+  "politics": 49,
+  "battle_active": "brace",
+  "battle_passives": [
+    {
+      "code": "drilled",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 415,
+  "name": "오란",
+  "birth": 183,
+  "region": "yizhou",
+  "desc": "유비 측의 기병장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "C",
+    "archer": "C",
+    "cavalry": "B",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "B"
+  },
+  "might": 68,
+  "intellect": 37,
+  "politics": 45,
+  "battle_active": "heavy_blow",
+  "battle_passives": [
+    {
+      "code": "charge_drill",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 416,
+  "name": "오반",
+  "birth": 165,
+  "region": "yizhou",
+  "desc": "유비 측의 무장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "B",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "C"
+  },
+  "might": 68,
+  "intellect": 42,
+  "politics": 47,
+  "battle_active": "heavy_blow",
+  "battle_passives": [
+    {
+      "code": "drilled",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 417,
+  "name": "오범",
+  "birth": 183,
+  "region": "yangzhou",
+  "desc": "손권 측의 무장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "A",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "B"
+  },
+  "might": 68,
+  "intellect": 38,
+  "politics": 52,
+  "battle_active": "heavy_blow",
+  "battle_passives": [
+    {
+      "code": "drilled",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 418,
+  "name": "오부",
+  "birth": 166,
+  "region": "sili",
+  "desc": "동탁 측의 무장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "A",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "C"
+  },
+  "might": 51,
+  "intellect": 42,
+  "politics": 37,
+  "battle_active": "heavy_blow",
+  "battle_passives": [
+    {
+      "code": "drilled",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 419,
+  "name": "오습",
+  "birth": 166,
+  "region": "sili",
+  "desc": "동탁 측의 무장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "B",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "B"
+  },
+  "might": 69,
+  "intellect": 44,
+  "politics": 52,
+  "battle_active": "heavy_blow",
+  "battle_passives": [
+    {
+      "code": "drilled",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 420,
+  "name": "오질",
+  "birth": 181,
+  "region": "yuzhou",
+  "desc": "조조 측의 문관. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "C",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "B",
+    "defense": "C"
+  },
+  "might": 39,
+  "intellect": 69,
+  "politics": 63,
+  "battle_active": null,
+  "battle_passives": [
+    {
+      "code": "steadfast_guard",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "pacifier",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 421,
+  "name": "오찬",
+  "birth": 182,
+  "region": "yangzhou",
+  "desc": "손권 측의 무장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "B",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "C"
+  },
+  "might": 65,
+  "intellect": 39,
+  "politics": 41,
+  "battle_active": "heavy_blow",
+  "battle_passives": [
+    {
+      "code": "drilled",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 422,
+  "name": "왕광",
+  "birth": 160,
+  "region": "sili",
+  "desc": "하진 측의 무장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "A",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "B"
+  },
+  "might": 53,
+  "intellect": 41,
+  "politics": 42,
+  "battle_active": "heavy_blow",
+  "battle_passives": [
+    {
+      "code": "drilled",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 423,
+  "name": "왕랑",
+  "birth": 164,
+  "region": "xuzhou",
+  "desc": "도겸 측의 문관. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "C",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "B",
+    "defense": "C"
+  },
+  "might": 30,
+  "intellect": 56,
+  "politics": 72,
+  "battle_active": null,
+  "battle_passives": [
+    {
+      "code": "steadfast_guard",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "pacifier",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 424,
+  "name": "왕문",
+  "birth": 170,
+  "region": "youzhou",
+  "desc": "공손찬 측의 무장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "A",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "B"
+  },
+  "might": 59,
+  "intellect": 46,
+  "politics": 49,
+  "battle_active": "heavy_blow",
+  "battle_passives": [
+    {
+      "code": "drilled",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 425,
+  "name": "왕보",
+  "birth": 190,
+  "region": "yizhou",
+  "desc": "유장 측의 무장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "B",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "C"
+  },
+  "might": 67,
+  "intellect": 52,
+  "politics": 44,
+  "battle_active": "heavy_blow",
+  "battle_passives": [
+    {
+      "code": "drilled",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 426,
+  "name": "왕상",
+  "birth": 182,
+  "region": "yizhou",
+  "desc": "유장 측의 문관. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "C",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "B",
+    "defense": "C"
+  },
+  "might": 35,
+  "intellect": 67,
+  "politics": 76,
+  "battle_active": null,
+  "battle_passives": [
+    {
+      "code": "steadfast_guard",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "pacifier",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 427,
+  "name": "왕수",
+  "birth": 167,
+  "region": "qingzhou",
+  "desc": "공융 측의 문관. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "C",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "B",
+    "naval": "C",
+    "supply": "B",
+    "defense": "C"
+  },
+  "might": 28,
+  "intellect": 67,
+  "politics": 62,
+  "battle_active": null,
+  "battle_passives": [
+    {
+      "code": "steadfast_guard",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "pacifier",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 428,
+  "name": "왕자복",
+  "birth": 156,
+  "region": "sili",
+  "desc": "하진 측의 무장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "A",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "B"
+  },
+  "might": 65,
+  "intellect": 38,
+  "politics": 46,
+  "battle_active": "brace",
+  "battle_passives": [
+    {
+      "code": "drilled",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 429,
+  "name": "요립",
+  "birth": 191,
+  "region": "yizhou",
+  "desc": "유비 측의 문관. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "C",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "B",
+    "naval": "C",
+    "supply": "B",
+    "defense": "C"
+  },
+  "might": 36,
+  "intellect": 72,
+  "politics": 67,
+  "battle_active": null,
+  "battle_passives": [
+    {
+      "code": "steadfast_guard",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "tuntian",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 430,
+  "name": "우독",
+  "birth": 163,
+  "region": "jizhou",
+  "desc": "장각 측의 무장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "B",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "C"
+  },
+  "might": 64,
+  "intellect": 36,
+  "politics": 46,
+  "battle_active": "heavy_blow",
+  "battle_passives": [
+    {
+      "code": "drilled",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 431,
+  "name": "우미",
+  "birth": 172,
+  "region": "sili",
+  "desc": "유요 측의 무장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "B",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "B"
+  },
+  "might": 53,
+  "intellect": 49,
+  "politics": 35,
+  "battle_active": "heavy_blow",
+  "battle_passives": [
+    {
+      "code": "drilled",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 432,
+  "name": "원유",
+  "birth": 157,
+  "region": "sili",
+  "desc": "하진 측의 무장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "B",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "C"
+  },
+  "might": 66,
+  "intellect": 49,
+  "politics": 37,
+  "battle_active": "heavy_blow",
+  "battle_passives": [
+    {
+      "code": "drilled",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 433,
+  "name": "원희",
+  "birth": 185,
+  "region": "youzhou",
+  "desc": "공손강 측의 기병장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "C",
+    "archer": "C",
+    "cavalry": "B",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "C"
+  },
+  "might": 76,
+  "intellect": 46,
+  "politics": 36,
+  "battle_active": "heavy_blow",
+  "battle_passives": [
+    {
+      "code": "charge_drill",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 434,
+  "name": "유괴",
+  "birth": 166,
+  "region": "yizhou",
+  "desc": "유언 측의 문관. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "C",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "B",
+    "defense": "C"
+  },
+  "might": 42,
+  "intellect": 64,
+  "politics": 69,
+  "battle_active": null,
+  "battle_passives": [
+    {
+      "code": "steadfast_guard",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "pacifier",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 435,
+  "name": "유기",
+  "birth": 171,
+  "region": "yangzhou",
+  "desc": "손권 측의 문관. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "C",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "B",
+    "defense": "C"
+  },
+  "might": 31,
+  "intellect": 71,
+  "politics": 67,
+  "battle_active": null,
+  "battle_passives": [
+    {
+      "code": "steadfast_guard",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "pacifier",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 436,
+  "name": "유대",
+  "birth": 157,
+  "region": "sili",
+  "desc": "하진 측의 무장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "B",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "C"
+  },
+  "might": 51,
+  "intellect": 53,
+  "politics": 36,
+  "battle_active": "heavy_blow",
+  "battle_passives": [
+    {
+      "code": "drilled",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 437,
+  "name": "유모",
+  "birth": 169,
+  "region": "yizhou",
+  "desc": "유언 측의 무장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "B",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "C"
+  },
+  "might": 65,
+  "intellect": 43,
+  "politics": 48,
+  "battle_active": "heavy_blow",
+  "battle_passives": [
+    {
+      "code": "drilled",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 438,
+  "name": "유반",
+  "birth": 162,
+  "region": "jingzhou",
+  "desc": "유표 측의 무장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "B",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "C"
+  },
+  "might": 67,
+  "intellect": 52,
+  "politics": 43,
+  "battle_active": "heavy_blow",
+  "battle_passives": [
+    {
+      "code": "drilled",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 439,
+  "name": "유방",
+  "birth": 186,
+  "region": "yuzhou",
+  "desc": "조조 측의 무장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "A",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "C"
+  },
+  "might": 56,
+  "intellect": 39,
+  "politics": 35,
+  "battle_active": "brace",
+  "battle_passives": [
+    {
+      "code": "drilled",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 440,
+  "name": "유벽",
+  "birth": 157,
+  "region": "jizhou",
+  "desc": "장각 측의 무장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "B",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "C"
+  },
+  "might": 62,
+  "intellect": 52,
+  "politics": 51,
+  "battle_active": "brace",
+  "battle_passives": [
+    {
+      "code": "drilled",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 441,
+  "name": "유복",
+  "birth": 190,
+  "region": "yuzhou",
+  "desc": "조조 측의 문관. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "C",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "B",
+    "naval": "C",
+    "supply": "B",
+    "defense": "C"
+  },
+  "might": 32,
+  "intellect": 64,
+  "politics": 67,
+  "battle_active": null,
+  "battle_passives": [
+    {
+      "code": "steadfast_guard",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "pacifier",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 442,
+  "name": "유봉",
+  "birth": 183,
+  "region": "yizhou",
+  "desc": "유비 측의 기병장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "C",
+    "archer": "C",
+    "cavalry": "A",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "B"
+  },
+  "might": 72,
+  "intellect": 41,
+  "politics": 44,
+  "battle_active": "heavy_blow",
+  "battle_passives": [
+    {
+      "code": "charge_drill",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 443,
+  "name": "유선",
+  "birth": 165,
+  "region": "jingzhou",
+  "desc": "유표 측의 무장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "B",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "C"
+  },
+  "might": 59,
+  "intellect": 40,
+  "politics": 45,
+  "battle_active": "heavy_blow",
+  "battle_passives": [
+    {
+      "code": "drilled",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 444,
+  "name": "유섭",
+  "birth": 170,
+  "region": "yangzhou",
+  "desc": "원술 측의 무장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "B",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "B"
+  },
+  "might": 56,
+  "intellect": 48,
+  "politics": 39,
+  "battle_active": "brace",
+  "battle_passives": [
+    {
+      "code": "drilled",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 445,
+  "name": "유소",
+  "birth": 191,
+  "region": "yuzhou",
+  "desc": "조조 측의 무장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "B",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "C"
+  },
+  "might": 51,
+  "intellect": 51,
+  "politics": 34,
+  "battle_active": "brace",
+  "battle_passives": [
+    {
+      "code": "drilled",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 446,
+  "name": "유순",
+  "birth": 185,
+  "region": "yizhou",
+  "desc": "유비 측의 문관. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "C",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "A",
+    "defense": "C"
+  },
+  "might": 39,
+  "intellect": 67,
+  "politics": 65,
+  "battle_active": null,
+  "battle_passives": [
+    {
+      "code": "steadfast_guard",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "pacifier",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 447,
+  "name": "유연",
+  "birth": 186,
+  "region": "yuzhou",
+  "desc": "조조 측의 무장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "B",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "C"
+  },
+  "might": 65,
+  "intellect": 43,
+  "politics": 49,
+  "battle_active": "brace",
+  "battle_passives": [
+    {
+      "code": "drilled",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 448,
+  "name": "유우",
+  "birth": 161,
+  "region": "sili",
+  "desc": "하진 측의 무장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "B",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "B"
+  },
+  "might": 56,
+  "intellect": 47,
+  "politics": 39,
+  "battle_active": "brace",
+  "battle_passives": [
+    {
+      "code": "drilled",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 449,
+  "name": "유정",
+  "birth": 189,
+  "region": "yuzhou",
+  "desc": "조조 측의 무장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "B",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "C"
+  },
+  "might": 56,
+  "intellect": 47,
+  "politics": 35,
+  "battle_active": "heavy_blow",
+  "battle_passives": [
+    {
+      "code": "drilled",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 450,
+  "name": "유파",
+  "birth": 196,
+  "region": "yizhou",
+  "desc": "유비 측의 문관. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "C",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "A",
+    "defense": "C"
+  },
+  "might": 40,
+  "intellect": 65,
+  "politics": 70,
+  "battle_active": null,
+  "battle_passives": [
+    {
+      "code": "steadfast_guard",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "pacifier",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 451,
+  "name": "유현",
+  "birth": 188,
+  "region": "yizhou",
+  "desc": "유비 측의 무장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "B",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "C"
+  },
+  "might": 51,
+  "intellect": 44,
+  "politics": 45,
+  "battle_active": "heavy_blow",
+  "battle_passives": [
+    {
+      "code": "drilled",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 452,
+  "name": "유화",
+  "birth": 164,
+  "region": "sili",
+  "desc": "하진 측의 문관. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "C",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "A",
+    "defense": "C"
+  },
+  "might": 43,
+  "intellect": 67,
+  "politics": 66,
+  "battle_active": null,
+  "battle_passives": [
+    {
+      "code": "steadfast_guard",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "tuntian",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 453,
+  "name": "유훈",
+  "birth": 167,
+  "region": "yangzhou",
+  "desc": "원술 측의 문관. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "C",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "B",
+    "naval": "C",
+    "supply": "B",
+    "defense": "C"
+  },
+  "might": 34,
+  "intellect": 69,
+  "politics": 65,
+  "battle_active": null,
+  "battle_passives": [
+    {
+      "code": "steadfast_guard",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "tuntian",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 454,
+  "name": "윤례",
+  "birth": 190,
+  "region": "yuzhou",
+  "desc": "조조 측의 무장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "B",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "C"
+  },
+  "might": 60,
+  "intellect": 40,
+  "politics": 38,
+  "battle_active": "heavy_blow",
+  "battle_passives": [
+    {
+      "code": "drilled",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 455,
+  "name": "윤묵",
+  "birth": 188,
+  "region": "yizhou",
+  "desc": "유비 측의 문관. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "C",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "B",
+    "defense": "C"
+  },
+  "might": 43,
+  "intellect": 69,
+  "politics": 63,
+  "battle_active": null,
+  "battle_passives": [
+    {
+      "code": "steadfast_guard",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "tuntian",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 456,
+  "name": "윤상",
+  "birth": 192,
+  "region": "liangzhou",
+  "desc": "한수 측의 무장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "B",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "C"
+  },
+  "might": 60,
+  "intellect": 39,
+  "politics": 41,
+  "battle_active": "heavy_blow",
+  "battle_passives": [
+    {
+      "code": "drilled",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 457,
+  "name": "윤해",
+  "birth": 173,
+  "region": "qingzhou",
+  "desc": "공융 측의 무장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "B",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "C"
+  },
+  "might": 55,
+  "intellect": 41,
+  "politics": 51,
+  "battle_active": "brace",
+  "battle_passives": [
+    {
+      "code": "drilled",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 458,
+  "name": "응소",
+  "birth": 162,
+  "region": "jizhou",
+  "desc": "원소 측의 문관. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "C",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "B",
+    "defense": "C"
+  },
+  "might": 31,
+  "intellect": 72,
+  "politics": 69,
+  "battle_active": null,
+  "battle_passives": [
+    {
+      "code": "steadfast_guard",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "tuntian",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 459,
+  "name": "이감",
+  "birth": 187,
+  "region": "liangzhou",
+  "desc": "마초 측의 기병장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "C",
+    "archer": "C",
+    "cavalry": "B",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "B"
+  },
+  "might": 73,
+  "intellect": 44,
+  "politics": 47,
+  "battle_active": "heavy_blow",
+  "battle_passives": [
+    {
+      "code": "charge_drill",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 460,
+  "name": "이복",
+  "birth": 188,
+  "region": "yizhou",
+  "desc": "유장 측의 무장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "B",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "C"
+  },
+  "might": 63,
+  "intellect": 50,
+  "politics": 51,
+  "battle_active": "brace",
+  "battle_passives": [
+    {
+      "code": "drilled",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 461,
+  "name": "이적",
+  "birth": 171,
+  "region": "yizhou",
+  "desc": "유비 측의 문관. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "C",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "B",
+    "defense": "C"
+  },
+  "might": 46,
+  "intellect": 62,
+  "politics": 68,
+  "battle_active": null,
+  "battle_passives": [
+    {
+      "code": "steadfast_guard",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "tuntian",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 462,
+  "name": "이풍",
+  "birth": 171,
+  "region": "yangzhou",
+  "desc": "원술 측의 무장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "B",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "C"
+  },
+  "might": 59,
+  "intellect": 54,
+  "politics": 45,
+  "battle_active": "heavy_blow",
+  "battle_passives": [
+    {
+      "code": "drilled",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 463,
+  "name": "장개",
+  "birth": 168,
+  "region": "xuzhou",
+  "desc": "도겸 측의 무장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "B",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "B"
+  },
+  "might": 57,
+  "intellect": 51,
+  "politics": 35,
+  "battle_active": "brace",
+  "battle_passives": [
+    {
+      "code": "drilled",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 464,
+  "name": "장막",
+  "birth": 161,
+  "region": "yanzhou",
+  "desc": "여포 측의 무장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "A",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "C"
+  },
+  "might": 60,
+  "intellect": 46,
+  "politics": 42,
+  "battle_active": "heavy_blow",
+  "battle_passives": [
+    {
+      "code": "drilled",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 465,
+  "name": "장선",
+  "birth": 164,
+  "region": "jingzhou",
+  "desc": "유표 측의 무장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "B",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "C"
+  },
+  "might": 58,
+  "intellect": 50,
+  "politics": 43,
+  "battle_active": "heavy_blow",
+  "battle_passives": [
+    {
+      "code": "drilled",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 466,
+  "name": "장송",
+  "birth": 182,
+  "region": "yizhou",
+  "desc": "유장 측의 문관. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "C",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "B",
+    "naval": "C",
+    "supply": "B",
+    "defense": "C"
+  },
+  "might": 29,
+  "intellect": 58,
+  "politics": 75,
+  "battle_active": null,
+  "battle_passives": [
+    {
+      "code": "steadfast_guard",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "tuntian",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 467,
+  "name": "장수",
+  "birth": 162,
+  "region": "sili",
+  "desc": "동탁 측의 무장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "A",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "B"
+  },
+  "might": 69,
+  "intellect": 48,
+  "politics": 43,
+  "battle_active": "brace",
+  "battle_passives": [
+    {
+      "code": "drilled",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 468,
+  "name": "장숙",
+  "birth": 182,
+  "region": "yizhou",
+  "desc": "유장 측의 무장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "B",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "B"
+  },
+  "might": 54,
+  "intellect": 42,
+  "politics": 36,
+  "battle_active": "heavy_blow",
+  "battle_passives": [
+    {
+      "code": "drilled",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 469,
+  "name": "장순",
+  "birth": 166,
+  "region": "sili",
+  "desc": "하진 측의 기병장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "C",
+    "archer": "C",
+    "cavalry": "A",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "C"
+  },
+  "might": 75,
+  "intellect": 36,
+  "politics": 29,
+  "battle_active": "heavy_blow",
+  "battle_passives": [
+    {
+      "code": "charge_drill",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 470,
+  "name": "장승",
+  "birth": 166,
+  "region": "yuzhou",
+  "desc": "조조 측의 무장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "B",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "C"
+  },
+  "might": 52,
+  "intellect": 47,
+  "politics": 47,
+  "battle_active": "heavy_blow",
+  "battle_passives": [
+    {
+      "code": "drilled",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 471,
+  "name": "장연",
+  "birth": 182,
+  "region": "yuzhou",
+  "desc": "조조 측의 기병장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "C",
+    "archer": "C",
+    "cavalry": "B",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "B"
+  },
+  "might": 71,
+  "intellect": 43,
+  "politics": 30,
+  "battle_active": "heavy_blow",
+  "battle_passives": [
+    {
+      "code": "charge_drill",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 472,
+  "name": "장영",
+  "birth": 172,
+  "region": "sili",
+  "desc": "유요 측의 무장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "B",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "C"
+  },
+  "might": 55,
+  "intellect": 50,
+  "politics": 34,
+  "battle_active": "heavy_blow",
+  "battle_passives": [
+    {
+      "code": "drilled",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 473,
+  "name": "장예",
+  "birth": 183,
+  "region": "yizhou",
+  "desc": "유장 측의 문관. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "C",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "B",
+    "defense": "C"
+  },
+  "might": 31,
+  "intellect": 56,
+  "politics": 72,
+  "battle_active": null,
+  "battle_passives": [
+    {
+      "code": "steadfast_guard",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "tuntian",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 474,
+  "name": "장위",
+  "birth": 190,
+  "region": "yizhou",
+  "desc": "장로 측의 무장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "B",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "C"
+  },
+  "might": 56,
+  "intellect": 49,
+  "politics": 45,
+  "battle_active": "heavy_blow",
+  "battle_passives": [
+    {
+      "code": "drilled",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 475,
+  "name": "장윤",
+  "birth": 164,
+  "region": "jingzhou",
+  "desc": "유표 측의 무장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "B",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "C"
+  },
+  "might": 57,
+  "intellect": 41,
+  "politics": 49,
+  "battle_active": "brace",
+  "battle_passives": [
+    {
+      "code": "drilled",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 476,
+  "name": "장의거",
+  "birth": 163,
+  "region": "jizhou",
+  "desc": "원소 측의 무장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "B",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "C"
+  },
+  "might": 54,
+  "intellect": 46,
+  "politics": 44,
+  "battle_active": "brace",
+  "battle_passives": [
+    {
+      "code": "drilled",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 477,
+  "name": "장제",
+  "birth": 171,
+  "region": "sili",
+  "desc": "동탁 측의 무장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "A",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "C"
+  },
+  "might": 62,
+  "intellect": 49,
+  "politics": 35,
+  "battle_active": "heavy_blow",
+  "battle_passives": [
+    {
+      "code": "drilled",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 478,
+  "name": "장천",
+  "birth": 182,
+  "region": "yuzhou",
+  "desc": "조조 측의 무장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "B",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "C"
+  },
+  "might": 58,
+  "intellect": 51,
+  "politics": 47,
+  "battle_active": "heavy_blow",
+  "battle_passives": [
+    {
+      "code": "drilled",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 479,
+  "name": "장초",
+  "birth": 160,
+  "region": "yanzhou",
+  "desc": "여포 측의 무장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "B",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "C"
+  },
+  "might": 67,
+  "intellect": 40,
+  "politics": 43,
+  "battle_active": "heavy_blow",
+  "battle_passives": [
+    {
+      "code": "drilled",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 480,
+  "name": "장패",
+  "birth": 159,
+  "region": "xuzhou",
+  "desc": "도겸 측의 기병장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "C",
+    "archer": "C",
+    "cavalry": "B",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "C"
+  },
+  "might": 77,
+  "intellect": 35,
+  "politics": 40,
+  "battle_active": "brace",
+  "battle_passives": [
+    {
+      "code": "charge_drill",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 481,
+  "name": "장호",
+  "birth": 191,
+  "region": "yuzhou",
+  "desc": "조조 측의 무장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "B",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "B"
+  },
+  "might": 56,
+  "intellect": 36,
+  "politics": 45,
+  "battle_active": "brace",
+  "battle_passives": [
+    {
+      "code": "drilled",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 482,
+  "name": "장횡",
+  "birth": 182,
+  "region": "liangzhou",
+  "desc": "한수 측의 기병장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "C",
+    "archer": "C",
+    "cavalry": "B",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "C"
+  },
+  "might": 75,
+  "intellect": 39,
+  "politics": 39,
+  "battle_active": "heavy_blow",
+  "battle_passives": [
+    {
+      "code": "charge_drill",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 483,
+  "name": "장훈",
+  "birth": 168,
+  "region": "yangzhou",
+  "desc": "원술 측의 무장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "B",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "C"
+  },
+  "might": 56,
+  "intellect": 40,
+  "politics": 36,
+  "battle_active": "heavy_blow",
+  "battle_passives": [
+    {
+      "code": "drilled",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 484,
+  "name": "전만",
+  "birth": 188,
+  "region": "yuzhou",
+  "desc": "조조 측의 무장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "B",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "C"
+  },
+  "might": 57,
+  "intellect": 52,
+  "politics": 50,
+  "battle_active": "heavy_blow",
+  "battle_passives": [
+    {
+      "code": "drilled",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 485,
+  "name": "전예",
+  "birth": 165,
+  "region": "yizhou",
+  "desc": "유비 측의 기병장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "C",
+    "archer": "C",
+    "cavalry": "A",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "B"
+  },
+  "might": 65,
+  "intellect": 47,
+  "politics": 36,
+  "battle_active": "brace",
+  "battle_passives": [
+    {
+      "code": "charge_drill",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 486,
+  "name": "전유",
+  "birth": 187,
+  "region": "yangzhou",
+  "desc": "손권 측의 무장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "A",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "C"
+  },
+  "might": 57,
+  "intellect": 51,
+  "politics": 49,
+  "battle_active": "brace",
+  "battle_passives": [
+    {
+      "code": "drilled",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 487,
+  "name": "전종",
+  "birth": 184,
+  "region": "yangzhou",
+  "desc": "손권 측의 궁장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "C",
+    "archer": "B",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "C"
+  },
+  "might": 52,
+  "intellect": 42,
+  "politics": 44,
+  "battle_active": "heavy_blow",
+  "battle_passives": [
+    {
+      "code": "drilled",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 488,
+  "name": "전주",
+  "birth": 183,
+  "region": "youzhou",
+  "desc": "공손강 측의 문관. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "C",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "A",
+    "defense": "C"
+  },
+  "might": 32,
+  "intellect": 68,
+  "politics": 75,
+  "battle_active": null,
+  "battle_passives": [
+    {
+      "code": "steadfast_guard",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "tuntian",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 489,
+  "name": "전해",
+  "birth": 167,
+  "region": "youzhou",
+  "desc": "공손찬 측의 무장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "B",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "C"
+  },
+  "might": 65,
+  "intellect": 37,
+  "politics": 46,
+  "battle_active": "heavy_blow",
+  "battle_passives": [
+    {
+      "code": "drilled",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 490,
+  "name": "정비",
+  "birth": 185,
+  "region": "yuzhou",
+  "desc": "조조 측의 문관. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "C",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "B",
+    "defense": "C"
+  },
+  "might": 37,
+  "intellect": 58,
+  "politics": 64,
+  "battle_active": null,
+  "battle_passives": [
+    {
+      "code": "steadfast_guard",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "tuntian",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 491,
+  "name": "정은",
+  "birth": 172,
+  "region": "liangzhou",
+  "desc": "마초 측의 무장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "B",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "C"
+  },
+  "might": 55,
+  "intellect": 46,
+  "politics": 38,
+  "battle_active": "brace",
+  "battle_passives": [
+    {
+      "code": "drilled",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 492,
+  "name": "정의",
+  "birth": 193,
+  "region": "yuzhou",
+  "desc": "조조 측의 문관. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "C",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "A",
+    "defense": "C"
+  },
+  "might": 34,
+  "intellect": 66,
+  "politics": 72,
+  "battle_active": null,
+  "battle_passives": [
+    {
+      "code": "steadfast_guard",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "tuntian",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 493,
+  "name": "정태",
+  "birth": 163,
+  "region": "sili",
+  "desc": "하진 측의 문관. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "C",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "A",
+    "defense": "C"
+  },
+  "might": 41,
+  "intellect": 61,
+  "politics": 73,
+  "battle_active": null,
+  "battle_passives": [
+    {
+      "code": "steadfast_guard",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "pacifier",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 494,
+  "name": "조순",
+  "birth": 187,
+  "region": "yuzhou",
+  "desc": "조조 측의 기병장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "C",
+    "archer": "C",
+    "cavalry": "B",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "C"
+  },
+  "might": 70,
+  "intellect": 37,
+  "politics": 33,
+  "battle_active": "heavy_blow",
+  "battle_passives": [
+    {
+      "code": "charge_drill",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 495,
+  "name": "조식",
+  "birth": 181,
+  "region": "yuzhou",
+  "desc": "조조 측의 문관. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "C",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "B",
+    "naval": "C",
+    "supply": "B",
+    "defense": "C"
+  },
+  "might": 33,
+  "intellect": 74,
+  "politics": 66,
+  "battle_active": null,
+  "battle_passives": [
+    {
+      "code": "steadfast_guard",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "tuntian",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 496,
+  "name": "조우",
+  "birth": 193,
+  "region": "yuzhou",
+  "desc": "조조 측의 무장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "A",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "C"
+  },
+  "might": 54,
+  "intellect": 42,
+  "politics": 51,
+  "battle_active": "brace",
+  "battle_passives": [
+    {
+      "code": "drilled",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 497,
+  "name": "조욱",
+  "birth": 161,
+  "region": "xuzhou",
+  "desc": "도겸 측의 문관. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "C",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "B",
+    "defense": "C"
+  },
+  "might": 39,
+  "intellect": 64,
+  "politics": 67,
+  "battle_active": null,
+  "battle_passives": [
+    {
+      "code": "steadfast_guard",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "pacifier",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 498,
+  "name": "조웅",
+  "birth": 188,
+  "region": "yuzhou",
+  "desc": "조조 측의 무장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "B",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "C"
+  },
+  "might": 58,
+  "intellect": 37,
+  "politics": 45,
+  "battle_active": "brace",
+  "battle_passives": [
+    {
+      "code": "drilled",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 499,
+  "name": "조절",
+  "birth": 187,
+  "region": "yuzhou",
+  "desc": "조조 측의 무장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "B",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "B"
+  },
+  "might": 65,
+  "intellect": 41,
+  "politics": 44,
+  "battle_active": "heavy_blow",
+  "battle_passives": [
+    {
+      "code": "drilled",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 500,
+  "name": "조창",
+  "birth": 182,
+  "region": "yuzhou",
+  "desc": "조조 측의 기병장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "C",
+    "archer": "C",
+    "cavalry": "B",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "B"
+  },
+  "might": 61,
+  "intellect": 45,
+  "politics": 45,
+  "battle_active": "brace",
+  "battle_passives": [
+    {
+      "code": "charge_drill",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 501,
+  "name": "조충",
+  "birth": 181,
+  "region": "yuzhou",
+  "desc": "조조 측의 무장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "B",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "C"
+  },
+  "might": 53,
+  "intellect": 54,
+  "politics": 38,
+  "battle_active": "heavy_blow",
+  "battle_passives": [
+    {
+      "code": "drilled",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 502,
+  "name": "조표",
+  "birth": 165,
+  "region": "yuzhou",
+  "desc": "조조 측의 무장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "A",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "C"
+  },
+  "might": 51,
+  "intellect": 37,
+  "politics": 36,
+  "battle_active": "heavy_blow",
+  "battle_passives": [
+    {
+      "code": "drilled",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 503,
+  "name": "조헌",
+  "birth": 189,
+  "region": "yuzhou",
+  "desc": "조조 측의 무장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "B",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "C"
+  },
+  "might": 65,
+  "intellect": 44,
+  "politics": 42,
+  "battle_active": "heavy_blow",
+  "battle_passives": [
+    {
+      "code": "drilled",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 504,
+  "name": "조화",
+  "birth": 191,
+  "region": "yuzhou",
+  "desc": "조조 측의 무장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "B",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "B"
+  },
+  "might": 64,
+  "intellect": 44,
+  "politics": 45,
+  "battle_active": "brace",
+  "battle_passives": [
+    {
+      "code": "drilled",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 505,
+  "name": "종예",
+  "birth": 188,
+  "region": "yizhou",
+  "desc": "유비 측의 문관. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "C",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "B",
+    "naval": "C",
+    "supply": "B",
+    "defense": "C"
+  },
+  "might": 33,
+  "intellect": 62,
+  "politics": 61,
+  "battle_active": null,
+  "battle_passives": [
+    {
+      "code": "steadfast_guard",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "pacifier",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 506,
+  "name": "좌령",
+  "birth": 165,
+  "region": "sili",
+  "desc": "동탁 측의 무장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "B",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "C"
+  },
+  "might": 59,
+  "intellect": 52,
+  "politics": 44,
+  "battle_active": "heavy_blow",
+  "battle_passives": [
+    {
+      "code": "drilled",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 507,
+  "name": "주개",
+  "birth": 186,
+  "region": "yuzhou",
+  "desc": "조조 측의 무장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "B",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "C"
+  },
+  "might": 53,
+  "intellect": 52,
+  "politics": 45,
+  "battle_active": "heavy_blow",
+  "battle_passives": [
+    {
+      "code": "drilled",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 508,
+  "name": "주광",
+  "birth": 188,
+  "region": "yuzhou",
+  "desc": "조조 측의 무장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "B",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "B"
+  },
+  "might": 62,
+  "intellect": 40,
+  "politics": 51,
+  "battle_active": "heavy_blow",
+  "battle_passives": [
+    {
+      "code": "drilled",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 509,
+  "name": "주군",
+  "birth": 182,
+  "region": "yizhou",
+  "desc": "유비 측의 무장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "B",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "C"
+  },
+  "might": 54,
+  "intellect": 48,
+  "politics": 41,
+  "battle_active": "heavy_blow",
+  "battle_passives": [
+    {
+      "code": "drilled",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 510,
+  "name": "주령",
+  "birth": 167,
+  "region": "jizhou",
+  "desc": "원소 측의 기병장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "C",
+    "archer": "C",
+    "cavalry": "B",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "C"
+  },
+  "might": 77,
+  "intellect": 36,
+  "politics": 39,
+  "battle_active": "heavy_blow",
+  "battle_passives": [
+    {
+      "code": "charge_drill",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 511,
+  "name": "주삭",
+  "birth": 182,
+  "region": "yuzhou",
+  "desc": "조조 측의 무장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "B",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "B"
+  },
+  "might": 68,
+  "intellect": 42,
+  "politics": 40,
+  "battle_active": "heavy_blow",
+  "battle_passives": [
+    {
+      "code": "drilled",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 512,
+  "name": "주선",
+  "birth": 180,
+  "region": "yangzhou",
+  "desc": "손권 측의 무장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "B",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "C"
+  },
+  "might": 67,
+  "intellect": 39,
+  "politics": 42,
+  "battle_active": "heavy_blow",
+  "battle_passives": [
+    {
+      "code": "drilled",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 513,
+  "name": "주소",
+  "birth": 190,
+  "region": "yangzhou",
+  "desc": "손권 측의 문관. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "C",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "A",
+    "defense": "C"
+  },
+  "might": 37,
+  "intellect": 56,
+  "politics": 73,
+  "battle_active": null,
+  "battle_passives": [
+    {
+      "code": "steadfast_guard",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "tuntian",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 514,
+  "name": "주앙",
+  "birth": 172,
+  "region": "jizhou",
+  "desc": "원소 측의 무장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "B",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "C"
+  },
+  "might": 54,
+  "intellect": 54,
+  "politics": 35,
+  "battle_active": "heavy_blow",
+  "battle_passives": [
+    {
+      "code": "drilled",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 515,
+  "name": "주옹",
+  "birth": 173,
+  "region": "jizhou",
+  "desc": "원소 측의 무장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "B",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "C"
+  },
+  "might": 56,
+  "intellect": 39,
+  "politics": 34,
+  "battle_active": "heavy_blow",
+  "battle_passives": [
+    {
+      "code": "drilled",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 516,
+  "name": "주찬",
+  "birth": 193,
+  "region": "yuzhou",
+  "desc": "조조 측의 무장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "B",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "C"
+  },
+  "might": 51,
+  "intellect": 36,
+  "politics": 39,
+  "battle_active": "heavy_blow",
+  "battle_passives": [
+    {
+      "code": "drilled",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 517,
+  "name": "주창",
+  "birth": 165,
+  "region": "yizhou",
+  "desc": "유비 측의 궁장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "C",
+    "archer": "B",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "C"
+  },
+  "might": 66,
+  "intellect": 48,
+  "politics": 32,
+  "battle_active": "brace",
+  "battle_passives": [
+    {
+      "code": "drilled",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 518,
+  "name": "중장통",
+  "birth": 187,
+  "region": "yuzhou",
+  "desc": "조조 측의 문관. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "C",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "B",
+    "naval": "C",
+    "supply": "A",
+    "defense": "C"
+  },
+  "might": 29,
+  "intellect": 66,
+  "politics": 62,
+  "battle_active": null,
+  "battle_passives": [
+    {
+      "code": "steadfast_guard",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "pacifier",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 519,
+  "name": "진군",
+  "birth": 168,
+  "region": "yizhou",
+  "desc": "유비 측의 문관. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "C",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "B",
+    "defense": "C"
+  },
+  "might": 29,
+  "intellect": 72,
+  "politics": 60,
+  "battle_active": null,
+  "battle_passives": [
+    {
+      "code": "steadfast_guard",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "tuntian",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 520,
+  "name": "진림",
+  "birth": 161,
+  "region": "sili",
+  "desc": "하진 측의 문관. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "C",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "B",
+    "naval": "C",
+    "supply": "B",
+    "defense": "C"
+  },
+  "might": 40,
+  "intellect": 60,
+  "politics": 75,
+  "battle_active": null,
+  "battle_passives": [
+    {
+      "code": "steadfast_guard",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "pacifier",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 521,
+  "name": "창자",
+  "birth": 186,
+  "region": "yuzhou",
+  "desc": "조조 측의 무장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "B",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "C"
+  },
+  "might": 51,
+  "intellect": 43,
+  "politics": 36,
+  "battle_active": "heavy_blow",
+  "battle_passives": [
+    {
+      "code": "drilled",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 522,
+  "name": "철리길",
+  "birth": 188,
+  "region": "liangzhou",
+  "desc": "한수 측의 기병장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "C",
+    "archer": "C",
+    "cavalry": "B",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "B"
+  },
+  "might": 62,
+  "intellect": 38,
+  "politics": 39,
+  "battle_active": "brace",
+  "battle_passives": [
+    {
+      "code": "charge_drill",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 523,
+  "name": "최림",
+  "birth": 182,
+  "region": "yuzhou",
+  "desc": "조조 측의 문관. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "C",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "B",
+    "defense": "C"
+  },
+  "might": 38,
+  "intellect": 56,
+  "politics": 76,
+  "battle_active": null,
+  "battle_passives": [
+    {
+      "code": "steadfast_guard",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "tuntian",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 524,
+  "name": "최염",
+  "birth": 172,
+  "region": "qingzhou",
+  "desc": "공융 측의 문관. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "C",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "B",
+    "defense": "C"
+  },
+  "might": 43,
+  "intellect": 71,
+  "politics": 67,
+  "battle_active": null,
+  "battle_passives": [
+    {
+      "code": "steadfast_guard",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "tuntian",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 525,
+  "name": "최용",
+  "birth": 163,
+  "region": "sili",
+  "desc": "동탁 측의 무장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "B",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "C"
+  },
+  "might": 55,
+  "intellect": 51,
+  "politics": 51,
+  "battle_active": "heavy_blow",
+  "battle_passives": [
+    {
+      "code": "drilled",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 526,
+  "name": "탁응",
+  "birth": 191,
+  "region": "yizhou",
+  "desc": "유비 측의 무장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "B",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "B"
+  },
+  "might": 56,
+  "intellect": 53,
+  "politics": 44,
+  "battle_active": "brace",
+  "battle_passives": [
+    {
+      "code": "drilled",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 527,
+  "name": "태사향",
+  "birth": 188,
+  "region": "yangzhou",
+  "desc": "손권 측의 무장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "A",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "C"
+  },
+  "might": 62,
+  "intellect": 48,
+  "politics": 50,
+  "battle_active": "brace",
+  "battle_passives": [
+    {
+      "code": "drilled",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 528,
+  "name": "포신",
+  "birth": 163,
+  "region": "sili",
+  "desc": "하진 측의 무장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "B",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "C"
+  },
+  "might": 58,
+  "intellect": 40,
+  "politics": 38,
+  "battle_active": "heavy_blow",
+  "battle_passives": [
+    {
+      "code": "drilled",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 529,
+  "name": "하묘",
+  "birth": 164,
+  "region": "sili",
+  "desc": "하진 측의 무장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "B",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "B"
+  },
+  "might": 67,
+  "intellect": 53,
+  "politics": 44,
+  "battle_active": "brace",
+  "battle_passives": [
+    {
+      "code": "drilled",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 530,
+  "name": "하안",
+  "birth": 192,
+  "region": "yuzhou",
+  "desc": "조조 측의 무장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "A",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "C"
+  },
+  "might": 63,
+  "intellect": 46,
+  "politics": 36,
+  "battle_active": "heavy_blow",
+  "battle_passives": [
+    {
+      "code": "drilled",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 531,
+  "name": "하의",
+  "birth": 166,
+  "region": "jizhou",
+  "desc": "장각 측의 무장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "B",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "C"
+  },
+  "might": 63,
+  "intellect": 54,
+  "politics": 43,
+  "battle_active": "brace",
+  "battle_passives": [
+    {
+      "code": "drilled",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 532,
+  "name": "하종",
+  "birth": 186,
+  "region": "yizhou",
+  "desc": "유비 측의 무장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "B",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "C"
+  },
+  "might": 66,
+  "intellect": 42,
+  "politics": 37,
+  "battle_active": "heavy_blow",
+  "battle_passives": [
+    {
+      "code": "drilled",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 533,
+  "name": "하후덕",
+  "birth": 186,
+  "region": "yuzhou",
+  "desc": "조조 측의 기병장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "C",
+    "archer": "C",
+    "cavalry": "A",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "C"
+  },
+  "might": 77,
+  "intellect": 42,
+  "politics": 31,
+  "battle_active": "brace",
+  "battle_passives": [
+    {
+      "code": "charge_drill",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 534,
+  "name": "하후은",
+  "birth": 180,
+  "region": "yuzhou",
+  "desc": "조조 측의 기병장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "C",
+    "archer": "C",
+    "cavalry": "B",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "B"
+  },
+  "might": 64,
+  "intellect": 49,
+  "politics": 36,
+  "battle_active": "heavy_blow",
+  "battle_passives": [
+    {
+      "code": "charge_drill",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 535,
+  "name": "한기",
+  "birth": 195,
+  "region": "youzhou",
+  "desc": "공손강 측의 무장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "B",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "C"
+  },
+  "might": 53,
+  "intellect": 49,
+  "politics": 45,
+  "battle_active": "brace",
+  "battle_passives": [
+    {
+      "code": "drilled",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 536,
+  "name": "한복",
+  "birth": 157,
+  "region": "sili",
+  "desc": "하진 측의 무장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "B",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "C"
+  },
+  "might": 65,
+  "intellect": 49,
+  "politics": 45,
+  "battle_active": "brace",
+  "battle_passives": [
+    {
+      "code": "drilled",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 537,
+  "name": "한충",
+  "birth": 185,
+  "region": "youzhou",
+  "desc": "공손강 측의 무장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "B",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "C"
+  },
+  "might": 56,
+  "intellect": 48,
+  "politics": 42,
+  "battle_active": "heavy_blow",
+  "battle_passives": [
+    {
+      "code": "drilled",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 538,
+  "name": "향랑",
+  "birth": 195,
+  "region": "yizhou",
+  "desc": "유비 측의 문관. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "C",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "B",
+    "naval": "C",
+    "supply": "B",
+    "defense": "C"
+  },
+  "might": 30,
+  "intellect": 71,
+  "politics": 71,
+  "battle_active": null,
+  "battle_passives": [
+    {
+      "code": "steadfast_guard",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "pacifier",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 539,
+  "name": "향총",
+  "birth": 194,
+  "region": "yizhou",
+  "desc": "유비 측의 무장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "B",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "C"
+  },
+  "might": 54,
+  "intellect": 42,
+  "politics": 49,
+  "battle_active": "heavy_blow",
+  "battle_passives": [
+    {
+      "code": "drilled",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 540,
+  "name": "혜구",
+  "birth": 174,
+  "region": "yangzhou",
+  "desc": "원술 측의 문관. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "C",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "B",
+    "defense": "C"
+  },
+  "might": 45,
+  "intellect": 74,
+  "politics": 60,
+  "battle_active": null,
+  "battle_passives": [
+    {
+      "code": "steadfast_guard",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "pacifier",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 541,
+  "name": "황완",
+  "birth": 160,
+  "region": "sili",
+  "desc": "하진 측의 문관. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "C",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "A",
+    "defense": "C"
+  },
+  "might": 44,
+  "intellect": 73,
+  "politics": 75,
+  "battle_active": null,
+  "battle_passives": [
+    {
+      "code": "steadfast_guard",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "pacifier",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 542,
+  "name": "후선",
+  "birth": 168,
+  "region": "liangzhou",
+  "desc": "마등 측의 기병장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "C",
+    "archer": "C",
+    "cavalry": "B",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "B"
+  },
+  "might": 64,
+  "intellect": 45,
+  "politics": 37,
+  "battle_active": "brace",
+  "battle_passives": [
+    {
+      "code": "charge_drill",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 543,
+  "name": "후성",
+  "birth": 168,
+  "region": "sili",
+  "desc": "동탁 측의 기병장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "C",
+    "archer": "C",
+    "cavalry": "B",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "C"
+  },
+  "might": 70,
+  "intellect": 41,
+  "politics": 40,
+  "battle_active": "heavy_blow",
+  "battle_passives": [
+    {
+      "code": "charge_drill",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+},
+{
+  "id": 544,
+  "name": "후음",
+  "birth": 193,
+  "region": "yuzhou",
+  "desc": "조조 측의 무장. 시나리오 보조 장수.",
+  "aptitudes": {
+    "infantry": "B",
+    "archer": "C",
+    "cavalry": "C",
+    "elephant": "C",
+    "siege": "C",
+    "naval": "C",
+    "supply": "C",
+    "defense": "C"
+  },
+  "might": 69,
+  "intellect": 40,
+  "politics": 51,
+  "battle_active": "heavy_blow",
+  "battle_passives": [
+    {
+      "code": "drilled",
+      "tier": 1
+    }
+  ],
+  "admin_passives": [
+    {
+      "code": "drillmaster",
+      "tier": 1
+    }
+  ]
+}
 ]
