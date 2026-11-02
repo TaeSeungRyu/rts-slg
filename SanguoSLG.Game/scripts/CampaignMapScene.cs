@@ -18916,7 +18916,7 @@ public sealed partial class CampaignMapScene : Node3D
             button.Pressed += () =>
             {
                 HidePanels();
-                _camera.FocusOn(_view.HexToWorld(destination));
+                _camera.JumpTo(_view.HexToWorld(destination));
             };
             _cityQuickList.AddChild(button);
         }
@@ -18991,7 +18991,10 @@ public sealed partial class CampaignMapScene : Node3D
                 var current = _state.Armies.FirstOrDefault(army => army.Id == unitId);
                 if (current is null) return;
                 HidePanels();
-                _camera.FocusOn(_view.HexToWorld(current.Field.Position));
+                var position = _armyTokens.TryGetValue(unitId.Value, out var token)
+                    && GodotObject.IsInstanceValid(token) ? token.GlobalPosition
+                    : _view.HexToWorld(current.Field.Position);
+                _camera.JumpTo(position);
             };
             _sortieQuickList.AddChild(button);
         }
