@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using Godot;
+using SanguoSLG.Core.Data;
 using SanguoSLG.Core.Spatial;
 
 namespace SanguoSLG.Game;
@@ -12,6 +13,7 @@ public partial class MapView3D : Node3D
 {
     private readonly Dictionary<TerrainType, PackedScene> _tiles = new();
     private readonly Dictionary<TerrainType, PackedScene[]> _terrainVariants = new();
+    private readonly Dictionary<HexCoord, int> _presetTerrainVariants = new();
     private PackedScene _water = null!;
     private PackedScene _farmBroken = null!;
     private float _size = 1f;      // 헥사 중심~꼭짓점(월드 단위)
@@ -100,8 +102,32 @@ public partial class MapView3D : Node3D
     public PackedScene? TileScene(TerrainType terrain, HexCoord tile)
     {
         if (!_terrainVariants.TryGetValue(terrain, out var variants)) return TileScene(terrain);
+        if (_presetTerrainVariants.TryGetValue(tile, out var selected)) return variants[selected];
         var hash = unchecked(tile.Q * 73856093 ^ tile.R * 19349663);
         return variants[(hash & int.MaxValue) % variants.Length];
+    }
+
+    public PackedScene? TileSceneVariant(TerrainType terrain, int variant)
+        => _terrainVariants.TryGetValue(terrain, out var scenes) && variant >= 0 && variant < scenes.Length
+            ? scenes[variant] : TileScene(terrain);
+
+    public void UseTerrainVariants(ScenarioMapPreset? preset)
+    {
+        _presetTerrainVariants.Clear();
+        if (preset is null) return;
+        for (var row = 0; row < preset.Height; row++)
+        for (var column = 0; column < preset.Width; column++)
+        {
+            var code = preset.Rows[row][column];
+            var variant = code switch
+            {
+                'F' or 'M' or 'H' => 0,
+                'f' or 'm' or 'h' => 1,
+                'g' or 'n' or 'j' => 2,
+                _ => -1,
+            };
+            if (variant >= 0) _presetTerrainVariants[preset.ToAxial(column, row)] = variant;
+        }
     }
 
     private static float MeasureTopY(PackedScene scene)

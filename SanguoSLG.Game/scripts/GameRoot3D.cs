@@ -193,6 +193,7 @@ public partial class GameRoot3D : Node3D
 
         var mapView = new MapView3D();
         AddChild(mapView);
+        mapView.UseTerrainVariants(scenario.MapPreset);
         var occupied = new System.Collections.Generic.HashSet<HexCoord>(
             scenario.Features.SelectMany(FeatureFootprint.TilesFor));
         mapView.Build(scenario.Map, occupied, scenario.Conditions);
@@ -470,6 +471,7 @@ public partial class GameRoot3D : Node3D
 
         var mapView = new MapView3D();
         AddChild(mapView);
+        mapView.UseTerrainVariants(CampaignMapScene.TestMapPreset);
         mapView.Build(CampaignMapScene.TestMap, new System.Collections.Generic.HashSet<HexCoord>(),
             new TileConditionMap(), CampaignMapScene.TestPortTiles);
 

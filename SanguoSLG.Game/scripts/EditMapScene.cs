@@ -14,9 +14,15 @@ public sealed partial class EditMapScene : Control
     private static readonly Dictionary<char, (string Name, Color Color)> Terrain = new()
     {
         ['P'] = ("평야", new Color("9dbb83")),
-        ['F'] = ("숲", new Color("3f8065")),
-        ['M'] = ("산악", new Color("829079")),
-        ['H'] = ("험산", new Color("686d69")),
+        ['F'] = ("숲1", new Color("3f8065")),
+        ['f'] = ("숲2", new Color("3f8065")),
+        ['g'] = ("숲3", new Color("3f8065")),
+        ['M'] = ("산1", new Color("829079")),
+        ['m'] = ("산2", new Color("829079")),
+        ['n'] = ("산3", new Color("829079")),
+        ['H'] = ("험산1", new Color("686d69")),
+        ['h'] = ("험산2", new Color("686d69")),
+        ['j'] = ("험산3", new Color("686d69")),
         ['D'] = ("사막", new Color("d4bd82")),
         ['R'] = ("하천", new Color("5d9eb8")),
         ['B'] = ("큰강 나루", new Color("b5ad8a")),
@@ -289,10 +295,10 @@ public sealed partial class EditMapScene : Control
             DrawColoredPolygon(points, color);
             if (_scale > 1.25f)
                 DrawPolyline([.. points, points[0]], new Color(0f, 0f, 0f, 0.11f), 0.55f);
-            if (_scale > 1.45f && kind is 'M' or 'H')
+            if (_scale > 1.45f && kind is 'M' or 'm' or 'n' or 'H' or 'h' or 'j')
                 DrawLine(center + new Vector2(-3, 2), center + new Vector2(0, -3),
                     new Color(0.92f, 0.92f, 0.85f, 0.55f), 0.8f);
-            if (_scale > 1.45f && kind == 'F')
+            if (_scale > 1.45f && kind is 'F' or 'f' or 'g')
                 DrawCircle(center, 1.8f, new Color("275c4d"));
         }
         if (_showLandRoutes)
@@ -461,8 +467,12 @@ public sealed partial class EditMapScene : Control
             .OfType<Button>().Select(button => button.Text).ToArray() ?? [];
         valid &= libraryButtons.Contains("닫기") && libraryButtons.Contains("새 지도 추가 · 기본 지도에서 시작");
         CloseMapLibrary();
-        _terrainButtons.First(button => button.Text == "산악").EmitSignal(Button.SignalName.Pressed);
+        _terrainButtons.First(button => button.Text == "산1").EmitSignal(Button.SignalName.Pressed);
         valid &= _terrainFilter == 'M';
+        valid &= new[] { "숲1", "숲2", "숲3", "산1", "산2", "산3", "험산1", "험산2", "험산3" }
+            .All(name => _terrainButtons.Any(button => button.Text == name));
+        valid &= new[] { 'F', 'f', 'g', 'M', 'm', 'n', 'H', 'h', 'j' }
+            .Select(TerrainScene).Distinct().Count() == 9;
         var routesToggle = FindChild("LandRouteToggle", true, false) as CheckButton;
         valid &= routesToggle?.ButtonPressed == true && _showLandRoutes;
         var citiesToggle = FindChild("CityToggle", true, false) as CheckButton;

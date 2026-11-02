@@ -244,7 +244,7 @@ internal sealed class AiTestFixture
                     Math.Min(preset.Height - 1, city.Row + 9) - Math.Max(0, city.Row - 9) + 1)
                 from column in Enumerable.Range(Math.Max(0, city.Column - 9),
                     Math.Min(preset.Width - 1, city.Column + 9) - Math.Max(0, city.Column - 9) + 1)
-                where "PFMDBSTNQ".Contains(preset.Rows[row][column])
+                where "PFfgMmnDBSTNQ".Contains(preset.Rows[row][column])
                 from direction in Enumerable.Range(0, 6)
                 let water = preset.ToAxial(column, row) + directions[direction]
                 where water.Q >= 0 && water.Q < preset.Width

@@ -25,7 +25,10 @@ public sealed partial class EditMapScene
     private static readonly Dictionary<char, TerrainType> PreviewTerrain = new()
     {
         ['P'] = TerrainType.Plains, ['F'] = TerrainType.Forest,
+        ['f'] = TerrainType.Forest, ['g'] = TerrainType.Forest,
         ['M'] = TerrainType.Mountain, ['H'] = TerrainType.RockMountain,
+        ['m'] = TerrainType.Mountain, ['n'] = TerrainType.Mountain,
+        ['h'] = TerrainType.RockMountain, ['j'] = TerrainType.RockMountain,
         ['D'] = TerrainType.Desert, ['R'] = TerrainType.River,
         ['B'] = TerrainType.Bridge, ['W'] = TerrainType.WaterShallow,
         ['O'] = TerrainType.WaterDeep,
@@ -36,7 +39,18 @@ public sealed partial class EditMapScene
         ['Q'] = TerrainType.DesertCactus, ['V'] = TerrainType.WaterRocks,
     };
 
-    private PackedScene TerrainScene(char code) => PreviewTerrain[code] switch
+    private PackedScene TerrainScene(char code) => code switch
+    {
+        'F' or 'f' or 'g' => _mapView.TileSceneVariant(TerrainType.Forest,
+            code == 'F' ? 0 : code == 'f' ? 1 : 2)!,
+        'M' or 'm' or 'n' => _mapView.TileSceneVariant(TerrainType.Mountain,
+            code == 'M' ? 0 : code == 'm' ? 1 : 2)!,
+        'H' or 'h' or 'j' => _mapView.TileSceneVariant(TerrainType.RockMountain,
+            code == 'H' ? 0 : code == 'h' ? 1 : 2)!,
+        _ => DefaultTerrainScene(code),
+    };
+
+    private PackedScene DefaultTerrainScene(char code) => PreviewTerrain[code] switch
     {
         TerrainType.River => _waterTile,
         TerrainType.Bridge => _bridgeTile,
@@ -48,7 +62,7 @@ public sealed partial class EditMapScene
     {
         var code = _rows[tile.Y][tile.X];
         if (code == 'R') return (_waterTile, 0f);
-        if (code != 'B') return (_mapView.TileScene(PreviewTerrain[code], Axial(tile)) ?? TerrainScene(code), 0f);
+        if (code != 'B') return (TerrainScene(code), 0f);
         var center = Axial(tile);
         var angles = center.Neighbors().Select(neighbor => new
             {

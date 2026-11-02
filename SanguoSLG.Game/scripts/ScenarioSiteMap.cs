@@ -40,8 +40,8 @@ public sealed partial class ScenarioSiteMap : Control
                 var color = _map.Rows[row][column] switch
                 {
                     'W' or 'O' or 'R' => new Color("447c90"),
-                    'M' or 'H' or 'I' => new Color("6d766c"),
-                    'F' => new Color("3d7657"),
+                    'M' or 'm' or 'n' or 'H' or 'h' or 'j' or 'I' => new Color("6d766c"),
+                    'F' or 'f' or 'g' => new Color("3d7657"),
                     'D' or 'Q' => new Color("b9a575"),
                     _ => new Color("80a182"),
                 };

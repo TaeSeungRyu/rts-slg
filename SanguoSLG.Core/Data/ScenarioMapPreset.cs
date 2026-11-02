@@ -33,10 +33,35 @@ public sealed record ScenarioMapPreset(int Version, int Width, int Height, IRead
         Sites = Sites.ToArray(),
     };
 
+    public ScenarioMapPreset WithFlatSiteTerrain()
+    {
+        var rows = Rows.Select(row => row.ToCharArray()).ToArray();
+        foreach (var site in Sites.Where(site => site.Kind is "city" or "port"))
+        {
+            var anchor = ToAxial(site.Column, site.Row);
+            var offsets = site.Kind == "city"
+                ? CastleFootprint.OffsetsFor(site.Size switch
+                {
+                    "large" => CastleSize.Large,
+                    "medium" => CastleSize.Medium,
+                    _ => CastleSize.Small,
+                })
+                : site.Size == "medium" ? FeatureFootprint.OffsetsFor(FeatureType.PortMedium)
+                    : [new HexCoord(0, 0)];
+            foreach (var offset in offsets)
+            {
+                var tile = anchor + CastleFootprint.Rotate(offset, site.Direction);
+                var (column, row) = ToOffset(tile);
+                rows[row][column] = 'P';
+            }
+        }
+        return this with { Rows = rows.Select(row => new string(row)).ToArray() };
+    }
+
     public void Validate()
     {
         if (Version != 1 || Width <= 0 || Height <= 0 || Rows.Count != Height ||
-            Rows.Any(row => row.Length != Width || row.Any(code => !"PFMHDRBWOSTXCIELNQV".Contains(code))))
+            Rows.Any(row => row.Length != Width || row.Any(code => !"PFfgMmnHhjDRBWOSTXCIELNQV".Contains(code))))
             throw new InvalidDataException("맵 크기, 버전 또는 지형 코드가 올바르지 않습니다.");
         var ids = new HashSet<int>();
         foreach (var site in Sites)
@@ -82,9 +107,9 @@ public sealed record ScenarioMapPreset(int Version, int Width, int Height, IRead
                 var column = tile.Q;
                 var row = tile.R + (column - (column & 1)) / 2;
                 if (column < 0 || column >= Width || row < 0 || row >= Height ||
-                    !(site.Kind == "landmark" ? "PFMDBSTNQHXC"
+                    !(site.Kind == "landmark" ? "PFfgMmnDBSTNQHhjXC"
                         : site.Kind == "ruin" && MapRuinCatalog.Find(site.Size)!.Naval ? "WO"
-                        : "PFMDBSTNQ")
+                        : "PFfgMmnDBSTNQ")
                         .Contains(Rows[row][column]) || !occupied.Add(tile))
                     throw new InvalidDataException("배치물 발자국이 지도 밖, 물/험산 또는 다른 배치물과 겹칩니다.");
             }

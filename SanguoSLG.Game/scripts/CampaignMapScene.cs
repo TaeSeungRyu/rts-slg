@@ -3889,6 +3889,7 @@ public sealed partial class CampaignMapScene : Node3D
         ? AiTestFixture.LoadNewMap()
         : OS.GetCmdlineUserArgs().Contains("--aitest") ? AiTestFixture.Load() : null;
     private static HexMap _map = _aiTestFixture?.Map ?? BuildTestMap();
+    public static ScenarioMapPreset? TestMapPreset => _aiTestFixture?.MapPreset;
 
     public static void ConfigureScenario(Scenario scenario, int playerFactionId, int startYear,
         int startMonth, int startDay, GameDifficulty difficulty = GameDifficulty.Normal)

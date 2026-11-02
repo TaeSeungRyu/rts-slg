@@ -138,7 +138,7 @@ public sealed partial class EditMapScene
         var path = PresetPath();
         try
         {
-            var draft = Draft();
+            var draft = Draft().WithFlatSiteTerrain();
             var protectedCities = ProtectedScenarioNames();
             if (protectedCities.Count > 0 && _activeMapVersion is { } linked
                 && linked.Preset.Sites.Any(site => site.Kind == "city"
@@ -149,6 +149,7 @@ public sealed partial class EditMapScene
                     _activeMapVersion?.Id ?? "default-east-asia",
                     _activeMapVersion?.Title ?? "기본 지도", draft);
             ScenarioMapPresetStore.Save(path, draft);
+            _rows = draft.Rows.ToArray();
             var saved = ScenarioMapPresetStore.Load(path);
             if (saved.Width != draft.Width || saved.Height != draft.Height
                 || !saved.Rows.SequenceEqual(draft.Rows) || !saved.Sites.SequenceEqual(draft.Sites))
@@ -225,7 +226,7 @@ public sealed partial class EditMapScene
         bar.AddChild(maps);
     }
 
-    private static bool IsLand(char code) => code is 'P' or 'F' or 'M' or 'D' or 'B' or 'S' or 'T' or 'N' or 'Q';
+    private static bool IsLand(char code) => code is 'P' or 'F' or 'f' or 'g' or 'M' or 'm' or 'n' or 'D' or 'B' or 'S' or 'T' or 'N' or 'Q';
     private bool Inside(Vector2I tile) => tile.X >= 0 && tile.X < _width && tile.Y >= 0 && tile.Y < _height;
     private static CastleSize CastleKind(string size) => size switch
     {
@@ -258,7 +259,7 @@ public sealed partial class EditMapScene
         return cells.All(cell => Inside(cell) &&
             (candidate.Kind == "ruin" ? (MapRuinCatalog.Find(candidate.Size)?.Naval == true
                     ? _rows[cell.Y][cell.X] is 'W' or 'O' : IsLand(_rows[cell.Y][cell.X]))
-                : candidate.Kind == "landmark" ? IsLand(_rows[cell.Y][cell.X]) || _rows[cell.Y][cell.X] is 'H' or 'X' or 'C'
+                : candidate.Kind == "landmark" ? IsLand(_rows[cell.Y][cell.X]) || _rows[cell.Y][cell.X] is 'H' or 'h' or 'j' or 'X' or 'C'
                 : IsLand(_rows[cell.Y][cell.X])) &&
             !_sites.Where(site => site.Id != candidate.Id).Any(site => Footprint(site).Contains(cell)));
     }
@@ -300,10 +301,10 @@ public sealed partial class EditMapScene
         var terrainInfo = terrain switch
         {
             'W' or 'O' => "수면 · 육상 부대 진입 불가",
-            'H' => "험산 · 일반 육상 부대 진입 불가",
+            'H' or 'h' or 'j' => "험산 · 일반 육상 부대 진입 불가",
             'R' => "소하천 · 이동속도 감소",
             'B' => "나루 · 강 횡단 가능",
-            'M' => "산악 · 이동속도 감소",
+            'M' or 'm' or 'n' => "산악 · 이동속도 감소",
             _ => "육상 지형 · 부대 이동 가능",
         };
         content.AddChild(new Label { Text = terrainInfo, Modulate = new Color("eee0bf") });
@@ -696,6 +697,7 @@ public sealed partial class EditMapScene
             var before = Draft();
             if (existing is not null) _sites.Remove(existing);
             _sites.Add(candidate);
+            FlattenSiteFootprint(candidate);
             if (existing is null) _nextSiteId++;
             RecordChange(before);
             RefreshSiteVisuals();
@@ -801,6 +803,22 @@ public sealed partial class EditMapScene
         if (_visibleTiles.Remove(tile, out var visual)) visual.QueueFree();
         foreach (var neighbor in Axial(tile).Neighbors().Select(Offset).Where(Inside))
             if (_visibleTiles.Remove(neighbor, out var neighborVisual)) neighborVisual.QueueFree();
+        RefreshVisibleTerrain();
+        QueueRedraw();
+    }
+
+    private void FlattenSiteFootprint(MapEditorSite site)
+    {
+        foreach (var rowGroup in Footprint(site).Where(Inside).GroupBy(cell => cell.Y))
+        {
+            var chars = _rows[rowGroup.Key].ToCharArray();
+            foreach (var cell in rowGroup)
+            {
+                chars[cell.X] = 'P';
+                if (_visibleTiles.Remove(cell, out var visual)) visual.QueueFree();
+            }
+            _rows[rowGroup.Key] = new string(chars);
+        }
         RefreshVisibleTerrain();
         QueueRedraw();
     }
@@ -915,9 +933,9 @@ public sealed partial class EditMapScene
     private static string TerrainDescription(char code) => code switch
     {
         'P' => "기본 육상 지형. 부대와 도시를 배치할 수 있습니다.",
-        'F' => "숲 지형. 이동이 가능하고 전투에서 지형 효과를 받습니다.",
-        'M' => "소형산. 육상 이동이 가능하지만 속도가 느려집니다.",
-        'H' or 'X' or 'C' or 'I' or 'E' or 'L' => "험준한 지형. 일반 부대가 통과할 수 없습니다.",
+        'F' or 'f' or 'g' => "숲 지형. 이동이 가능하고 전투에서 지형 효과를 받습니다.",
+        'M' or 'm' or 'n' => "소형산. 육상 이동이 가능하지만 속도가 느려집니다.",
+        'H' or 'h' or 'j' or 'X' or 'C' or 'I' or 'E' or 'L' => "험준한 지형. 일반 부대가 통과할 수 없습니다.",
         'D' or 'Q' => "사막 지형. 육상 이동이 가능하며 지형 효과를 받습니다.",
         'R' => "소하천. 이웃 강 타일 방향에 맞춰 물길 에셋이 연결됩니다.",
         'B' => "큰강 나루. 강을 가로지르는 육상 통로입니다.",
@@ -1030,6 +1048,7 @@ public sealed partial class EditMapScene
             var before = Draft();
             if (existing is not null) _sites.Remove(existing);
             _sites.Add(candidate);
+            FlattenSiteFootprint(candidate);
             if (existing is null) _nextSiteId++;
             RecordChange(before);
             RefreshSiteVisuals();
