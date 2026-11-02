@@ -92,6 +92,9 @@ public sealed partial class CampaignMapScene : Node3D
     private PanelContainer _cityQuickPanel = null!;
     private VBoxContainer _cityQuickList = null!;
     private string _cityQuickListKey = "";
+    private PanelContainer _sortieQuickPanel = null!;
+    private VBoxContainer _sortieQuickList = null!;
+    private string _sortieQuickListKey = "";
     private PanelContainer _reportPanel = null!;   // 좌하단 보고(삼국지11 오마주 결과창)
     private ScrollContainer _reportScroll = null!; // 보고 내용 스크롤(이전 내용 열람)
     private VBoxContainer _reportBox = null!;
@@ -17455,6 +17458,7 @@ public sealed partial class CampaignMapScene : Node3D
         var myCities = _state.CityCount(Player);
         _hudRuler.Text = $"{_state.Year}년 {_state.Month}월 {_state.DayOfMonth}일\n군주 {rulerName}\n점령 도시 {myCities}";
         RefreshCityQuickList();
+        RefreshSortieQuickList();
         _hudFace.Texture = ruler is not null ? CircularPortraitFor(ruler.Id) : null;
         _hudFacePanel.Visible = _hudFace.Texture is not null;
         _hudDate.Text = "";
@@ -18685,6 +18689,7 @@ public sealed partial class CampaignMapScene : Node3D
         AddClimateTestButtons(layer);
         AddAiTestCaseSelector(layer);
         BuildCityQuickList(layer);
+        BuildSortieQuickList(layer);
 
         // 좌상단 캐릭터 HUD에는 추가 텍스트를 붙이지 않는다.
         // _status/_log는 기존 코드의 상태 전달용 라벨로만 유지하고 화면 레이아웃에는 추가하지 않는다.
@@ -18911,6 +18916,81 @@ public sealed partial class CampaignMapScene : Node3D
                 _camera.FocusOn(_view.HexToWorld(destination));
             };
             _cityQuickList.AddChild(button);
+        }
+    }
+
+    private void BuildSortieQuickList(CanvasLayer layer)
+    {
+        _sortieQuickPanel = new PanelContainer
+        {
+            Position = new Vector2(12f, 160f),
+            CustomMinimumSize = new Vector2(340f, 0f),
+        };
+        _sortieQuickPanel.AddThemeStyleboxOverride("panel", Frame(new Color(Ink, 0.94f), Gold, 2, 8, 9));
+        layer.AddChild(_sortieQuickPanel);
+
+        var content = new VBoxContainer();
+        content.AddThemeConstantOverride("separation", 2);
+        _sortieQuickPanel.AddChild(content);
+        var toggle = MakeButton("▸ 출전 장수 목록");
+        toggle.Alignment = HorizontalAlignment.Left;
+        content.AddChild(toggle);
+        var rule = GoldRule();
+        rule.Visible = false;
+        content.AddChild(rule);
+
+        var scroll = new ScrollContainer
+        {
+            CustomMinimumSize = new Vector2(318f, 232f),
+            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+            SizeFlagsVertical = Control.SizeFlags.ExpandFill,
+            HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled,
+            VerticalScrollMode = ScrollContainer.ScrollMode.Auto,
+            Visible = false,
+        };
+        content.AddChild(scroll);
+        toggle.Pressed += () =>
+        {
+            scroll.Visible = !scroll.Visible;
+            rule.Visible = scroll.Visible;
+            toggle.Text = scroll.Visible ? "▾ 출전 장수 목록" : "▸ 출전 장수 목록";
+        };
+        var inset = new MarginContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+        inset.AddThemeConstantOverride("margin_right", 10);
+        scroll.AddChild(inset);
+        _sortieQuickList = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+        _sortieQuickList.AddThemeConstantOverride("separation", 2);
+        inset.AddChild(_sortieQuickList);
+    }
+
+    private void RefreshSortieQuickList()
+    {
+        var units = _state.Armies.Where(unit => unit.Field.Owner == Player && unit.VanguardId is not null)
+            .OrderBy(unit => unit.Id.Value).ToArray();
+        var key = string.Join("|", units.Select(unit => $"{unit.Id.Value}:{unit.VanguardId}:{unit.AdjutantId}"));
+        if (key == _sortieQuickListKey) return;
+        _sortieQuickListKey = key;
+        foreach (var child in _sortieQuickList.GetChildren())
+        {
+            _sortieQuickList.RemoveChild(child);
+            child.QueueFree();
+        }
+        foreach (var unit in units)
+        {
+            var unitId = unit.Id;
+            var vanguard = OfficerName(unit.VanguardId) ?? "장수";
+            var adjutant = OfficerName(unit.AdjutantId);
+            var button = MakeButton(adjutant is null ? vanguard : $"{vanguard} · {adjutant}");
+            button.Alignment = HorizontalAlignment.Left;
+            button.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+            button.Pressed += () =>
+            {
+                var current = _state.Armies.FirstOrDefault(army => army.Id == unitId);
+                if (current is null) return;
+                HidePanels();
+                _camera.FocusOn(_view.HexToWorld(current.Field.Position));
+            };
+            _sortieQuickList.AddChild(button);
         }
     }
 
