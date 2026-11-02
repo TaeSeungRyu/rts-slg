@@ -40,6 +40,15 @@ public class GeneralDataTests
     }
 
     [Fact]
+    public void 보조_무장은_무력75이하에서_액티브가_없다()
+    {
+        var support = All.Where(g => g.Id.Value is >= 306 and <= 544).ToArray();
+        Assert.Equal(239, support.Length);
+        Assert.All(support.Where(g => g.Might <= 75), g => Assert.Null(g.BattleActive));
+        Assert.Contains(support, g => g.Might > 75 && g.BattleActive is not null);
+    }
+
+    [Fact]
     public void 명단_규모_중국100플러스_한국15_일본4()
     {
         Assert.True(All.Count(g => g.Id.Value < 200) >= 100);

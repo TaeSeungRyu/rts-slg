@@ -178,6 +178,9 @@ internal sealed class AiTestFixture
         }).ToArray();
         // Concentrate officers at active border sites so the AI can actually form armies.
         var postings = new List<GeneralPosting>();
+        var recruitmentReserve = scenario.HeroUnlockList
+            .Where(hero => hero.General.Value >= 306 && hero.General.Value % 2 == 1)
+            .Select(hero => hero.General).ToHashSet();
         foreach (var faction in factions)
         {
             var enemies = cities.Where(city => city.Owner != faction.Id).ToArray();
@@ -191,6 +194,7 @@ internal sealed class AiTestFixture
                     && general.Id != japanRuler).Select(general => general.Id)
                     .OrderBy(id => id.Value).Prepend(japanRuler)
                 : scenario.Generals.Where(general => !japaneseRegions.Contains(general.Region)
+                    && !recruitmentReserve.Contains(general.Id)
                     && factions.All(owner => owner.Ruler != general.Id))
                     .Select(general => general.Id).OrderBy(id => id.Value)
                     .Where((_, index) => index % 2 == faction.Id.Value - 1)

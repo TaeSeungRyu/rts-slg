@@ -75,7 +75,8 @@ def main():
         aptitudes = {kind: 'C' for kind in ('infantry', 'archer', 'cavalry', 'elephant', 'siege', 'naval', 'supply', 'defense')}
         aptitudes[main_type] = 'A' if score(name, 4) % 4 == 0 else 'B'
         aptitudes['defense' if role != '문관' else 'siege'] = 'B' if score(name, 5) % 3 == 0 else 'C'
-        active = None if role == '문관' else ('brace' if score(name, 6) % 3 == 0 else 'heavy_blow')
+        active = None if role == '문관' or might <= 75 else (
+            'brace' if score(name, 6) % 3 == 0 else 'heavy_blow')
         passive = ('steadfast_guard' if role == '문관' else 'charge_drill' if role == '기병장' else 'drilled')
         admin = ('tuntian' if role == '문관' and score(name, 7) % 2 else 'pacifier' if role == '문관' else 'drillmaster')
         general = {

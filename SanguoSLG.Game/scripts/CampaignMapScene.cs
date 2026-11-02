@@ -867,6 +867,8 @@ public sealed partial class CampaignMapScene : Node3D
             var landCities = _state.Cities.Where(city => !city.IsPort).ToArray();
             var minCitySpacing = landCities.SelectMany((city, index) => landCities.Skip(index + 1)
                 .Select(other => city.Position.Distance(other.Position))).Min();
+            var recruitable = _state.HeroUnlocks.Count(hero =>
+                new HeroUnlockService().IsSatisfied(_state, hero, Player));
             var passed = renamedMapOk && cameraIntroOk && fogStable && _state.Factions.Count == 3 && _state.Cities.Count > 2
                 && _reportPanel.Visible && _cityQuickList.GetChildCount() == _state.Cities.Count(city => city.Owner == Player)
                 && _state.Placements.Count == _aiTestFixture?.MapPreset?.Sites.Count(site => site.Kind == "facility")
@@ -877,12 +879,11 @@ public sealed partial class CampaignMapScene : Node3D
                 && _aiTestFixture?.FullVision == false
                 && _visibleTiles.Count > 0 && _visibleTiles.Count < _map.Count
                 && _state.HeroUnlockDefinitions is { Count: > 0 }
-                && _state.HeroUnlockDefinitions.Any(hero =>
-                    new HeroUnlockService().IsSatisfied(_state, hero, Player));
+                && recruitable >= 10;
             GD.Print($"[newmap-qa] passed={passed} factions={_state.Factions.Count} "
                 + $"cities={_state.Cities.Count} cells={_map.Count} citySpacing={minCitySpacing} "
                 + $"visible={_visibleTiles.Count} scouted={_state.ScoutedCities?.Count ?? 0} "
-                + $"heroCandidates={_state.HeroUnlockDefinitions?.Count ?? 0} fogStable={fogStable} cameraIntro={cameraIntroOk} renamedMap={renamedMapOk} "
+                + $"heroCandidates={_state.HeroUnlockDefinitions?.Count ?? 0} recruitable={recruitable} fogStable={fogStable} cameraIntro={cameraIntroOk} renamedMap={renamedMapOk} "
                 + $"facilities={_state.Placements.Count}/{_aiTestFixture?.MapPreset?.Sites.Count(site => site.Kind == "facility")}");
             CallDeferred(nameof(QuitNewMapQa), passed);
         }
