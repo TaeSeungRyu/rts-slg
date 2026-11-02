@@ -1404,6 +1404,15 @@ public sealed partial class CampaignMapScene : Node3D
     // 좌클릭 → 지면 헥사 → 그 칸의 성. 내 성이면 명령 패널, 아니면 닫는다.
     public override void _Input(InputEvent @event)
     {
+        if (@event is InputEventMouseButton { Pressed: true,
+                ButtonIndex: MouseButton.WheelUp or MouseButton.WheelDown }
+            && _cmdMenu is not null && !_camera.IsNavigationInputBlocked)
+        {
+            _cmdMenu.Visible = false;
+            CloseGroupMenu();
+            _unitMenu.Visible = false;
+            _unitChoiceMenu.Visible = false;
+        }
         // 시스템 팔레트의 바깥 클릭은 GUI 자식의 MouseFilter 상태와 무관하게 가장 먼저 처리한다.
         // 제목줄 드래그/스크롤 컨테이너가 입력을 소비해도 팔레트 바깥은 항상 닫혀야 한다.
         if (@event is not InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left } mouse
