@@ -126,6 +126,8 @@ public static class AiFieldConstructionEvaluator
     private static bool AllowedTerrain(FieldBuildingKind kind, TerrainType terrain)
         => kind == FieldBuildingKind.ScoutPost
             ? terrain is TerrainType.Forest or TerrainType.Mountain
+            : kind == FieldBuildingKind.Watchtower
+            ? terrain is TerrainType.Plains or TerrainType.Forest or TerrainType.Desert or TerrainType.Mountain
             : terrain is TerrainType.Plains or TerrainType.Forest or TerrainType.Desert;
 
 }

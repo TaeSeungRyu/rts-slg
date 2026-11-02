@@ -140,6 +140,8 @@ public sealed class FieldConstructionService(
     private static bool CanBuildOn(FieldBuildingKind kind, TerrainType terrain)
         => kind == FieldBuildingKind.ScoutPost
             ? terrain is TerrainType.Forest or TerrainType.Mountain
+            : kind == FieldBuildingKind.Watchtower
+            ? terrain is TerrainType.Plains or TerrainType.Forest or TerrainType.Desert or TerrainType.Mountain
             : terrain is TerrainType.Plains or TerrainType.Forest or TerrainType.Desert;
 
     private static bool IsOccupied(GameState state, HexCoord position)

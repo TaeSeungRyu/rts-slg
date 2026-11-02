@@ -6171,7 +6171,7 @@ public sealed partial class CampaignMapScene : Node3D
     {
         FieldBuildingKind.Palisade => "주변 1칸의 이동력을 1 낮추는 목책입니다.",
         FieldBuildingKind.ScoutPost => "숲·산악에 설치해 완공 후 60일 동안 반경 2칸 시야를 제공합니다.",
-        FieldBuildingKind.Watchtower => "반경 2칸 아군 시야를 1 늘리는 감시탑입니다.",
+        FieldBuildingKind.Watchtower => "자체 시야 3칸, 주변 2칸 아군 시야 +1. 평지·숲·사막·이동 가능한 산에 설치할 수 있습니다.",
         FieldBuildingKind.Fort => "반경 2칸 군량 소모를 줄이고 아군 1부대를 보호하는 보루입니다.",
         FieldBuildingKind.Formation => "반경 1칸 적의 일부 병력을 부상으로 바꾸는 진법입니다.",
         _ => definition.Name,

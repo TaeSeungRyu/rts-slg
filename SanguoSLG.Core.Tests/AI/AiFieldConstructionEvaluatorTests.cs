@@ -65,8 +65,10 @@ public class AiFieldConstructionEvaluatorTests
                 candidate.DefinitionCode is "palisade" or "formation" or "watchtower");
     }
 
-    [Fact]
-    public void AI는_정찰된_전선에서도_보루와_정찰대를_후보로_삼지_않는다()
+    [Theory]
+    [InlineData(TerrainType.Forest)]
+    [InlineData(TerrainType.Mountain)]
+    public void AI는_정찰된_전선에서도_보루와_정찰대를_후보로_삼지_않는다(TerrainType terrain)
     {
         var state = State() with
         {
@@ -74,7 +76,7 @@ public class AiFieldConstructionEvaluatorTests
             ScoutedCities = [new CityIntel(new(1), new(2), 100)],
         };
         var forestMap = new HexMap(-2, 12, -4, 4,
-            new Dictionary<HexCoord, TerrainType> { [new(3, 0)] = TerrainType.Forest });
+            new Dictionary<HexCoord, TerrainType> { [new(3, 0)] = terrain });
 
         var candidates = AiFieldConstructionEvaluator.Evaluate(state, new(1), forestMap,
             Definitions, new HashSet<HexCoord>());

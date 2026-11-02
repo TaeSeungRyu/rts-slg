@@ -38,7 +38,12 @@ public sealed class BattlefieldVision(BalanceConfig balance, IReadOnlyList<Troop
         foreach (var building in completedBuildings)
         {
             if (!_fieldBuildings.TryGetValue(building.DefinitionCode, out var definition)) continue;
-            Reveal(building.Position, definition.Kind == FieldBuildingKind.ScoutPost ? definition.EffectRadius : 1);
+            Reveal(building.Position, definition.Kind switch
+            {
+                FieldBuildingKind.ScoutPost => definition.EffectRadius,
+                FieldBuildingKind.Watchtower => 3,
+                _ => 1,
+            });
         }
         foreach (var unit in state.Armies.Where(u => u.Field.Owner == viewer && u.Pool.Active > 0 && !u.IsWaitingDeployment))
         {

@@ -116,7 +116,7 @@ public sealed class FieldBuildingStage4Tests
 
     [Theory]
     [InlineData("palisade", 7)]
-    [InlineData("watchtower", 7)]
+    [InlineData("watchtower", 37)]
     [InlineData("fort", 7)]
     [InlineData("formation", 7)]
     [InlineData("scout_post", 19)]
@@ -186,6 +186,18 @@ public sealed class FieldBuildingStage4Tests
         var visible = vision.VisibleTiles(state, Player, new HexMap(-8, 8, -8, 8));
         Assert.Contains(new HexCoord(4, 0), visible);
         Assert.DoesNotContain(new HexCoord(5, 0), visible);
+    }
+
+    [Fact]
+    public void 감시탑은_주둔부대_없이_자체_시야_세칸을_제공한다()
+    {
+        var troops = new TroopTypeLoader().LoadFromDirectory(TestData.DataDirectory());
+        var vision = new BattlefieldVision(new BalanceConfig(0), troops, Definitions);
+        var state = new GameState(1, 190, [], [], [],
+            FieldBuildings: [Building("watchtower", Player, default)]);
+        var visible = vision.VisibleTiles(state, Player, new HexMap(-5, 5, -5, 5));
+        Assert.Contains(new HexCoord(3, 0), visible);
+        Assert.DoesNotContain(new HexCoord(4, 0), visible);
     }
 
     [Fact]

@@ -23,6 +23,18 @@ public sealed class FieldConstructionServiceTests
     private static FieldConstructionService Service(TerrainType terrain = TerrainType.Plains)
         => new(Definitions, _ => terrain);
 
+    [Theory]
+    [InlineData(TerrainType.Forest, true)]
+    [InlineData(TerrainType.Mountain, true)]
+    [InlineData(TerrainType.RockMountain, false)]
+    public void 감시탑은_이동가능한_숲과_산악에_건설된다(TerrainType terrain, bool expected)
+    {
+        var unit = Unit() with { CargoGold = 150 };
+        var result = Service(terrain).Start(State(unit), Player,
+            new(unit.Id, "watchtower", new HexCoord(3, 2)));
+        Assert.Equal(expected, result.Ok);
+    }
+
     [Fact]
     public void 병력_천명_경계와_해상부대를_검증한다()
     {
