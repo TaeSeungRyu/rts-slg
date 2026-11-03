@@ -6,6 +6,7 @@ public sealed partial class ScenarioStartMenu
 {
     private bool _campaignLoading;
     private static CanvasLayer? _loadingLayer;
+    public static bool IsLoadingVisible => _loadingLayer is not null && GodotObject.IsInstanceValid(_loadingLayer);
 
     private async void ChangeToCampaign()
     {

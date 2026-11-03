@@ -7,7 +7,8 @@ public sealed partial class ScenarioStartMenu
     // Place a Godot-compatible intro.ogv here later. Without it the menu opens immediately.
     private void ShowOptionalIntro(Control menuCenter)
     {
-        if (OS.GetCmdlineUserArgs().Contains("--startmenuqa")) return;
+        if (OS.GetCmdlineUserArgs().Contains("--startmenuqa")
+            || OS.GetCmdlineUserArgs().Contains("--menulaunchqa")) return;
         const string path = "res://assets/video/intro.ogv";
         if (!ResourceLoader.Exists(path)) return;
         var video = new VideoStreamPlayer { Stream = GD.Load<VideoStream>(path), Expand = true };

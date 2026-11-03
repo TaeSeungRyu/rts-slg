@@ -745,6 +745,7 @@ public sealed partial class CampaignMapScene : Node3D
         }
         else camera.Setup(_view.HexToWorld(new HexCoord(4, 2)), 14f);
         Redraw("자기 성(파란색)을 클릭해 명령을 내리세요. 적(촉)은 AI입니다.");
+        if (args.Contains("--menulaunchqa")) CallDeferred(nameof(RunMenuLaunchQa));
         if (args.Contains("--maptestgaugelifetimeqa")) CallDeferred(nameof(RunActiveGaugeLifetimeQa));
         if (args.Contains("--maptestgaugeprogressqa")) CallDeferred(nameof(RunActiveGaugeProgressQa));
         if (args.Contains("--maptestsiegeactivepresentationqa")) CallDeferred(nameof(RunSiegeActivePresentationQa));
@@ -9537,6 +9538,20 @@ public sealed partial class CampaignMapScene : Node3D
     }
 
     // ── 시스템 팔레트: 좌상단 트레이(☰)에서 열림 — 전체 장수·도시·보물 목록(+저장/불러오기) ──
+    private void RunMenuLaunchQa()
+    {
+        var ruler = _state.Factions.FirstOrDefault(faction => faction.Id == Player)?.Ruler;
+        var rulerCity = ruler is { } id ? _state.PostingOf(id)?.Location : null;
+        var startCity = _state.Cities.FirstOrDefault(city => city.Id == rulerCity && city.Owner == Player)
+            ?? _state.Cities.FirstOrDefault(city => city.Owner == Player);
+        var passed = startCity is not null && _camera.IsIntroZoomPlaying
+            && _camera.FocusPivot.DistanceTo(_view.HexToWorld(startCity.Position)) < 0.01f
+            && ScenarioStartMenu.IsLoadingVisible && ScenarioStartMenu.CampaignStartedFromMenu
+            && !string.IsNullOrWhiteSpace(_state.ScenarioTitle);
+        GD.Print($"[menu-launch-qa] passed={passed} scenario={_state.ScenarioTitle} cameraIntro={_camera.IsIntroZoomPlaying} loading={ScenarioStartMenu.IsLoadingVisible}");
+        GetTree().Quit(passed ? 0 : 1);
+    }
+
     private void OpenSystemPalette()
     {
         if (_advancing) { return; }
