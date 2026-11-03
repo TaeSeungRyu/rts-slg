@@ -95,4 +95,22 @@ public sealed class GenericRecruitmentTests
             secondGeneral.Politics, secondGeneral.PortraitPath));
         Assert.Equal(1, first.State.Generals.Count(g => g.Name == firstGeneral.Name));
     }
+
+    [Fact]
+    public void 반복_모집에서는_두_글자_이름이_더_많고_중복되지_않는다()
+    {
+        var (state, city, actor) = Setup(100000);
+        var names = new List<string>();
+        for (var month = 0; month < 40; month++)
+        {
+            state = state with { Day = month * GameState.DaysPerMonth + 1 };
+            var currentCity = state.Cities.Single(c => c.Id == city.Id);
+            var result = GenericRecruitmentService.Recruit(state, currentCity, actor, month % 2 == 0);
+            Assert.True(result.Ok, result.Error);
+            state = result.State;
+            names.Add(state.Generals.Last().Name);
+        }
+        Assert.True(names.Count(name => name.Length == 2) > names.Count(name => name.Length == 3));
+        Assert.Equal(names.Count, names.Distinct().Count());
+    }
 }

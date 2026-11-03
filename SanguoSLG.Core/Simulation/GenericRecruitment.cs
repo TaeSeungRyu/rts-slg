@@ -22,6 +22,12 @@ public static class GenericRecruitmentService
         "영준", "덕창", "현도", "승문", "태안", "원직", "사홍",
     ];
 
+    private static readonly string[] ShortGivenNames =
+    [
+        "민", "준", "헌", "정", "원", "평", "선", "유", "창", "도",
+        "안", "직", "홍", "명", "경",
+    ];
+
     private static readonly string[] MartialActives = ["heavy_blow", "double_hit", "brace", "patch"];
     private static readonly string[] MartialPassives =
         ["drilled", "war_cry", "grit", "plainsman", "teamwork", "guard_drill", "endurance", "shield_basics"];
@@ -44,8 +50,13 @@ public static class GenericRecruitmentService
             seed = unchecked((seed ^ (uint)value) * 16777619u);
         var random = new Random(unchecked((int)seed));
         var taken = state.Generals.Select(g => g.Name).ToHashSet(StringComparer.Ordinal);
-        var names = (from surname in Surnames from given in GivenNames select surname + given)
+        var preferred = random.Next(100) < 70 ? ShortGivenNames : GivenNames;
+        var fallback = ReferenceEquals(preferred, ShortGivenNames) ? GivenNames : ShortGivenNames;
+        var names = (from surname in Surnames from given in preferred select surname + given)
             .Where(name => !taken.Contains(name)).ToArray();
+        if (names.Length == 0)
+            names = (from surname in Surnames from given in fallback select surname + given)
+                .Where(name => !taken.Contains(name)).ToArray();
         var name = names.Length > 0 ? names[random.Next(names.Length)] : $"진자명{id.Value}";
         var might = random.Next(martial ? 50 : 20, martial ? 76 : 36);
         var intellect = random.Next(martial ? 20 : 50, martial ? 46 : 76);
