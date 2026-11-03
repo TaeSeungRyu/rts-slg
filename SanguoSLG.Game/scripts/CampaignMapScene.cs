@@ -8165,6 +8165,18 @@ public sealed partial class CampaignMapScene : Node3D
         _supplyProvisionGuide = MakeLabel("", 12, Parchment);
         _supplyProvisionGuide.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         box.AddChild(_supplyProvisionGuide);
+        var supportPreset = MakeButton("2만 명 · 60일 지원 군량 자동 선택");
+        supportPreset.Pressed += () =>
+        {
+            var daily = SupplyDraftDailyConsumption();
+            if (daily <= 0) { ShowNotice("보급 군량", "먼저 보급부대 병력을 편성하세요."); return; }
+            var transfer = 20_000 * _provPer10kPerDay / 10_000d;
+            var required = (int)System.Math.Ceiling((daily + transfer) * 60);
+            _depProvDays = System.Math.Min(SupplyMaxCarryDays(), (int)System.Math.Ceiling(required / daily));
+            _depProvSlider?.SetValueNoSignal(_depProvDays);
+            UpdateSupplyPreview();
+        };
+        box.AddChild(supportPreset);
         SyncSupplyProvisionSlider();
         _depGoldSpin = AddGoldCargoSelector(box, city, _depGold, value => { _depGold = value; UpdateSupplyPreview(); });
         AddDeploymentDelaySelector(box, _depDelayDays, value => _depDelayDays = value);
@@ -13345,11 +13357,12 @@ public sealed partial class CampaignMapScene : Node3D
         if (_supplyProvisionGuide is not null)
         {
             var targetDaily = 20_000 * _provPer10kPerDay * _balance.SupplyConservationPercent / 1_000_000d;
+            var transferDaily = 20_000 * _provPer10kPerDay / 10_000d;
             var sourceDaily = SupplyDraftDailyConsumption();
-            var required = (int)System.Math.Ceiling((sourceDaily + targetDaily) * 60);
+            var required = (int)System.Math.Ceiling((sourceDaily + transferDaily) * 60);
             var gap = provisions - required;
             _supplyProvisionGuide.Text = "반경 3칸의 아군은 군량 소비 30% 절감 · 보급부대도 자체 군량을 소비합니다.\n"
-                + $"2만 명 1부대 · 60일 지원 예시(대상 군량 0, 다른 보급 없음): 대상 하루 {targetDaily:0.#} + 보급부대 하루 {sourceDaily:0.#}"
+                + $"2만 명 1부대 · 60일 지원 예시(대상 군량 0): 하루 최대 지급 {transferDaily:0.#}(대상 소비 {targetDaily:0.#}) + 보급부대 자체 소비 {sourceDaily:0.#}"
                 + $" → 필요 군량 약 {required:N0} · 현재 선택 {provisions:N0} ({(gap >= 0 ? $"여유 {gap:N0}" : $"부족 {-gap:N0}")})";
         }
         var (gradeText, efficiency, skills) = _depVan is { } vanId
@@ -13424,7 +13437,7 @@ public sealed partial class CampaignMapScene : Node3D
             weighted += (long)(template?.ProvisionsCapacity ?? 300) * amount;
         }
         var baseCapacity = (int)(weighted / total);
-        var capacity = baseCapacity * total / 10000 * 5;
+        var capacity = baseCapacity * total / 10000 * CombatUnit.SupplyCarryMultiplier;
         return SupplyLogisticsRules.Apply(capacity, SupplyEfficiencyForSelectedSupplyLeader());
     }
 

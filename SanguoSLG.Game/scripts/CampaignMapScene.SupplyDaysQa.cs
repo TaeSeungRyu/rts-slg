@@ -22,17 +22,17 @@ public sealed partial class CampaignMapScene
         var planned = SupplyProvisionDaysFromAmount(provisions);
         var deployed = EstimateCarriedProvisionDays(unit);
         _state = _state with { Cities = _state.Cities.Select(c => c.Id == city.Id
-            ? c with { Provisions = System.Math.Max(c.Provisions, 2100) } : c).ToArray() };
-        _supplyDraft["swordsman"] = 20_000;
-        _depProvDays = 120;
+            ? c with { Provisions = System.Math.Max(c.Provisions, 1575) } : c).ToArray() };
+        _supplyDraft["swordsman"] = 5_000;
+        _depProvDays = 403;
         var carry = SupplyProvisionsToCarry();
-        var sample = unit with { Pool = new TroopPool(20_000, 0), ProvisionsCapacity = 210 };
+        var sample = unit with { Pool = new TroopPool(5_000, 0), ProvisionsCapacity = 210 };
         var capacityMatches = SupplyCapacityForDraft() == sample.MaxProvisions()
-            && SupplyCapacityForDraft() == 2100;
-        var targetDaily = 20_000 * _provPer10kPerDay * _balance.SupplyConservationPercent / 1_000_000d;
-        var demand = (int)System.Math.Ceiling((SupplyDraftDailyConsumption() + targetDaily) * 60);
+            && SupplyCapacityForDraft() == 1575;
+        var transferDaily = 20_000 * _provPer10kPerDay / 10_000d;
+        var demand = (int)System.Math.Ceiling((SupplyDraftDailyConsumption() + transferDaily) * 60);
         var passed = planned == deployed && planned >= 9 && planned <= 11
-            && capacityMatches && carry == 1680 && demand == carry;
+            && capacityMatches && carry >= demand && carry <= demand + 3;
         GD.Print($"[supply-days-qa] passed={passed} planned={planned} deployed={deployed} capacity={SupplyCapacityForDraft()} carry={carry} demand={demand}");
         GetTree().Quit(passed ? 0 : 1);
     }

@@ -153,13 +153,34 @@ public class ProvisionsTests
     }
 
     [Fact]
-    public void 보급부대는_5배_적재한다()
+    public void 보급부대는_15배_적재한다()
     {
-        // 적재능력 300 · 1만 병력 · 보급부대 → 최대 1500(×5).
+        // 적재능력 300 · 1만 병력 · 보급부대 → 최대 4500(×15).
         var supply = Supply(1, new HexCoord(0, 0), provisions: 0);
-        Assert.Equal(1500, supply.MaxProvisions());
+        Assert.Equal(4500, supply.MaxProvisions());
         // 일반 부대(같은 병종)는 300.
         var normal = March(2, new HexCoord(0, 0), new HexCoord(0, 0), provisions: 0) with { ProvisionsCapacity = 300 };
         Assert.Equal(300, normal.MaxProvisions());
+    }
+
+    [Fact]
+    public void 보급부대_5천명은_군량이_없는_아군_2만명을_60일_지원한다()
+    {
+        var source = Supply(1, new HexCoord(0, 0), provisions: 0, troops: 5000)
+            with { ProvisionsCapacity = 210 };
+        source = source with { Provisions = source.MaxProvisions() };
+        Assert.Equal(1575, source.Provisions);
+        var recipient = March(2, new HexCoord(1, 0), new HexCoord(1, 0),
+            troops: 20000, provisions: 0) with { ProvisionsCapacity = 210 };
+        IReadOnlyList<CombatUnit> units = [source, recipient];
+        for (var day = 0; day < 60; day++)
+        {
+            var turn = Orchestrator().RunWithProvisionDays(units, 0, null, null, null,
+                null, null, day, 1);
+            Assert.Empty(turn.Starvation);
+            units = turn.Units;
+        }
+        Assert.Equal(5000, units.Single(u => u.IsSupply).Pool.Active);
+        Assert.Equal(20000, units.Single(u => !u.IsSupply).Pool.Active);
     }
 }

@@ -91,9 +91,11 @@ public sealed record CombatUnit(
     public int ProvisionsUpkeepPercent => IsTransport ? 50 : SupplyUpkeepPercent;
 
     /// <summary>이 부대의 최대 휴대 군량(적재능력 × 병력 비례, 보급부대는 ×배수). design-unit-state 1단계-보급.</summary>
-    public int MaxProvisions(int supplyMultiplier = 5)
+    public const int SupplyCarryMultiplier = 15;
+
+    public int MaxProvisions()
     {
-        var baseCapacity = ProvisionsCapacity * Pool.Active / 10000 * (IsSupply ? supplyMultiplier : 1);
+        var baseCapacity = ProvisionsCapacity * Pool.Active / 10000 * (IsSupply ? SupplyCarryMultiplier : 1);
         return IsSupply ? SupplyLogisticsRules.Apply(baseCapacity, SupplyEfficiencyPercent) : baseCapacity;
     }
 }
