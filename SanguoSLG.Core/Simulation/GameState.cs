@@ -54,8 +54,10 @@ public sealed record GameState(
     int HumanFactionId = 1,
     IReadOnlyList<ArmyCorps>? ArmyCorpsList = null,
     ScenarioMapPreset? MapPresetSnapshot = null,
-    IReadOnlyList<HiddenFactionArrival>? HiddenFactionArrivals = null)
+    IReadOnlyList<HiddenFactionArrival>? HiddenFactionArrivals = null,
+    IReadOnlyList<GenericRecruitment>? GenericRecruitments = null)
 {
+    public IReadOnlyList<GenericRecruitment> GenericRecruitmentHistory => GenericRecruitments ?? [];
     public IReadOnlyList<ArmyCorps> Corps => ArmyCorpsList ?? [];
     /// <summary>건설한 시설이 놓인 성 주변 타일(표현 계층이 모델을 얹는다). 건설 완료 시 append.</summary>
     public IReadOnlyList<FacilityPlacement> Placements => FacilityPlacements ?? [];

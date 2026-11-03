@@ -77,4 +77,7 @@ public enum CommandKind
 
     /// <summary>장수를 같은 세력의 다른 성·항구로 행정 이동한다.</summary>
     TransferGeneral,
+
+    RecruitMartial,
+    RecruitCivil,
 }

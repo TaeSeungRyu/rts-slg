@@ -130,6 +130,9 @@ public sealed class CommandService
             return RecruitHero(state, city, req);
         }
 
+        if (req.Kind is CommandKind.RecruitMartial or CommandKind.RecruitCivil)
+            return GenericRecruitmentService.Recruit(state, city, req.Main, req.Kind == CommandKind.RecruitMartial);
+
         if (req.Kind == CommandKind.TransferGeneral)
         {
             return IssueTransferGeneral(state, city, main, req);
