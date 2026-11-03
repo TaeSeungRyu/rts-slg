@@ -251,7 +251,7 @@ void fragment() {
         MenuItem("장수 에디터", () => EnterEditor(GetTree(), "res://GeneralEditor.tscn"));
         MenuItem("지형 에디터", () => EnterEditor(GetTree(), "res://EditMap.tscn"));
         MenuItem("시나리오 에디터", () => EnterEditor(GetTree(), "res://ScenarioEditor.tscn"));
-        var back = new Button { Text = "◀ 메인 화면", CustomMinimumSize = new Vector2(0, 36) };
+        var back = new Button { Text = "← 메인 메뉴", CustomMinimumSize = new Vector2(140, 36) };
         back.Pressed += () => { center.Visible = false; menuCenter.Visible = true; };
         content.AddChild(back);
         ShowOptionalIntro(menuCenter);

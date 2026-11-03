@@ -30,7 +30,7 @@ public sealed partial class ScenarioStartMenu
         var title = new Label { Text = "저장된 게임 시작하기", SizeFlagsHorizontal = SizeFlags.ExpandFill };
         title.AddThemeFontSizeOverride("font_size", 23);
         header.AddChild(title);
-        var close = new Button { Text = "✕" };
+        var close = new Button { Text = "← 메인 메뉴", CustomMinimumSize = new Vector2(140, 36) };
         close.Pressed += () => { center.QueueFree(); _loadView = null; menuCenter.Visible = true; };
         header.AddChild(close);
         content.AddChild(new HSeparator());
