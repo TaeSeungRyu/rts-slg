@@ -701,6 +701,7 @@ public sealed partial class CampaignMapScene : Node3D
                 .Select(r => new RuinState(r.Id, r.MaxDefenders)).ToList(),
             MapPresetSnapshot = _scenarioOverride?.MapPreset?.Snapshot()
                 ?? _aiTestFixture?.MapPreset?.Snapshot() ?? _initial.MapPresetSnapshot,
+            ScenarioTitle = _scenarioOverride is null ? null : _scenarioTitle,
         };
         if (_loadedState is not null) _state = _loadedState;
         if (_aiTestFixture is not null && _scenarioOverride is null && !args.Contains("--newmap"))
@@ -3911,6 +3912,7 @@ public sealed partial class CampaignMapScene : Node3D
     private static Scenario? _scenarioOverride;
     private static GameState? _loadedState;
     private static int _scenarioStartYear = 190;
+    private static string? _scenarioTitle;
     private static int _scenarioStartDay = 1;
     private static GameDifficulty _scenarioDifficulty = GameDifficulty.Normal;
     private static AiTestFixture? _aiTestFixture = OS.GetCmdlineUserArgs().Contains("--newmap")
@@ -3920,11 +3922,13 @@ public sealed partial class CampaignMapScene : Node3D
     public static ScenarioMapPreset? TestMapPreset => _aiTestFixture?.MapPreset;
 
     public static void ConfigureScenario(Scenario scenario, int playerFactionId, int startYear,
-        int startMonth, int startDay, GameDifficulty difficulty = GameDifficulty.Normal)
+        int startMonth, int startDay, GameDifficulty difficulty = GameDifficulty.Normal,
+        string? scenarioTitle = null)
     {
         _scenarioOverride = scenario;
         Player = new FactionId(playerFactionId);
         _scenarioStartYear = startYear;
+        _scenarioTitle = scenarioTitle;
         _scenarioStartDay = (startMonth - 1) * 30 + startDay;
         _scenarioDifficulty = difficulty;
         _aiTestFixture = AiTestFixture.FromScenario(scenario);

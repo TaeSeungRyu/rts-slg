@@ -95,7 +95,7 @@ public partial class GameRoot3D : Node3D
                 }
                 var selectedScenario = ScenarioDraftApplier.Apply(source, draft, map.Preset);
                 CampaignMapScene.ConfigureScenario(selectedScenario, ScenarioStartMenu.SelectedPlayerFactionId,
-                    draft.StartYear, draft.StartMonth, draft.StartDay, ScenarioStartMenu.SelectedDifficulty);
+                    draft.StartYear, draft.StartMonth, draft.StartDay, ScenarioStartMenu.SelectedDifficulty, draft.Title);
                 BuildCampaignMap();
             }
             catch (Exception error)

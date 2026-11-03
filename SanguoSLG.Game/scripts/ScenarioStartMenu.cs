@@ -5,9 +5,11 @@ namespace SanguoSLG.Game;
 public sealed partial class ScenarioStartMenu : Control
 {
     private static bool _launchRequested;
+    public static bool CampaignStartedFromMenu { get; private set; }
     public static string? SelectedPresetPath { get; private set; }
     public static string? SelectedScenarioPath { get; private set; }
     public static int SelectedPlayerFactionId { get; private set; } = 1;
+    public static string? SelectedScenarioTitle { get; private set; }
     public static SanguoSLG.Core.Simulation.GameDifficulty SelectedDifficulty { get; private set; }
     public static bool LoadSlotsOnStart { get; private set; }
     public static bool FromStartMenu { get; private set; }
@@ -33,8 +35,19 @@ public sealed partial class ScenarioStartMenu : Control
     {
         SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
         MouseFilter = MouseFilterEnum.Stop;
-        var background = new ColorRect { Color = new Color("172c2d") };
+        var background = new ColorRect();
         background.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+        background.Material = new ShaderMaterial { Shader = new Shader { Code = """
+shader_type canvas_item;
+void fragment() {
+    vec2 p = UV;
+    float drift = sin(p.x * 9.0 + TIME * 0.16) * 0.025;
+    float ridge = smoothstep(0.53, 0.56, p.y + sin(p.x * 9.0 + TIME * 0.05) * 0.028);
+    float near_ridge = smoothstep(0.76, 0.79, p.y + sin(p.x * 15.0 - TIME * 0.035) * 0.018);
+    vec3 sky = mix(vec3(0.075, 0.15, 0.16), vec3(0.18, 0.27, 0.25), p.y + drift);
+    COLOR = vec4(mix(mix(sky, vec3(0.09, 0.16, 0.15), ridge * 0.65), vec3(0.045, 0.085, 0.08), near_ridge * 0.8), 1.0);
+}
+""" } };
         AddChild(background);
         var center = new CenterContainer();
         center.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
@@ -46,10 +59,11 @@ public sealed partial class ScenarioStartMenu : Control
         style.SetContentMarginAll(25);
         panel.AddThemeStyleboxOverride("panel", style);
         center.AddChild(panel);
+        center.Visible = false;
         var content = new VBoxContainer();
         content.AddThemeConstantOverride("separation", 15);
         panel.AddChild(content);
-        var title = new Label { Text = "삼국지 시나리오" , HorizontalAlignment = HorizontalAlignment.Center };
+        var title = new Label { Text = "새 게임 시작하기" , HorizontalAlignment = HorizontalAlignment.Center };
         title.AddThemeFontSizeOverride("font_size", 27);
         content.AddChild(title);
         content.AddChild(new HSeparator());
@@ -87,7 +101,7 @@ public sealed partial class ScenarioStartMenu : Control
                         Path.GetFullPath(Path.Combine(ProjectSettings.GlobalizePath("res://"), "..", "data")))
                         .Factions.Select(f => (f.Id.Value, f.Name))
                     : SanguoSLG.Core.Data.ScenarioDraftStore.Load(selectedPath).Factions
-                        .Where(f => f.Playable).Select(f => (f.Id, f.Name));
+                        .Where(f => f.Playable && !f.Hidden).Select(f => (f.Id, f.Name));
                 foreach (var (id, name) in factions) factionChoice.AddItem(name, id);
                 factionChoice.Select(0);
             }
@@ -124,63 +138,81 @@ public sealed partial class ScenarioStartMenu : Control
         var start = new Button { Text = "게임 시작", CustomMinimumSize = new Vector2(0, 48) };
         start.Pressed += () =>
         {
-            if (scenarioChoice.Selected == 0)
+            if (factionChoice.ItemCount == 0)
             {
-                try
+                error.Text = "시작 가능한 세력이 없습니다.";
+                return;
+            }
+            try
+            {
+                var data = Path.GetFullPath(Path.Combine(ProjectSettings.GlobalizePath("res://"), "..", "data"));
+                var source = CreatedGeneralPresets.ApplyAtNewGame(
+                    new SanguoSLG.Core.Data.ScenarioLoader().LoadFromDirectory(data));
+                var archive = new SanguoSLG.Core.Data.ScenarioMapArchive(
+                    ProjectSettings.GlobalizePath("user://maps"), scenarioDir);
+                var selectedPath = scenarioPaths[scenarioChoice.Selected];
+                var map = selectedPath is null ? ScenarioRootMapSource.OpenVersion(archive) : null;
+                var draft = selectedPath is null
+                    ? SanguoSLG.Core.Data.ScenarioDraftApplier.CreateSeed("default-190", "190년 기본", source, map!)
+                    : SanguoSLG.Core.Data.ScenarioDraftStore.Load(selectedPath);
+                if (map is null)
                 {
-                    var preset = ScenarioRootMapSource.Load();
-                    if (!preset.Sites.Any(site => site.Kind is "city" or "port"))
-                        throw new InvalidDataException("지도에 성 또는 항구가 없습니다.");
+                    if (SanguoSLG.Core.Data.ScenarioRootMapBinding.UsesRoot(draft.MapId))
+                    {
+                        map = ScenarioRootMapSource.OpenVersion(archive);
+                        draft = SanguoSLG.Core.Data.ScenarioRootMapBinding.Bind(draft, map,
+                            ScenarioRootMapSource.PreviousVersion(archive, draft));
+                    }
+                    else map = archive.Load(draft.MapId, draft.MapRevision);
                 }
-                catch (Exception failure)
-                {
-                    error.Text = "맵을 열 수 없습니다: " + failure.Message;
-                    return;
-                }
+                SanguoSLG.Core.Data.ScenarioDraftApplier.Apply(source, draft, map.Preset);
+            }
+            catch (Exception failure)
+            {
+                error.Text = "시나리오 시작 불가: " + failure.Message;
+                return;
             }
             SelectedPresetPath = scenarioChoice.Selected == 0 ? mapPath : null;
             SelectedScenarioPath = scenarioPaths[scenarioChoice.Selected];
             SelectedPlayerFactionId = factionChoice.GetSelectedId();
+            SelectedScenarioTitle = scenarioChoice.GetItemText(scenarioChoice.Selected);
             SelectedDifficulty = (SanguoSLG.Core.Simulation.GameDifficulty)difficulty.GetSelectedId();
             _launchRequested = true;
+            CampaignStartedFromMenu = true;
             GetTree().ReloadCurrentScene();
         };
         content.AddChild(start);
-        var load = new Button { Text = "게임 불러오기", CustomMinimumSize = new Vector2(0, 36) };
-        load.Pressed += () =>
+        var menuCenter = new CenterContainer();
+        menuCenter.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+        AddChild(menuCenter);
+        var menuPanel = new PanelContainer { CustomMinimumSize = new Vector2(440, 0) };
+        menuPanel.AddThemeStyleboxOverride("panel", style);
+        menuCenter.AddChild(menuPanel);
+        var menu = new VBoxContainer();
+        menu.AddThemeConstantOverride("separation", 11);
+        menuPanel.AddChild(menu);
+        var gameTitle = new Label { Text = "삼국지", HorizontalAlignment = HorizontalAlignment.Center };
+        gameTitle.AddThemeFontSizeOverride("font_size", 40);
+        gameTitle.AddThemeColorOverride("font_color", new Color("e5c985"));
+        menu.AddChild(gameTitle);
+        menu.AddChild(new Label { Text = "영웅의 시대", HorizontalAlignment = HorizontalAlignment.Center });
+        menu.AddChild(new HSeparator());
+        void MenuItem(string label, Action pressed)
         {
-            LoadSlotsOnStart = true;
-            SelectedScenarioPath = null;
-            SelectedPresetPath = null;
-            SelectedPlayerFactionId = 1;
-            SelectedDifficulty = SanguoSLG.Core.Simulation.GameDifficulty.Normal;
-            _launchRequested = true;
-            GetTree().ReloadCurrentScene();
-        };
-        content.AddChild(load);
-        var scenarioEditor = new Button { Text = "시나리오 에디터", CustomMinimumSize = new Vector2(0, 36) };
-        scenarioEditor.Pressed += () => EnterEditor(GetTree(), "res://ScenarioEditor.tscn");
-        content.AddChild(scenarioEditor);
-        var map = new Button { Text = "지도 에디터", CustomMinimumSize = new Vector2(0, 36) };
-        map.Pressed += () =>
-        {
-            EnterEditor(GetTree(), "res://EditMap.tscn");
-        };
-        content.AddChild(map);
-        var general = new Button { Text = "장수 편집", CustomMinimumSize = new Vector2(0, 36) };
-        general.Pressed += () =>
-        {
-            EnterEditor(GetTree(), "res://GeneralEditor.tscn");
-        };
-        content.AddChild(general);
-        var createGeneral = new Button { Text = "신규 장수 추가", CustomMinimumSize = new Vector2(0, 36) };
-        createGeneral.Pressed += () =>
-        {
-            EnterEditor(GetTree(), "res://GeneralCreator.tscn");
-        };
-        content.AddChild(createGeneral);
-        content.MoveChild(general, content.GetChildCount() - 4);
-        content.MoveChild(createGeneral, content.GetChildCount() - 3);
+            var button = new Button { Text = label, CustomMinimumSize = new Vector2(0, 46) };
+            button.AddThemeFontSizeOverride("font_size", 17);
+            button.Pressed += pressed;
+            menu.AddChild(button);
+        }
+        MenuItem("새 게임 시작하기", () => { menuCenter.Visible = false; center.Visible = true; });
+        MenuItem("저장된 게임 시작하기", () => OpenLoadSlots(menuCenter));
+        MenuItem("신규장수 등록", () => EnterEditor(GetTree(), "res://GeneralCreator.tscn"));
+        MenuItem("장수 에디터", () => EnterEditor(GetTree(), "res://GeneralEditor.tscn"));
+        MenuItem("지형 에디터", () => EnterEditor(GetTree(), "res://EditMap.tscn"));
+        MenuItem("시나리오 에디터", () => EnterEditor(GetTree(), "res://ScenarioEditor.tscn"));
+        var back = new Button { Text = "◀ 메인 화면", CustomMinimumSize = new Vector2(0, 36) };
+        back.Pressed += () => { center.Visible = false; menuCenter.Visible = true; };
+        content.AddChild(back);
         if (OS.GetCmdlineUserArgs().Contains("--startmenuqa")) CallDeferred(nameof(RunQa));
     }
 
@@ -198,13 +230,11 @@ public sealed partial class ScenarioStartMenu : Control
     {
         var buttons = FindChildren("*", "Button", true, false).OfType<Button>().Select(button => button.Text).ToArray();
         var scenarios = FindChildren("*", "OptionButton", true, false).OfType<OptionButton>().FirstOrDefault();
-        var passed = buttons.Contains("게임 시작") && buttons.Contains("게임 불러오기")
-            && scenarios?.ItemCount == 7
-            && buttons.Contains("지도 에디터")
-            && buttons.Contains("시나리오 에디터") && buttons.Contains("장수 편집")
-            && buttons.Contains("신규 장수 추가")
-            && buttons.TakeLast(6).SequenceEqual(new[] { "게임 시작", "게임 불러오기",
-                "장수 편집", "신규 장수 추가", "시나리오 에디터", "지도 에디터" });
+        var passed = buttons.Contains("게임 시작") && buttons.Contains("새 게임 시작하기")
+            && scenarios?.ItemCount >= 1
+            && buttons.Contains("지형 에디터")
+            && buttons.Contains("시나리오 에디터") && buttons.Contains("장수 에디터")
+            && buttons.Contains("신규장수 등록") && buttons.Contains("저장된 게임 시작하기");
         GD.Print($"[scenario-start-qa] passed={passed} buttons={buttons.Length}");
         GetTree().Quit(passed ? 0 : 1);
     }
@@ -213,6 +243,7 @@ public sealed partial class ScenarioStartMenu : Control
     {
         CampaignMapScene.ClearPendingLoadedState();
         _launchRequested = false;
+        CampaignStartedFromMenu = false;
         FromStartMenu = false;
         SelectedPresetPath = null;
         SelectedScenarioPath = null;

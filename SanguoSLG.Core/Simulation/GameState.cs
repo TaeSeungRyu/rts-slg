@@ -55,7 +55,8 @@ public sealed record GameState(
     IReadOnlyList<ArmyCorps>? ArmyCorpsList = null,
     ScenarioMapPreset? MapPresetSnapshot = null,
     IReadOnlyList<HiddenFactionArrival>? HiddenFactionArrivals = null,
-    IReadOnlyList<GenericRecruitment>? GenericRecruitments = null)
+    IReadOnlyList<GenericRecruitment>? GenericRecruitments = null,
+    string? ScenarioTitle = null)
 {
     public IReadOnlyList<GenericRecruitment> GenericRecruitmentHistory => GenericRecruitments ?? [];
     public IReadOnlyList<ArmyCorps> Corps => ArmyCorpsList ?? [];
