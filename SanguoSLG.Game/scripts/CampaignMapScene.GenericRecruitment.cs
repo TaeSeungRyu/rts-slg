@@ -72,25 +72,20 @@ public sealed partial class CampaignMapScene
             ShowNotice(title, "이 도시에서는 이번 달에 이미 장수를 모집했습니다.");
             return;
         }
-        ShowOfficerConfirm(title,
-            $"{city.Name}에서 금 1,000을 들여 {title}을 진행합니다.\n무관과 문관을 합쳐 한 달에 한 번 모집할 수 있습니다.",
-            actor, () =>
-            {
-                var kind = martial ? CommandKind.RecruitMartial : CommandKind.RecruitCivil;
-                var result = _commander.Issue(_state, new CommandRequest(city.Id, kind, actor));
-                if (!result.Ok)
-                {
-                    ShowNotice($"{title} 실패", result.Error ?? "모집할 수 없습니다.");
-                    return;
-                }
-                _state = result.State;
-                var entry = _state.GenericRecruitmentHistory.Last();
-                var general = _state.Generals.First(g => g.Id == entry.General);
-                Report($"[인재] {city.Name}에서 {general.Name}을(를) {title}으로 발탁했습니다.", GoldBright,
-                    general.Id);
-                Redraw($"{title}: {general.Name}");
-                ShowGenericRecruitmentPresentation(entry);
-            });
+        var kind = martial ? CommandKind.RecruitMartial : CommandKind.RecruitCivil;
+        var result = _commander.Issue(_state, new CommandRequest(city.Id, kind, actor));
+        if (!result.Ok)
+        {
+            ShowNotice($"{title} 실패", result.Error ?? "모집할 수 없습니다.");
+            return;
+        }
+        _state = result.State;
+        var entry = _state.GenericRecruitmentHistory.Last();
+        var general = _state.Generals.First(g => g.Id == entry.General);
+        Report($"[인재] {city.Name}에서 {general.Name}을(를) {title}으로 발탁했습니다.", GoldBright,
+            general.Id);
+        Redraw($"{title}: {general.Name}");
+        ShowGenericRecruitmentPresentation(entry);
     }
 
     private void TickGenericRecruitmentPresentation()
