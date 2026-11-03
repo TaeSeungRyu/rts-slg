@@ -53,7 +53,9 @@ public sealed class FactionAI
         state = AiSupportPlanner.Recall(state, faction);
         state = AiRuinPlanner.Maintain(state, faction);
         state = Retarget(state, faction);
+        var officerCountBeforeRecruitment = state.Assignments.Count(p => p.Faction == faction);
         state = RecruitUnlockedHeroes(state, faction);
+        var heroRecruited = state.Assignments.Count(p => p.Faction == faction) > officerCountBeforeRecruitment;
         state = new AiFieldResponsePlanner(_deployer, _config, _map, _economy)
             .PlanDefense(state, faction);
         if (_map is not null)
@@ -110,6 +112,7 @@ public sealed class FactionAI
         if (allowExploration) state = PlanExploration(state, faction);
         state = PlanCityOfficers(state, faction);
         state = PlanCityBaseline(state, faction);
+        if (!heroRecruited) state = RecruitGenericOfficers(state, faction);
         return state with { FieldArmies = state.Armies.Select(unit =>
             unit.Field.Owner == faction && !existingArmyIds.Contains(unit.Id)
                 && unit.Field.Mode == UnitMode.Attack
@@ -934,8 +937,12 @@ public sealed class FactionAI
                 continue;
             }
 
+            var general = state.Generals.FirstOrDefault(g => g.Id == hero.General);
+            if (general is null) continue;
+            var goldCost = HeroRecruitPricing.GoldCost(hero, general);
+
             var city = state.Cities
-                .Where(c => c.Owner == faction)
+                .Where(c => c.Owner == faction && c.Gold >= goldCost + GenericRecruitmentService.GoldCost)
                 .OrderByDescending(c => c.Gold)
                 .ThenBy(c => c.Id.Value)
                 .FirstOrDefault();
@@ -961,6 +968,32 @@ public sealed class FactionAI
         }
 
         return state;
+    }
+
+    private GameState RecruitGenericOfficers(GameState state, FactionId faction)
+    {
+        var cities = state.Cities.Where(c => c.Owner == faction && !c.IsGate).ToArray();
+        if (cities.Length == 0) return state;
+        var owned = state.Assignments.Where(p => p.Faction == faction).ToArray();
+        var required = cities.Length * 3 + Math.Min(2, state.Armies.Count(u => u.Field.Owner == faction));
+        if (owned.Length >= required) return state;
+        var posted = owned.Where(p => p.Location is not null).ToArray();
+        var martial = posted.Count(p => state.Generals.Any(g => g.Id == p.General && g.Might >= 50))
+            < cities.Length * 2;
+        var month = (state.Day - 1) / GameState.DaysPerMonth;
+        var city = cities.Where(c => c.Gold >= GenericRecruitmentService.GoldCost * 3
+                && !state.GenericRecruitmentHistory.Any(e => e.City == c.Id && e.MonthIndex == month))
+            .OrderBy(c => posted.Count(p => p.Location == c.Id))
+            .ThenByDescending(c => c.Gold)
+            .ThenBy(c => c.Id.Value)
+            .FirstOrDefault();
+        if (city is null) return state;
+        var actor = posted.FirstOrDefault(p => p.Location == city.Id)?.General
+            ?? owned.FirstOrDefault()?.General;
+        if (actor is null) return state;
+        var kind = martial ? CommandKind.RecruitMartial : CommandKind.RecruitCivil;
+        var result = _commands.Issue(state, new CommandRequest(city.Id, kind, actor.Value));
+        return result.Ok ? result.State : state;
     }
 
     // 야전 공격 부대를 가장 가까운 적 성 또는 표적 가능한 야전 건축물로 재조준한다.
