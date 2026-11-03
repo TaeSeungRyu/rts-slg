@@ -113,13 +113,7 @@ public partial class GeneralEditorScene : Control
         };
         AddChild(root);
 
-        var title = new Label
-        {
-            Text = "장수 데이터 편집",
-            HorizontalAlignment = HorizontalAlignment.Center,
-        };
-        title.AddThemeFontSizeOverride("font_size", 24);
-        root.AddChild(title);
+        GeneralWorkspaceStyle.Header(root, "장수 에디터", "장수를 골라 능력과 영입 조건을 조정합니다");
 
         var toolbar = new HBoxContainer();
         root.AddChild(toolbar);
@@ -147,21 +141,21 @@ public partial class GeneralEditorScene : Control
         toolbar.AddChild(reload);
 
         var body = new HBoxContainer { SizeFlagsVertical = SizeFlags.ExpandFill };
+        body.AddThemeConstantOverride("separation", 12);
         root.AddChild(body);
 
+        var left = GeneralWorkspaceStyle.Column(body, "장수 명감", 310);
         _list = new ItemList
         {
-            CustomMinimumSize = new Vector2(310, 0),
             SizeFlagsVertical = SizeFlags.ExpandFill,
             AllowReselect = true,
         };
         _list.ItemSelected += OnGeneralSelected;
         _list.ItemActivated += OnGeneralSelected;
-        body.AddChild(_list);
+        left.AddChild(_list);
 
-        var right = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill, SizeFlagsVertical = SizeFlags.ExpandFill };
+        var right = GeneralWorkspaceStyle.Column(body, "장수 기록부");
         right.AddThemeConstantOverride("separation", 10);
-        body.AddChild(right);
 
         var overview = AddSection(right, "장수 기본 내용");
         _summary = new Label { Text = "장수를 선택하세요.", AutowrapMode = TextServer.AutowrapMode.WordSmart };
@@ -358,12 +352,13 @@ public partial class GeneralEditorScene : Control
         _adminList = new VBoxContainer();
         adminLeft.AddChild(_adminList);
 
-        var saveSection = AddSection(right, "변경 및 저장");
+        var footer = GeneralWorkspaceStyle.Footer(root);
         _changePreview = new Label { Text = "", AutowrapMode = TextServer.AutowrapMode.WordSmart };
-        saveSection.AddChild(_changePreview);
+        _changePreview.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+        footer.AddChild(_changePreview);
 
         var buttons = new HBoxContainer();
-        saveSection.AddChild(buttons);
+        footer.AddChild(buttons);
         var reset = new Button { Text = "선택 장수 되돌리기" };
         reset.Pressed += () =>
         {
@@ -379,7 +374,7 @@ public partial class GeneralEditorScene : Control
         buttons.AddChild(save);
 
         _status = new Label { Text = "", AutowrapMode = TextServer.AutowrapMode.WordSmart };
-        root.AddChild(_status);
+        footer.AddChild(_status);
     }
 
     private void Reload()
