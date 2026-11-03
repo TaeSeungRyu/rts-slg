@@ -134,6 +134,7 @@ void fragment() {
         }
         var factionChoice = new OptionButton { Visible = false };
         var selectedDraft = default(SanguoSLG.Core.Data.ScenarioDraft);
+        Dictionary<int, string>? rulerNames = null;
         var preview = new Label { AutowrapMode = TextServer.AutowrapMode.WordSmart };
         var factionHeader = new Label { Text = "세력 선택  ·  지도 또는 세력 이름을 누르세요" };
         factionHeader.AddThemeColorOverride("font_color", new Color("e5c985"));
@@ -169,10 +170,10 @@ void fragment() {
                 var draft = selectedDraft ?? SanguoSLG.Core.Data.ScenarioDraftStore.Load(scenarioPaths[scenarioChoice.Selected]!);
                 var faction = draft.Factions.First(entry => entry.Id == id);
                 var cities = draft.Cities.Where(entry => entry.OwnerFactionId == id).ToArray();
-                var ruler = new SanguoSLG.Core.Data.ScenarioLoader().LoadFromDirectory(
+                rulerNames ??= new SanguoSLG.Core.Data.ScenarioLoader().LoadFromDirectory(
                     Path.GetFullPath(Path.Combine(ProjectSettings.GlobalizePath("res://"), "..", "data")))
-                    .Generals.FirstOrDefault(entry => entry.Id.Value == faction.RulerGeneralId);
-                factionName.Text = $"{faction.Name}  ·  군주 {ruler?.Name ?? "미지정"}";
+                    .Generals.ToDictionary(entry => entry.Id.Value, entry => entry.Name);
+                factionName.Text = $"{faction.Name}  ·  군주 {rulerNames.GetValueOrDefault(faction.RulerGeneralId, "미지정")}";
                 factionNumbers.Text = $"점령 거점 {cities.Length:N0}    병력 {cities.Sum(city => city.Garrisons.Sum(garrison => garrison.Troops)):N0}    장수 {draft.Generals.Count(entry => entry.FactionId == id):N0}";
                 var path = $"res://assets/portraits/{faction.RulerGeneralId}.png";
                 rulerPortrait.Texture = Godot.FileAccess.FileExists(path) ? GD.Load<Texture2D>(path) : null;
