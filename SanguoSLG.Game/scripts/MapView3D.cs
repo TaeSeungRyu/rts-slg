@@ -152,9 +152,10 @@ public partial class MapView3D : Node3D
     /// 바닥 타일을 중복 렌더하지 않는다(옆면 Z-파이팅 깜빡임 방지).</param>
     /// <param name="conditions">타일별 파괴 상태. 정상이 아닌 타일에는 공통 파괴 레이어를 입힌다.</param>
     public void Build(HexMap map, System.Collections.Generic.ISet<HexCoord> occupied, TileConditionMap conditions,
-        System.Collections.Generic.ISet<HexCoord>? cityPorts = null)
+        System.Collections.Generic.ISet<HexCoord>? cityPorts = null,
+        IEnumerable<HexCoord>? tiles = null, bool finish = true)
     {
-        foreach (var tile in map.Tiles())
+        foreach (var tile in tiles ?? map.Tiles())
         {
             if (occupied.Contains(tile))
             {
@@ -258,7 +259,7 @@ public partial class MapView3D : Node3D
             }
         }
 
-        BuildWaterBorder(map);
+        if (finish) BuildWaterBorder(map);
     }
 
     private void AddFineDetail(Node3D detail)

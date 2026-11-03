@@ -9,9 +9,19 @@ public sealed partial class ScenarioStartMenu
     public static bool IsLoadingVisible => _loadingLayer is not null && GodotObject.IsInstanceValid(_loadingLayer);
     public static bool IsLoadingAnimationActive => IsLoadingVisible
         && HasLoadingEmblem(_loadingLayer!);
+    public static int LoadingAnimationFrames => IsLoadingVisible
+        ? FindLoadingEmblem(_loadingLayer!)?.FrameCount ?? 0 : 0;
 
     private static bool HasLoadingEmblem(Node node)
         => node is MenuLoadingEmblem || node.GetChildren().Any(HasLoadingEmblem);
+
+    private static MenuLoadingEmblem? FindLoadingEmblem(Node node)
+    {
+        if (node is MenuLoadingEmblem emblem) return emblem;
+        foreach (var child in node.GetChildren())
+            if (FindLoadingEmblem(child) is { } found) return found;
+        return null;
+    }
 
     private async void ChangeToCampaign()
     {

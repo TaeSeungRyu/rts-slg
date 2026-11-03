@@ -5,10 +5,12 @@ namespace SanguoSLG.Game;
 public partial class MenuLoadingEmblem : Control
 {
     private float _phase;
+    public int FrameCount { get; private set; }
 
     public override void _Process(double delta)
     {
         _phase += (float)delta * 1.8f;
+        FrameCount++;
         QueueRedraw();
     }
 

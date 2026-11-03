@@ -543,7 +543,15 @@ public sealed partial class CampaignMapScene : Node3D
     private static readonly Sym[] CmdIcons = { Sym.Sword, Sym.Coin, Sym.Book, Sym.Wall, Sym.Scroll };
 
     public void Build(MapView3D view, CameraController3D camera, string dataDirectory)
+        => BuildInternal(view, camera, dataDirectory, false).GetAwaiter().GetResult();
+
+    public Task BuildIncremental(MapView3D view, CameraController3D camera, string dataDirectory)
+        => BuildInternal(view, camera, dataDirectory, true);
+
+    private async Task BuildInternal(MapView3D view, CameraController3D camera, string dataDirectory,
+        bool incremental)
     {
+        if (incremental) { SetProcess(false); SetProcessInput(false); SetProcessUnhandledInput(false); }
         if (OS.GetCmdlineUserArgs().Contains("--aitest")) Engine.TimeScale = 6.0;
         _view = view;
         _camera = camera;
@@ -659,6 +667,7 @@ public sealed partial class CampaignMapScene : Node3D
         _vision = new BattlefieldVision(scenario.Balance, _troops, _fieldBuildingDefinitions);
         _fog = new BattlefieldFogView(_view);
         _fog.RegisterMap();
+        if (incremental) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
         IReadOnlyList<GeneralPresetOverride>? generalPreset = null;
         var generalPresetPath = ProjectSettings.GlobalizePath("user://general-preset.json");
         if (System.IO.File.Exists(generalPresetPath))
@@ -704,6 +713,7 @@ public sealed partial class CampaignMapScene : Node3D
             ScenarioTitle = _scenarioOverride is null ? null : _scenarioTitle,
         };
         if (_loadedState is not null) _state = _loadedState;
+        if (incremental) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
         if (_aiTestFixture is not null && _scenarioOverride is null && !args.Contains("--newmap"))
             SeedAiTestConstructionBuilders();
         if (args.Contains("--maptest") && _aiTestFixture is null)
@@ -731,9 +741,11 @@ public sealed partial class CampaignMapScene : Node3D
         });
 
         SpawnCastles();
+        if (incremental) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
         SpawnHover();
         BuildHud();
         BuildPanel();
+        if (incremental) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
         if (args.Contains("--newmap") || ScenarioStartMenu.CampaignStartedFromMenu)
         {
             var ruler = _state.Factions.FirstOrDefault(faction => faction.Id == Player)?.Ruler;
@@ -745,6 +757,7 @@ public sealed partial class CampaignMapScene : Node3D
         }
         else camera.Setup(_view.HexToWorld(new HexCoord(4, 2)), 14f);
         Redraw("자기 성(파란색)을 클릭해 명령을 내리세요. 적(촉)은 AI입니다.");
+        if (incremental) { SetProcess(true); SetProcessInput(true); SetProcessUnhandledInput(true); }
         if (args.Contains("--menulaunchqa") || args.Contains("--menuloadqa"))
             CallDeferred(nameof(RunMenuLaunchQa));
         if (args.Contains("--maptestgaugelifetimeqa")) CallDeferred(nameof(RunActiveGaugeLifetimeQa));
@@ -9549,9 +9562,10 @@ public sealed partial class CampaignMapScene : Node3D
         var passed = startCity is not null && _camera.IsIntroZoomPlaying
             && _camera.FocusPivot.DistanceTo(_view.HexToWorld(startCity.Position)) < 0.01f
             && ScenarioStartMenu.IsLoadingVisible && ScenarioStartMenu.IsLoadingAnimationActive
+            && ScenarioStartMenu.LoadingAnimationFrames >= (savedGameQa ? 3 : 20)
             && ScenarioStartMenu.CampaignStartedFromMenu
             && (savedGameQa || !string.IsNullOrWhiteSpace(_state.ScenarioTitle));
-        GD.Print($"[{(savedGameQa ? "menu-load-qa" : "menu-launch-qa")}] passed={passed} scenario={_state.ScenarioTitle} cameraIntro={_camera.IsIntroZoomPlaying} loading={ScenarioStartMenu.IsLoadingVisible}");
+        GD.Print($"[{(savedGameQa ? "menu-load-qa" : "menu-launch-qa")}] passed={passed} scenario={_state.ScenarioTitle} cameraIntro={_camera.IsIntroZoomPlaying} loadingFrames={ScenarioStartMenu.LoadingAnimationFrames}");
         GetTree().Quit(passed ? 0 : 1);
     }
 

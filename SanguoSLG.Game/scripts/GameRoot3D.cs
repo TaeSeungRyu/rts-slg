@@ -51,14 +51,7 @@ public partial class GameRoot3D : Node3D
         if (CampaignMapScene.HasPendingLoadedState)
         {
             _menuCampaign = true;
-            try { BuildCampaignMap(); }
-            catch (Exception error)
-            {
-                ScenarioStartMenu.AbortLoading();
-                CampaignMapScene.ClearPendingLoadedState();
-                GD.PushError("저장 게임 시작 실패: " + error.Message);
-                GetTree().ReloadCurrentScene();
-            }
+            StartLoadedCampaign();
             return;
         }
 
@@ -77,42 +70,7 @@ public partial class GameRoot3D : Node3D
         if (launchFromMenu)
         {
             _menuCampaign = true;
-            try
-            {
-                var data = FindDataDirectory();
-                var source = CreatedGeneralPresets.ApplyAtNewGame(
-                    new ScenarioLoader().LoadFromDirectory(data));
-                var archive = new ScenarioMapArchive(ProjectSettings.GlobalizePath("user://maps"),
-                    ProjectSettings.GlobalizePath("user://scenarios"));
-                ScenarioDraft draft;
-                ScenarioMapVersion map;
-                if (ScenarioStartMenu.SelectedScenarioPath is { } scenarioPath)
-                {
-                    draft = ScenarioDraftStore.Load(scenarioPath);
-                    if (ScenarioRootMapBinding.UsesRoot(draft.MapId))
-                    {
-                        map = ScenarioRootMapSource.OpenVersion(archive);
-                        draft = ScenarioRootMapBinding.Bind(draft, map,
-                            ScenarioRootMapSource.PreviousVersion(archive, draft));
-                    }
-                    else map = archive.Load(draft.MapId, draft.MapRevision);
-                }
-                else
-                {
-                    map = ScenarioRootMapSource.OpenVersion(archive);
-                    draft = ScenarioDraftApplier.CreateSeed("default-190", "190년 기본", source, map);
-                }
-                var selectedScenario = ScenarioDraftApplier.Apply(source, draft, map.Preset);
-                CampaignMapScene.ConfigureScenario(selectedScenario, ScenarioStartMenu.SelectedPlayerFactionId,
-                    draft.StartYear, draft.StartMonth, draft.StartDay, ScenarioStartMenu.SelectedDifficulty, draft.Title);
-                BuildCampaignMap();
-            }
-            catch (Exception error)
-            {
-                ScenarioStartMenu.AbortLoading();
-                GD.PushError("시나리오 시작 실패: " + error.Message);
-                AddChild(new ScenarioStartMenu());
-            }
+            StartSelectedCampaign();
             return;
         }
 
@@ -458,7 +416,61 @@ public partial class GameRoot3D : Node3D
 
     // 간단한 캠페인 맵 관전 씬. 작은 평지 맵을 세우고 CampaignMapScene이 두 성·AI 자율 전쟁을
     // "진행" 버튼으로 굴린다(콘솔 --watch의 3D판).
-    private void BuildCampaignMap()
+    private async void StartLoadedCampaign()
+    {
+        try { await BuildCampaignMapInternal(true); }
+        catch (Exception error)
+        {
+            ScenarioStartMenu.AbortLoading();
+            CampaignMapScene.ClearPendingLoadedState();
+            GD.PushError("저장 게임 시작 실패: " + error.Message);
+            GetTree().ReloadCurrentScene();
+        }
+    }
+
+    private async void StartSelectedCampaign()
+    {
+        try
+        {
+            var data = FindDataDirectory();
+            var source = CreatedGeneralPresets.ApplyAtNewGame(
+                new ScenarioLoader().LoadFromDirectory(data));
+            var archive = new ScenarioMapArchive(ProjectSettings.GlobalizePath("user://maps"),
+                ProjectSettings.GlobalizePath("user://scenarios"));
+            ScenarioDraft draft;
+            ScenarioMapVersion map;
+            if (ScenarioStartMenu.SelectedScenarioPath is { } scenarioPath)
+            {
+                draft = ScenarioDraftStore.Load(scenarioPath);
+                if (ScenarioRootMapBinding.UsesRoot(draft.MapId))
+                {
+                    map = ScenarioRootMapSource.OpenVersion(archive);
+                    draft = ScenarioRootMapBinding.Bind(draft, map,
+                        ScenarioRootMapSource.PreviousVersion(archive, draft));
+                }
+                else map = archive.Load(draft.MapId, draft.MapRevision);
+            }
+            else
+            {
+                map = ScenarioRootMapSource.OpenVersion(archive);
+                draft = ScenarioDraftApplier.CreateSeed("default-190", "190년 기본", source, map);
+            }
+            var selectedScenario = ScenarioDraftApplier.Apply(source, draft, map.Preset);
+            CampaignMapScene.ConfigureScenario(selectedScenario, ScenarioStartMenu.SelectedPlayerFactionId,
+                draft.StartYear, draft.StartMonth, draft.StartDay, ScenarioStartMenu.SelectedDifficulty, draft.Title);
+            await BuildCampaignMapInternal(true);
+        }
+        catch (Exception error)
+        {
+            ScenarioStartMenu.AbortLoading();
+            GD.PushError("시나리오 시작 실패: " + error.Message);
+            GetTree().ReloadCurrentScene();
+        }
+    }
+
+    private void BuildCampaignMap() => BuildCampaignMapInternal(false).GetAwaiter().GetResult();
+
+    private async Task BuildCampaignMapInternal(bool incremental)
     {
         var newMap = OS.GetCmdlineUserArgs().Contains("--newmap");
         if (newMap)
@@ -482,8 +494,21 @@ public partial class GameRoot3D : Node3D
         var mapView = new MapView3D();
         AddChild(mapView);
         mapView.UseTerrainVariants(CampaignMapScene.TestMapPreset);
-        mapView.Build(CampaignMapScene.TestMap, new System.Collections.Generic.HashSet<HexCoord>(),
-            new TileConditionMap(), CampaignMapScene.TestPortTiles);
+        var map = CampaignMapScene.TestMap;
+        var occupied = new System.Collections.Generic.HashSet<HexCoord>();
+        var conditions = new TileConditionMap();
+        if (incremental)
+        {
+            foreach (var batch in map.Tiles().Chunk(160))
+            {
+                mapView.Build(map, occupied, conditions, CampaignMapScene.TestPortTiles,
+                    batch, finish: false);
+                await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+            }
+            mapView.Build(map, occupied, conditions, CampaignMapScene.TestPortTiles,
+                Array.Empty<HexCoord>());
+        }
+        else mapView.Build(map, occupied, conditions, CampaignMapScene.TestPortTiles);
 
         var camera = new CameraController3D { Fov = 55f };
         AddChild(camera);
@@ -496,11 +521,22 @@ public partial class GameRoot3D : Node3D
         }
         camera.Current = true;
 
-        MapView3D.TuneImportedMeshes(this);
+        if (incremental)
+        {
+            var tuned = 0;
+            foreach (var child in mapView.GetChildren())
+            {
+                MapView3D.TuneImportedMeshes(child);
+                if (++tuned % 160 == 0)
+                    await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+            }
+        }
+        else MapView3D.TuneImportedMeshes(this);
 
         var scene = new CampaignMapScene();
         AddChild(scene);
-        scene.Build(mapView, camera, FindDataDirectory());
+        if (incremental) await scene.BuildIncremental(mapView, camera, FindDataDirectory());
+        else scene.Build(mapView, camera, FindDataDirectory());
         if (_menuCampaign) ScenarioStartMenu.FinishLoading(GetTree());
     }
 
