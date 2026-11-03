@@ -8,6 +8,16 @@ using SanguoSLG.Core.Domain;
 public sealed class ScenarioMapPresetTests
 {
     [Fact]
+    public void ChangshaUsesJingzhouRegionForHomeBonus()
+    {
+        var source = new ScenarioLoader().LoadFromDirectory(TestData.DataDirectory());
+        var preset = new ScenarioMapPreset(1, 2, 2, ["PP", "PP"],
+            [new MapEditorSite(95, "장사", "city", "small", 0, 0)]);
+        var applied = ScenarioMapPresetApplier.Apply(source, preset);
+        Assert.Equal("jingzhou", applied.Cities.Single().Region);
+    }
+
+    [Fact]
     public void TerrainVariantsKeepTheirRulesAndPaintedCityPortTerrain()
     {
         var source = new ScenarioLoader().LoadFromDirectory(TestData.DataDirectory());

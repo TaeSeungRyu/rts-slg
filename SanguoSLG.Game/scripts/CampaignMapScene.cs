@@ -15533,7 +15533,7 @@ public sealed partial class CampaignMapScene : Node3D
         {
             var g = gens[rowIndex];
             var item = tree.CreateItem(root);
-            var home = g.Region.Length > 0 && g.Region == cityData.Region ? " 🏠" : "";
+            var home = g.Region.Length > 0 && g.Region == cityData.Region ? " · 연고지" : "";
             var roleMark = IsAutoOfficerCommand(cmd.Kind) ? "" : cmd.Kind switch
             {
                 CommandKind.AppointGovernor when cityData.Governor == g.Id => " ◆현태수",
@@ -16547,7 +16547,7 @@ public sealed partial class CampaignMapScene : Node3D
         foreach (var g in gens)
         {
             var item = tree.CreateItem(root);
-            var home = g.Region.Length > 0 && g.Region == city.Region ? " 🏠" : "";
+            var home = g.Region.Length > 0 && g.Region == city.Region ? " · 연고지" : "";
             item.SetText(0, g.Name + home);
             ApplyGeneralTreePortrait(item, 0, g.Id);
             item.SetText(1, g.Might.ToString());

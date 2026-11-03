@@ -78,6 +78,7 @@ public static class ScenarioMapPresetApplier
             {
                 Id = new CityId(site.Id),
                 Name = site.Name,
+                Region = site.Name == "장사" ? "jingzhou" : template.Region,
                 Position = preset.ToAxial(site.Column, site.Row),
                 Castle = castle,
                 Wall = isGate ? site.Size == "medium" ? 3_000 : 2_000

@@ -305,7 +305,7 @@ public sealed partial class AdminScene : Control
         foreach (var gid in generals)
         {
             var g = _session.State.Generals.First(x => x.Id == gid);
-            var home = g.Region.Length > 0 && g.Region == cityData.Region ? $" 🏠+{_commandBalance.HomeRegionBonusPercent}%" : "";
+            var home = g.Region.Length > 0 && g.Region == cityData.Region ? $" · 연고지 +{_commandBalance.HomeRegionBonusPercent}%" : "";
             var blocked = cmd.Kind == CommandKind.Build && g.Politics <= _commandBalance.BuildPoliticsRequired;
             var btn = new Button
             {
@@ -394,7 +394,7 @@ public sealed partial class AdminScene : Control
     // 수행 장수의 유효 능력·고향 표시(Core CommandEfficiency).
     private string EffText(CommandKind kind, General g, City city)
     {
-        var home = g.Region.Length > 0 && g.Region == city.Region ? $" 🏠+{_commandBalance.HomeRegionBonusPercent}%" : "";
+        var home = g.Region.Length > 0 && g.Region == city.Region ? $" · 연고지 +{_commandBalance.HomeRegionBonusPercent}%" : "";
         return kind switch
         {
             CommandKind.Recruit or CommandKind.Conscript or CommandKind.Build =>
