@@ -110,13 +110,28 @@ void fragment() {
         detailText.AddThemeFontSizeOverride("font_size", 15);
         details.AddChild(detailText);
         var cardButtons = new List<Button>();
-        var factionChoice = new OptionButton();
+        StyleBoxFlat CardStyle(bool selected, bool hover)
+        {
+            var styleBox = new StyleBoxFlat
+            {
+                BgColor = selected ? new Color("66402b") : hover ? new Color("47352a") : new Color("2b302c"),
+                BorderColor = selected ? new Color("f0cc7d") : hover ? new Color("c5a469") : new Color("645c48")
+            };
+            styleBox.SetBorderWidthAll(selected ? 2 : 1);
+            styleBox.SetCornerRadiusAll(7);
+            styleBox.SetContentMarginAll(12);
+            return styleBox;
+        }
+        var factionChoice = new OptionButton { CustomMinimumSize = new Vector2(0, 38) };
         var preview = new Label { AutowrapMode = TextServer.AutowrapMode.WordSmart };
         void SelectScenario(int index)
         {
             scenarioChoice.Select(index);
             for (var i = 0; i < cardButtons.Count; i++)
-                cardButtons[i].Modulate = i == index ? new Color("f7d58d") : Colors.White;
+            {
+                cardButtons[i].AddThemeStyleboxOverride("normal", CardStyle(i == index, false));
+                cardButtons[i].AddThemeColorOverride("font_color", i == index ? new Color("f9de9c") : new Color("e1dfd5"));
+            }
             RefreshFactions();
             RefreshPreview();
         }
@@ -124,8 +139,12 @@ void fragment() {
         {
             var cardIndex = index;
             var draft = SanguoSLG.Core.Data.ScenarioDraftStore.Load(scenarioPaths[index]!);
-            var card = new Button { Text = $"{draft.StartYear}년  {draft.Title}", CustomMinimumSize = new Vector2(260, 72),
+            var card = new Button { Text = draft.Title, CustomMinimumSize = new Vector2(260, 72),
                 Alignment = HorizontalAlignment.Left, TooltipText = draft.Description };
+            card.AddThemeStyleboxOverride("normal", CardStyle(false, false));
+            card.AddThemeStyleboxOverride("hover", CardStyle(false, true));
+            card.AddThemeStyleboxOverride("pressed", CardStyle(true, false));
+            card.AddThemeFontSizeOverride("font_size", 16);
             card.Pressed += () => SelectScenario(cardIndex);
             cards.AddChild(card);
             cardButtons.Add(card);
@@ -170,7 +189,7 @@ void fragment() {
         }
         scenarioChoice.ItemSelected += _ => RefreshPreview();
         if (scenarioChoice.ItemCount > 0) SelectScenario(0);
-        var difficulty = new OptionButton();
+        var difficulty = new OptionButton { CustomMinimumSize = new Vector2(0, 38) };
         difficulty.AddItem("난이도: 보통", 0);
         difficulty.AddItem("난이도: 어려움", 1);
         content.AddChild(difficulty);
