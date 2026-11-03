@@ -97,7 +97,7 @@ public partial class GeneralCreatorScene : Control
         root.AddChild(toolbar);
         if (ScenarioStartMenu.FromStartMenu)
         {
-            var back = new Button { Text = "시작 화면" };
+            var back = new Button { Text = "← 메인 메뉴", CustomMinimumSize = new Vector2(140, 36) };
             back.Pressed += RequestReturnToStart;
             toolbar.AddChild(back);
         }

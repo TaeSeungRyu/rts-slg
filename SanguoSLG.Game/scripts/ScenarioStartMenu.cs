@@ -28,6 +28,7 @@ public sealed partial class ScenarioStartMenu : Control
         SelectedPresetPath = null;
         SelectedScenarioPath = null;
         FromStartMenu = true;
+        tree.AutoAcceptQuit = true;
         tree.ChangeSceneToFile(scene);
     }
 

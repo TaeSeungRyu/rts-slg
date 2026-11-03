@@ -235,7 +235,7 @@ public sealed partial class EditMapScene
     {
         if (ScenarioStartMenu.FromStartMenu)
         {
-            var back = new Button { Text = "시작 화면", CustomMinimumSize = new Vector2(95, 26) };
+            var back = new Button { Text = "← 메인 메뉴", CustomMinimumSize = new Vector2(140, 36), TooltipText = "편집을 끝내고 메인 메뉴로 돌아갑니다" };
             back.Pressed += RequestReturnToStart;
             bar.AddChild(back);
         }

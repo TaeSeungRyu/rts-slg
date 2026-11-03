@@ -130,7 +130,8 @@ public sealed partial class ScenarioEditorScene : Control
         var saveButton = new Button { Text = "검증 후 저장" };
         saveButton.Pressed += SaveCurrent;
         header.AddChild(saveButton);
-        var closeButton = new Button { Text = "닫기" };
+        var closeButton = new Button { Text = ScenarioStartMenu.FromStartMenu ? "← 메인 메뉴" : "닫기",
+            CustomMinimumSize = ScenarioStartMenu.FromStartMenu ? new Vector2(140, 36) : Vector2.Zero };
         closeButton.Pressed += RequestClose;
         header.AddChild(closeButton);
         vertical.AddChild(new HSeparator());
