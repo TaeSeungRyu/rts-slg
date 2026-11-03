@@ -122,7 +122,10 @@ public sealed partial class EditMapScene
         _mapLibrary?.QueueFree();
         _mapLibrary = null;
         if (!_mapSelectionMade && !OS.GetCmdlineUserArgs().Contains("--editmapqa"))
-            GetTree().Quit();
+        {
+            if (ScenarioStartMenu.FromStartMenu) ScenarioStartMenu.ReturnToStart(GetTree());
+            else GetTree().Quit();
+        }
     }
 
     private void LoadSelectedMap(string path, ScenarioMapPreset preset, string? title = null)

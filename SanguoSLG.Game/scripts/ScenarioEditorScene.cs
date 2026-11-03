@@ -129,7 +129,11 @@ public sealed partial class ScenarioEditorScene : Control
         saveButton.Pressed += SaveCurrent;
         header.AddChild(saveButton);
         var closeButton = new Button { Text = "닫기" };
-        closeButton.Pressed += () => ScenarioStartMenu.ReturnToStart(GetTree());
+        closeButton.Pressed += () =>
+        {
+            if (ScenarioStartMenu.FromStartMenu) ScenarioStartMenu.ReturnToStart(GetTree());
+            else GetTree().Quit();
+        };
         header.AddChild(closeButton);
         vertical.AddChild(new HSeparator());
         var columns = new HSplitContainer { SizeFlagsVertical = SizeFlags.ExpandFill };

@@ -19,6 +19,16 @@ public sealed partial class ScenarioStartMenu : Control
         return true;
     }
 
+    public static void EnterEditor(SceneTree tree, string scene)
+    {
+        _launchRequested = false;
+        LoadSlotsOnStart = false;
+        SelectedPresetPath = null;
+        SelectedScenarioPath = null;
+        FromStartMenu = true;
+        tree.ChangeSceneToFile(scene);
+    }
+
     public override void _Ready()
     {
         SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
@@ -149,27 +159,24 @@ public sealed partial class ScenarioStartMenu : Control
         };
         content.AddChild(load);
         var scenarioEditor = new Button { Text = "시나리오 에디터", CustomMinimumSize = new Vector2(0, 36) };
-        scenarioEditor.Pressed += () => { FromStartMenu = true; GetTree().ChangeSceneToFile("res://ScenarioEditor.tscn"); };
+        scenarioEditor.Pressed += () => EnterEditor(GetTree(), "res://ScenarioEditor.tscn");
         content.AddChild(scenarioEditor);
         var map = new Button { Text = "지도 에디터", CustomMinimumSize = new Vector2(0, 36) };
         map.Pressed += () =>
         {
-            FromStartMenu = true;
-            GetTree().ChangeSceneToFile("res://EditMap.tscn");
+            EnterEditor(GetTree(), "res://EditMap.tscn");
         };
         content.AddChild(map);
         var general = new Button { Text = "장수 편집", CustomMinimumSize = new Vector2(0, 36) };
         general.Pressed += () =>
         {
-            FromStartMenu = true;
-            GetTree().ChangeSceneToFile("res://GeneralEditor.tscn");
+            EnterEditor(GetTree(), "res://GeneralEditor.tscn");
         };
         content.AddChild(general);
         var createGeneral = new Button { Text = "신규 장수 추가", CustomMinimumSize = new Vector2(0, 36) };
         createGeneral.Pressed += () =>
         {
-            FromStartMenu = true;
-            GetTree().ChangeSceneToFile("res://GeneralCreator.tscn");
+            EnterEditor(GetTree(), "res://GeneralCreator.tscn");
         };
         content.AddChild(createGeneral);
         content.MoveChild(general, content.GetChildCount() - 4);
@@ -205,10 +212,12 @@ public sealed partial class ScenarioStartMenu : Control
     public static void ReturnToStart(SceneTree tree)
     {
         CampaignMapScene.ClearPendingLoadedState();
+        _launchRequested = false;
         FromStartMenu = false;
         SelectedPresetPath = null;
         SelectedScenarioPath = null;
         LoadSlotsOnStart = false;
+        SelectedPlayerFactionId = 1;
         SelectedDifficulty = SanguoSLG.Core.Simulation.GameDifficulty.Normal;
         tree.ChangeSceneToFile("res://Main3D.tscn");
     }
