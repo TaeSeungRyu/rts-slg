@@ -188,6 +188,12 @@ public sealed partial class CampaignMapScene
             var details = MakeLabel($"{general.Name} · {kindName}\n무력 {general.Might}   지력 {general.Intellect}   정치 {general.Politics}", 18, GoldBright);
             details.HorizontalAlignment = HorizontalAlignment.Center;
             box.AddChild(details);
+            var flourish = MakeLabel("✦  새로운 인재가 합류했습니다  ✦", 16, GoldBright);
+            flourish.HorizontalAlignment = HorizontalAlignment.Center;
+            box.AddChild(flourish);
+            StartAppointmentAnimation(layer, panel, flourish, () =>
+                _state = GenericRecruitmentService.MarkPresented(_state, entry.General));
+            return;
         }
         var footer = new HBoxContainer();
         box.AddChild(footer);
@@ -209,7 +215,64 @@ public sealed partial class CampaignMapScene
         };
     }
 
-    private void RunGenericRecruitmentQa()
+    private void StartAppointmentAnimation(CanvasLayer layer, Control panel, CanvasItem flourish, Action completed)
+    {
+        panel.Modulate = new Color(1, 1, 1, 0);
+        flourish.Modulate = new Color(1, 1, 1, 0.35f);
+        var tween = CreateTween();
+        tween.TweenProperty(panel, "modulate:a", 1f, 0.35f);
+        tween.TweenProperty(flourish, "modulate:a", 1f, 0.45f);
+        tween.TweenProperty(flourish, "modulate:a", 0.45f, 0.45f);
+        tween.TweenInterval(1.15f);
+        tween.TweenProperty(panel, "modulate:a", 0f, 0.4f);
+        tween.TweenCallback(Callable.From(() =>
+        {
+            if (_genericRecruitLayer == layer) _genericRecruitLayer = null;
+            if (IsInstanceValid(layer)) layer.QueueFree();
+            completed();
+        }));
+    }
+
+    private void ShowHeroRecruitmentAppointment(GeneralId generalId)
+    {
+        if (_genericRecruitLayer is not null) return;
+        var general = _state.Generals.FirstOrDefault(g => g.Id == generalId);
+        if (general is null) return;
+        var layer = new CanvasLayer { Layer = 55 };
+        AddChild(layer);
+        _genericRecruitLayer = layer;
+        var backdrop = new ColorRect { Color = new Color(0, 0, 0, 0.63f), MouseFilter = Control.MouseFilterEnum.Stop };
+        backdrop.SetAnchorsPreset(Control.LayoutPreset.FullRect);
+        layer.AddChild(backdrop);
+        var center = new CenterContainer { MouseFilter = Control.MouseFilterEnum.Ignore };
+        center.SetAnchorsPreset(Control.LayoutPreset.FullRect);
+        layer.AddChild(center);
+        var panel = new PanelContainer { MouseFilter = Control.MouseFilterEnum.Stop };
+        panel.AddThemeStyleboxOverride("panel", Frame(Ink, Gold, 2, 10, 14));
+        center.AddChild(panel);
+        var box = new VBoxContainer { CustomMinimumSize = new Vector2(500, 0) };
+        box.AddThemeConstantOverride("separation", 12);
+        panel.AddChild(box);
+        var title = MakeLabel("위인영입", 22, GoldBright);
+        title.HorizontalAlignment = HorizontalAlignment.Center;
+        box.AddChild(title);
+        box.AddChild(GoldRule());
+        box.AddChild(new TextureRect
+        {
+            Texture = OfficerPortrait(generalId), CustomMinimumSize = new Vector2(0, 270),
+            StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
+            ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
+        });
+        var name = MakeLabel(general.Name, 25, GoldBright);
+        name.HorizontalAlignment = HorizontalAlignment.Center;
+        box.AddChild(name);
+        var flourish = MakeLabel("✦  새로운 위인이 합류했습니다  ✦", 16, GoldBright);
+        flourish.HorizontalAlignment = HorizontalAlignment.Center;
+        box.AddChild(flourish);
+        StartAppointmentAnimation(layer, panel, flourish, () => { });
+    }
+
+    private async void RunGenericRecruitmentQa()
     {
         var original = _state;
         var city = _state.Cities.FirstOrDefault(c => c.Owner == Player && !c.IsGate);
@@ -256,15 +319,18 @@ public sealed partial class CampaignMapScene
             var appointment = _genericRecruitLayer;
             dialogueOk &= appointment?.FindChildren("*", "TextureRect", true, false)
                 .OfType<TextureRect>().Count(image => image.Texture is not null) >= 2;
-            var done = appointment?.FindChildren("*", "Button", true, false)
-                .OfType<Button>().FirstOrDefault(b => b.Text == "확인");
-            done?.EmitSignal(Button.SignalName.Pressed);
+            await ToSignal(GetTree().CreateTimer(3.4), SceneTreeTimer.SignalName.Timeout);
             dialogueOk &= _state.GenericRecruitmentHistory.Last().Presented;
         }
         if (_genericRecruitLayer is not null) { _genericRecruitLayer.QueueFree(); _genericRecruitLayer = null; }
+        ShowHeroRecruitmentAppointment(actor.Value);
+        var heroOk = _genericRecruitLayer?.FindChildren("*", "TextureRect", true, false)
+            .OfType<TextureRect>().Any(image => image.Texture is not null) == true;
+        await ToSignal(GetTree().CreateTimer(3.4), SceneTreeTimer.SignalName.Timeout);
+        heroOk &= _genericRecruitLayer is null;
         _state = original;
-        var passed = menuOk && scriptsOk && imagesOk && dialogueOk;
-        GD.Print($"[genericrecruitqa] passed={passed} menu={menuOk} scripts={scriptsOk} images={imagesOk} dialogue={dialogueOk}");
+        var passed = menuOk && scriptsOk && imagesOk && dialogueOk && heroOk;
+        GD.Print($"[genericrecruitqa] passed={passed} menu={menuOk} scripts={scriptsOk} images={imagesOk} dialogue={dialogueOk} hero={heroOk}");
         GetTree().Quit(passed ? 0 : 1);
     }
 }

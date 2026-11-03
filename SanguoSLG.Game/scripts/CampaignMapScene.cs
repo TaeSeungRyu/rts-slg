@@ -14571,6 +14571,7 @@ public sealed partial class CampaignMapScene : Node3D
                     CloseModal();
                     SelectCity(city.Id);
                     Redraw(_log.Text);
+                    ShowHeroRecruitmentAppointment(hero.General);
                 }
                 else
                 {
