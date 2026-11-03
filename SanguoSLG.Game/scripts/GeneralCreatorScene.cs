@@ -90,9 +90,7 @@ public partial class GeneralCreatorScene : Control
             Theme = GeneralWorkspaceStyle.Theme() };
         root.AddThemeConstantOverride("separation", 10);
         AddChild(root);
-        var title = new Label { Text = "신규 장수 생성", HorizontalAlignment = HorizontalAlignment.Center };
-        title.AddThemeFontSizeOverride("font_size", 24);
-        root.AddChild(title);
+        GeneralWorkspaceStyle.Header(root, "신규 장수 등록", "초상부터 능력과 스킬까지 한 명의 장수를 완성합니다");
         var toolbar = new HBoxContainer();
         root.AddChild(toolbar);
         if (ScenarioStartMenu.FromStartMenu)
@@ -104,10 +102,9 @@ public partial class GeneralCreatorScene : Control
         toolbar.AddChild(new Label { Text = "생성 장수는 다음 새 게임부터 영입 후보에 추가됩니다.",
             SizeFlagsHorizontal = SizeFlags.ExpandFill, HorizontalAlignment = HorizontalAlignment.Center });
         var body = new HBoxContainer { SizeFlagsVertical = SizeFlags.ExpandFill };
+        body.AddThemeConstantOverride("separation", 12);
         root.AddChild(body);
-        var left = new VBoxContainer { CustomMinimumSize = new Vector2(310, 0) };
-        body.AddChild(left);
-        left.AddChild(new Label { Text = "생성한 장수", HorizontalAlignment = HorizontalAlignment.Center });
+        var left = GeneralWorkspaceStyle.Column(body, "생성한 장수", 310);
         _list = new ItemList { SizeFlagsVertical = SizeFlags.ExpandFill };
         _list.ItemSelected += index => LoadSelected((int)index);
         left.AddChild(_list);
@@ -118,10 +115,8 @@ public partial class GeneralCreatorScene : Control
         delete.Pressed += DeleteSelected;
         left.AddChild(delete);
 
-        var right = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill,
-            SizeFlagsVertical = SizeFlags.ExpandFill };
+        var right = GeneralWorkspaceStyle.Column(body, "장수 등록부");
         right.AddThemeConstantOverride("separation", 10);
-        body.AddChild(right);
         var overview = GeneralWorkspaceStyle.Section(right, "장수 기본 내용");
         _overview = new Label { Text = "새 장수", AutowrapMode = TextServer.AutowrapMode.WordSmart };
         _overview.AddThemeFontSizeOverride("font_size", 18);
@@ -273,12 +268,14 @@ public partial class GeneralCreatorScene : Control
             _adminDescriptions.Add(description);
             option.ItemSelected += _ => ShowSkillDescription(description, option, _adminDetails);
         }
-        var saveSection = GeneralWorkspaceStyle.Section(right, "변경 및 저장");
+        var footer = GeneralWorkspaceStyle.Footer(root);
+        footer.AddChild(new Label { Text = "등록 내용은 다음 새 게임부터 적용됩니다.",
+            SizeFlagsHorizontal = SizeFlags.ExpandFill, VerticalAlignment = VerticalAlignment.Center });
         var save = new Button { Text = "저장", CustomMinimumSize = new Vector2(0, 42) };
         save.Pressed += SaveSelected;
-        saveSection.AddChild(save);
+        footer.AddChild(save);
         _status = new Label { AutowrapMode = TextServer.AutowrapMode.WordSmart };
-        root.AddChild(_status);
+        footer.AddChild(_status);
     }
 
     private static SpinBox Spin(double min, double max, double value)

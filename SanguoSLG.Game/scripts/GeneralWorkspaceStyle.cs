@@ -63,6 +63,61 @@ internal static class GeneralWorkspaceStyle
         });
     }
 
+    internal static void Header(VBoxContainer root, string title, string subtitle)
+    {
+        var panel = new PanelContainer();
+        panel.AddThemeStyleboxOverride("panel", SectionBox());
+        root.AddChild(panel);
+        var row = new HBoxContainer();
+        row.AddThemeConstantOverride("separation", 18);
+        panel.AddChild(row);
+        var mark = new Label { Text = "三國", CustomMinimumSize = new Vector2(65, 0),
+            VerticalAlignment = VerticalAlignment.Center, HorizontalAlignment = HorizontalAlignment.Center };
+        mark.AddThemeFontSizeOverride("font_size", 23);
+        mark.AddThemeColorOverride("font_color", new Color("f1c878"));
+        row.AddChild(mark);
+        row.AddChild(new VSeparator());
+        var text = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+        row.AddChild(text);
+        var heading = new Label { Text = title };
+        heading.AddThemeFontSizeOverride("font_size", 23);
+        text.AddChild(heading);
+        var caption = new Label { Text = subtitle };
+        caption.AddThemeFontSizeOverride("font_size", 13);
+        caption.AddThemeColorOverride("font_color", new Color("c4ae88"));
+        text.AddChild(caption);
+    }
+
+    internal static VBoxContainer Column(Container parent, string title, int minimumWidth = 0)
+    {
+        var panel = new PanelContainer { CustomMinimumSize = new Vector2(minimumWidth, 0),
+            SizeFlagsHorizontal = minimumWidth > 0 ? Control.SizeFlags.Fill : Control.SizeFlags.ExpandFill,
+            SizeFlagsVertical = Control.SizeFlags.ExpandFill };
+        panel.AddThemeStyleboxOverride("panel", SectionBox());
+        parent.AddChild(panel);
+        var content = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+            SizeFlagsVertical = Control.SizeFlags.ExpandFill };
+        content.AddThemeConstantOverride("separation", 9);
+        panel.AddChild(content);
+        var heading = new Label { Text = title };
+        heading.AddThemeFontSizeOverride("font_size", 17);
+        heading.AddThemeColorOverride("font_color", new Color("f1c878"));
+        content.AddChild(heading);
+        content.AddChild(new HSeparator());
+        return content;
+    }
+
+    internal static HBoxContainer Footer(VBoxContainer root)
+    {
+        var panel = new PanelContainer();
+        panel.AddThemeStyleboxOverride("panel", SectionBox());
+        root.AddChild(panel);
+        var row = new HBoxContainer { CustomMinimumSize = new Vector2(0, 40) };
+        row.AddThemeConstantOverride("separation", 12);
+        panel.AddChild(row);
+        return row;
+    }
+
     private static StyleBoxFlat Box(Color background, Color border, int borderWidth)
         => new()
         {
