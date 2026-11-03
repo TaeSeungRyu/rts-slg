@@ -53,7 +53,7 @@ void fragment() {
         var center = new CenterContainer();
         center.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
         AddChild(center);
-        var panel = new PanelContainer { CustomMinimumSize = new Vector2(500, 460) };
+        var panel = new PanelContainer { CustomMinimumSize = new Vector2(850, 570) };
         var style = new StyleBoxFlat { BgColor = new Color("1e2524"), BorderColor = new Color("d1ae65") };
         style.SetBorderWidthAll(2);
         style.SetCornerRadiusAll(12);
@@ -64,14 +64,16 @@ void fragment() {
         var content = new VBoxContainer();
         content.AddThemeConstantOverride("separation", 15);
         panel.AddChild(content);
-        var title = new Label { Text = "새 게임 시작하기" , HorizontalAlignment = HorizontalAlignment.Center };
-        title.AddThemeFontSizeOverride("font_size", 27);
+        var title = new Label { Text = "새로운 역사를 시작합니다", HorizontalAlignment = HorizontalAlignment.Center };
+        title.AddThemeFontSizeOverride("font_size", 29);
         content.AddChild(title);
+        var subtitle = new Label { Text = "시대를 고르고 세력을 선택하세요", HorizontalAlignment = HorizontalAlignment.Center };
+        subtitle.AddThemeColorOverride("font_color", new Color("d4bb83"));
+        content.AddChild(subtitle);
         content.AddChild(new HSeparator());
-        content.AddChild(new Label { Text = "시나리오" });
         var scenarioChoice = new OptionButton();
-        scenarioChoice.AddItem("190년 기본 시나리오");
-        var scenarioPaths = new List<string?> { null };
+        scenarioChoice.Visible = false;
+        var scenarioPaths = new List<string?>();
         var scenarioDir = ProjectSettings.GlobalizePath("user://scenarios");
         var builtInDir = ProjectSettings.GlobalizePath("res://assets/scenarios");
         var builtInPaths = Directory.Exists(builtInDir) ? Directory.EnumerateFiles(builtInDir, "*.json") : [];
@@ -84,12 +86,52 @@ void fragment() {
                 try
                 {
                     var draft = SanguoSLG.Core.Data.ScenarioDraftStore.Load(path);
+                    if (draft.Title.Trim() == "새 시나리오") continue;
                     scenarioChoice.AddItem(draft.Title);
                     scenarioPaths.Add(path);
                 }
                 catch (Exception failure) { GD.PushWarning("시나리오 목록: " + failure.Message); }
         content.AddChild(scenarioChoice);
+        var scenarioLayout = new HBoxContainer();
+        scenarioLayout.AddThemeConstantOverride("separation", 18);
+        content.AddChild(scenarioLayout);
+        var cards = new GridContainer { Columns = 2, CustomMinimumSize = new Vector2(540, 0) };
+        cards.AddThemeConstantOverride("h_separation", 8);
+        cards.AddThemeConstantOverride("v_separation", 8);
+        scenarioLayout.AddChild(cards);
+        var details = new PanelContainer { CustomMinimumSize = new Vector2(240, 0), SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        var detailsStyle = new StyleBoxFlat { BgColor = new Color("29322e"), BorderColor = new Color("826c47") };
+        detailsStyle.SetBorderWidthAll(1);
+        detailsStyle.SetCornerRadiusAll(8);
+        detailsStyle.SetContentMarginAll(14);
+        details.AddThemeStyleboxOverride("panel", detailsStyle);
+        scenarioLayout.AddChild(details);
+        var detailText = new Label { AutowrapMode = TextServer.AutowrapMode.WordSmart, SizeFlagsVertical = SizeFlags.ExpandFill };
+        detailText.AddThemeFontSizeOverride("font_size", 15);
+        details.AddChild(detailText);
+        var cardButtons = new List<Button>();
         var factionChoice = new OptionButton();
+        var preview = new Label { AutowrapMode = TextServer.AutowrapMode.WordSmart };
+        void SelectScenario(int index)
+        {
+            scenarioChoice.Select(index);
+            for (var i = 0; i < cardButtons.Count; i++)
+                cardButtons[i].Modulate = i == index ? new Color("f7d58d") : Colors.White;
+            RefreshFactions();
+            RefreshPreview();
+        }
+        for (var index = 0; index < scenarioPaths.Count; index++)
+        {
+            var cardIndex = index;
+            var draft = SanguoSLG.Core.Data.ScenarioDraftStore.Load(scenarioPaths[index]!);
+            var card = new Button { Text = $"{draft.StartYear}년  {draft.Title}", CustomMinimumSize = new Vector2(260, 72),
+                Alignment = HorizontalAlignment.Left, TooltipText = draft.Description };
+            card.Pressed += () => SelectScenario(cardIndex);
+            cards.AddChild(card);
+            cardButtons.Add(card);
+        }
+        if (scenarioChoice.ItemCount > 0) scenarioChoice.Select(0);
+        content.AddChild(new Label { Text = "세력 선택" });
         content.AddChild(factionChoice);
         void RefreshFactions()
         {
@@ -109,10 +151,7 @@ void fragment() {
             catch (Exception failure) { GD.PushWarning("세력 목록: " + failure.Message); }
         }
         scenarioChoice.ItemSelected += _ => RefreshFactions();
-        RefreshFactions();
-        content.AddChild(new Label { Text = "기본 지도" });
-        var mapPath = ScenarioRootMapSource.Path;
-        var preview = new Label { AutowrapMode = TextServer.AutowrapMode.WordSmart };
+        if (scenarioChoice.ItemCount > 0) RefreshFactions();
         content.AddChild(preview);
         void RefreshPreview()
         {
@@ -124,12 +163,13 @@ void fragment() {
                 var preset = chosen is null
                     ? ScenarioRootMapSource.Load()
                     : LoadScenarioMap(chosen, scenarioDir);
-                preview.Text = $"지도 {preset.Width}×{preset.Height} · 성 {preset.Sites.Count(s => s.Kind == "city")} · 항구 {preset.Sites.Count(s => s.Kind == "port")}";
+                detailText.Text = chosen is null ? "" : $"{chosen.Title}\n\n{chosen.Description[..Math.Min(chosen.Description.Length, 170)]}";
+                preview.Text = $"지도 {preset.Width}×{preset.Height}  ·  성 {preset.Sites.Count(s => s.Kind == "city")}  ·  항구 {preset.Sites.Count(s => s.Kind == "port")}";
             }
             catch (Exception failure) { preview.Text = "지도 미리보기 오류: " + failure.Message; }
         }
         scenarioChoice.ItemSelected += _ => RefreshPreview();
-        RefreshPreview();
+        if (scenarioChoice.ItemCount > 0) SelectScenario(0);
         var difficulty = new OptionButton();
         difficulty.AddItem("난이도: 보통", 0);
         difficulty.AddItem("난이도: 어려움", 1);
@@ -173,7 +213,7 @@ void fragment() {
                 error.Text = "시나리오 시작 불가: " + failure.Message;
                 return;
             }
-            SelectedPresetPath = scenarioChoice.Selected == 0 ? mapPath : null;
+            SelectedPresetPath = null;
             SelectedScenarioPath = scenarioPaths[scenarioChoice.Selected];
             SelectedPlayerFactionId = factionChoice.GetSelectedId();
             SelectedScenarioTitle = scenarioChoice.GetItemText(scenarioChoice.Selected);
@@ -233,11 +273,12 @@ void fragment() {
         var buttons = FindChildren("*", "Button", true, false).OfType<Button>().Select(button => button.Text).ToArray();
         var scenarios = FindChildren("*", "OptionButton", true, false).OfType<OptionButton>().FirstOrDefault();
         var passed = buttons.Contains("게임 시작") && buttons.Contains("새 게임 시작하기")
-            && scenarios?.ItemCount >= 1
+            && scenarios?.ItemCount >= 6
+            && !Enumerable.Range(0, scenarios?.ItemCount ?? 0).Any(index => scenarios!.GetItemText(index) == "새 시나리오")
             && buttons.Contains("지형 에디터")
             && buttons.Contains("시나리오 에디터") && buttons.Contains("장수 에디터")
             && buttons.Contains("신규장수 등록") && buttons.Contains("저장된 게임 시작하기");
-        GD.Print($"[scenario-start-qa] passed={passed} buttons={buttons.Length}");
+        GD.Print($"[scenario-start-qa] passed={passed} buttons={buttons.Length} scenarios={scenarios?.ItemCount}");
         GetTree().Quit(passed ? 0 : 1);
     }
 
