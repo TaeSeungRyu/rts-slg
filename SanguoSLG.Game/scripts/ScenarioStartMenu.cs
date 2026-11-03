@@ -213,6 +213,7 @@ void fragment() {
         var back = new Button { Text = "◀ 메인 화면", CustomMinimumSize = new Vector2(0, 36) };
         back.Pressed += () => { center.Visible = false; menuCenter.Visible = true; };
         content.AddChild(back);
+        ShowOptionalIntro(menuCenter);
         if (OS.GetCmdlineUserArgs().Contains("--startmenuqa")) CallDeferred(nameof(RunQa));
     }
 

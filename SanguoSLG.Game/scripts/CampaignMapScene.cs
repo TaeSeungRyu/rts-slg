@@ -9581,6 +9581,15 @@ public sealed partial class CampaignMapScene : Node3D
         box.AddChild(GoldRule());
         Item("게임 저장", OpenSaveSlotList);
         Item("게임 불러오기", OpenLoadSlotList);
+        if (ScenarioStartMenu.CampaignStartedFromMenu)
+        {
+            box.AddChild(GoldRule());
+            Item("시작 화면으로", () =>
+            {
+                CloseModal();
+                ScenarioStartMenu.ReturnToStart(GetTree());
+            });
+        }
 
         var contentH = box.GetCombinedMinimumSize().Y;
         scroll.CustomMinimumSize = new Vector2(mw, Mathf.Min(contentH, mh));
