@@ -355,6 +355,7 @@ public sealed partial class CampaignMapScene : Node3D
     private int _provPer10kPerDay = 10; // 병력 1만당 하루 군량 소모(balance) — 일수↔군량 환산
     private readonly Dictionary<string, int> _supplyDraft = new(System.StringComparer.Ordinal);
     private readonly List<(PanelContainer Card, string Code)> _supplyTroopCards = new();
+    private Label? _supplyProvisionGuide;
     private int _supplyEditIndex = -1;
     private bool _targetingSupplyDeploy;
     private readonly Dictionary<string, SpinBox> _armyGroupAmountSpins = new(System.StringComparer.Ordinal);
@@ -3564,7 +3565,6 @@ public sealed partial class CampaignMapScene : Node3D
     private Material? _supplyTileMat;
     private Material? _fieldSupplyTileMat;
     private const int FieldSupplyRadius = AdvanceOrchestrator.DefaultResupplyRadius;
-    private const int SupplyExtraCarryDays = 20;
 
     private void ClearSupplyZoneMarkers()
     {
@@ -8052,6 +8052,7 @@ public sealed partial class CampaignMapScene : Node3D
         _depGoldSpin = null;
         _depProvSlider = null;
         _depProvLabel = null;
+        _supplyProvisionGuide = null;
         _vanTree = null;
         if (_modalLayer is not null) { FadeOutModal(_modalLayer); _modalLayer = null; }
 
@@ -8142,7 +8143,7 @@ public sealed partial class CampaignMapScene : Node3D
         }
 
         box.AddChild(GoldRule());
-        box.AddChild(MakeLabel("군량 (보급 일수)", 13, GoldBright));
+        box.AddChild(MakeLabel("휴대 군량 · 보급부대 자체 소비 기준 일수", 13, GoldBright));
         var provRow = new HBoxContainer();
         provRow.AddThemeConstantOverride("separation", 10);
         _depProvSlider = ApplySliderStyle(new HSlider
@@ -8161,6 +8162,9 @@ public sealed partial class CampaignMapScene : Node3D
         _depProvLabel.CustomMinimumSize = new Vector2(240, 0);
         provRow.AddChild(_depProvLabel);
         box.AddChild(provRow);
+        _supplyProvisionGuide = MakeLabel("", 12, Parchment);
+        _supplyProvisionGuide.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        box.AddChild(_supplyProvisionGuide);
         SyncSupplyProvisionSlider();
         _depGoldSpin = AddGoldCargoSelector(box, city, _depGold, value => { _depGold = value; UpdateSupplyPreview(); });
         AddDeploymentDelaySelector(box, _depDelayDays, value => _depDelayDays = value);
@@ -13336,7 +13340,17 @@ public sealed partial class CampaignMapScene : Node3D
         if (_depProvLabel is not null)
         {
             var cityProv = _state.Cities.First(x => x.Id == _depModalCity).Provisions;
-            _depProvLabel.Text = $"휴대 {provisions} / 성 비축 {cityProv} · 출전 후 약 {estimatedDays}일";
+            _depProvLabel.Text = $"휴대 {provisions:N0} / 최대 {SupplyCapacityForDraft():N0} · 성 비축 {cityProv:N0}";
+        }
+        if (_supplyProvisionGuide is not null)
+        {
+            var targetDaily = 20_000 * _provPer10kPerDay * _balance.SupplyConservationPercent / 1_000_000d;
+            var sourceDaily = SupplyDraftDailyConsumption();
+            var required = (int)System.Math.Ceiling((sourceDaily + targetDaily) * 60);
+            var gap = provisions - required;
+            _supplyProvisionGuide.Text = "반경 3칸의 아군은 군량 소비 30% 절감 · 보급부대도 자체 군량을 소비합니다.\n"
+                + $"2만 명 1부대 · 60일 지원 예시(대상 군량 0, 다른 보급 없음): 대상 하루 {targetDaily:0.#} + 보급부대 하루 {sourceDaily:0.#}"
+                + $" → 필요 군량 약 {required:N0} · 현재 선택 {provisions:N0} ({(gap >= 0 ? $"여유 {gap:N0}" : $"부족 {-gap:N0}")})";
         }
         var (gradeText, efficiency, skills) = _depVan is { } vanId
             ? SupplyLeaderPreview(_state.Generals.First(g => g.Id == vanId))
@@ -13344,7 +13358,7 @@ public sealed partial class CampaignMapScene : Node3D
         _depPreview.Text = $"현재 편성: 보급부대 {total}명 · 주장 {vanguard} · 군량 {_depProvDays}일{status}\n"
             + (lines.Count == 0 ? "병종을 선택하세요." : string.Join(" · ", lines))
             + $"\n보급 적성 {gradeText} · 병참 효율 {efficiency}% · 적용 스킬 {skills}"
-            + $"\n휴대 군량 {provisions} · 휴대 금 {_depGold:N0} · 출전 후 약 {estimatedDays}일 보급 가능 · 기본 공방 최하";
+            + $"\n휴대 군량 {provisions:N0} · 휴대 금 {_depGold:N0} · 자체 소비만 약 {estimatedDays}일 (아군 보급 시 단축) · 기본 공방 최하";
     }
 
     private void PopulateSupplyGeneralTree()
@@ -13410,7 +13424,8 @@ public sealed partial class CampaignMapScene : Node3D
             weighted += (long)(template?.ProvisionsCapacity ?? 300) * amount;
         }
         var baseCapacity = (int)(weighted / total);
-        return SupplyLogisticsRules.Apply(baseCapacity, SupplyEfficiencyForSelectedSupplyLeader());
+        var capacity = baseCapacity * total / 10000 * 5;
+        return SupplyLogisticsRules.Apply(capacity, SupplyEfficiencyForSelectedSupplyLeader());
     }
 
     private int SupplyEfficiencyForSelectedSupplyLeader()
@@ -13608,14 +13623,13 @@ public sealed partial class CampaignMapScene : Node3D
 
     private int SupplyMaxCarryDays()
         => System.Math.Max(1, (int)System.Math.Floor(
-            (SupplyCapacityForDraft() + SupplyExtraCarryDays * _provPer10kPerDay)
-            * 100d / System.Math.Max(1, _provPer10kPerDay * _balance.SupplyConservationPercent)));
+            SupplyCapacityForDraft() / System.Math.Max(0.0001, SupplyDraftDailyConsumption())));
 
     private int SupplyProvisionsToCarry()
     {
         var total = _supplyDraft.Values.Sum();
         if (total <= 0) { return 0; }
-        var capacity = (SupplyCapacityForDraft() + SupplyExtraCarryDays * _provPer10kPerDay) * total / 10000;
+        var capacity = SupplyCapacityForDraft();
         var wanted = (int)System.Math.Ceiling(_depProvDays * SupplyDraftDailyConsumption());
         var cityProv = _state.Cities.First(x => x.Id == _depModalCity).Provisions;
         return System.Math.Min(System.Math.Min(wanted, capacity), cityProv);
