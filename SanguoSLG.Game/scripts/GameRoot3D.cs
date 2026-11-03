@@ -499,7 +499,7 @@ public partial class GameRoot3D : Node3D
         var conditions = new TileConditionMap();
         if (incremental)
         {
-            foreach (var batch in map.Tiles().Chunk(160))
+            foreach (var batch in map.Tiles().Chunk(320))
             {
                 mapView.Build(map, occupied, conditions, CampaignMapScene.TestPortTiles,
                     batch, finish: false);
@@ -527,7 +527,7 @@ public partial class GameRoot3D : Node3D
             foreach (var child in mapView.GetChildren())
             {
                 MapView3D.TuneImportedMeshes(child);
-                if (++tuned % 160 == 0)
+                if (++tuned % 320 == 0)
                     await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
             }
         }
