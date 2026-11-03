@@ -30,7 +30,8 @@ public sealed class SaveSlotStore
         {
             var state = SaveService.Load(path);
             return new SaveSlotInfo(slot, Exists: true, Corrupt: false, state.Day, state.StartYear,
-                File.GetLastWriteTimeUtc(path));
+                File.GetLastWriteTimeUtc(path), ScenarioTitle: state.ScenarioTitle,
+                FactionName: state.Factions.FirstOrDefault(f => f.Id.Value == state.HumanFactionId)?.Name);
         }
         catch (Exception error)
         {
@@ -100,7 +101,9 @@ public sealed record SaveSlotInfo(
     int? Day = null,
     int? StartYear = null,
     DateTime? SavedAtUtc = null,
-    string? Error = null)
+    string? Error = null,
+    string? ScenarioTitle = null,
+    string? FactionName = null)
 {
     public int? Year => Day is { } day && StartYear is { } start ? start + (day - 1) / 360 : null;
     public int? Month => Day is { } day ? ((day - 1) % 360) / 30 + 1 : null;
