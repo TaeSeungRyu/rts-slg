@@ -64,8 +64,6 @@ public sealed partial class ScenarioStartMenu
         try
         {
             var loaded = store.Load(slot);
-            if (loaded.MapPresetSnapshot is null)
-                throw new InvalidDataException("저장된 지도 정보가 없어 메인 화면에서 불러올 수 없습니다.");
             var data = Path.GetFullPath(Path.Combine(ProjectSettings.GlobalizePath("res://"), "..", "data"));
             var source = CreatedGeneralPresets.ApplyAtNewGame(new ScenarioLoader().LoadFromDirectory(data));
             CampaignMapScene.ConfigureLoadedState(loaded, source);

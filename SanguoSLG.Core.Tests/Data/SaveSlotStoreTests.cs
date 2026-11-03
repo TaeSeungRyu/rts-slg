@@ -54,6 +54,16 @@ public sealed class SaveSlotStoreTests : IDisposable
     }
 
     [Fact]
+    public void 메인화면_슬롯에는_저장된_시나리오_제목이_표시된다()
+    {
+        var store = new SaveSlotStore(_directory);
+        store.Save(2, State(41) with { ScenarioTitle = "영웅호걸" });
+
+        Assert.Equal("영웅호걸", store.Inspect(2).ScenarioTitle);
+        Assert.Equal("영웅호걸", store.Load(2).ScenarioTitle);
+    }
+
+    [Fact]
     public void 이전_단일세이브는_첫번째_슬롯에서_읽힌다()
     {
         Directory.CreateDirectory(_directory);
