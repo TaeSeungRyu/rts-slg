@@ -231,19 +231,25 @@ public sealed partial class EditMapScene
         dialog.PopupCentered();
     }
 
+    private void RequestReturnToMapLibrary()
+    {
+        if (!_mapSelectionMade) return;
+        if (!_draftChanged) { ShowMapLibrary(); return; }
+        var dialog = new ConfirmationDialog { Title = "저장하지 않은 지도", DialogText = "변경한 지도를 저장하고 목록으로 돌아갈까요?", OkButtonText = "저장 후 목록", CancelButtonText = "계속 편집" };
+        dialog.AddButton("변경 버리기", true, "discard");
+        AddChild(dialog);
+        dialog.Confirmed += () => { SaveDraft(); if (!_draftChanged) ShowMapLibrary(); };
+        dialog.CustomAction += action => { if (action == "discard") { _draftChanged = false; ShowMapLibrary(); } };
+        dialog.PopupCentered();
+    }
+
     private void AddSaveDraftButton(HBoxContainer bar)
     {
-        if (ScenarioStartMenu.FromStartMenu)
-        {
-            var back = new Button { Text = "← 메인 메뉴", CustomMinimumSize = new Vector2(140, 36), TooltipText = "편집을 끝내고 메인 메뉴로 돌아갑니다" };
-            back.Pressed += RequestReturnToStart;
-            bar.AddChild(back);
-        }
         _saveDraftButton = new Button { Text = "맵 저장", CustomMinimumSize = new Vector2(95, 26) };
         _saveDraftButton.Pressed += ConfirmSaveDraft;
         bar.AddChild(_saveDraftButton);
         var maps = new Button { Text = "지도 목록", CustomMinimumSize = new Vector2(95, 26) };
-        maps.Pressed += ShowMapLibrary;
+        maps.Pressed += RequestReturnToMapLibrary;
         bar.AddChild(maps);
     }
 

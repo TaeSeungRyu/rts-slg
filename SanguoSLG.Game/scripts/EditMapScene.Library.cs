@@ -38,6 +38,12 @@ public sealed partial class EditMapScene
         titleLabel.AddThemeFontSizeOverride("font_size", 20);
         titleLabel.AddThemeColorOverride("font_color", new Color("e8c475"));
         header.AddChild(titleLabel);
+        if (ScenarioStartMenu.FromStartMenu)
+        {
+            var home = new Button { Text = "← 메인 메뉴", CustomMinimumSize = new Vector2(140, 36) };
+            home.Pressed += RequestReturnToStart;
+            header.AddChild(home);
+        }
         var close = new Button { Text = "×", TooltipText = "지도 목록 닫기" };
         close.Pressed += CloseMapLibrary;
         header.AddChild(close);

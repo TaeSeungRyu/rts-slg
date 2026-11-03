@@ -139,10 +139,16 @@ public sealed partial class EditMapScene : Control
         var content = new VBoxContainer();
         content.AddThemeConstantOverride("separation", 7);
         bar.AddChild(content);
-        var title = new Label { Text = "시나리오 맵 에디터  ·  중국 / 몽골 / 한반도 / 대만 / 일본 서부" };
+        var titleRow = new HBoxContainer();
+        content.AddChild(titleRow);
+        var title = new Label { Text = "시나리오 맵 에디터  ·  중국 / 몽골 / 한반도 / 대만 / 일본 서부",
+            SizeFlagsHorizontal = SizeFlags.ExpandFill };
         title.AddThemeFontOverride("font", font);
         title.AddThemeFontSizeOverride("font_size", 20);
-        content.AddChild(title);
+        titleRow.AddChild(title);
+        var backToMaps = new Button { Text = "← 지도 목록", CustomMinimumSize = new Vector2(140, 36) };
+        backToMaps.Pressed += RequestReturnToMapLibrary;
+        titleRow.AddChild(backToMaps);
         var legend = new Label { Text = "클릭: 편집 명령  ·  그리기 모드에서 왼쪽 드래그: 지형 변경  ·  가운데 드래그/WASD: 이동",
             Modulate = new Color("d9d1b0") };
         legend.AddThemeFontOverride("font", font);
