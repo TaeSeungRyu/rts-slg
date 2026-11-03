@@ -220,7 +220,7 @@ void fragment() {
             SelectedDifficulty = (SanguoSLG.Core.Simulation.GameDifficulty)difficulty.GetSelectedId();
             _launchRequested = true;
             CampaignStartedFromMenu = true;
-            GetTree().ReloadCurrentScene();
+            ChangeToCampaign();
         };
         content.AddChild(start);
         var menuCenter = new CenterContainer();

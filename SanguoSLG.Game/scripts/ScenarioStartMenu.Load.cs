@@ -70,7 +70,7 @@ public sealed partial class ScenarioStartMenu
             CampaignStartedFromMenu = true;
             _launchRequested = false;
             LoadSlotsOnStart = false;
-            GetTree().ReloadCurrentScene();
+            ChangeToCampaign();
         }
         catch (Exception error)
         {

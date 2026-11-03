@@ -100,6 +100,7 @@ public partial class GameRoot3D : Node3D
             }
             catch (Exception error)
             {
+                ScenarioStartMenu.AbortLoading();
                 GD.PushError("시나리오 시작 실패: " + error.Message);
                 AddChild(new ScenarioStartMenu());
             }
@@ -491,6 +492,7 @@ public partial class GameRoot3D : Node3D
         var scene = new CampaignMapScene();
         AddChild(scene);
         scene.Build(mapView, camera, FindDataDirectory());
+        if (_menuCampaign) ScenarioStartMenu.FinishLoading(GetTree());
     }
 
     private void RunScenarioIntegrationQa()
