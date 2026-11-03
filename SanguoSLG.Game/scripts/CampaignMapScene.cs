@@ -90,9 +90,11 @@ public sealed partial class CampaignMapScene : Node3D
     private PanelContainer _hudFacePanel = null!;
     private PanelContainer _hudPanel = null!;
     private PanelContainer _cityQuickPanel = null!;
+    private bool _cityQuickMoved;
     private VBoxContainer _cityQuickList = null!;
     private string _cityQuickListKey = "";
     private PanelContainer _sortieQuickPanel = null!;
+    private bool _sortieQuickMoved;
     private VBoxContainer _sortieQuickList = null!;
     private string _sortieQuickListKey = "";
     private PanelContainer _reportPanel = null!;   // 좌하단 보고(삼국지11 오마주 결과창)
@@ -6938,9 +6940,9 @@ public sealed partial class CampaignMapScene : Node3D
     // 줌/이동 중에도 팔레트가 선택한 성을 따라가도록 갱신.
     public override void _Process(double delta)
     {
-        if (_hudPanel is not null && _cityQuickPanel is not null)
+        if (!_cityQuickMoved && _hudPanel is not null && _cityQuickPanel is not null)
             _cityQuickPanel.Position = new Vector2(12f, _hudPanel.Position.Y + _hudPanel.Size.Y + 5f);
-        if (_cityQuickPanel is not null && _sortieQuickPanel is not null)
+        if (!_sortieQuickMoved && _cityQuickPanel is not null && _sortieQuickPanel is not null)
             _sortieQuickPanel.Position = new Vector2(12f,
                 _cityQuickPanel.Position.Y + _cityQuickPanel.Size.Y + 5f);
         PollActiveVisualPrewarm();
@@ -6995,7 +6997,17 @@ public sealed partial class CampaignMapScene : Node3D
         if (_dragging && _dragPanel is not null)
         {
             if (!Input.IsMouseButtonPressed(MouseButton.Left)) { _dragging = false; }
-            else { _dragPanel.Position = GetViewport().GetMousePosition() - _dragOffset; }
+            else
+            {
+                var position = GetViewport().GetMousePosition() - _dragOffset;
+                if (_dragPanel == _cityQuickPanel || _dragPanel == _sortieQuickPanel)
+                {
+                    var viewport = GetViewport().GetVisibleRect().Size;
+                    position = new Vector2(Mathf.Clamp(position.X, 0, Mathf.Max(0, viewport.X - _dragPanel.Size.X)),
+                        Mathf.Clamp(position.Y, 0, Mathf.Max(0, viewport.Y - _dragPanel.Size.Y)));
+                }
+                _dragPanel.Position = position;
+            }
         }
 
         foreach (var (unitId, gauge) in _activeGauges.ToList())
@@ -18891,9 +18903,13 @@ public sealed partial class CampaignMapScene : Node3D
         var content = new VBoxContainer();
         content.AddThemeConstantOverride("separation", 2);
         panel.AddChild(content);
+        var header = new HBoxContainer();
+        content.AddChild(header);
+        AddQuickListDragHandle(header, panel, () => _cityQuickMoved = true);
         var toggle = MakeButton("▸ 도시목록");
         toggle.Alignment = HorizontalAlignment.Left;
-        content.AddChild(toggle);
+        toggle.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+        header.AddChild(toggle);
         var rule = GoldRule();
         rule.Visible = false;
         content.AddChild(rule);
@@ -18964,9 +18980,13 @@ public sealed partial class CampaignMapScene : Node3D
         var content = new VBoxContainer();
         content.AddThemeConstantOverride("separation", 2);
         _sortieQuickPanel.AddChild(content);
+        var header = new HBoxContainer();
+        content.AddChild(header);
+        AddQuickListDragHandle(header, _sortieQuickPanel, () => _sortieQuickMoved = true);
         var toggle = MakeButton("▸ 출전 장수 목록");
         toggle.Alignment = HorizontalAlignment.Left;
-        content.AddChild(toggle);
+        toggle.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+        header.AddChild(toggle);
         var rule = GoldRule();
         rule.Visible = false;
         content.AddChild(rule);
@@ -19030,6 +19050,27 @@ public sealed partial class CampaignMapScene : Node3D
         }
     }
 
+    private void AddQuickListDragHandle(HBoxContainer header, PanelContainer panel, Action moved)
+    {
+        var grip = MakeLabel("⠿", 20, GoldBright);
+        grip.TooltipText = "잡아서 목록 이동";
+        grip.CustomMinimumSize = new Vector2(30, 30);
+        grip.HorizontalAlignment = HorizontalAlignment.Center;
+        grip.VerticalAlignment = VerticalAlignment.Center;
+        grip.MouseFilter = Control.MouseFilterEnum.Stop;
+        grip.MouseDefaultCursorShape = Control.CursorShape.Move;
+        grip.GuiInput += e =>
+        {
+            if (e is not InputEventMouseButton { ButtonIndex: MouseButton.Left } button || !button.Pressed) return;
+            moved();
+            _dragging = true;
+            _dragPanel = panel;
+            _dragOffset = GetViewport().GetMousePosition() - panel.Position;
+            grip.AcceptEvent();
+        };
+        header.AddChild(grip);
+    }
+
     private async void RunQuickListCollapseQa()
     {
         var cityToggle = _cityQuickPanel.FindChildren("*", "Button", true, false).OfType<Button>().First();
@@ -19045,10 +19086,19 @@ public sealed partial class CampaignMapScene : Node3D
         cityToggle.EmitSignal(Button.SignalName.Pressed);
         sortieToggle.EmitSignal(Button.SignalName.Pressed);
         await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        var cityGrip = _cityQuickPanel.FindChildren("*", "Label", true, false).OfType<Label>()
+            .FirstOrDefault(label => label.Text == "⠿");
+        var sortieGrip = _sortieQuickPanel.FindChildren("*", "Label", true, false).OfType<Label>()
+            .FirstOrDefault(label => label.Text == "⠿");
+        var press = new InputEventMouseButton { ButtonIndex = MouseButton.Left, Pressed = true };
+        cityGrip?.EmitSignal(Control.SignalName.GuiInput, press);
+        var cityDrags = _cityQuickMoved && _dragPanel == _cityQuickPanel;
+        sortieGrip?.EmitSignal(Control.SignalName.GuiInput, press);
+        var sortieDrags = _sortieQuickMoved && _dragPanel == _sortieQuickPanel;
         var passed = expanded && _cityQuickPanel.Size.Y <= cityClosed + 2f
-            && _sortieQuickPanel.Size.Y <= sortieClosed + 2f;
+            && _sortieQuickPanel.Size.Y <= sortieClosed + 2f && cityDrags && sortieDrags;
         GD.Print($"[newmap-quicklist-qa] passed={passed} city={cityClosed:F1}/{_cityQuickPanel.Size.Y:F1} "
-            + $"sortie={sortieClosed:F1}/{_sortieQuickPanel.Size.Y:F1}");
+            + $"sortie={sortieClosed:F1}/{_sortieQuickPanel.Size.Y:F1} drag={cityDrags}/{sortieDrags}");
         GetTree().Quit(passed ? 0 : 1);
     }
 
