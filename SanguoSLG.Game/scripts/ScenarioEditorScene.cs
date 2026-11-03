@@ -106,9 +106,7 @@ public sealed partial class ScenarioEditorScene : Control
 
     private void BuildUi()
     {
-        var background = new ColorRect { Color = new Color("172322") };
-        background.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
-        AddChild(background);
+        GeneralWorkspaceStyle.AddBackground(this);
         var frame = new MarginContainer();
         frame.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
         frame.AddThemeConstantOverride("margin_left", 20);
@@ -118,9 +116,11 @@ public sealed partial class ScenarioEditorScene : Control
         AddChild(frame);
         var vertical = new VBoxContainer();
         frame.AddChild(vertical);
+        GeneralWorkspaceStyle.Header(vertical, "시나리오 에디터", "시대와 세력, 거점과 장수의 배치를 설계합니다");
         var header = new HBoxContainer();
         vertical.AddChild(header);
-        header.AddChild(new Label { Text = "시나리오 에디터", SizeFlagsHorizontal = SizeFlags.ExpandFill });
+        header.AddChild(new Label { Text = "시나리오 작업", SizeFlagsHorizontal = SizeFlags.ExpandFill,
+            VerticalAlignment = VerticalAlignment.Center });
         var newButton = new Button { Text = "새 시나리오" };
         newButton.Pressed += CreateNew;
         header.AddChild(newButton);
@@ -137,9 +137,7 @@ public sealed partial class ScenarioEditorScene : Control
         vertical.AddChild(new HSeparator());
         var columns = new HSplitContainer { SizeFlagsVertical = SizeFlags.ExpandFill };
         vertical.AddChild(columns);
-        var left = new VBoxContainer { CustomMinimumSize = new Vector2(255, 0) };
-        columns.AddChild(left);
-        left.AddChild(new Label { Text = "시나리오 목록" });
+        var left = GeneralWorkspaceStyle.Column(columns, "시나리오 목록", 255);
         _list = new ItemList { SizeFlagsVertical = SizeFlags.ExpandFill };
         _list.ItemSelected += index =>
         {
@@ -147,8 +145,7 @@ public sealed partial class ScenarioEditorScene : Control
             if (!string.IsNullOrEmpty(path)) OpenScenario(path);
         };
         left.AddChild(_list);
-        var right = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        columns.AddChild(right);
+        var right = GeneralWorkspaceStyle.Column(columns, "시나리오 기록부");
         var tabs = new HBoxContainer();
         right.AddChild(tabs);
         AddTab(tabs, "기본 정보·지도", ShowBasics);
@@ -160,7 +157,11 @@ public sealed partial class ScenarioEditorScene : Control
         _body = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
         scroll.AddChild(_body);
         _message = new Label { AutowrapMode = TextServer.AutowrapMode.WordSmart };
-        vertical.AddChild(_message);
+        var footer = GeneralWorkspaceStyle.Footer(vertical);
+        footer.AddChild(new Label { Text = "시나리오를 검증한 뒤 저장하세요.",
+            VerticalAlignment = VerticalAlignment.Center });
+        _message.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+        footer.AddChild(_message);
     }
 
     private static void AddTab(Container tabs, string name, Action action)
