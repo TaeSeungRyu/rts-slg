@@ -9,6 +9,7 @@ public sealed partial class ScenarioEditorScene : Control
     private ScenarioMapArchive _archive = null!;
     private Scenario _source = null!;
     private ScenarioDraft _draft = null!;
+    private string _savedDraftSnapshot = "";
     private ItemList _list = null!;
     private VBoxContainer _body = null!;
     private Label _message = null!;
@@ -37,6 +38,7 @@ public sealed partial class ScenarioEditorScene : Control
             new ScenarioLoader().LoadFromDirectory(data));
         LoadMaps();
         _draft = ScenarioDraftApplier.CreateSeed("custom-190", "새 시나리오", _source, _maps[0]);
+        _savedDraftSnapshot = SnapshotDraft();
         BuildUi();
         RefreshList();
         ShowBasics();
@@ -129,11 +131,7 @@ public sealed partial class ScenarioEditorScene : Control
         saveButton.Pressed += SaveCurrent;
         header.AddChild(saveButton);
         var closeButton = new Button { Text = "닫기" };
-        closeButton.Pressed += () =>
-        {
-            if (ScenarioStartMenu.FromStartMenu) ScenarioStartMenu.ReturnToStart(GetTree());
-            else GetTree().Quit();
-        };
+        closeButton.Pressed += RequestClose;
         header.AddChild(closeButton);
         vertical.AddChild(new HSeparator());
         var columns = new HSplitContainer { SizeFlagsVertical = SizeFlags.ExpandFill };
@@ -204,6 +202,7 @@ public sealed partial class ScenarioEditorScene : Control
             EnsureMapAvailable();
             var updated = ApplyCurrentRootMap();
             _draft = ScenarioWallDefaults.Normalize(_draft, CurrentMap().Preset, _source.Balance);
+            _savedDraftSnapshot = SnapshotDraft();
             ShowBasics();
             _message.Text = updated ? "시나리오 배치를 현재 기본 지도에 맞추었습니다. 검증 후 저장하세요."
                 : "시나리오를 불러왔습니다.";
@@ -816,6 +815,25 @@ public sealed partial class ScenarioEditorScene : Control
         row.AddChild(field);
     }
 
+    private string SnapshotDraft() => System.Text.Json.JsonSerializer.Serialize(_draft);
+
+    private void RequestClose()
+    {
+        EndNativeText();
+        void Leave()
+        {
+            if (ScenarioStartMenu.FromStartMenu) ScenarioStartMenu.ReturnToStart(GetTree());
+            else GetTree().Quit();
+        }
+        if (SnapshotDraft() == _savedDraftSnapshot) { Leave(); return; }
+        var dialog = new ConfirmationDialog { Title = "저장하지 않은 시나리오", DialogText = "변경한 시나리오를 저장하고 시작 화면으로 돌아갈까요?", OkButtonText = "저장 후 나가기", CancelButtonText = "계속 편집" };
+        dialog.AddButton("변경 버리기", true, "discard");
+        AddChild(dialog);
+        dialog.Confirmed += () => { SaveCurrent(); if (SnapshotDraft() == _savedDraftSnapshot) Leave(); };
+        dialog.CustomAction += action => { if (action == "discard") Leave(); };
+        dialog.PopupCentered();
+    }
+
     private void SaveCurrent()
     {
         EndNativeText();
@@ -826,6 +844,7 @@ public sealed partial class ScenarioEditorScene : Control
             _draft = ScenarioWallDefaults.Normalize(_draft, map.Preset, _source.Balance);
             var path = Path.Combine(_scenarioDirectory, _draft.Id + ".json");
             ScenarioDraftStore.Save(path, _draft, map.Preset, known);
+            _savedDraftSnapshot = SnapshotDraft();
             RefreshList();
             _message.Text = "시나리오를 저장했습니다.";
         }

@@ -220,12 +220,23 @@ public sealed partial class EditMapScene
             .Select(scenario => scenario.Title).Distinct().OrderBy(title => title).ToArray();
     }
 
+    private void RequestReturnToStart()
+    {
+        if (!_draftChanged) { ScenarioStartMenu.ReturnToStart(GetTree()); return; }
+        var dialog = new ConfirmationDialog { Title = "저장하지 않은 지도", DialogText = "변경한 지도를 저장하고 시작 화면으로 돌아갈까요?", OkButtonText = "저장 후 나가기", CancelButtonText = "계속 편집" };
+        dialog.AddButton("변경 버리기", true, "discard");
+        AddChild(dialog);
+        dialog.Confirmed += () => { SaveDraft(); if (!_draftChanged) ScenarioStartMenu.ReturnToStart(GetTree()); };
+        dialog.CustomAction += action => { if (action == "discard") ScenarioStartMenu.ReturnToStart(GetTree()); };
+        dialog.PopupCentered();
+    }
+
     private void AddSaveDraftButton(HBoxContainer bar)
     {
         if (ScenarioStartMenu.FromStartMenu)
         {
             var back = new Button { Text = "시작 화면", CustomMinimumSize = new Vector2(95, 26) };
-            back.Pressed += () => ScenarioStartMenu.ReturnToStart(GetTree());
+            back.Pressed += RequestReturnToStart;
             bar.AddChild(back);
         }
         _saveDraftButton = new Button { Text = "맵 저장", CustomMinimumSize = new Vector2(95, 26) };
