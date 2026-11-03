@@ -132,8 +132,55 @@ void fragment() {
             styleBox.SetContentMarginAll(12);
             return styleBox;
         }
-        var factionChoice = new OptionButton { CustomMinimumSize = new Vector2(0, 38) };
+        var factionChoice = new OptionButton { Visible = false };
+        var selectedDraft = default(SanguoSLG.Core.Data.ScenarioDraft);
         var preview = new Label { AutowrapMode = TextServer.AutowrapMode.WordSmart };
+        var factionHeader = new Label { Text = "세력 선택  ·  지도 또는 세력 이름을 누르세요" };
+        factionHeader.AddThemeColorOverride("font_color", new Color("e5c985"));
+        var factionScroll = new ScrollContainer { CustomMinimumSize = new Vector2(0, 82),
+            SizeFlagsHorizontal = SizeFlags.ExpandFill, HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled };
+        var factionButtons = new GridContainer { Columns = 4, SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        factionButtons.AddThemeConstantOverride("h_separation", 6);
+        factionButtons.AddThemeConstantOverride("v_separation", 5);
+        factionScroll.AddChild(factionButtons);
+        var factionSummary = new PanelContainer { CustomMinimumSize = new Vector2(0, 88) };
+        factionSummary.AddThemeStyleboxOverride("panel", detailsStyle);
+        var summaryRow = new HBoxContainer();
+        summaryRow.AddThemeConstantOverride("separation", 14);
+        factionSummary.AddChild(summaryRow);
+        var rulerPortrait = new TextureRect { CustomMinimumSize = new Vector2(58, 65),
+            ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
+            StretchMode = TextureRect.StretchModeEnum.KeepAspectCovered };
+        summaryRow.AddChild(rulerPortrait);
+        var summaryText = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        summaryRow.AddChild(summaryText);
+        var factionName = new Label();
+        factionName.AddThemeFontSizeOverride("font_size", 20);
+        summaryText.AddChild(factionName);
+        var factionNumbers = new Label { AutowrapMode = TextServer.AutowrapMode.WordSmart };
+        summaryText.AddChild(factionNumbers);
+        void SelectFaction(int id)
+        {
+            for (var item = 0; item < factionChoice.ItemCount; item++)
+                if (factionChoice.GetItemId(item) == id) { factionChoice.Select(item); break; }
+            factionMap.SelectFaction(id);
+            try
+            {
+                var draft = selectedDraft ?? SanguoSLG.Core.Data.ScenarioDraftStore.Load(scenarioPaths[scenarioChoice.Selected]!);
+                var faction = draft.Factions.First(entry => entry.Id == id);
+                var cities = draft.Cities.Where(entry => entry.OwnerFactionId == id).ToArray();
+                var ruler = new SanguoSLG.Core.Data.ScenarioLoader().LoadFromDirectory(
+                    Path.GetFullPath(Path.Combine(ProjectSettings.GlobalizePath("res://"), "..", "data")))
+                    .Generals.FirstOrDefault(entry => entry.Id.Value == faction.RulerGeneralId);
+                factionName.Text = $"{faction.Name}  ·  군주 {ruler?.Name ?? "미지정"}";
+                factionNumbers.Text = $"점령 거점 {cities.Length:N0}    병력 {cities.Sum(city => city.Garrisons.Sum(garrison => garrison.Troops)):N0}    장수 {draft.Generals.Count(entry => entry.FactionId == id):N0}";
+                var path = $"res://assets/portraits/{faction.RulerGeneralId}.png";
+                rulerPortrait.Texture = Godot.FileAccess.FileExists(path) ? GD.Load<Texture2D>(path) : null;
+            }
+            catch (Exception failure) { factionNumbers.Text = "세력 정보 확인 불가: " + failure.Message; }
+            foreach (var button in factionButtons.GetChildren().OfType<Button>())
+                button.ButtonPressed = (int)button.GetMeta("faction_id") == id;
+        }
         void SelectScenario(int index)
         {
             scenarioChoice.Select(index);
@@ -160,33 +207,36 @@ void fragment() {
             cardButtons.Add(card);
         }
         if (scenarioChoice.ItemCount > 0) scenarioChoice.Select(0);
-        content.AddChild(new Label { Text = "세력 선택" });
+        content.AddChild(factionHeader);
         content.AddChild(factionChoice);
+        content.AddChild(factionScroll);
+        content.AddChild(factionSummary);
         factionMap.FactionPicked += id =>
         {
-            for (var item = 0; item < factionChoice.ItemCount; item++)
-                if (factionChoice.GetItemId(item) == id)
-                {
-                    factionChoice.Select(item);
-                    factionMap.SelectFaction(id);
-                    break;
-                }
+            SelectFaction(id);
         };
-        factionChoice.ItemSelected += _ => factionMap.SelectFaction(factionChoice.GetSelectedId());
         void RefreshFactions()
         {
             factionChoice.Clear();
+            foreach (var child in factionButtons.GetChildren()) child.QueueFree();
             try
             {
                 var selectedPath = scenarioPaths[scenarioChoice.Selected];
-                var factions = selectedPath is null
-                    ? new SanguoSLG.Core.Data.ScenarioLoader().LoadFromDirectory(
-                        Path.GetFullPath(Path.Combine(ProjectSettings.GlobalizePath("res://"), "..", "data")))
-                        .Factions.Select(f => (f.Id.Value, f.Name))
-                    : SanguoSLG.Core.Data.ScenarioDraftStore.Load(selectedPath).Factions
-                        .Where(f => f.Playable && !f.Hidden).Select(f => (f.Id, f.Name));
-                foreach (var (id, name) in factions) factionChoice.AddItem(name, id);
+                selectedDraft = SanguoSLG.Core.Data.ScenarioDraftStore.Load(selectedPath!);
+                var factions = selectedDraft.Factions
+                    .Where(f => f.Playable && !f.Hidden).ToArray();
+                foreach (var faction in factions)
+                {
+                    factionChoice.AddItem(faction.Name, faction.Id);
+                    var button = new Button { Text = $"●  {faction.Name}", ToggleMode = true,
+                        CustomMinimumSize = new Vector2(145, 34), SizeFlagsHorizontal = SizeFlags.ExpandFill };
+                    button.SetMeta("faction_id", faction.Id);
+                    button.AddThemeColorOverride("font_color", new Color(faction.Color));
+                    button.Pressed += () => SelectFaction(faction.Id);
+                    factionButtons.AddChild(button);
+                }
                 factionChoice.Select(0);
+                if (factions.Length > 0) SelectFaction(factions[0].Id);
             }
             catch (Exception failure) { GD.PushWarning("세력 목록: " + failure.Message); }
         }
@@ -318,10 +368,15 @@ void fragment() {
         var buttons = FindChildren("*", "Button", true, false).OfType<Button>().Select(button => button.Text).ToArray();
         var scenarios = FindChildren("*", "OptionButton", true, false).OfType<OptionButton>().FirstOrDefault();
         var factionMap = FindChildren("*", "", true, false).OfType<ScenarioFactionMap>().FirstOrDefault();
+        var factionControls = FindChildren("*", "Button", true, false).OfType<Button>()
+            .Where(button => button.HasMeta("faction_id")).ToArray();
         var passed = buttons.Contains("게임 시작") && buttons.Contains("새 게임 시작하기")
             && scenarios?.ItemCount >= 6
             && !Enumerable.Range(0, scenarios?.ItemCount ?? 0).Any(index => scenarios!.GetItemText(index) == "새 시나리오")
             && factionMap is { HasTerrain: true, CityCount: > 0 }
+            && factionControls.Length > 0 && factionControls.Any(button => button.ButtonPressed)
+            && FindChildren("*", "Label", true, false).OfType<Label>()
+                .Any(label => label.Text.Contains("점령 거점") && label.Text.Contains("병력") && label.Text.Contains("장수"))
             && buttons.Contains("지형 에디터")
             && buttons.Contains("시나리오 에디터") && buttons.Contains("장수 에디터")
             && buttons.Contains("신규장수 등록") && buttons.Contains("저장된 게임 시작하기");
