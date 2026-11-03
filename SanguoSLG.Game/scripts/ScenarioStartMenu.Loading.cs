@@ -7,6 +7,11 @@ public sealed partial class ScenarioStartMenu
     private bool _campaignLoading;
     private static CanvasLayer? _loadingLayer;
     public static bool IsLoadingVisible => _loadingLayer is not null && GodotObject.IsInstanceValid(_loadingLayer);
+    public static bool IsLoadingAnimationActive => IsLoadingVisible
+        && HasLoadingEmblem(_loadingLayer!);
+
+    private static bool HasLoadingEmblem(Node node)
+        => node is MenuLoadingEmblem || node.GetChildren().Any(HasLoadingEmblem);
 
     private async void ChangeToCampaign()
     {
@@ -23,7 +28,7 @@ public sealed partial class ScenarioStartMenu
         var center = new CenterContainer();
         center.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
         overlay.AddChild(center);
-        var panel = new PanelContainer { CustomMinimumSize = new Vector2(440, 150) };
+        var panel = new PanelContainer { CustomMinimumSize = new Vector2(440, 225) };
         var frame = new StyleBoxFlat { BgColor = new Color("202b28"), BorderColor = new Color("d1ae65") };
         frame.SetBorderWidthAll(2);
         frame.SetCornerRadiusAll(10);
@@ -33,6 +38,9 @@ public sealed partial class ScenarioStartMenu
         var column = new VBoxContainer { Alignment = BoxContainer.AlignmentMode.Center };
         column.AddThemeConstantOverride("separation", 12);
         panel.AddChild(column);
+        var emblem = new MenuLoadingEmblem { CustomMinimumSize = new Vector2(92, 92),
+            SizeFlagsHorizontal = SizeFlags.ShrinkCenter };
+        column.AddChild(emblem);
         var title = new Label { Text = "전장을 준비하고 있습니다", HorizontalAlignment = HorizontalAlignment.Center };
         title.AddThemeFontSizeOverride("font_size", 22);
         title.AddThemeColorOverride("font_color", new Color("e5c985"));

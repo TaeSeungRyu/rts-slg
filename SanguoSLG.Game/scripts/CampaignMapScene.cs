@@ -9548,7 +9548,8 @@ public sealed partial class CampaignMapScene : Node3D
         var savedGameQa = OS.GetCmdlineUserArgs().Contains("--menuloadqa");
         var passed = startCity is not null && _camera.IsIntroZoomPlaying
             && _camera.FocusPivot.DistanceTo(_view.HexToWorld(startCity.Position)) < 0.01f
-            && ScenarioStartMenu.IsLoadingVisible && ScenarioStartMenu.CampaignStartedFromMenu
+            && ScenarioStartMenu.IsLoadingVisible && ScenarioStartMenu.IsLoadingAnimationActive
+            && ScenarioStartMenu.CampaignStartedFromMenu
             && (savedGameQa || !string.IsNullOrWhiteSpace(_state.ScenarioTitle));
         GD.Print($"[{(savedGameQa ? "menu-load-qa" : "menu-launch-qa")}] passed={passed} scenario={_state.ScenarioTitle} cameraIntro={_camera.IsIntroZoomPlaying} loading={ScenarioStartMenu.IsLoadingVisible}");
         GetTree().Quit(passed ? 0 : 1);
