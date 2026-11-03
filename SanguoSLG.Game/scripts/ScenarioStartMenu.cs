@@ -53,7 +53,8 @@ void fragment() {
         var center = new CenterContainer();
         center.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
         AddChild(center);
-        var panel = new PanelContainer { CustomMinimumSize = new Vector2(850, 570) };
+        var panel = new PanelContainer { CustomMinimumSize = new Vector2(
+            Mathf.Min(1030, GetViewport().GetVisibleRect().Size.X - 28), 0) };
         var style = new StyleBoxFlat { BgColor = new Color("1e2524"), BorderColor = new Color("d1ae65") };
         style.SetBorderWidthAll(2);
         style.SetCornerRadiusAll(12);
@@ -62,7 +63,7 @@ void fragment() {
         center.AddChild(panel);
         center.Visible = false;
         var content = new VBoxContainer();
-        content.AddThemeConstantOverride("separation", 15);
+        content.AddThemeConstantOverride("separation", 9);
         panel.AddChild(content);
         var title = new Label { Text = "새로운 역사를 시작합니다", HorizontalAlignment = HorizontalAlignment.Center };
         title.AddThemeFontSizeOverride("font_size", 29);
@@ -95,20 +96,29 @@ void fragment() {
         var scenarioLayout = new HBoxContainer();
         scenarioLayout.AddThemeConstantOverride("separation", 18);
         content.AddChild(scenarioLayout);
-        var cards = new GridContainer { Columns = 2, CustomMinimumSize = new Vector2(540, 0) };
-        cards.AddThemeConstantOverride("h_separation", 8);
-        cards.AddThemeConstantOverride("v_separation", 8);
+        var cards = new VBoxContainer { CustomMinimumSize = new Vector2(255, 0) };
+        cards.AddThemeConstantOverride("separation", 6);
         scenarioLayout.AddChild(cards);
-        var details = new PanelContainer { CustomMinimumSize = new Vector2(240, 0), SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        var details = new PanelContainer { CustomMinimumSize = new Vector2(0, 310),
+            SizeFlagsHorizontal = SizeFlags.ExpandFill };
         var detailsStyle = new StyleBoxFlat { BgColor = new Color("29322e"), BorderColor = new Color("826c47") };
         detailsStyle.SetBorderWidthAll(1);
         detailsStyle.SetCornerRadiusAll(8);
         detailsStyle.SetContentMarginAll(14);
         details.AddThemeStyleboxOverride("panel", detailsStyle);
         scenarioLayout.AddChild(details);
-        var detailText = new Label { AutowrapMode = TextServer.AutowrapMode.WordSmart, SizeFlagsVertical = SizeFlags.ExpandFill };
-        detailText.AddThemeFontSizeOverride("font_size", 15);
-        details.AddChild(detailText);
+        var mapColumn = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        mapColumn.AddThemeConstantOverride("separation", 6);
+        details.AddChild(mapColumn);
+        var mapTitle = new Label { Text = "세력 배치 지도  ·  거점을 눌러 세력을 선택하세요" };
+        mapTitle.AddThemeColorOverride("font_color", new Color("e5c985"));
+        mapColumn.AddChild(mapTitle);
+        var factionMap = new ScenarioFactionMap { CustomMinimumSize = new Vector2(0, 225),
+            SizeFlagsHorizontal = SizeFlags.ExpandFill, SizeFlagsVertical = SizeFlags.ExpandFill };
+        mapColumn.AddChild(factionMap);
+        var detailText = new Label { AutowrapMode = TextServer.AutowrapMode.WordSmart };
+        detailText.AddThemeFontSizeOverride("font_size", 13);
+        mapColumn.AddChild(detailText);
         var cardButtons = new List<Button>();
         StyleBoxFlat CardStyle(bool selected, bool hover)
         {
@@ -139,7 +149,7 @@ void fragment() {
         {
             var cardIndex = index;
             var draft = SanguoSLG.Core.Data.ScenarioDraftStore.Load(scenarioPaths[index]!);
-            var card = new Button { Text = draft.Title, CustomMinimumSize = new Vector2(260, 72),
+            var card = new Button { Text = draft.Title, CustomMinimumSize = new Vector2(245, 45),
                 Alignment = HorizontalAlignment.Left, TooltipText = draft.Description };
             card.AddThemeStyleboxOverride("normal", CardStyle(false, false));
             card.AddThemeStyleboxOverride("hover", CardStyle(false, true));
@@ -152,6 +162,17 @@ void fragment() {
         if (scenarioChoice.ItemCount > 0) scenarioChoice.Select(0);
         content.AddChild(new Label { Text = "세력 선택" });
         content.AddChild(factionChoice);
+        factionMap.FactionPicked += id =>
+        {
+            for (var item = 0; item < factionChoice.ItemCount; item++)
+                if (factionChoice.GetItemId(item) == id)
+                {
+                    factionChoice.Select(item);
+                    factionMap.SelectFaction(id);
+                    break;
+                }
+        };
+        factionChoice.ItemSelected += _ => factionMap.SelectFaction(factionChoice.GetSelectedId());
         void RefreshFactions()
         {
             factionChoice.Clear();
@@ -182,7 +203,8 @@ void fragment() {
                 var preset = chosen is null
                     ? ScenarioRootMapSource.Load()
                     : LoadScenarioMap(chosen, scenarioDir);
-                detailText.Text = chosen is null ? "" : $"{chosen.Title}\n\n{chosen.Description[..Math.Min(chosen.Description.Length, 170)]}";
+                if (chosen is not null) factionMap.SetScenario(chosen, preset, factionChoice.GetSelectedId());
+                detailText.Text = chosen is null ? "" : chosen.Description[..Math.Min(chosen.Description.Length, 120)];
                 preview.Text = $"지도 {preset.Width}×{preset.Height}  ·  성 {preset.Sites.Count(s => s.Kind == "city")}  ·  항구 {preset.Sites.Count(s => s.Kind == "port")}";
             }
             catch (Exception failure) { preview.Text = "지도 미리보기 오류: " + failure.Message; }
@@ -295,9 +317,11 @@ void fragment() {
     {
         var buttons = FindChildren("*", "Button", true, false).OfType<Button>().Select(button => button.Text).ToArray();
         var scenarios = FindChildren("*", "OptionButton", true, false).OfType<OptionButton>().FirstOrDefault();
+        var factionMap = FindChildren("*", "", true, false).OfType<ScenarioFactionMap>().FirstOrDefault();
         var passed = buttons.Contains("게임 시작") && buttons.Contains("새 게임 시작하기")
             && scenarios?.ItemCount >= 6
             && !Enumerable.Range(0, scenarios?.ItemCount ?? 0).Any(index => scenarios!.GetItemText(index) == "새 시나리오")
+            && factionMap is { HasTerrain: true, CityCount: > 0 }
             && buttons.Contains("지형 에디터")
             && buttons.Contains("시나리오 에디터") && buttons.Contains("장수 에디터")
             && buttons.Contains("신규장수 등록") && buttons.Contains("저장된 게임 시작하기");
