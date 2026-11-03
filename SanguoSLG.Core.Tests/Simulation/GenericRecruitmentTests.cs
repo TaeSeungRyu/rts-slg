@@ -66,4 +66,33 @@ public sealed class GenericRecruitmentTests
         Assert.Equal(general.Intellect >= 70 || general.Politics >= 70, general.AdminPassives?.Count == 1);
         Assert.Null(general.BattleActive);
     }
+
+    [Fact]
+    public void 대화_페이지와_임명_확인은_저장후에도_중복_지급하지_않는다()
+    {
+        var (state, city, actor) = Setup();
+        var recruited = GenericRecruitmentService.Recruit(state, city with { Gold = 5000 }, actor, true).State;
+        var id = recruited.GenericRecruitmentHistory.Single().General;
+        recruited = GenericRecruitmentService.SetDialoguePage(recruited, id, 3);
+        var loaded = SaveService.Deserialize(SaveService.Serialize(recruited));
+        Assert.Equal(3, loaded.GenericRecruitmentHistory.Single().DialoguePage);
+        loaded = GenericRecruitmentService.MarkPresented(loaded, id);
+        Assert.True(loaded.GenericRecruitmentHistory.Single().Presented);
+        Assert.Single(loaded.Generals, g => g.Id == id);
+        Assert.Single(loaded.Assignments, p => p.General == id);
+    }
+
+    [Fact]
+    public void 같은_조건의_모집은_같은_장수를_만들고_기존_이름은_피한다()
+    {
+        var (state, city, actor) = Setup();
+        var first = GenericRecruitmentService.Recruit(state, city with { Gold = 5000 }, actor, false);
+        var second = GenericRecruitmentService.Recruit(state, city with { Gold = 5000 }, actor, false);
+        var firstGeneral = first.State.Generals.Last();
+        var secondGeneral = second.State.Generals.Last();
+        Assert.Equal((firstGeneral.Name, firstGeneral.Might, firstGeneral.Intellect, firstGeneral.Politics,
+            firstGeneral.PortraitPath), (secondGeneral.Name, secondGeneral.Might, secondGeneral.Intellect,
+            secondGeneral.Politics, secondGeneral.PortraitPath));
+        Assert.Equal(1, first.State.Generals.Count(g => g.Name == firstGeneral.Name));
+    }
 }

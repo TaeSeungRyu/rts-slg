@@ -812,6 +812,7 @@ public sealed partial class CampaignMapScene : Node3D
         if (args.Contains("--maptestplaybackstateqa")) CallDeferred(nameof(RunPlaybackStateQa));
         if (args.Contains("--maptestunitinfouiqa")) CallDeferred(nameof(RunUnitInfoUiQa));
         if (args.Contains("--maptestherorecruitqa")) CallDeferred(nameof(RunHeroRecruitUiQa));
+        if (args.Contains("--maptestgenericrecruitqa")) CallDeferred(nameof(RunGenericRecruitmentQa));
         if (args.Contains("--maptestspecialresearchqa")) CallDeferred(nameof(RunSpecialResearchLockQa));
         if (args.Contains("--maptestpathvisualqa")) CallDeferred(nameof(RunPathVisualQa));
         if (args.Contains("--maptestadvancecitypaletteqa")) CallDeferred(nameof(RunAdvanceCityPaletteQa));
@@ -998,6 +999,7 @@ public sealed partial class CampaignMapScene : Node3D
         foreach (var texture in _treasureTextures.Values) Track(texture);
         foreach (var texture in _roundedOptionTextures.Values) Track(texture);
         foreach (var texture in _portraits.Values) Track(texture);
+        foreach (var texture in _genericRecruitArtwork.Values) Track(texture);
         foreach (var texture in _circularPortraits.Values) Track(texture);
         foreach (var texture in _rosterPortraits.Values) Track(texture);
         foreach (var texture in _officerTablePortraits.Values) Track(texture);
@@ -6833,6 +6835,22 @@ public sealed partial class CampaignMapScene : Node3D
             _cmdSubList.AddChild(navalBtn);
         }
 
+        if (CmdGroups[groupIdx].Group == "인재")
+        {
+            foreach (var (label, martial) in new[] { ("무관모집", true), ("문관모집", false) })
+            {
+                var recruitButton = MakeButton(label);
+                recruitButton.AddThemeFontSizeOverride("font_size", 11);
+                recruitButton.CustomMinimumSize = new Vector2(84, 21);
+                recruitButton.Pressed += () =>
+                {
+                    CloseGroupMenu();
+                    if (_selected is { } cityId) ConfirmGenericRecruitment(cityId, martial);
+                };
+                _cmdSubList.AddChild(recruitButton);
+            }
+        }
+
         PlaceGroupMenu();
         _cmdSubMenu.Visible = true;
     }
@@ -6934,6 +6952,7 @@ public sealed partial class CampaignMapScene : Node3D
         TickModalTransitions();
         TickCampaignPlayTime(delta);
         TickStoryPresentation(delta);
+        TickGenericRecruitmentPresentation();
         foreach (var (marker, unitId, offset) in _movingSupplyMarkers)
         {
             if (!_armyTokens.TryGetValue(unitId, out var token) || !IsInstanceValid(token)) { continue; }

@@ -3,7 +3,8 @@ namespace SanguoSLG.Core.Simulation;
 using SanguoSLG.Core.Domain;
 
 public sealed record GenericRecruitment(CityId City, int MonthIndex, GeneralId General,
-    string Kind, int DialogueVariant, GeneralId Ruler, GeneralId Companion, bool Presented = false);
+    string Kind, int DialogueVariant, GeneralId Ruler, GeneralId Companion,
+    bool Presented = false, int DialoguePage = 0);
 
 public static class GenericRecruitmentService
 {
@@ -38,8 +39,10 @@ public static class GenericRecruitmentService
             return CommandResult.Fail("이 도시는 이번 달에 이미 장수를 모집했습니다.", state);
 
         var id = new GeneralId(state.Generals.Max(g => g.Id.Value) + 1);
-        var random = new Random(HashCode.Combine(state.StartYear, state.Day, city.Id.Value, id.Value,
-            martial ? 1 : 2));
+        var seed = unchecked(2166136261u);
+        foreach (var value in new[] { state.StartYear, state.Day, city.Id.Value, id.Value, martial ? 1 : 2 })
+            seed = unchecked((seed ^ (uint)value) * 16777619u);
+        var random = new Random(unchecked((int)seed));
         var taken = state.Generals.Select(g => g.Name).ToHashSet(StringComparer.Ordinal);
         var names = (from surname in Surnames from given in GivenNames select surname + given)
             .Where(name => !taken.Contains(name)).ToArray();
@@ -79,4 +82,8 @@ public static class GenericRecruitmentService
     public static GameState MarkPresented(GameState state, GeneralId general)
         => state with { GenericRecruitments = state.GenericRecruitmentHistory.Select(entry => entry.General == general
             ? entry with { Presented = true } : entry).ToArray() };
+
+    public static GameState SetDialoguePage(GameState state, GeneralId general, int page)
+        => state with { GenericRecruitments = state.GenericRecruitmentHistory.Select(entry => entry.General == general
+            ? entry with { DialoguePage = Math.Clamp(page, 0, 5) } : entry).ToArray() };
 }
