@@ -51,7 +51,14 @@ public partial class GameRoot3D : Node3D
         if (CampaignMapScene.HasPendingLoadedState)
         {
             _menuCampaign = true;
-            BuildCampaignMap();
+            try { BuildCampaignMap(); }
+            catch (Exception error)
+            {
+                ScenarioStartMenu.AbortLoading();
+                CampaignMapScene.ClearPendingLoadedState();
+                GD.PushError("저장 게임 시작 실패: " + error.Message);
+                GetTree().ReloadCurrentScene();
+            }
             return;
         }
 
