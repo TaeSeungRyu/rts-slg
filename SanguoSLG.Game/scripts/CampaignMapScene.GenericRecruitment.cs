@@ -187,7 +187,10 @@ public sealed partial class CampaignMapScene
             flourish.HorizontalAlignment = HorizontalAlignment.Center;
             box.AddChild(flourish);
             StartAppointmentAnimation(layer, panel, flourish, () =>
-                _state = GenericRecruitmentService.MarkPresented(_state, entry.General));
+            {
+                _state = GenericRecruitmentService.MarkPresented(_state, entry.General);
+                ShowRecruitmentSummary(entry.General);
+            });
             return;
         }
         var footer = new HBoxContainer();
@@ -264,7 +267,52 @@ public sealed partial class CampaignMapScene
         var flourish = MakeLabel("✦  새로운 위인이 합류했습니다  ✦", 16, GoldBright);
         flourish.HorizontalAlignment = HorizontalAlignment.Center;
         box.AddChild(flourish);
-        StartAppointmentAnimation(layer, panel, flourish, () => { });
+        StartAppointmentAnimation(layer, panel, flourish, () => ShowRecruitmentSummary(generalId));
+    }
+
+    private void ShowRecruitmentSummary(GeneralId generalId)
+    {
+        var general = _state.Generals.FirstOrDefault(g => g.Id == generalId);
+        if (general is null) return;
+        CloseModal();
+        var layer = new CanvasLayer { Layer = 35 };
+        AddChild(layer);
+        _modalLayer = layer;
+        var backdrop = new ColorRect { Color = new Color(0, 0, 0, 0.58f), MouseFilter = Control.MouseFilterEnum.Stop };
+        backdrop.SetAnchorsPreset(Control.LayoutPreset.FullRect);
+        layer.AddChild(backdrop);
+        var center = new CenterContainer { MouseFilter = Control.MouseFilterEnum.Ignore };
+        center.SetAnchorsPreset(Control.LayoutPreset.FullRect);
+        layer.AddChild(center);
+        var panel = new PanelContainer { CustomMinimumSize = new Vector2(490, 0), MouseFilter = Control.MouseFilterEnum.Stop };
+        panel.SetMeta("modal_root", true);
+        panel.AddThemeStyleboxOverride("panel", Frame(Ink, Gold, 2, 10, 14));
+        center.AddChild(panel);
+        var box = new VBoxContainer();
+        box.AddThemeConstantOverride("separation", 12);
+        panel.AddChild(box);
+        var header = new HBoxContainer();
+        box.AddChild(header);
+        var title = MakeLabel("새로 합류한 장수", 19, GoldBright);
+        title.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+        header.AddChild(title);
+        var close = MakeButton("✕");
+        close.CustomMinimumSize = new Vector2(36, 32);
+        close.Pressed += CloseModal;
+        header.AddChild(close);
+        box.AddChild(GoldRule());
+        box.AddChild(new TextureRect
+        {
+            Texture = OfficerPortrait(generalId), CustomMinimumSize = new Vector2(0, 230),
+            StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
+            ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
+        });
+        var name = MakeLabel(general.Name, 23, GoldBright);
+        name.HorizontalAlignment = HorizontalAlignment.Center;
+        box.AddChild(name);
+        var stats = MakeLabel($"무력 {general.Might}     지력 {general.Intellect}     정치 {general.Politics}", 16, Parchment);
+        stats.HorizontalAlignment = HorizontalAlignment.Center;
+        box.AddChild(stats);
     }
 
     private async void RunGenericRecruitmentQa()
@@ -316,6 +364,8 @@ public sealed partial class CampaignMapScene
                 .OfType<TextureRect>().Count(image => image.Texture is not null) >= 2;
             await ToSignal(GetTree().CreateTimer(3.4), SceneTreeTimer.SignalName.Timeout);
             dialogueOk &= _state.GenericRecruitmentHistory.Last().Presented;
+            dialogueOk &= RecruitmentSummaryVisible(entry.General);
+            CloseModal();
         }
         if (_genericRecruitLayer is not null) { _genericRecruitLayer.QueueFree(); _genericRecruitLayer = null; }
         ShowHeroRecruitmentAppointment(actor.Value);
@@ -323,9 +373,17 @@ public sealed partial class CampaignMapScene
             .OfType<TextureRect>().Any(image => image.Texture is not null) == true;
         await ToSignal(GetTree().CreateTimer(3.4), SceneTreeTimer.SignalName.Timeout);
         heroOk &= _genericRecruitLayer is null;
+        heroOk &= RecruitmentSummaryVisible(actor.Value);
+        CloseModal();
         _state = original;
         var passed = menuOk && scriptsOk && imagesOk && dialogueOk && heroOk;
         GD.Print($"[genericrecruitqa] passed={passed} menu={menuOk} scripts={scriptsOk} images={imagesOk} dialogue={dialogueOk} hero={heroOk}");
         GetTree().Quit(passed ? 0 : 1);
     }
+
+    private bool RecruitmentSummaryVisible(GeneralId generalId)
+        => _modalLayer?.FindChildren("*", "Label", true, false).OfType<Label>()
+            .Any(label => label.Text == _state.Generals.First(g => g.Id == generalId).Name) == true
+            && _modalLayer.FindChildren("*", "Button", true, false).OfType<Button>()
+                .Any(button => button.Text == "✕");
 }
