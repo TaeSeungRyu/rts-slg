@@ -734,7 +734,7 @@ public sealed partial class CampaignMapScene : Node3D
         SpawnHover();
         BuildHud();
         BuildPanel();
-        if (args.Contains("--newmap"))
+        if (args.Contains("--newmap") || ScenarioStartMenu.CampaignStartedFromMenu)
         {
             var ruler = _state.Factions.FirstOrDefault(faction => faction.Id == Player)?.Ruler;
             var rulerCity = ruler is { } id ? _state.PostingOf(id)?.Location : null;
