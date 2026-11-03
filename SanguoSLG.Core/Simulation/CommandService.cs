@@ -250,7 +250,15 @@ public sealed class CommandService
             return CommandResult.Fail($"영입 포인트 {hero.RecruitPointCost}점이 필요하다. (보유 {points}점)", state);
         }
 
+        var general = state.Generals.First(g => g.Id == generalId);
+        var goldCost = HeroRecruitPricing.GoldCost(hero, general);
+        if (city.Gold < goldCost)
+            return CommandResult.Fail($"영입 비용 {goldCost}금이 필요하다. (보유 {city.Gold}금)", state);
+
         state = RecruitmentPointBank.Spend(state, city.Owner, hero.RecruitPointCost);
+
+        var cities = state.Cities.Select(candidate => candidate.Id == city.Id
+            ? candidate with { Gold = candidate.Gold - goldCost } : candidate).ToList();
 
         var postings = state.Assignments.Append(new GeneralPosting(generalId, city.Owner, city.Id)).ToList();
         var heroStates = state.HeroStates
@@ -259,7 +267,7 @@ public sealed class CommandService
                 : s)
             .ToList();
 
-        return CommandResult.Success(state with { Postings = postings, HeroUnlockStates = heroStates });
+        return CommandResult.Success(state with { Cities = cities, Postings = postings, HeroUnlockStates = heroStates });
     }
 
     private CommandResult IssueBreakAlliance(GameState state, City city, CommandRequest req, General? assist)

@@ -2,10 +2,12 @@ namespace SanguoSLG.Core.Data;
 
 using System.Text.Json;
 using SanguoSLG.Core.Domain;
+using SanguoSLG.Core.Simulation;
 
 public sealed record CreatedGeneralRecord(GeneralEditorRecord General, string Gender, int RecruitPointCost,
     string? PortraitPath = null, int? RequiredGeneralId = null,
-    double FaceCenterX = 0.5, double FaceCenterY = 0.35, double FaceZoom = 1);
+    double FaceCenterX = 0.5, double FaceCenterY = 0.35, double FaceZoom = 1,
+    int RecruitGoldCost = 0);
 
 /// <summary>새 게임에서만 읽는 사용자 장수 목록. 오리진 데이터와 저장 게임은 변경하지 않는다.</summary>
 public static class CreatedGeneralStore
@@ -28,7 +30,8 @@ public static class CreatedGeneralStore
                 throw new InvalidDataException("생성 장수 ID는 10000 이상이며 중복될 수 없습니다.");
             if (string.IsNullOrWhiteSpace(entry.General.Name) || entry.General.Name.Length > 20)
                 throw new InvalidDataException("장수 이름은 1~20자여야 합니다.");
-            if (entry.Gender is not ("male" or "female") || entry.RecruitPointCost is < 0 or > 1000)
+            if (entry.Gender is not ("male" or "female") || entry.RecruitPointCost is < 0 or > 3000
+                || entry.RecruitGoldCost is < 0 or > 100000)
                 throw new InvalidDataException("성별 또는 영입 포인트가 올바르지 않습니다.");
             if (entry.PortraitPath is { } portrait && !IsAllowedPortraitPath(portrait))
                 throw new InvalidDataException("생성 장수 초상 경로가 올바르지 않습니다.");
@@ -80,7 +83,9 @@ public static class CreatedGeneralStore
                 FaceZoom = entries[index].FaceZoom,
             });
         var heroes = entries.Select(e => new HeroUnlockDefinition(new GeneralId(e.General.Id),
-            HeroUnlockType.Wanderer, RecruitPointCost: e.RecruitPointCost,
+            HeroUnlockType.Wanderer, RecruitGold: e.RecruitGoldCost > 0 ? e.RecruitGoldCost
+                : HeroRecruitPricing.DefaultFor(e.General.Aptitudes.Values).Gold,
+            RecruitPointCost: e.RecruitPointCost,
             RequiredGeneral: e.RequiredGeneralId is { } required ? new GeneralId(required) : null,
             Title: e.General.Name, Desc: "사용자 생성 장수")).ToList();
         return scenario with

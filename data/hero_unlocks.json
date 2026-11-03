@@ -2,3017 +2,3394 @@
   {
     "general": 1,
     "type": "faction",
-    "recruit_point_cost": 230,
+    "recruit_point_cost": 1000,
     "title": "조조",
     "desc": "장수 선행 조건에 따라 영입 가능한 인재",
-    "required_general": null
+    "required_general": null,
+    "recruit_gold": 2000
   },
   {
     "general": 2,
     "type": "faction",
-    "recruit_point_cost": 210,
+    "recruit_point_cost": 500,
     "title": "유비",
     "desc": "장수 선행 조건에 따라 영입 가능한 인재",
-    "required_general": null
+    "required_general": null,
+    "recruit_gold": 1250
   },
   {
     "general": 3,
     "type": "faction",
-    "recruit_point_cost": 216,
+    "recruit_point_cost": 1500,
     "title": "관우",
     "desc": "장수 선행 조건에 따라 영입 가능한 인재",
-    "required_general": 2
+    "required_general": 2,
+    "recruit_gold": 4000
   },
   {
     "general": 4,
     "type": "faction",
-    "recruit_point_cost": 160,
+    "recruit_point_cost": 1000,
     "title": "장비",
     "desc": "장수 선행 조건에 따라 영입 가능한 인재",
-    "required_general": 2
+    "required_general": 2,
+    "recruit_gold": 2000
   },
   {
     "general": 5,
     "type": "faction",
-    "recruit_point_cost": 152,
+    "recruit_point_cost": 1500,
     "title": "여포",
     "desc": "장수 선행 조건에 따라 영입 가능한 인재",
-    "required_general": null
+    "required_general": null,
+    "recruit_gold": 4000
   },
   {
     "general": 6,
     "type": "faction",
-    "recruit_point_cost": 250,
+    "recruit_point_cost": 1500,
     "title": "와룡",
     "desc": "촉의 정체성을 강화하는 세력형 위인",
-    "required_general": 2
+    "required_general": 2,
+    "recruit_gold": 4000
   },
   {
     "general": 7,
     "type": "region",
-    "recruit_point_cost": 250,
+    "recruit_point_cost": 1500,
     "title": "강동의 대도독",
     "desc": "강동 도시형 위인",
-    "required_general": 62
+    "required_general": 62,
+    "recruit_gold": 4000
   },
   {
     "general": 8,
     "type": "faction",
-    "recruit_point_cost": 204,
+    "recruit_point_cost": 500,
     "title": "하후돈",
     "desc": "장수 선행 조건에 따라 영입 가능한 인재",
-    "required_general": 1
+    "required_general": 1,
+    "recruit_gold": 1250
   },
   {
     "general": 9,
     "type": "faction",
-    "recruit_point_cost": 160,
+    "recruit_point_cost": 1500,
     "title": "상산의 용장",
     "desc": "촉 세력형 위인",
-    "required_general": 2
+    "required_general": 2,
+    "recruit_gold": 4000
   },
   {
     "general": 10,
     "type": "faction",
-    "recruit_point_cost": 184,
+    "recruit_point_cost": 1000,
     "title": "감녕",
     "desc": "장수 선행 조건에 따라 영입 가능한 인재",
-    "required_general": 63
+    "required_general": 63,
+    "recruit_gold": 2000
   },
   {
     "general": 11,
     "type": "region",
-    "recruit_point_cost": 140,
+    "recruit_point_cost": 1500,
     "title": "형주의 노장",
     "desc": "형주권 도시형 위인",
-    "required_general": 2
+    "required_general": 2,
+    "recruit_gold": 4000
   },
   {
     "general": 12,
     "type": "faction",
-    "recruit_point_cost": 228,
+    "recruit_point_cost": 1000,
     "title": "사마의",
     "desc": "장수 선행 조건에 따라 영입 가능한 인재",
-    "required_general": 1
+    "required_general": 1,
+    "recruit_gold": 2000
   },
   {
     "general": 13,
     "type": "faction",
-    "recruit_point_cost": 212,
+    "recruit_point_cost": 1000,
     "title": "장료",
     "desc": "장수 선행 조건에 따라 영입 가능한 인재",
-    "required_general": null
+    "required_general": null,
+    "recruit_gold": 2000
   },
   {
     "general": 14,
     "type": "faction",
-    "recruit_point_cost": 200,
+    "recruit_point_cost": 1000,
     "title": "장합",
     "desc": "장수 선행 조건에 따라 영입 가능한 인재",
-    "required_general": 1
+    "required_general": 1,
+    "recruit_gold": 2000
   },
   {
     "general": 15,
     "type": "faction",
-    "recruit_point_cost": 202,
+    "recruit_point_cost": 1000,
     "title": "서황",
     "desc": "장수 선행 조건에 따라 영입 가능한 인재",
-    "required_general": null
+    "required_general": null,
+    "recruit_gold": 2000
   },
   {
     "general": 16,
     "type": "faction",
-    "recruit_point_cost": 178,
+    "recruit_point_cost": 500,
     "title": "악진",
     "desc": "장수 선행 조건에 따라 영입 가능한 인재",
-    "required_general": 1
+    "required_general": 1,
+    "recruit_gold": 1250
   },
   {
     "general": 17,
     "type": "faction",
-    "recruit_point_cost": 190,
+    "recruit_point_cost": 500,
     "title": "우금",
     "desc": "장수 선행 조건에 따라 영입 가능한 인재",
-    "required_general": 1
+    "required_general": 1,
+    "recruit_gold": 1250
   },
   {
     "general": 18,
     "type": "faction",
-    "recruit_point_cost": 204,
+    "recruit_point_cost": 500,
     "title": "이전",
     "desc": "장수 선행 조건에 따라 영입 가능한 인재",
-    "required_general": 1
+    "required_general": 1,
+    "recruit_gold": 1250
   },
   {
     "general": 19,
     "type": "faction",
-    "recruit_point_cost": 160,
+    "recruit_point_cost": 500,
     "title": "전위",
     "desc": "장수 선행 조건에 따라 영입 가능한 인재",
-    "required_general": 1
+    "required_general": 1,
+    "recruit_gold": 1250
   },
   {
     "general": 20,
     "type": "faction",
-    "recruit_point_cost": 160,
+    "recruit_point_cost": 1500,
     "title": "허저",
     "desc": "장수 선행 조건에 따라 영입 가능한 인재",
-    "required_general": 1
+    "required_general": 1,
+    "recruit_gold": 4000
   },
   {
     "general": 21,
     "type": "faction",
-    "recruit_point_cost": 188,
+    "recruit_point_cost": 1000,
     "title": "방덕",
     "desc": "장수 선행 조건에 따라 영입 가능한 인재",
-    "required_general": 85
+    "required_general": 85,
+    "recruit_gold": 2000
   },
   {
     "general": 22,
     "type": "faction",
-    "recruit_point_cost": 192,
+    "recruit_point_cost": 1000,
     "title": "하후연",
     "desc": "장수 선행 조건에 따라 영입 가능한 인재",
-    "required_general": 1
+    "required_general": 1,
+    "recruit_gold": 2000
   },
   {
     "general": 23,
     "type": "faction",
-    "recruit_point_cost": 198,
+    "recruit_point_cost": 1000,
     "title": "조인",
     "desc": "장수 선행 조건에 따라 영입 가능한 인재",
-    "required_general": 1
+    "required_general": 1,
+    "recruit_gold": 2000
   },
   {
     "general": 24,
     "type": "faction",
-    "recruit_point_cost": 172,
+    "recruit_point_cost": 500,
     "title": "조홍",
     "desc": "장수 선행 조건에 따라 영입 가능한 인재",
-    "required_general": 1
+    "required_general": 1,
+    "recruit_gold": 1250
   },
   {
     "general": 25,
     "type": "faction",
-    "recruit_point_cost": 214,
+    "recruit_point_cost": 500,
     "title": "조비",
     "desc": "장수 선행 조건에 따라 영입 가능한 인재",
-    "required_general": 1
+    "required_general": 1,
+    "recruit_gold": 1250
   },
   {
     "general": 26,
     "type": "faction",
-    "recruit_point_cost": 194,
+    "recruit_point_cost": 500,
     "title": "조진",
     "desc": "장수 선행 조건에 따라 영입 가능한 인재",
-    "required_general": 25
+    "required_general": 25,
+    "recruit_gold": 1250
   },
   {
     "general": 27,
     "type": "faction",
-    "recruit_point_cost": 190,
+    "recruit_point_cost": 500,
     "title": "조휴",
     "desc": "장수 선행 조건에 따라 영입 가능한 인재",
-    "required_general": 25
+    "required_general": 25,
+    "recruit_gold": 1250
   },
   {
     "general": 28,
     "type": "faction",
-    "recruit_point_cost": 198,
+    "recruit_point_cost": 250,
     "title": "곽가",
     "desc": "장수 선행 조건에 따라 영입 가능한 인재",
-    "required_general": 1
+    "required_general": 1,
+    "recruit_gold": 750
   },
   {
     "general": 29,
     "type": "faction",
-    "recruit_point_cost": 200,
+    "recruit_point_cost": 500,
     "title": "왕좌지재",
     "desc": "위의 내정 기반 세력형 위인",
-    "required_general": 1
+    "required_general": 1,
+    "recruit_gold": 1250
   },
   {
     "general": 30,
     "type": "faction",
-    "recruit_point_cost": 202,
+    "recruit_point_cost": 500,
     "title": "순유",
     "desc": "장수 선행 조건에 따라 영입 가능한 인재",
-    "required_general": 1
+    "required_general": 1,
+    "recruit_gold": 1250
   },
   {
     "general": 31,
     "type": "faction",
-    "recruit_point_cost": 208,
+    "recruit_point_cost": 250,
     "title": "가후",
     "desc": "장수 선행 조건에 따라 영입 가능한 인재",
-    "required_general": null
+    "required_general": null,
+    "recruit_gold": 750
   },
   {
     "general": 32,
     "type": "faction",
-    "recruit_point_cost": 210,
+    "recruit_point_cost": 250,
     "title": "정욱",
     "desc": "장수 선행 조건에 따라 영입 가능한 인재",
-    "required_general": 1
+    "required_general": 1,
+    "recruit_gold": 750
   },
   {
     "general": 33,
     "type": "faction",
-    "recruit_point_cost": 202,
+    "recruit_point_cost": 1000,
     "title": "유엽",
     "desc": "장수 선행 조건에 따라 영입 가능한 인재",
-    "required_general": 1
+    "required_general": 1,
+    "recruit_gold": 2000
   },
   {
     "general": 34,
     "type": "faction",
-    "recruit_point_cost": 208,
+    "recruit_point_cost": 1000,
     "title": "만총",
     "desc": "장수 선행 조건에 따라 영입 가능한 인재",
-    "required_general": 1
+    "required_general": 1,
+    "recruit_gold": 2000
   },
   {
     "general": 35,
     "type": "faction",
-    "recruit_point_cost": 202,
+    "recruit_point_cost": 1000,
     "title": "학소",
     "desc": "장수 선행 조건에 따라 영입 가능한 인재",
-    "required_general": 1
+    "required_general": 1,
+    "recruit_gold": 2000
   },
   {
     "general": 36,
     "type": "faction",
-    "recruit_point_cost": 162,
+    "recruit_point_cost": 500,
     "title": "왕쌍",
     "desc": "장수 선행 조건에 따라 영입 가능한 인재",
-    "required_general": null
+    "required_general": null,
+    "recruit_gold": 1250
   },
   {
     "general": 37,
     "type": "faction",
-    "recruit_point_cost": 224,
+    "recruit_point_cost": 1000,
     "title": "등애",
     "desc": "장수 선행 조건에 따라 영입 가능한 인재",
-    "required_general": null
+    "required_general": null,
+    "recruit_gold": 2000
   },
   {
     "general": 38,
     "type": "faction",
-    "recruit_point_cost": 210,
+    "recruit_point_cost": 500,
     "title": "종회",
     "desc": "장수 선행 조건에 따라 영입 가능한 인재",
-    "required_general": null
+    "required_general": null,
+    "recruit_gold": 1250
   },
   {
     "general": 39,
     "type": "faction",
-    "recruit_point_cost": 220,
+    "recruit_point_cost": 500,
     "title": "사마사",
     "desc": "장수 선행 조건에 따라 영입 가능한 인재",
-    "required_general": 12
+    "required_general": 12,
+    "recruit_gold": 1250
   },
   {
     "general": 40,
     "type": "faction",
-    "recruit_point_cost": 214,
+    "recruit_point_cost": 500,
     "title": "사마소",
     "desc": "장수 선행 조건에 따라 영입 가능한 인재",
-    "required_general": 12
+    "required_general": 12,
+    "recruit_gold": 1250
   },
   {
     "general": 41,
     "type": "region",
-    "recruit_point_cost": 220,
+    "recruit_point_cost": 1500,
     "title": "서량의 기병장",
     "desc": "서량 지역 도시형 위인",
-    "required_general": 85
+    "required_general": 85,
+    "recruit_gold": 4000
   },
   {
     "general": 42,
     "type": "faction",
-    "recruit_point_cost": 194,
+    "recruit_point_cost": 1000,
     "title": "위연",
     "desc": "장수 선행 조건에 따라 영입 가능한 인재",
-    "required_general": 2
+    "required_general": 2,
+    "recruit_gold": 2000
   },
   {
     "general": 43,
     "type": "faction",
-    "recruit_point_cost": 220,
+    "recruit_point_cost": 1000,
     "title": "강유",
     "desc": "장수 선행 조건에 따라 영입 가능한 인재",
-    "required_general": 6
+    "required_general": 6,
+    "recruit_gold": 2000
   },
   {
     "general": 44,
     "type": "faction",
-    "recruit_point_cost": 180,
+    "recruit_point_cost": 500,
     "title": "마대",
     "desc": "장수 선행 조건에 따라 영입 가능한 인재",
-    "required_general": 41
+    "required_general": 41,
+    "recruit_gold": 1250
   },
   {
     "general": 45,
     "type": "faction",
-    "recruit_point_cost": 198,
+    "recruit_point_cost": 1000,
     "title": "왕평",
     "desc": "장수 선행 조건에 따라 영입 가능한 인재",
-    "required_general": 2
+    "required_general": 2,
+    "recruit_gold": 2000
   },
   {
     "general": 46,
     "type": "faction",
-    "recruit_point_cost": 180,
+    "recruit_point_cost": 500,
     "title": "요화",
     "desc": "장수 선행 조건에 따라 영입 가능한 인재",
-    "required_general": 2
+    "required_general": 2,
+    "recruit_gold": 1250
   },
   {
     "general": 47,
     "type": "faction",
-    "recruit_point_cost": 204,
+    "recruit_point_cost": 500,
     "title": "방통",
     "desc": "장수 선행 조건에 따라 영입 가능한 인재",
-    "required_general": 2
+    "required_general": 2,
+    "recruit_gold": 1250
   },
   {
     "general": 48,
     "type": "faction",
-    "recruit_point_cost": 200,
+    "recruit_point_cost": 500,
     "title": "법정",
     "desc": "장수 선행 조건에 따라 영입 가능한 인재",
-    "required_general": 2
+    "required_general": 2,
+    "recruit_gold": 1250
   },
   {
     "general": 49,
     "type": "faction",
-    "recruit_point_cost": 196,
+    "recruit_point_cost": 500,
     "title": "마량",
     "desc": "장수 선행 조건에 따라 영입 가능한 인재",
-    "required_general": 2
+    "required_general": 2,
+    "recruit_gold": 1250
   },
   {
     "general": 50,
     "type": "faction",
-    "recruit_point_cost": 190,
+    "recruit_point_cost": 250,
     "title": "마속",
     "desc": "장수 선행 조건에 따라 영입 가능한 인재",
-    "required_general": null
+    "required_general": null,
+    "recruit_gold": 750
   },
   {
     "general": 51,
     "type": "faction",
-    "recruit_point_cost": 212,
+    "recruit_point_cost": 250,
     "title": "서서",
     "desc": "장수 선행 조건에 따라 영입 가능한 인재",
-    "required_general": 2
+    "required_general": 2,
+    "recruit_gold": 750
   },
   {
     "general": 52,
     "type": "faction",
-    "recruit_point_cost": 194,
+    "recruit_point_cost": 500,
     "title": "관평",
     "desc": "장수 선행 조건에 따라 영입 가능한 인재",
-    "required_general": 3
+    "required_general": 3,
+    "recruit_gold": 1250
   },
   {
     "general": 53,
     "type": "faction",
-    "recruit_point_cost": 188,
+    "recruit_point_cost": 500,
     "title": "관흥",
     "desc": "장수 선행 조건에 따라 영입 가능한 인재",
-    "required_general": 3
+    "required_general": 3,
+    "recruit_gold": 1250
   },
   {
     "general": 54,
     "type": "faction",
-    "recruit_point_cost": 178,
+    "recruit_point_cost": 500,
     "title": "장포",
     "desc": "장수 선행 조건에 따라 영입 가능한 인재",
-    "required_general": 4
+    "required_general": 4,
+    "recruit_gold": 1250
   },
   {
     "general": 55,
     "type": "faction",
-    "recruit_point_cost": 196,
+    "recruit_point_cost": 1000,
     "title": "엄안",
     "desc": "장수 선행 조건에 따라 영입 가능한 인재",
-    "required_general": 2
+    "required_general": 2,
+    "recruit_gold": 2000
   },
   {
     "general": 56,
     "type": "faction",
-    "recruit_point_cost": 206,
+    "recruit_point_cost": 500,
     "title": "이엄",
     "desc": "장수 선행 조건에 따라 영입 가능한 인재",
-    "required_general": 2
+    "required_general": 2,
+    "recruit_gold": 1250
   },
   {
     "general": 57,
     "type": "faction",
-    "recruit_point_cost": 170,
+    "recruit_point_cost": 1000,
     "title": "맹획",
     "desc": "장수 선행 조건에 따라 영입 가능한 인재",
-    "required_general": null
+    "required_general": null,
+    "recruit_gold": 2000
   },
   {
     "general": 58,
     "type": "faction",
-    "recruit_point_cost": 168,
+    "recruit_point_cost": 500,
     "title": "축융",
     "desc": "장수 선행 조건에 따라 영입 가능한 인재",
-    "required_general": 57
+    "required_general": 57,
+    "recruit_gold": 1250
   },
   {
     "general": 59,
     "type": "faction",
-    "recruit_point_cost": 184,
+    "recruit_point_cost": 500,
     "title": "진도",
     "desc": "장수 선행 조건에 따라 영입 가능한 인재",
-    "required_general": 2
+    "required_general": 2,
+    "recruit_gold": 1250
   },
   {
     "general": 60,
     "type": "faction",
-    "recruit_point_cost": 188,
+    "recruit_point_cost": 500,
     "title": "오의",
     "desc": "장수 선행 조건에 따라 영입 가능한 인재",
-    "required_general": 2
+    "required_general": 2,
+    "recruit_gold": 1250
   },
   {
     "general": 61,
     "type": "faction",
-    "recruit_point_cost": 216,
+    "recruit_point_cost": 1000,
     "title": "손견",
     "desc": "장수 선행 조건에 따라 영입 가능한 인재",
-    "required_general": null
+    "required_general": null,
+    "recruit_gold": 2000
   },
   {
     "general": 62,
     "type": "faction",
-    "recruit_point_cost": 210,
+    "recruit_point_cost": 1500,
     "title": "손책",
     "desc": "장수 선행 조건에 따라 영입 가능한 인재",
-    "required_general": 61
+    "required_general": 61,
+    "recruit_gold": 4000
   },
   {
     "general": 63,
     "type": "faction",
-    "recruit_point_cost": 216,
+    "recruit_point_cost": 500,
     "title": "손권",
     "desc": "장수 선행 조건에 따라 영입 가능한 인재",
-    "required_general": 62
+    "required_general": 62,
+    "recruit_gold": 1250
   },
   {
     "general": 64,
     "type": "faction",
-    "recruit_point_cost": 204,
+    "recruit_point_cost": 1000,
     "title": "태사자",
     "desc": "장수 선행 조건에 따라 영입 가능한 인재",
-    "required_general": 62
+    "required_general": 62,
+    "recruit_gold": 2000
   },
   {
     "general": 65,
     "type": "faction",
-    "recruit_point_cost": 204,
+    "recruit_point_cost": 500,
     "title": "정보",
     "desc": "장수 선행 조건에 따라 영입 가능한 인재",
-    "required_general": 61
+    "required_general": 61,
+    "recruit_gold": 1250
   },
   {
     "general": 66,
     "type": "faction",
-    "recruit_point_cost": 196,
+    "recruit_point_cost": 1000,
     "title": "황개",
     "desc": "장수 선행 조건에 따라 영입 가능한 인재",
-    "required_general": 61
+    "required_general": 61,
+    "recruit_gold": 2000
   },
   {
     "general": 67,
     "type": "faction",
-    "recruit_point_cost": 184,
+    "recruit_point_cost": 500,
     "title": "한당",
     "desc": "장수 선행 조건에 따라 영입 가능한 인재",
-    "required_general": 61
+    "required_general": 61,
+    "recruit_gold": 1250
   },
   {
     "general": 68,
     "type": "faction",
-    "recruit_point_cost": 178,
+    "recruit_point_cost": 1000,
     "title": "주태",
     "desc": "장수 선행 조건에 따라 영입 가능한 인재",
-    "required_general": 63
+    "required_general": 63,
+    "recruit_gold": 2000
   },
   {
     "general": 69,
     "type": "faction",
-    "recruit_point_cost": 184,
+    "recruit_point_cost": 500,
     "title": "능통",
     "desc": "장수 선행 조건에 따라 영입 가능한 인재",
-    "required_general": 63
+    "required_general": 63,
+    "recruit_gold": 1250
   },
   {
     "general": 70,
     "type": "faction",
-    "recruit_point_cost": 228,
+    "recruit_point_cost": 1000,
     "title": "여몽",
     "desc": "장수 선행 조건에 따라 영입 가능한 인재",
-    "required_general": 63
+    "required_general": 63,
+    "recruit_gold": 2000
   },
   {
     "general": 71,
     "type": "faction",
-    "recruit_point_cost": 230,
+    "recruit_point_cost": 1000,
     "title": "육손",
     "desc": "장수 선행 조건에 따라 영입 가능한 인재",
-    "required_general": 63
+    "required_general": 63,
+    "recruit_gold": 2000
   },
   {
     "general": 72,
     "type": "faction",
-    "recruit_point_cost": 216,
+    "recruit_point_cost": 1000,
     "title": "육항",
     "desc": "장수 선행 조건에 따라 영입 가능한 인재",
-    "required_general": 71
+    "required_general": 71,
+    "recruit_gold": 2000
   },
   {
     "general": 73,
     "type": "faction",
-    "recruit_point_cost": 218,
+    "recruit_point_cost": 1000,
     "title": "노숙",
     "desc": "장수 선행 조건에 따라 영입 가능한 인재",
-    "required_general": 62
+    "required_general": 62,
+    "recruit_gold": 2000
   },
   {
     "general": 74,
     "type": "faction",
-    "recruit_point_cost": 192,
+    "recruit_point_cost": 500,
     "title": "장소",
     "desc": "장수 선행 조건에 따라 영입 가능한 인재",
-    "required_general": 63
+    "required_general": 63,
+    "recruit_gold": 1250
   },
   {
     "general": 75,
     "type": "faction",
-    "recruit_point_cost": 196,
+    "recruit_point_cost": 500,
     "title": "제갈근",
     "desc": "장수 선행 조건에 따라 영입 가능한 인재",
-    "required_general": 63
+    "required_general": 63,
+    "recruit_gold": 1250
   },
   {
     "general": 76,
     "type": "faction",
-    "recruit_point_cost": 196,
+    "recruit_point_cost": 500,
     "title": "정봉",
     "desc": "장수 선행 조건에 따라 영입 가능한 인재",
-    "required_general": 63
+    "required_general": 63,
+    "recruit_gold": 1250
   },
   {
     "general": 77,
     "type": "faction",
-    "recruit_point_cost": 202,
+    "recruit_point_cost": 500,
     "title": "서성",
     "desc": "장수 선행 조건에 따라 영입 가능한 인재",
-    "required_general": 63
+    "required_general": 63,
+    "recruit_gold": 1250
   },
   {
     "general": 78,
     "type": "faction",
-    "recruit_point_cost": 200,
+    "recruit_point_cost": 500,
     "title": "주환",
     "desc": "장수 선행 조건에 따라 영입 가능한 인재",
-    "required_general": 63
+    "required_general": 63,
+    "recruit_gold": 1250
   },
   {
     "general": 79,
     "type": "faction",
-    "recruit_point_cost": 172,
+    "recruit_point_cost": 500,
     "title": "반장",
     "desc": "장수 선행 조건에 따라 영입 가능한 인재",
-    "required_general": 63
+    "required_general": 63,
+    "recruit_gold": 1250
   },
   {
     "general": 80,
     "type": "faction",
-    "recruit_point_cost": 198,
+    "recruit_point_cost": 500,
     "title": "하제",
     "desc": "장수 선행 조건에 따라 영입 가능한 인재",
-    "required_general": 63
+    "required_general": 63,
+    "recruit_gold": 1250
   },
   {
     "general": 81,
     "type": "faction",
-    "recruit_point_cost": 170,
+    "recruit_point_cost": 1000,
     "title": "동탁",
     "desc": "장수 선행 조건에 따라 영입 가능한 인재",
-    "required_general": null
+    "required_general": null,
+    "recruit_gold": 2000
   },
   {
     "general": 82,
     "type": "faction",
-    "recruit_point_cost": 164,
+    "recruit_point_cost": 500,
     "title": "화웅",
     "desc": "장수 선행 조건에 따라 영입 가능한 인재",
-    "required_general": 81
+    "required_general": 81,
+    "recruit_gold": 1250
   },
   {
     "general": 83,
     "type": "faction",
-    "recruit_point_cost": 154,
+    "recruit_point_cost": 500,
     "title": "이각",
     "desc": "장수 선행 조건에 따라 영입 가능한 인재",
-    "required_general": 81
+    "required_general": 81,
+    "recruit_gold": 1250
   },
   {
     "general": 84,
     "type": "faction",
-    "recruit_point_cost": 150,
+    "recruit_point_cost": 500,
     "title": "곽사",
     "desc": "장수 선행 조건에 따라 영입 가능한 인재",
-    "required_general": 81
+    "required_general": 81,
+    "recruit_gold": 1250
   },
   {
     "general": 85,
     "type": "faction",
-    "recruit_point_cost": 186,
+    "recruit_point_cost": 1000,
     "title": "마등",
     "desc": "장수 선행 조건에 따라 영입 가능한 인재",
-    "required_general": null
+    "required_general": null,
+    "recruit_gold": 2000
   },
   {
     "general": 86,
     "type": "faction",
-    "recruit_point_cost": 194,
+    "recruit_point_cost": 500,
     "title": "한수",
     "desc": "장수 선행 조건에 따라 영입 가능한 인재",
-    "required_general": null
+    "required_general": null,
+    "recruit_gold": 1250
   },
   {
     "general": 87,
     "type": "faction",
-    "recruit_point_cost": 206,
+    "recruit_point_cost": 500,
     "title": "원소",
     "desc": "장수 선행 조건에 따라 영입 가능한 인재",
-    "required_general": null
+    "required_general": null,
+    "recruit_gold": 1250
   },
   {
     "general": 88,
     "type": "faction",
-    "recruit_point_cost": 170,
+    "recruit_point_cost": 1000,
     "title": "안량",
     "desc": "장수 선행 조건에 따라 영입 가능한 인재",
-    "required_general": 87
+    "required_general": 87,
+    "recruit_gold": 2000
   },
   {
     "general": 89,
     "type": "faction",
-    "recruit_point_cost": 166,
+    "recruit_point_cost": 1000,
     "title": "문추",
     "desc": "장수 선행 조건에 따라 영입 가능한 인재",
-    "required_general": 87
+    "required_general": 87,
+    "recruit_gold": 2000
   },
   {
     "general": 90,
     "type": "faction",
-    "recruit_point_cost": 194,
+    "recruit_point_cost": 500,
     "title": "전풍",
     "desc": "장수 선행 조건에 따라 영입 가능한 인재",
-    "required_general": 87
+    "required_general": 87,
+    "recruit_gold": 1250
   },
   {
     "general": 91,
     "type": "faction",
-    "recruit_point_cost": 192,
+    "recruit_point_cost": 500,
     "title": "저수",
     "desc": "장수 선행 조건에 따라 영입 가능한 인재",
-    "required_general": 87
+    "required_general": 87,
+    "recruit_gold": 1250
   },
   {
     "general": 92,
     "type": "faction",
-    "recruit_point_cost": 168,
+    "recruit_point_cost": 250,
     "title": "원술",
     "desc": "장수 선행 조건에 따라 영입 가능한 인재",
-    "required_general": null
+    "required_general": null,
+    "recruit_gold": 750
   },
   {
     "general": 93,
     "type": "faction",
-    "recruit_point_cost": 176,
+    "recruit_point_cost": 500,
     "title": "기령",
     "desc": "장수 선행 조건에 따라 영입 가능한 인재",
-    "required_general": 92
+    "required_general": 92,
+    "recruit_gold": 1250
   },
   {
     "general": 94,
     "type": "faction",
-    "recruit_point_cost": 188,
+    "recruit_point_cost": 1000,
     "title": "공손찬",
     "desc": "장수 선행 조건에 따라 영입 가능한 인재",
-    "required_general": null
+    "required_general": null,
+    "recruit_gold": 2000
   },
   {
     "general": 95,
     "type": "faction",
-    "recruit_point_cost": 198,
+    "recruit_point_cost": 500,
     "title": "유표",
     "desc": "장수 선행 조건에 따라 영입 가능한 인재",
-    "required_general": null
+    "required_general": null,
+    "recruit_gold": 1250
   },
   {
     "general": 96,
     "type": "faction",
-    "recruit_point_cost": 168,
+    "recruit_point_cost": 500,
     "title": "황조",
     "desc": "장수 선행 조건에 따라 영입 가능한 인재",
-    "required_general": 95
+    "required_general": 95,
+    "recruit_gold": 1250
   },
   {
     "general": 97,
     "type": "faction",
-    "recruit_point_cost": 198,
+    "recruit_point_cost": 500,
     "title": "문빙",
     "desc": "장수 선행 조건에 따라 영입 가능한 인재",
-    "required_general": 95
+    "required_general": 95,
+    "recruit_gold": 1250
   },
   {
     "general": 98,
     "type": "faction",
-    "recruit_point_cost": 142,
+    "recruit_point_cost": 250,
     "title": "유장",
     "desc": "장수 선행 조건에 따라 영입 가능한 인재",
-    "required_general": 137
+    "required_general": 137,
+    "recruit_gold": 750
   },
   {
     "general": 99,
     "type": "faction",
-    "recruit_point_cost": 204,
+    "recruit_point_cost": 500,
     "title": "장임",
     "desc": "장수 선행 조건에 따라 영입 가능한 인재",
-    "required_general": 98
+    "required_general": 98,
+    "recruit_gold": 1250
   },
   {
     "general": 100,
     "type": "faction",
-    "recruit_point_cost": 194,
+    "recruit_point_cost": 250,
     "title": "장각",
     "desc": "장수 선행 조건에 따라 영입 가능한 인재",
-    "required_general": null
+    "required_general": null,
+    "recruit_gold": 750
   },
   {
     "general": 101,
     "type": "faction",
-    "recruit_point_cost": 180,
+    "recruit_point_cost": 250,
     "title": "장보",
     "desc": "장수 선행 조건에 따라 영입 가능한 인재",
-    "required_general": 100
+    "required_general": 100,
+    "recruit_gold": 750
   },
   {
     "general": 102,
     "type": "faction",
-    "recruit_point_cost": 174,
+    "recruit_point_cost": 250,
     "title": "장량",
     "desc": "장수 선행 조건에 따라 영입 가능한 인재",
-    "required_general": 100
+    "required_general": 100,
+    "recruit_gold": 750
   },
   {
     "general": 103,
     "type": "faction",
-    "recruit_point_cost": 204,
+    "recruit_point_cost": 500,
     "title": "진궁",
     "desc": "장수 선행 조건에 따라 영입 가능한 인재",
-    "required_general": 5
+    "required_general": 5,
+    "recruit_gold": 1250
   },
   {
     "general": 104,
     "type": "faction",
-    "recruit_point_cost": 188,
+    "recruit_point_cost": 1000,
     "title": "고순",
     "desc": "장수 선행 조건에 따라 영입 가능한 인재",
-    "required_general": 5
+    "required_general": 5,
+    "recruit_gold": 2000
   },
   {
     "general": 105,
     "type": "faction",
-    "recruit_point_cost": 180,
+    "recruit_point_cost": 250,
     "title": "도겸",
     "desc": "장수 선행 조건에 따라 영입 가능한 인재",
-    "required_general": null
+    "required_general": null,
+    "recruit_gold": 750
   },
   {
     "general": 106,
     "type": "faction",
-    "recruit_point_cost": 178,
+    "recruit_point_cost": 100,
     "title": "공융",
     "desc": "장수 선행 조건에 따라 영입 가능한 인재",
-    "required_general": null
+    "required_general": null,
+    "recruit_gold": 500
   },
   {
     "general": 107,
     "type": "faction",
-    "recruit_point_cost": 184,
+    "recruit_point_cost": 100,
     "title": "왕윤",
     "desc": "장수 선행 조건에 따라 영입 가능한 인재",
-    "required_general": null
+    "required_general": null,
+    "recruit_gold": 500
   },
   {
     "general": 108,
     "type": "faction",
-    "recruit_point_cost": 174,
+    "recruit_point_cost": 250,
     "title": "유요",
     "desc": "장수 선행 조건에 따라 영입 가능한 인재",
-    "required_general": null
+    "required_general": null,
+    "recruit_gold": 750
   },
   {
     "general": 109,
     "type": "faction",
-    "recruit_point_cost": 188,
+    "recruit_point_cost": 500,
     "title": "장로",
     "desc": "장수 선행 조건에 따라 영입 가능한 인재",
-    "required_general": null
+    "required_general": null,
+    "recruit_gold": 1250
   },
   {
     "general": 110,
     "type": "faction",
-    "recruit_point_cost": 196,
+    "recruit_point_cost": 500,
     "title": "맹달",
     "desc": "장수 선행 조건에 따라 영입 가능한 인재",
-    "required_general": null
+    "required_general": null,
+    "recruit_gold": 1250
   },
   {
     "general": 111,
     "type": "faction",
-    "recruit_point_cost": 198,
+    "recruit_point_cost": 500,
     "title": "심배",
     "desc": "장수 선행 조건에 따라 영입 가능한 인재",
-    "required_general": 87
+    "required_general": 87,
+    "recruit_gold": 1250
   },
   {
     "general": 112,
     "type": "faction",
-    "recruit_point_cost": 176,
+    "recruit_point_cost": 250,
     "title": "곽도",
     "desc": "장수 선행 조건에 따라 영입 가능한 인재",
-    "required_general": 87
+    "required_general": 87,
+    "recruit_gold": 750
   },
   {
     "general": 113,
     "type": "faction",
-    "recruit_point_cost": 182,
+    "recruit_point_cost": 100,
     "title": "초선",
     "desc": "장수 선행 조건에 따라 영입 가능한 인재",
-    "required_general": 107
+    "required_general": 107,
+    "recruit_gold": 500
   },
   {
     "general": 114,
     "type": "faction",
-    "recruit_point_cost": 188,
+    "recruit_point_cost": 500,
     "title": "손상향",
     "desc": "장수 선행 조건에 따라 영입 가능한 인재",
-    "required_general": 63
+    "required_general": 63,
+    "recruit_gold": 1250
   },
   {
     "general": 115,
     "type": "faction",
-    "recruit_point_cost": 168,
+    "recruit_point_cost": 500,
     "title": "여령기",
     "desc": "장수 선행 조건에 따라 영입 가능한 인재",
-    "required_general": 5
+    "required_general": 5,
+    "recruit_gold": 1250
   },
   {
     "general": 116,
     "type": "faction",
-    "recruit_point_cost": 176,
+    "recruit_point_cost": 500,
     "title": "관은병",
     "desc": "장수 선행 조건에 따라 영입 가능한 인재",
-    "required_general": 3
+    "required_general": 3,
+    "recruit_gold": 1250
   },
   {
     "general": 117,
     "type": "faction",
-    "recruit_point_cost": 170,
+    "recruit_point_cost": 500,
     "title": "포삼랑",
     "desc": "장수 선행 조건에 따라 영입 가능한 인재",
-    "required_general": null
+    "required_general": null,
+    "recruit_gold": 1250
   },
   {
     "general": 118,
     "type": "faction",
-    "recruit_point_cost": 204,
+    "recruit_point_cost": 500,
     "title": "왕이",
     "desc": "장수 선행 조건에 따라 영입 가능한 인재",
-    "required_general": null
+    "required_general": null,
+    "recruit_gold": 1250
   },
   {
     "general": 119,
     "type": "faction",
-    "recruit_point_cost": 194,
+    "recruit_point_cost": 250,
     "title": "신헌영",
     "desc": "장수 선행 조건에 따라 영입 가능한 인재",
-    "required_general": 12
+    "required_general": 12,
+    "recruit_gold": 750
   },
   {
     "general": 120,
     "type": "faction",
-    "recruit_point_cost": 196,
+    "recruit_point_cost": 250,
     "title": "장춘화",
     "desc": "장수 선행 조건에 따라 영입 가능한 인재",
-    "required_general": 12
+    "required_general": 12,
+    "recruit_gold": 750
   },
   {
     "general": 121,
     "type": "faction",
-    "recruit_point_cost": 166,
+    "recruit_point_cost": 100,
     "title": "하후씨",
     "desc": "장수 선행 조건에 따라 영입 가능한 인재",
-    "required_general": 4
+    "required_general": 4,
+    "recruit_gold": 500
   },
   {
     "general": 122,
     "type": "faction",
-    "recruit_point_cost": 162,
+    "recruit_point_cost": 100,
     "title": "대교",
     "desc": "장수 선행 조건에 따라 영입 가능한 인재",
-    "required_general": 62
+    "required_general": 62,
+    "recruit_gold": 500
   },
   {
     "general": 123,
     "type": "faction",
-    "recruit_point_cost": 162,
+    "recruit_point_cost": 100,
     "title": "소교",
     "desc": "장수 선행 조건에 따라 영입 가능한 인재",
-    "required_general": 7
+    "required_general": 7,
+    "recruit_gold": 500
   },
   {
     "general": 124,
     "type": "faction",
-    "recruit_point_cost": 168,
+    "recruit_point_cost": 100,
     "title": "견씨",
     "desc": "장수 선행 조건에 따라 영입 가능한 인재",
-    "required_general": 25
+    "required_general": 25,
+    "recruit_gold": 500
   },
   {
     "general": 125,
     "type": "faction",
-    "recruit_point_cost": 174,
+    "recruit_point_cost": 100,
     "title": "채문희",
     "desc": "장수 선행 조건에 따라 영입 가능한 인재",
-    "required_general": null
+    "required_general": null,
+    "recruit_gold": 500
   },
   {
     "general": 126,
     "type": "faction",
-    "recruit_point_cost": 192,
+    "recruit_point_cost": 500,
     "title": "황월영",
     "desc": "장수 선행 조건에 따라 영입 가능한 인재",
-    "required_general": 6
+    "required_general": 6,
+    "recruit_gold": 1250
   },
   {
     "general": 127,
     "type": "faction",
-    "recruit_point_cost": 170,
+    "recruit_point_cost": 500,
     "title": "마운록",
     "desc": "장수 선행 조건에 따라 영입 가능한 인재",
-    "required_general": 41
+    "required_general": 41,
+    "recruit_gold": 1250
   },
   {
     "general": 128,
     "type": "faction",
-    "recruit_point_cost": 158,
+    "recruit_point_cost": 100,
     "title": "번씨",
     "desc": "장수 선행 조건에 따라 영입 가능한 인재",
-    "required_general": null
+    "required_general": null,
+    "recruit_gold": 500
   },
   {
     "general": 129,
     "type": "faction",
-    "recruit_point_cost": 174,
+    "recruit_point_cost": 250,
     "title": "오국태",
     "desc": "장수 선행 조건에 따라 영입 가능한 인재",
-    "required_general": 63
+    "required_general": 63,
+    "recruit_gold": 750
   },
   {
     "general": 130,
     "type": "faction",
-    "recruit_point_cost": 162,
+    "recruit_point_cost": 100,
     "title": "보연사",
     "desc": "장수 선행 조건에 따라 영입 가능한 인재",
-    "required_general": 63
+    "required_general": 63,
+    "recruit_gold": 500
   },
   {
     "general": 131,
     "type": "faction",
-    "recruit_point_cost": 148,
+    "recruit_point_cost": 100,
     "title": "추씨",
     "desc": "장수 선행 조건에 따라 영입 가능한 인재",
-    "required_general": null
+    "required_general": null,
+    "recruit_gold": 500
   },
   {
     "general": 137,
     "type": "faction",
-    "recruit_point_cost": 160,
+    "recruit_point_cost": 250,
     "title": "유언",
     "desc": "유장을 영입할 수 있는 익주목",
-    "required_general": null
+    "required_general": null,
+    "recruit_gold": 750
   },
   {
     "general": 138,
     "type": "faction",
-    "recruit_point_cost": 180,
+    "recruit_point_cost": 500,
     "title": "공손강",
     "desc": "요동 공손씨 세력을 이끄는 군주",
-    "required_general": null
+    "required_general": null,
+    "recruit_gold": 1250
   },
   {
     "general": 139,
     "type": "faction",
-    "recruit_point_cost": 120,
+    "recruit_point_cost": 250,
     "title": "공손공",
     "desc": "공손강을 영입하면 후보가 되는 동생",
-    "required_general": 138
+    "required_general": 138,
+    "recruit_gold": 750
   },
   {
     "general": 140,
     "type": "faction",
-    "recruit_point_cost": 190,
+    "recruit_point_cost": 500,
     "title": "공손연",
     "desc": "공손강을 영입하면 후보가 되는 아들",
-    "required_general": 138
+    "required_general": 138,
+    "recruit_gold": 1250
   },
   {
     "general": 141,
     "type": "faction",
-    "recruit_point_cost": 175,
+    "recruit_point_cost": 500,
     "title": "사섭",
     "desc": "교주 세력을 이끄는 교지태수",
-    "required_general": null
+    "required_general": null,
+    "recruit_gold": 1250
   },
   {
     "general": 142,
     "type": "faction",
-    "recruit_point_cost": 135,
+    "recruit_point_cost": 250,
     "title": "감례",
     "desc": "사섭을 영입하면 후보가 되는 교주 장수",
-    "required_general": 141
+    "required_general": 141,
+    "recruit_gold": 750
   },
   {
     "general": 143,
     "type": "faction",
-    "recruit_point_cost": 120,
+    "recruit_point_cost": 250,
     "title": "환린",
     "desc": "사섭을 영입하면 후보가 되는 교지 관리",
-    "required_general": 141
+    "required_general": 141,
+    "recruit_gold": 750
   },
-{
-  "general": 306,
-  "type": "faction",
-  "recruit_point_cost": 133,
-  "title": "가규",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 1
-},
-{
-  "general": 307,
-  "type": "faction",
-  "recruit_point_cost": 111,
-  "title": "가신",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 1
-},
-{
-  "general": 308,
-  "type": "faction",
-  "recruit_point_cost": 109,
-  "title": "간옹",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 2
-},
-{
-  "general": 309,
-  "type": "faction",
-  "recruit_point_cost": 119,
-  "title": "강단",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 109
-},
-{
-  "general": 310,
-  "type": "faction",
-  "recruit_point_cost": 131,
-  "title": "강서",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 109
-},
-{
-  "general": 311,
-  "type": "faction",
-  "recruit_point_cost": 118,
-  "title": "견초",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 87
-},
-{
-  "general": 312,
-  "type": "faction",
-  "recruit_point_cost": 128,
-  "title": "경기",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 1
-},
-{
-  "general": 313,
-  "type": "faction",
-  "recruit_point_cost": 99,
-  "title": "계옹",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 87
-},
-{
-  "general": 314,
-  "type": "faction",
-  "recruit_point_cost": 67,
-  "title": "공손범",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 94
-},
-{
-  "general": 315,
-  "type": "faction",
-  "recruit_point_cost": 69,
-  "title": "공손속",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 94
-},
-{
-  "general": 316,
-  "type": "faction",
-  "recruit_point_cost": 90,
-  "title": "공손월",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 94
-},
-{
-  "general": 317,
-  "type": "faction",
-  "recruit_point_cost": 123,
-  "title": "공손황",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 138
-},
-{
-  "general": 318,
-  "type": "faction",
-  "recruit_point_cost": 108,
-  "title": "괴량",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 2
-},
-{
-  "general": 319,
-  "type": "faction",
-  "recruit_point_cost": 88,
-  "title": "교모",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 132
-},
-{
-  "general": 320,
-  "type": "faction",
-  "recruit_point_cost": 68,
-  "title": "구건",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 81
-},
-{
-  "general": 321,
-  "type": "faction",
-  "recruit_point_cost": 115,
-  "title": "구력거",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 132
-},
-{
-  "general": 322,
-  "type": "faction",
-  "recruit_point_cost": 114,
-  "title": "국연",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 1
-},
-{
-  "general": 323,
-  "type": "faction",
-  "recruit_point_cost": 77,
-  "title": "금선",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 132
-},
-{
-  "general": 324,
-  "type": "faction",
-  "recruit_point_cost": 117,
-  "title": "내민",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 2
-},
-{
-  "general": 325,
-  "type": "faction",
-  "recruit_point_cost": 100,
-  "title": "냉포",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 98
-},
-{
-  "general": 326,
-  "type": "faction",
-  "recruit_point_cost": 149,
-  "title": "노육",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 1
-},
-{
-  "general": 327,
-  "type": "faction",
-  "recruit_point_cost": 150,
-  "title": "누반",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 138
-},
-{
-  "general": 328,
-  "type": "faction",
-  "recruit_point_cost": 71,
-  "title": "단경",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 94
-},
-{
-  "general": 329,
-  "type": "faction",
-  "recruit_point_cost": 129,
-  "title": "단외",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 81
-},
-{
-  "general": 330,
-  "type": "faction",
-  "recruit_point_cost": 67,
-  "title": "동부",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 137
-},
-{
-  "general": 331,
-  "type": "faction",
-  "recruit_point_cost": 123,
-  "title": "동소",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 87
-},
-{
-  "general": 332,
-  "type": "faction",
-  "recruit_point_cost": 75,
-  "title": "동승",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 81
-},
-{
-  "general": 333,
-  "type": "faction",
-  "recruit_point_cost": 141,
-  "title": "동형",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 86
-},
-{
-  "general": 334,
-  "type": "faction",
-  "recruit_point_cost": 130,
-  "title": "두경",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 2
-},
-{
-  "general": 335,
-  "type": "faction",
-  "recruit_point_cost": 136,
-  "title": "두기",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 1
-},
-{
-  "general": 336,
-  "type": "faction",
-  "recruit_point_cost": 73,
-  "title": "두습",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 1
-},
-{
-  "general": 337,
-  "type": "faction",
-  "recruit_point_cost": 77,
-  "title": "루규",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 1
-},
-{
-  "general": 338,
-  "type": "faction",
-  "recruit_point_cost": 71,
-  "title": "맹건",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 1
-},
-{
-  "general": 339,
-  "type": "faction",
-  "recruit_point_cost": 149,
-  "title": "맹광",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 81
-},
-{
-  "general": 340,
-  "type": "faction",
-  "recruit_point_cost": 119,
-  "title": "무안국",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 106
-},
-{
-  "general": 341,
-  "type": "faction",
-  "recruit_point_cost": 75,
-  "title": "문칙",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 94
-},
-{
-  "general": 342,
-  "type": "faction",
-  "recruit_point_cost": 95,
-  "title": "미방",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 105
-},
-{
-  "general": 343,
-  "type": "faction",
-  "recruit_point_cost": 104,
-  "title": "미축",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 105
-},
-{
-  "general": 344,
-  "type": "faction",
-  "recruit_point_cost": 97,
-  "title": "변희",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 100
-},
-{
-  "general": 345,
-  "type": "faction",
-  "recruit_point_cost": 146,
-  "title": "부간",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 85
-},
-{
-  "general": 346,
-  "type": "faction",
-  "recruit_point_cost": 131,
-  "title": "부동",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 2
-},
-{
-  "general": 347,
-  "type": "faction",
-  "recruit_point_cost": 100,
-  "title": "부사인",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 81
-},
-{
-  "general": 348,
-  "type": "faction",
-  "recruit_point_cost": 129,
-  "title": "부손",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 2
-},
-{
-  "general": 349,
-  "type": "faction",
-  "recruit_point_cost": 123,
-  "title": "부영",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 63
-},
-{
-  "general": 350,
-  "type": "faction",
-  "recruit_point_cost": 146,
-  "title": "사견",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 2
-},
-{
-  "general": 351,
-  "type": "faction",
-  "recruit_point_cost": 103,
-  "title": "사광",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 141
-},
-{
-  "general": 352,
-  "type": "faction",
-  "recruit_point_cost": 69,
-  "title": "사마랑",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 1
-},
-{
-  "general": 353,
-  "type": "faction",
-  "recruit_point_cost": 69,
-  "title": "사마부",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 1
-},
-{
-  "general": 354,
-  "type": "faction",
-  "recruit_point_cost": 108,
-  "title": "사마지",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 1
-},
-{
-  "general": 355,
-  "type": "faction",
-  "recruit_point_cost": 70,
-  "title": "사손서",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 81
-},
-{
-  "general": 356,
-  "type": "faction",
-  "recruit_point_cost": 68,
-  "title": "사원",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 2
-},
-{
-  "general": 357,
-  "type": "faction",
-  "recruit_point_cost": 149,
-  "title": "사일",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 141
-},
-{
-  "general": 358,
-  "type": "faction",
-  "recruit_point_cost": 115,
-  "title": "사적",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 63
-},
-{
-  "general": 359,
-  "type": "faction",
-  "recruit_point_cost": 149,
-  "title": "사지",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 141
-},
-{
-  "general": 360,
-  "type": "faction",
-  "recruit_point_cost": 92,
-  "title": "사환",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 1
-},
-{
-  "general": 361,
-  "type": "faction",
-  "recruit_point_cost": 69,
-  "title": "사휘",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 141
-},
-{
-  "general": 362,
-  "type": "faction",
-  "recruit_point_cost": 143,
-  "title": "사흠",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 141
-},
-{
-  "general": 363,
-  "type": "faction",
-  "recruit_point_cost": 112,
-  "title": "상림",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 1
-},
-{
-  "general": 364,
-  "type": "faction",
-  "recruit_point_cost": 113,
-  "title": "서구",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 1
-},
-{
-  "general": 365,
-  "type": "faction",
-  "recruit_point_cost": 76,
-  "title": "서막",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 1
-},
-{
-  "general": 366,
-  "type": "faction",
-  "recruit_point_cost": 81,
-  "title": "서상",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 1
-},
-{
-  "general": 367,
-  "type": "faction",
-  "recruit_point_cost": 122,
-  "title": "서선",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 1
-},
-{
-  "general": 368,
-  "type": "faction",
-  "recruit_point_cost": 97,
-  "title": "서혁",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 1
-},
-{
-  "general": 369,
-  "type": "faction",
-  "recruit_point_cost": 145,
-  "title": "성공영",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 85
-},
-{
-  "general": 370,
-  "type": "faction",
-  "recruit_point_cost": 104,
-  "title": "성의",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 85
-},
-{
-  "general": 371,
-  "type": "faction",
-  "recruit_point_cost": 129,
-  "title": "손건",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 106
-},
-{
-  "general": 372,
-  "type": "faction",
-  "recruit_point_cost": 135,
-  "title": "손관",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 105
-},
-{
-  "general": 373,
-  "type": "faction",
-  "recruit_point_cost": 128,
-  "title": "손교",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 63
-},
-{
-  "general": 374,
-  "type": "faction",
-  "recruit_point_cost": 100,
-  "title": "손랑",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 63
-},
-{
-  "general": 375,
-  "type": "faction",
-  "recruit_point_cost": 97,
-  "title": "손례",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 1
-},
-{
-  "general": 376,
-  "type": "faction",
-  "recruit_point_cost": 104,
-  "title": "손소",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 106
-},
-{
-  "general": 377,
-  "type": "faction",
-  "recruit_point_cost": 138,
-  "title": "손유",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 63
-},
-{
-  "general": 378,
-  "type": "faction",
-  "recruit_point_cost": 84,
-  "title": "손자",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 1
-},
-{
-  "general": 379,
-  "type": "faction",
-  "recruit_point_cost": 82,
-  "title": "손하",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 62
-},
-{
-  "general": 380,
-  "type": "faction",
-  "recruit_point_cost": 80,
-  "title": "손환",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 63
-},
-{
-  "general": 381,
-  "type": "faction",
-  "recruit_point_cost": 79,
-  "title": "송충",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 95
-},
-{
-  "general": 382,
-  "type": "faction",
-  "recruit_point_cost": 106,
-  "title": "송헌",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 81
-},
-{
-  "general": 383,
-  "type": "faction",
-  "recruit_point_cost": 110,
-  "title": "순상",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 132
-},
-{
-  "general": 384,
-  "type": "faction",
-  "recruit_point_cost": 121,
-  "title": "순심",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 138
-},
-{
-  "general": 385,
-  "type": "faction",
-  "recruit_point_cost": 68,
-  "title": "순우경",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 87
-},
-{
-  "general": 386,
-  "type": "faction",
-  "recruit_point_cost": 98,
-  "title": "시의",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 106
-},
-{
-  "general": 387,
-  "type": "faction",
-  "recruit_point_cost": 146,
-  "title": "심영",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 87
-},
-{
-  "general": 388,
-  "type": "faction",
-  "recruit_point_cost": 80,
-  "title": "양강",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 92
-},
-{
-  "general": 389,
-  "type": "faction",
-  "recruit_point_cost": 144,
-  "title": "양부",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 86
-},
-{
-  "general": 390,
-  "type": "faction",
-  "recruit_point_cost": 65,
-  "title": "양송",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 109
-},
-{
-  "general": 391,
-  "type": "faction",
-  "recruit_point_cost": 105,
-  "title": "양앙",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 109
-},
-{
-  "general": 392,
-  "type": "faction",
-  "recruit_point_cost": 108,
-  "title": "양임",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 109
-},
-{
-  "general": 393,
-  "type": "faction",
-  "recruit_point_cost": 82,
-  "title": "양추",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 41
-},
-{
-  "general": 394,
-  "type": "faction",
-  "recruit_point_cost": 143,
-  "title": "양표",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 132
-},
-{
-  "general": 395,
-  "type": "faction",
-  "recruit_point_cost": 67,
-  "title": "양홍",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 92
-},
-{
-  "general": 396,
-  "type": "faction",
-  "recruit_point_cost": 129,
-  "title": "양회",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 98
-},
-{
-  "general": 397,
-  "type": "faction",
-  "recruit_point_cost": 126,
-  "title": "양흥",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 41
-},
-{
-  "general": 398,
-  "type": "faction",
-  "recruit_point_cost": 128,
-  "title": "엄강",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 94
-},
-{
-  "general": 399,
-  "type": "faction",
-  "recruit_point_cost": 97,
-  "title": "엄정",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 100
-},
-{
-  "general": 400,
-  "type": "faction",
-  "recruit_point_cost": 69,
-  "title": "엄준",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 63
-},
-{
-  "general": 401,
-  "type": "faction",
-  "recruit_point_cost": 106,
-  "title": "여거",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 63
-},
-{
-  "general": 402,
-  "type": "faction",
-  "recruit_point_cost": 149,
-  "title": "여건",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 1
-},
-{
-  "general": 403,
-  "type": "faction",
-  "recruit_point_cost": 107,
-  "title": "여공",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 95
-},
-{
-  "general": 404,
-  "type": "faction",
-  "recruit_point_cost": 65,
-  "title": "여광",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 87
-},
-{
-  "general": 405,
-  "type": "faction",
-  "recruit_point_cost": 112,
-  "title": "여대",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 63
-},
-{
-  "general": 406,
-  "type": "faction",
-  "recruit_point_cost": 128,
-  "title": "여범",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 63
-},
-{
-  "general": 407,
-  "type": "faction",
-  "recruit_point_cost": 81,
-  "title": "여상",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 87
-},
-{
-  "general": 408,
-  "type": "faction",
-  "recruit_point_cost": 96,
-  "title": "여예",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 2
-},
-{
-  "general": 409,
-  "type": "faction",
-  "recruit_point_cost": 83,
-  "title": "여위황",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 87
-},
-{
-  "general": 410,
-  "type": "faction",
-  "recruit_point_cost": 86,
-  "title": "염항",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 86
-},
-{
-  "general": 411,
-  "type": "faction",
-  "recruit_point_cost": 95,
-  "title": "오거",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 95
-},
-{
-  "general": 412,
-  "type": "faction",
-  "recruit_point_cost": 76,
-  "title": "오경",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 62
-},
-{
-  "general": 413,
-  "type": "faction",
-  "recruit_point_cost": 93,
-  "title": "오광",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 137
-},
-{
-  "general": 414,
-  "type": "faction",
-  "recruit_point_cost": 78,
-  "title": "오돈",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 1
-},
-{
-  "general": 415,
-  "type": "faction",
-  "recruit_point_cost": 67,
-  "title": "오란",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 2
-},
-{
-  "general": 416,
-  "type": "faction",
-  "recruit_point_cost": 89,
-  "title": "오반",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 2
-},
-{
-  "general": 417,
-  "type": "faction",
-  "recruit_point_cost": 90,
-  "title": "오범",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 63
-},
-{
-  "general": 418,
-  "type": "faction",
-  "recruit_point_cost": 137,
-  "title": "오부",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 81
-},
-{
-  "general": 419,
-  "type": "faction",
-  "recruit_point_cost": 94,
-  "title": "오습",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 81
-},
-{
-  "general": 420,
-  "type": "faction",
-  "recruit_point_cost": 132,
-  "title": "오질",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 1
-},
-{
-  "general": 421,
-  "type": "faction",
-  "recruit_point_cost": 108,
-  "title": "오찬",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 63
-},
-{
-  "general": 422,
-  "type": "faction",
-  "recruit_point_cost": 99,
-  "title": "왕광",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 132
-},
-{
-  "general": 423,
-  "type": "faction",
-  "recruit_point_cost": 106,
-  "title": "왕랑",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 105
-},
-{
-  "general": 424,
-  "type": "faction",
-  "recruit_point_cost": 130,
-  "title": "왕문",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 94
-},
-{
-  "general": 425,
-  "type": "faction",
-  "recruit_point_cost": 94,
-  "title": "왕보",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 98
-},
-{
-  "general": 426,
-  "type": "faction",
-  "recruit_point_cost": 100,
-  "title": "왕상",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 98
-},
-{
-  "general": 427,
-  "type": "faction",
-  "recruit_point_cost": 132,
-  "title": "왕수",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 106
-},
-{
-  "general": 428,
-  "type": "faction",
-  "recruit_point_cost": 145,
-  "title": "왕자복",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 132
-},
-{
-  "general": 429,
-  "type": "faction",
-  "recruit_point_cost": 144,
-  "title": "요립",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 2
-},
-{
-  "general": 430,
-  "type": "faction",
-  "recruit_point_cost": 140,
-  "title": "우독",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 100
-},
-{
-  "general": 431,
-  "type": "faction",
-  "recruit_point_cost": 75,
-  "title": "우미",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 108
-},
-{
-  "general": 432,
-  "type": "faction",
-  "recruit_point_cost": 77,
-  "title": "원유",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 132
-},
-{
-  "general": 433,
-  "type": "faction",
-  "recruit_point_cost": 104,
-  "title": "원희",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 138
-},
-{
-  "general": 434,
-  "type": "faction",
-  "recruit_point_cost": 117,
-  "title": "유괴",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 137
-},
-{
-  "general": 435,
-  "type": "faction",
-  "recruit_point_cost": 130,
-  "title": "유기",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 63
-},
-{
-  "general": 436,
-  "type": "faction",
-  "recruit_point_cost": 136,
-  "title": "유대",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 132
-},
-{
-  "general": 437,
-  "type": "faction",
-  "recruit_point_cost": 139,
-  "title": "유모",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 137
-},
-{
-  "general": 438,
-  "type": "faction",
-  "recruit_point_cost": 65,
-  "title": "유반",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 95
-},
-{
-  "general": 439,
-  "type": "faction",
-  "recruit_point_cost": 105,
-  "title": "유방",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 1
-},
-{
-  "general": 440,
-  "type": "faction",
-  "recruit_point_cost": 94,
-  "title": "유벽",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 100
-},
-{
-  "general": 441,
-  "type": "faction",
-  "recruit_point_cost": 122,
-  "title": "유복",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 1
-},
-{
-  "general": 442,
-  "type": "faction",
-  "recruit_point_cost": 91,
-  "title": "유봉",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 2
-},
-{
-  "general": 443,
-  "type": "faction",
-  "recruit_point_cost": 103,
-  "title": "유선",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 95
-},
-{
-  "general": 444,
-  "type": "faction",
-  "recruit_point_cost": 94,
-  "title": "유섭",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 92
-},
-{
-  "general": 445,
-  "type": "faction",
-  "recruit_point_cost": 133,
-  "title": "유소",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 1
-},
-{
-  "general": 446,
-  "type": "faction",
-  "recruit_point_cost": 105,
-  "title": "유순",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 2
-},
-{
-  "general": 447,
-  "type": "faction",
-  "recruit_point_cost": 129,
-  "title": "유연",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 1
-},
-{
-  "general": 448,
-  "type": "faction",
-  "recruit_point_cost": 101,
-  "title": "유우",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 132
-},
-{
-  "general": 449,
-  "type": "faction",
-  "recruit_point_cost": 119,
-  "title": "유정",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 1
-},
-{
-  "general": 450,
-  "type": "faction",
-  "recruit_point_cost": 100,
-  "title": "유파",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 2
-},
-{
-  "general": 451,
-  "type": "faction",
-  "recruit_point_cost": 120,
-  "title": "유현",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 2
-},
-{
-  "general": 452,
-  "type": "faction",
-  "recruit_point_cost": 139,
-  "title": "유화",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 132
-},
-{
-  "general": 453,
-  "type": "faction",
-  "recruit_point_cost": 77,
-  "title": "유훈",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 92
-},
-{
-  "general": 454,
-  "type": "faction",
-  "recruit_point_cost": 148,
-  "title": "윤례",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 1
-},
-{
-  "general": 455,
-  "type": "faction",
-  "recruit_point_cost": 77,
-  "title": "윤묵",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 2
-},
-{
-  "general": 456,
-  "type": "faction",
-  "recruit_point_cost": 89,
-  "title": "윤상",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 86
-},
-{
-  "general": 457,
-  "type": "faction",
-  "recruit_point_cost": 149,
-  "title": "윤해",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 106
-},
-{
-  "general": 458,
-  "type": "faction",
-  "recruit_point_cost": 100,
-  "title": "응소",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 87
-},
-{
-  "general": 459,
-  "type": "faction",
-  "recruit_point_cost": 138,
-  "title": "이감",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 41
-},
-{
-  "general": 460,
-  "type": "faction",
-  "recruit_point_cost": 131,
-  "title": "이복",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 98
-},
-{
-  "general": 461,
-  "type": "faction",
-  "recruit_point_cost": 83,
-  "title": "이적",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 2
-},
-{
-  "general": 462,
-  "type": "faction",
-  "recruit_point_cost": 96,
-  "title": "이풍",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 92
-},
-{
-  "general": 463,
-  "type": "faction",
-  "recruit_point_cost": 77,
-  "title": "장개",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 105
-},
-{
-  "general": 464,
-  "type": "faction",
-  "recruit_point_cost": 126,
-  "title": "장막",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 5
-},
-{
-  "general": 465,
-  "type": "faction",
-  "recruit_point_cost": 113,
-  "title": "장선",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 95
-},
-{
-  "general": 466,
-  "type": "faction",
-  "recruit_point_cost": 114,
-  "title": "장송",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 98
-},
-{
-  "general": 467,
-  "type": "faction",
-  "recruit_point_cost": 82,
-  "title": "장수",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 81
-},
-{
-  "general": 468,
-  "type": "faction",
-  "recruit_point_cost": 132,
-  "title": "장숙",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 98
-},
-{
-  "general": 469,
-  "type": "faction",
-  "recruit_point_cost": 103,
-  "title": "장순",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 132
-},
-{
-  "general": 470,
-  "type": "faction",
-  "recruit_point_cost": 110,
-  "title": "장승",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 1
-},
-{
-  "general": 471,
-  "type": "faction",
-  "recruit_point_cost": 122,
-  "title": "장연",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 1
-},
-{
-  "general": 472,
-  "type": "faction",
-  "recruit_point_cost": 85,
-  "title": "장영",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 108
-},
-{
-  "general": 473,
-  "type": "faction",
-  "recruit_point_cost": 110,
-  "title": "장예",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 98
-},
-{
-  "general": 474,
-  "type": "faction",
-  "recruit_point_cost": 113,
-  "title": "장위",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 109
-},
-{
-  "general": 475,
-  "type": "faction",
-  "recruit_point_cost": 66,
-  "title": "장윤",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 95
-},
-{
-  "general": 476,
-  "type": "faction",
-  "recruit_point_cost": 117,
-  "title": "장의거",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 87
-},
-{
-  "general": 477,
-  "type": "faction",
-  "recruit_point_cost": 92,
-  "title": "장제",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 81
-},
-{
-  "general": 478,
-  "type": "faction",
-  "recruit_point_cost": 148,
-  "title": "장천",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 1
-},
-{
-  "general": 479,
-  "type": "faction",
-  "recruit_point_cost": 129,
-  "title": "장초",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 5
-},
-{
-  "general": 480,
-  "type": "faction",
-  "recruit_point_cost": 97,
-  "title": "장패",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 105
-},
-{
-  "general": 481,
-  "type": "faction",
-  "recruit_point_cost": 95,
-  "title": "장호",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 1
-},
-{
-  "general": 482,
-  "type": "faction",
-  "recruit_point_cost": 142,
-  "title": "장횡",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 86
-},
-{
-  "general": 483,
-  "type": "faction",
-  "recruit_point_cost": 77,
-  "title": "장훈",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 92
-},
-{
-  "general": 484,
-  "type": "faction",
-  "recruit_point_cost": 125,
-  "title": "전만",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 1
-},
-{
-  "general": 485,
-  "type": "faction",
-  "recruit_point_cost": 93,
-  "title": "전예",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 2
-},
-{
-  "general": 486,
-  "type": "faction",
-  "recruit_point_cost": 126,
-  "title": "전유",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 63
-},
-{
-  "general": 487,
-  "type": "faction",
-  "recruit_point_cost": 65,
-  "title": "전종",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 63
-},
-{
-  "general": 488,
-  "type": "faction",
-  "recruit_point_cost": 75,
-  "title": "전주",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 138
-},
-{
-  "general": 489,
-  "type": "faction",
-  "recruit_point_cost": 106,
-  "title": "전해",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 94
-},
-{
-  "general": 490,
-  "type": "faction",
-  "recruit_point_cost": 132,
-  "title": "정비",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 1
-},
-{
-  "general": 491,
-  "type": "faction",
-  "recruit_point_cost": 94,
-  "title": "정은",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 41
-},
-{
-  "general": 492,
-  "type": "faction",
-  "recruit_point_cost": 120,
-  "title": "정의",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 1
-},
-{
-  "general": 493,
-  "type": "faction",
-  "recruit_point_cost": 148,
-  "title": "정태",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 132
-},
-{
-  "general": 494,
-  "type": "faction",
-  "recruit_point_cost": 99,
-  "title": "조순",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 1
-},
-{
-  "general": 495,
-  "type": "faction",
-  "recruit_point_cost": 117,
-  "title": "조식",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 1
-},
-{
-  "general": 496,
-  "type": "faction",
-  "recruit_point_cost": 72,
-  "title": "조우",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 1
-},
-{
-  "general": 497,
-  "type": "faction",
-  "recruit_point_cost": 143,
-  "title": "조욱",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 105
-},
-{
-  "general": 498,
-  "type": "faction",
-  "recruit_point_cost": 73,
-  "title": "조웅",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 1
-},
-{
-  "general": 499,
-  "type": "faction",
-  "recruit_point_cost": 128,
-  "title": "조절",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 1
-},
-{
-  "general": 500,
-  "type": "faction",
-  "recruit_point_cost": 75,
-  "title": "조창",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 1
-},
-{
-  "general": 501,
-  "type": "faction",
-  "recruit_point_cost": 72,
-  "title": "조충",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 1
-},
-{
-  "general": 502,
-  "type": "faction",
-  "recruit_point_cost": 121,
-  "title": "조표",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 1
-},
-{
-  "general": 503,
-  "type": "faction",
-  "recruit_point_cost": 90,
-  "title": "조헌",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 1
-},
-{
-  "general": 504,
-  "type": "faction",
-  "recruit_point_cost": 148,
-  "title": "조화",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 1
-},
-{
-  "general": 505,
-  "type": "faction",
-  "recruit_point_cost": 146,
-  "title": "종예",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 2
-},
-{
-  "general": 506,
-  "type": "faction",
-  "recruit_point_cost": 71,
-  "title": "좌령",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 81
-},
-{
-  "general": 507,
-  "type": "faction",
-  "recruit_point_cost": 105,
-  "title": "주개",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 1
-},
-{
-  "general": 508,
-  "type": "faction",
-  "recruit_point_cost": 78,
-  "title": "주광",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 1
-},
-{
-  "general": 509,
-  "type": "faction",
-  "recruit_point_cost": 101,
-  "title": "주군",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 2
-},
-{
-  "general": 510,
-  "type": "faction",
-  "recruit_point_cost": 124,
-  "title": "주령",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 87
-},
-{
-  "general": 511,
-  "type": "faction",
-  "recruit_point_cost": 133,
-  "title": "주삭",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 1
-},
-{
-  "general": 512,
-  "type": "faction",
-  "recruit_point_cost": 65,
-  "title": "주선",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 63
-},
-{
-  "general": 513,
-  "type": "faction",
-  "recruit_point_cost": 102,
-  "title": "주소",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 63
-},
-{
-  "general": 514,
-  "type": "faction",
-  "recruit_point_cost": 91,
-  "title": "주앙",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 87
-},
-{
-  "general": 515,
-  "type": "faction",
-  "recruit_point_cost": 137,
-  "title": "주옹",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 87
-},
-{
-  "general": 516,
-  "type": "faction",
-  "recruit_point_cost": 94,
-  "title": "주찬",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 1
-},
-{
-  "general": 517,
-  "type": "faction",
-  "recruit_point_cost": 68,
-  "title": "주창",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 2
-},
-{
-  "general": 518,
-  "type": "faction",
-  "recruit_point_cost": 78,
-  "title": "중장통",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 1
-},
-{
-  "general": 519,
-  "type": "faction",
-  "recruit_point_cost": 103,
-  "title": "진군",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 2
-},
-{
-  "general": 520,
-  "type": "faction",
-  "recruit_point_cost": 112,
-  "title": "진림",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 132
-},
-{
-  "general": 521,
-  "type": "faction",
-  "recruit_point_cost": 108,
-  "title": "창자",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 1
-},
-{
-  "general": 522,
-  "type": "faction",
-  "recruit_point_cost": 68,
-  "title": "철리길",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 86
-},
-{
-  "general": 523,
-  "type": "faction",
-  "recruit_point_cost": 121,
-  "title": "최림",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 1
-},
-{
-  "general": 524,
-  "type": "faction",
-  "recruit_point_cost": 117,
-  "title": "최염",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 106
-},
-{
-  "general": 525,
-  "type": "faction",
-  "recruit_point_cost": 74,
-  "title": "최용",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 81
-},
-{
-  "general": 526,
-  "type": "faction",
-  "recruit_point_cost": 72,
-  "title": "탁응",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 2
-},
-{
-  "general": 527,
-  "type": "faction",
-  "recruit_point_cost": 130,
-  "title": "태사향",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 63
-},
-{
-  "general": 528,
-  "type": "faction",
-  "recruit_point_cost": 148,
-  "title": "포신",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 132
-},
-{
-  "general": 529,
-  "type": "faction",
-  "recruit_point_cost": 132,
-  "title": "하묘",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 132
-},
-{
-  "general": 530,
-  "type": "faction",
-  "recruit_point_cost": 87,
-  "title": "하안",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 1
-},
-{
-  "general": 531,
-  "type": "faction",
-  "recruit_point_cost": 91,
-  "title": "하의",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 100
-},
-{
-  "general": 532,
-  "type": "faction",
-  "recruit_point_cost": 129,
-  "title": "하종",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 2
-},
-{
-  "general": 533,
-  "type": "faction",
-  "recruit_point_cost": 123,
-  "title": "하후덕",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 1
-},
-{
-  "general": 534,
-  "type": "faction",
-  "recruit_point_cost": 141,
-  "title": "하후은",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 1
-},
-{
-  "general": 535,
-  "type": "faction",
-  "recruit_point_cost": 127,
-  "title": "한기",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 138
-},
-{
-  "general": 536,
-  "type": "faction",
-  "recruit_point_cost": 86,
-  "title": "한복",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 132
-},
-{
-  "general": 537,
-  "type": "faction",
-  "recruit_point_cost": 94,
-  "title": "한충",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 138
-},
-{
-  "general": 538,
-  "type": "faction",
-  "recruit_point_cost": 128,
-  "title": "향랑",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 2
-},
-{
-  "general": 539,
-  "type": "faction",
-  "recruit_point_cost": 118,
-  "title": "향총",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 2
-},
-{
-  "general": 540,
-  "type": "faction",
-  "recruit_point_cost": 100,
-  "title": "혜구",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 92
-},
-{
-  "general": 541,
-  "type": "faction",
-  "recruit_point_cost": 138,
-  "title": "황완",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 132
-},
-{
-  "general": 542,
-  "type": "faction",
-  "recruit_point_cost": 117,
-  "title": "후선",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 85
-},
-{
-  "general": 543,
-  "type": "faction",
-  "recruit_point_cost": 116,
-  "title": "후성",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 81
-},
-{
-  "general": 544,
-  "type": "faction",
-  "recruit_point_cost": 116,
-  "title": "후음",
-  "desc": "시나리오 보조 장수 영입",
-  "required_general": 1
-}
+  {
+    "general": 306,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "가규",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 1,
+    "recruit_gold": 750
+  },
+  {
+    "general": 307,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "가신",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 1,
+    "recruit_gold": 750
+  },
+  {
+    "general": 308,
+    "type": "faction",
+    "recruit_point_cost": 500,
+    "title": "간옹",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 2,
+    "recruit_gold": 1250
+  },
+  {
+    "general": 309,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "강단",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 109,
+    "recruit_gold": 750
+  },
+  {
+    "general": 310,
+    "type": "faction",
+    "recruit_point_cost": 500,
+    "title": "강서",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 109,
+    "recruit_gold": 1250
+  },
+  {
+    "general": 311,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "견초",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 87,
+    "recruit_gold": 750
+  },
+  {
+    "general": 312,
+    "type": "faction",
+    "recruit_point_cost": 500,
+    "title": "경기",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 1,
+    "recruit_gold": 1250
+  },
+  {
+    "general": 313,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "계옹",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 87,
+    "recruit_gold": 750
+  },
+  {
+    "general": 314,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "공손범",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 94,
+    "recruit_gold": 750
+  },
+  {
+    "general": 315,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "공손속",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 94,
+    "recruit_gold": 750
+  },
+  {
+    "general": 316,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "공손월",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 94,
+    "recruit_gold": 750
+  },
+  {
+    "general": 317,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "공손황",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 138,
+    "recruit_gold": 750
+  },
+  {
+    "general": 318,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "괴량",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 2,
+    "recruit_gold": 750
+  },
+  {
+    "general": 319,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "교모",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 132,
+    "recruit_gold": 750
+  },
+  {
+    "general": 320,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "구건",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 81,
+    "recruit_gold": 750
+  },
+  {
+    "general": 321,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "구력거",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 132,
+    "recruit_gold": 750
+  },
+  {
+    "general": 322,
+    "type": "faction",
+    "recruit_point_cost": 500,
+    "title": "국연",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 1,
+    "recruit_gold": 1250
+  },
+  {
+    "general": 323,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "금선",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 132,
+    "recruit_gold": 750
+  },
+  {
+    "general": 324,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "내민",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 2,
+    "recruit_gold": 750
+  },
+  {
+    "general": 325,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "냉포",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 98,
+    "recruit_gold": 750
+  },
+  {
+    "general": 326,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "노육",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 1,
+    "recruit_gold": 750
+  },
+  {
+    "general": 327,
+    "type": "faction",
+    "recruit_point_cost": 500,
+    "title": "누반",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 138,
+    "recruit_gold": 1250
+  },
+  {
+    "general": 328,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "단경",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 94,
+    "recruit_gold": 750
+  },
+  {
+    "general": 329,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "단외",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 81,
+    "recruit_gold": 750
+  },
+  {
+    "general": 330,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "동부",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 137,
+    "recruit_gold": 750
+  },
+  {
+    "general": 331,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "동소",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 87,
+    "recruit_gold": 750
+  },
+  {
+    "general": 332,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "동승",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 81,
+    "recruit_gold": 750
+  },
+  {
+    "general": 333,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "동형",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 86,
+    "recruit_gold": 750
+  },
+  {
+    "general": 334,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "두경",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 2,
+    "recruit_gold": 750
+  },
+  {
+    "general": 335,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "두기",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 1,
+    "recruit_gold": 750
+  },
+  {
+    "general": 336,
+    "type": "faction",
+    "recruit_point_cost": 500,
+    "title": "두습",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 1,
+    "recruit_gold": 1250
+  },
+  {
+    "general": 337,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "루규",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 1,
+    "recruit_gold": 750
+  },
+  {
+    "general": 338,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "맹건",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 1,
+    "recruit_gold": 750
+  },
+  {
+    "general": 339,
+    "type": "faction",
+    "recruit_point_cost": 500,
+    "title": "맹광",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 81,
+    "recruit_gold": 1250
+  },
+  {
+    "general": 340,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "무안국",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 106,
+    "recruit_gold": 750
+  },
+  {
+    "general": 341,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "문칙",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 94,
+    "recruit_gold": 750
+  },
+  {
+    "general": 342,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "미방",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 105,
+    "recruit_gold": 750
+  },
+  {
+    "general": 343,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "미축",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 105,
+    "recruit_gold": 750
+  },
+  {
+    "general": 344,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "변희",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 100,
+    "recruit_gold": 750
+  },
+  {
+    "general": 345,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "부간",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 85,
+    "recruit_gold": 750
+  },
+  {
+    "general": 346,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "부동",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 2,
+    "recruit_gold": 750
+  },
+  {
+    "general": 347,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "부사인",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 81,
+    "recruit_gold": 750
+  },
+  {
+    "general": 348,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "부손",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 2,
+    "recruit_gold": 750
+  },
+  {
+    "general": 349,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "부영",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 63,
+    "recruit_gold": 750
+  },
+  {
+    "general": 350,
+    "type": "faction",
+    "recruit_point_cost": 500,
+    "title": "사견",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 2,
+    "recruit_gold": 1250
+  },
+  {
+    "general": 351,
+    "type": "faction",
+    "recruit_point_cost": 500,
+    "title": "사광",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 141,
+    "recruit_gold": 1250
+  },
+  {
+    "general": 352,
+    "type": "faction",
+    "recruit_point_cost": 500,
+    "title": "사마랑",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 1,
+    "recruit_gold": 1250
+  },
+  {
+    "general": 353,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "사마부",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 1,
+    "recruit_gold": 750
+  },
+  {
+    "general": 354,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "사마지",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 1,
+    "recruit_gold": 750
+  },
+  {
+    "general": 355,
+    "type": "faction",
+    "recruit_point_cost": 500,
+    "title": "사손서",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 81,
+    "recruit_gold": 1250
+  },
+  {
+    "general": 356,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "사원",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 2,
+    "recruit_gold": 750
+  },
+  {
+    "general": 357,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "사일",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 141,
+    "recruit_gold": 750
+  },
+  {
+    "general": 358,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "사적",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 63,
+    "recruit_gold": 750
+  },
+  {
+    "general": 359,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "사지",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 141,
+    "recruit_gold": 750
+  },
+  {
+    "general": 360,
+    "type": "faction",
+    "recruit_point_cost": 500,
+    "title": "사환",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 1,
+    "recruit_gold": 1250
+  },
+  {
+    "general": 361,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "사휘",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 141,
+    "recruit_gold": 750
+  },
+  {
+    "general": 362,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "사흠",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 141,
+    "recruit_gold": 750
+  },
+  {
+    "general": 363,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "상림",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 1,
+    "recruit_gold": 750
+  },
+  {
+    "general": 364,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "서구",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 1,
+    "recruit_gold": 750
+  },
+  {
+    "general": 365,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "서막",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 1,
+    "recruit_gold": 750
+  },
+  {
+    "general": 366,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "서상",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 1,
+    "recruit_gold": 750
+  },
+  {
+    "general": 367,
+    "type": "faction",
+    "recruit_point_cost": 500,
+    "title": "서선",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 1,
+    "recruit_gold": 1250
+  },
+  {
+    "general": 368,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "서혁",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 1,
+    "recruit_gold": 750
+  },
+  {
+    "general": 369,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "성공영",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 85,
+    "recruit_gold": 750
+  },
+  {
+    "general": 370,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "성의",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 85,
+    "recruit_gold": 750
+  },
+  {
+    "general": 371,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "손건",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 106,
+    "recruit_gold": 750
+  },
+  {
+    "general": 372,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "손관",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 105,
+    "recruit_gold": 750
+  },
+  {
+    "general": 373,
+    "type": "faction",
+    "recruit_point_cost": 500,
+    "title": "손교",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 63,
+    "recruit_gold": 1250
+  },
+  {
+    "general": 374,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "손랑",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 63,
+    "recruit_gold": 750
+  },
+  {
+    "general": 375,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "손례",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 1,
+    "recruit_gold": 750
+  },
+  {
+    "general": 376,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "손소",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 106,
+    "recruit_gold": 750
+  },
+  {
+    "general": 377,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "손유",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 63,
+    "recruit_gold": 750
+  },
+  {
+    "general": 378,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "손자",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 1,
+    "recruit_gold": 750
+  },
+  {
+    "general": 379,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "손하",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 62,
+    "recruit_gold": 750
+  },
+  {
+    "general": 380,
+    "type": "faction",
+    "recruit_point_cost": 500,
+    "title": "손환",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 63,
+    "recruit_gold": 1250
+  },
+  {
+    "general": 381,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "송충",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 95,
+    "recruit_gold": 750
+  },
+  {
+    "general": 382,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "송헌",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 81,
+    "recruit_gold": 750
+  },
+  {
+    "general": 383,
+    "type": "faction",
+    "recruit_point_cost": 500,
+    "title": "순상",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 132,
+    "recruit_gold": 1250
+  },
+  {
+    "general": 384,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "순심",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 138,
+    "recruit_gold": 750
+  },
+  {
+    "general": 385,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "순우경",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 87,
+    "recruit_gold": 750
+  },
+  {
+    "general": 386,
+    "type": "faction",
+    "recruit_point_cost": 500,
+    "title": "시의",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 106,
+    "recruit_gold": 1250
+  },
+  {
+    "general": 387,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "심영",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 87,
+    "recruit_gold": 750
+  },
+  {
+    "general": 388,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "양강",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 92,
+    "recruit_gold": 750
+  },
+  {
+    "general": 389,
+    "type": "faction",
+    "recruit_point_cost": 500,
+    "title": "양부",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 86,
+    "recruit_gold": 1250
+  },
+  {
+    "general": 390,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "양송",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 109,
+    "recruit_gold": 750
+  },
+  {
+    "general": 391,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "양앙",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 109,
+    "recruit_gold": 750
+  },
+  {
+    "general": 392,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "양임",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 109,
+    "recruit_gold": 750
+  },
+  {
+    "general": 393,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "양추",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 41,
+    "recruit_gold": 750
+  },
+  {
+    "general": 394,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "양표",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 132,
+    "recruit_gold": 750
+  },
+  {
+    "general": 395,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "양홍",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 92,
+    "recruit_gold": 750
+  },
+  {
+    "general": 396,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "양회",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 98,
+    "recruit_gold": 750
+  },
+  {
+    "general": 397,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "양흥",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 41,
+    "recruit_gold": 750
+  },
+  {
+    "general": 398,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "엄강",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 94,
+    "recruit_gold": 750
+  },
+  {
+    "general": 399,
+    "type": "faction",
+    "recruit_point_cost": 500,
+    "title": "엄정",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 100,
+    "recruit_gold": 1250
+  },
+  {
+    "general": 400,
+    "type": "faction",
+    "recruit_point_cost": 500,
+    "title": "엄준",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 63,
+    "recruit_gold": 1250
+  },
+  {
+    "general": 401,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "여거",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 63,
+    "recruit_gold": 750
+  },
+  {
+    "general": 402,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "여건",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 1,
+    "recruit_gold": 750
+  },
+  {
+    "general": 403,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "여공",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 95,
+    "recruit_gold": 750
+  },
+  {
+    "general": 404,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "여광",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 87,
+    "recruit_gold": 750
+  },
+  {
+    "general": 405,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "여대",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 63,
+    "recruit_gold": 750
+  },
+  {
+    "general": 406,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "여범",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 63,
+    "recruit_gold": 750
+  },
+  {
+    "general": 407,
+    "type": "faction",
+    "recruit_point_cost": 500,
+    "title": "여상",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 87,
+    "recruit_gold": 1250
+  },
+  {
+    "general": 408,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "여예",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 2,
+    "recruit_gold": 750
+  },
+  {
+    "general": 409,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "여위황",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 87,
+    "recruit_gold": 750
+  },
+  {
+    "general": 410,
+    "type": "faction",
+    "recruit_point_cost": 500,
+    "title": "염항",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 86,
+    "recruit_gold": 1250
+  },
+  {
+    "general": 411,
+    "type": "faction",
+    "recruit_point_cost": 500,
+    "title": "오거",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 95,
+    "recruit_gold": 1250
+  },
+  {
+    "general": 412,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "오경",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 62,
+    "recruit_gold": 750
+  },
+  {
+    "general": 413,
+    "type": "faction",
+    "recruit_point_cost": 500,
+    "title": "오광",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 137,
+    "recruit_gold": 1250
+  },
+  {
+    "general": 414,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "오돈",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 1,
+    "recruit_gold": 750
+  },
+  {
+    "general": 415,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "오란",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 2,
+    "recruit_gold": 750
+  },
+  {
+    "general": 416,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "오반",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 2,
+    "recruit_gold": 750
+  },
+  {
+    "general": 417,
+    "type": "faction",
+    "recruit_point_cost": 500,
+    "title": "오범",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 63,
+    "recruit_gold": 1250
+  },
+  {
+    "general": 418,
+    "type": "faction",
+    "recruit_point_cost": 500,
+    "title": "오부",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 81,
+    "recruit_gold": 1250
+  },
+  {
+    "general": 419,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "오습",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 81,
+    "recruit_gold": 750
+  },
+  {
+    "general": 420,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "오질",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 1,
+    "recruit_gold": 750
+  },
+  {
+    "general": 421,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "오찬",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 63,
+    "recruit_gold": 750
+  },
+  {
+    "general": 422,
+    "type": "faction",
+    "recruit_point_cost": 500,
+    "title": "왕광",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 132,
+    "recruit_gold": 1250
+  },
+  {
+    "general": 423,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "왕랑",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 105,
+    "recruit_gold": 750
+  },
+  {
+    "general": 424,
+    "type": "faction",
+    "recruit_point_cost": 500,
+    "title": "왕문",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 94,
+    "recruit_gold": 1250
+  },
+  {
+    "general": 425,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "왕보",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 98,
+    "recruit_gold": 750
+  },
+  {
+    "general": 426,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "왕상",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 98,
+    "recruit_gold": 750
+  },
+  {
+    "general": 427,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "왕수",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 106,
+    "recruit_gold": 750
+  },
+  {
+    "general": 428,
+    "type": "faction",
+    "recruit_point_cost": 500,
+    "title": "왕자복",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 132,
+    "recruit_gold": 1250
+  },
+  {
+    "general": 429,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "요립",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 2,
+    "recruit_gold": 750
+  },
+  {
+    "general": 430,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "우독",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 100,
+    "recruit_gold": 750
+  },
+  {
+    "general": 431,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "우미",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 108,
+    "recruit_gold": 750
+  },
+  {
+    "general": 432,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "원유",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 132,
+    "recruit_gold": 750
+  },
+  {
+    "general": 433,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "원희",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 138,
+    "recruit_gold": 750
+  },
+  {
+    "general": 434,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "유괴",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 137,
+    "recruit_gold": 750
+  },
+  {
+    "general": 435,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "유기",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 63,
+    "recruit_gold": 750
+  },
+  {
+    "general": 436,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "유대",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 132,
+    "recruit_gold": 750
+  },
+  {
+    "general": 437,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "유모",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 137,
+    "recruit_gold": 750
+  },
+  {
+    "general": 438,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "유반",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 95,
+    "recruit_gold": 750
+  },
+  {
+    "general": 439,
+    "type": "faction",
+    "recruit_point_cost": 500,
+    "title": "유방",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 1,
+    "recruit_gold": 1250
+  },
+  {
+    "general": 440,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "유벽",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 100,
+    "recruit_gold": 750
+  },
+  {
+    "general": 441,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "유복",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 1,
+    "recruit_gold": 750
+  },
+  {
+    "general": 442,
+    "type": "faction",
+    "recruit_point_cost": 500,
+    "title": "유봉",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 2,
+    "recruit_gold": 1250
+  },
+  {
+    "general": 443,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "유선",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 95,
+    "recruit_gold": 750
+  },
+  {
+    "general": 444,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "유섭",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 92,
+    "recruit_gold": 750
+  },
+  {
+    "general": 445,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "유소",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 1,
+    "recruit_gold": 750
+  },
+  {
+    "general": 446,
+    "type": "faction",
+    "recruit_point_cost": 500,
+    "title": "유순",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 2,
+    "recruit_gold": 1250
+  },
+  {
+    "general": 447,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "유연",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 1,
+    "recruit_gold": 750
+  },
+  {
+    "general": 448,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "유우",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 132,
+    "recruit_gold": 750
+  },
+  {
+    "general": 449,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "유정",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 1,
+    "recruit_gold": 750
+  },
+  {
+    "general": 450,
+    "type": "faction",
+    "recruit_point_cost": 500,
+    "title": "유파",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 2,
+    "recruit_gold": 1250
+  },
+  {
+    "general": 451,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "유현",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 2,
+    "recruit_gold": 750
+  },
+  {
+    "general": 452,
+    "type": "faction",
+    "recruit_point_cost": 500,
+    "title": "유화",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 132,
+    "recruit_gold": 1250
+  },
+  {
+    "general": 453,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "유훈",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 92,
+    "recruit_gold": 750
+  },
+  {
+    "general": 454,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "윤례",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 1,
+    "recruit_gold": 750
+  },
+  {
+    "general": 455,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "윤묵",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 2,
+    "recruit_gold": 750
+  },
+  {
+    "general": 456,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "윤상",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 86,
+    "recruit_gold": 750
+  },
+  {
+    "general": 457,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "윤해",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 106,
+    "recruit_gold": 750
+  },
+  {
+    "general": 458,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "응소",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 87,
+    "recruit_gold": 750
+  },
+  {
+    "general": 459,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "이감",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 41,
+    "recruit_gold": 750
+  },
+  {
+    "general": 460,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "이복",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 98,
+    "recruit_gold": 750
+  },
+  {
+    "general": 461,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "이적",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 2,
+    "recruit_gold": 750
+  },
+  {
+    "general": 462,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "이풍",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 92,
+    "recruit_gold": 750
+  },
+  {
+    "general": 463,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "장개",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 105,
+    "recruit_gold": 750
+  },
+  {
+    "general": 464,
+    "type": "faction",
+    "recruit_point_cost": 500,
+    "title": "장막",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 5,
+    "recruit_gold": 1250
+  },
+  {
+    "general": 465,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "장선",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 95,
+    "recruit_gold": 750
+  },
+  {
+    "general": 466,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "장송",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 98,
+    "recruit_gold": 750
+  },
+  {
+    "general": 467,
+    "type": "faction",
+    "recruit_point_cost": 500,
+    "title": "장수",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 81,
+    "recruit_gold": 1250
+  },
+  {
+    "general": 468,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "장숙",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 98,
+    "recruit_gold": 750
+  },
+  {
+    "general": 469,
+    "type": "faction",
+    "recruit_point_cost": 500,
+    "title": "장순",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 132,
+    "recruit_gold": 1250
+  },
+  {
+    "general": 470,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "장승",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 1,
+    "recruit_gold": 750
+  },
+  {
+    "general": 471,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "장연",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 1,
+    "recruit_gold": 750
+  },
+  {
+    "general": 472,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "장영",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 108,
+    "recruit_gold": 750
+  },
+  {
+    "general": 473,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "장예",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 98,
+    "recruit_gold": 750
+  },
+  {
+    "general": 474,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "장위",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 109,
+    "recruit_gold": 750
+  },
+  {
+    "general": 475,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "장윤",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 95,
+    "recruit_gold": 750
+  },
+  {
+    "general": 476,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "장의거",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 87,
+    "recruit_gold": 750
+  },
+  {
+    "general": 477,
+    "type": "faction",
+    "recruit_point_cost": 500,
+    "title": "장제",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 81,
+    "recruit_gold": 1250
+  },
+  {
+    "general": 478,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "장천",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 1,
+    "recruit_gold": 750
+  },
+  {
+    "general": 479,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "장초",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 5,
+    "recruit_gold": 750
+  },
+  {
+    "general": 480,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "장패",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 105,
+    "recruit_gold": 750
+  },
+  {
+    "general": 481,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "장호",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 1,
+    "recruit_gold": 750
+  },
+  {
+    "general": 482,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "장횡",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 86,
+    "recruit_gold": 750
+  },
+  {
+    "general": 483,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "장훈",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 92,
+    "recruit_gold": 750
+  },
+  {
+    "general": 484,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "전만",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 1,
+    "recruit_gold": 750
+  },
+  {
+    "general": 485,
+    "type": "faction",
+    "recruit_point_cost": 500,
+    "title": "전예",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 2,
+    "recruit_gold": 1250
+  },
+  {
+    "general": 486,
+    "type": "faction",
+    "recruit_point_cost": 500,
+    "title": "전유",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 63,
+    "recruit_gold": 1250
+  },
+  {
+    "general": 487,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "전종",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 63,
+    "recruit_gold": 750
+  },
+  {
+    "general": 488,
+    "type": "faction",
+    "recruit_point_cost": 500,
+    "title": "전주",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 138,
+    "recruit_gold": 1250
+  },
+  {
+    "general": 489,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "전해",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 94,
+    "recruit_gold": 750
+  },
+  {
+    "general": 490,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "정비",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 1,
+    "recruit_gold": 750
+  },
+  {
+    "general": 491,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "정은",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 41,
+    "recruit_gold": 750
+  },
+  {
+    "general": 492,
+    "type": "faction",
+    "recruit_point_cost": 500,
+    "title": "정의",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 1,
+    "recruit_gold": 1250
+  },
+  {
+    "general": 493,
+    "type": "faction",
+    "recruit_point_cost": 500,
+    "title": "정태",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 132,
+    "recruit_gold": 1250
+  },
+  {
+    "general": 494,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "조순",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 1,
+    "recruit_gold": 750
+  },
+  {
+    "general": 495,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "조식",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 1,
+    "recruit_gold": 750
+  },
+  {
+    "general": 496,
+    "type": "faction",
+    "recruit_point_cost": 500,
+    "title": "조우",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 1,
+    "recruit_gold": 1250
+  },
+  {
+    "general": 497,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "조욱",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 105,
+    "recruit_gold": 750
+  },
+  {
+    "general": 498,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "조웅",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 1,
+    "recruit_gold": 750
+  },
+  {
+    "general": 499,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "조절",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 1,
+    "recruit_gold": 750
+  },
+  {
+    "general": 500,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "조창",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 1,
+    "recruit_gold": 750
+  },
+  {
+    "general": 501,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "조충",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 1,
+    "recruit_gold": 750
+  },
+  {
+    "general": 502,
+    "type": "faction",
+    "recruit_point_cost": 500,
+    "title": "조표",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 1,
+    "recruit_gold": 1250
+  },
+  {
+    "general": 503,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "조헌",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 1,
+    "recruit_gold": 750
+  },
+  {
+    "general": 504,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "조화",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 1,
+    "recruit_gold": 750
+  },
+  {
+    "general": 505,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "종예",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 2,
+    "recruit_gold": 750
+  },
+  {
+    "general": 506,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "좌령",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 81,
+    "recruit_gold": 750
+  },
+  {
+    "general": 507,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "주개",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 1,
+    "recruit_gold": 750
+  },
+  {
+    "general": 508,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "주광",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 1,
+    "recruit_gold": 750
+  },
+  {
+    "general": 509,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "주군",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 2,
+    "recruit_gold": 750
+  },
+  {
+    "general": 510,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "주령",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 87,
+    "recruit_gold": 750
+  },
+  {
+    "general": 511,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "주삭",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 1,
+    "recruit_gold": 750
+  },
+  {
+    "general": 512,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "주선",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 63,
+    "recruit_gold": 750
+  },
+  {
+    "general": 513,
+    "type": "faction",
+    "recruit_point_cost": 500,
+    "title": "주소",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 63,
+    "recruit_gold": 1250
+  },
+  {
+    "general": 514,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "주앙",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 87,
+    "recruit_gold": 750
+  },
+  {
+    "general": 515,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "주옹",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 87,
+    "recruit_gold": 750
+  },
+  {
+    "general": 516,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "주찬",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 1,
+    "recruit_gold": 750
+  },
+  {
+    "general": 517,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "주창",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 2,
+    "recruit_gold": 750
+  },
+  {
+    "general": 518,
+    "type": "faction",
+    "recruit_point_cost": 500,
+    "title": "중장통",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 1,
+    "recruit_gold": 1250
+  },
+  {
+    "general": 519,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "진군",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 2,
+    "recruit_gold": 750
+  },
+  {
+    "general": 520,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "진림",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 132,
+    "recruit_gold": 750
+  },
+  {
+    "general": 521,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "창자",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 1,
+    "recruit_gold": 750
+  },
+  {
+    "general": 522,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "철리길",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 86,
+    "recruit_gold": 750
+  },
+  {
+    "general": 523,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "최림",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 1,
+    "recruit_gold": 750
+  },
+  {
+    "general": 524,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "최염",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 106,
+    "recruit_gold": 750
+  },
+  {
+    "general": 525,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "최용",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 81,
+    "recruit_gold": 750
+  },
+  {
+    "general": 526,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "탁응",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 2,
+    "recruit_gold": 750
+  },
+  {
+    "general": 527,
+    "type": "faction",
+    "recruit_point_cost": 500,
+    "title": "태사향",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 63,
+    "recruit_gold": 1250
+  },
+  {
+    "general": 528,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "포신",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 132,
+    "recruit_gold": 750
+  },
+  {
+    "general": 529,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "하묘",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 132,
+    "recruit_gold": 750
+  },
+  {
+    "general": 530,
+    "type": "faction",
+    "recruit_point_cost": 500,
+    "title": "하안",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 1,
+    "recruit_gold": 1250
+  },
+  {
+    "general": 531,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "하의",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 100,
+    "recruit_gold": 750
+  },
+  {
+    "general": 532,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "하종",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 2,
+    "recruit_gold": 750
+  },
+  {
+    "general": 533,
+    "type": "faction",
+    "recruit_point_cost": 500,
+    "title": "하후덕",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 1,
+    "recruit_gold": 1250
+  },
+  {
+    "general": 534,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "하후은",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 1,
+    "recruit_gold": 750
+  },
+  {
+    "general": 535,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "한기",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 138,
+    "recruit_gold": 750
+  },
+  {
+    "general": 536,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "한복",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 132,
+    "recruit_gold": 750
+  },
+  {
+    "general": 537,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "한충",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 138,
+    "recruit_gold": 750
+  },
+  {
+    "general": 538,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "향랑",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 2,
+    "recruit_gold": 750
+  },
+  {
+    "general": 539,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "향총",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 2,
+    "recruit_gold": 750
+  },
+  {
+    "general": 540,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "혜구",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 92,
+    "recruit_gold": 750
+  },
+  {
+    "general": 541,
+    "type": "faction",
+    "recruit_point_cost": 500,
+    "title": "황완",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 132,
+    "recruit_gold": 1250
+  },
+  {
+    "general": 542,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "후선",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 85,
+    "recruit_gold": 750
+  },
+  {
+    "general": 543,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "후성",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 81,
+    "recruit_gold": 750
+  },
+  {
+    "general": 544,
+    "type": "faction",
+    "recruit_point_cost": 250,
+    "title": "후음",
+    "desc": "시나리오 보조 장수 영입",
+    "required_general": 1,
+    "recruit_gold": 750
+  }
 ]

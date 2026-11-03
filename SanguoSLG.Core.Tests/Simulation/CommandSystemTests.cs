@@ -66,7 +66,7 @@ public class CommandSystemTests
     // ── 효율(A 주관·보좌, B 출신지) ──
 
     [Fact]
-    public void 해금된_위인은_포인트만_소비하고_도시에_합류한다()
+    public void 해금된_위인은_포인트와_도시_금을_소비하고_합류한다()
     {
         var city = Town(1, gold: 2000);
         var hero = new HeroUnlockDefinition(new GeneralId(6), HeroUnlockType.Faction, new FactionId(1),
@@ -83,7 +83,7 @@ public class CommandSystemTests
             TargetGeneral: new GeneralId(6)));
 
         Assert.True(result.Ok, result.Error);
-        Assert.Equal(2000, result.State.Cities.Single().Gold);
+        Assert.Equal(1100, result.State.Cities.Single().Gold);
         Assert.Equal((new FactionId(1), city.Id), (result.State.PostingOf(new GeneralId(6))!.Faction, result.State.PostingOf(new GeneralId(6))!.Location));
         Assert.Equal(HeroUnlockStatus.Recruited, result.State.HeroStates.Single().Status);
         Assert.Equal(0, RecruitmentPointBank.Balance(result.State, city.Owner));
@@ -125,7 +125,7 @@ public class CommandSystemTests
             new GeneralId(1), TargetGeneral: hero.General));
 
         Assert.True(result.Ok, result.Error);
-        Assert.Equal(2000, result.State.Cities.Single().Gold);
+        Assert.Equal(1100, result.State.Cities.Single().Gold);
         Assert.Equal(city.Owner, result.State.PostingOf(hero.General)?.Faction);
     }
 
@@ -150,7 +150,7 @@ public class CommandSystemTests
 
         Assert.True(result.Ok, result.Error);
         Assert.Equal(liu, result.State.PostingOf(hero.General)?.Faction);
-        Assert.Equal(2000, result.State.Cities.Single().Gold);
+        Assert.Equal(1100, result.State.Cities.Single().Gold);
         Assert.Equal(0, RecruitmentPointBank.Balance(result.State, liu));
     }
 
@@ -180,7 +180,7 @@ public class CommandSystemTests
     }
 
     [Fact]
-    public void 금이_없어도_포인트와_선행_조건이_맞으면_영입한다()
+    public void 금이_부족하면_영입하지_않고_포인트도_보존한다()
     {
         var city = Town(1, gold: 0);
         var hero = new HeroUnlockDefinition(new GeneralId(6), HeroUnlockType.Faction,
@@ -195,9 +195,11 @@ public class CommandSystemTests
         var result = Service().Issue(state, new CommandRequest(city.Id, CommandKind.RecruitHero,
             new GeneralId(1), TargetGeneral: hero.General));
 
-        Assert.True(result.Ok, result.Error);
+        Assert.False(result.Ok);
+        Assert.Contains("영입 비용", result.Error);
         Assert.Equal(0, result.State.Cities.Single().Gold);
-        Assert.Equal(0, RecruitmentPointBank.Balance(result.State, city.Owner));
+        Assert.Equal(100, RecruitmentPointBank.Balance(result.State, city.Owner));
+        Assert.Null(result.State.PostingOf(hero.General));
     }
 
     [Fact]

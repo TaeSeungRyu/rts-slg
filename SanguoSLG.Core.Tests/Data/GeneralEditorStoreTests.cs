@@ -154,17 +154,31 @@ public class GeneralEditorStoreTests
         Assert.Equal(160, root[1]!["recruit_point_cost"]!.GetValue<int>());
     }
 
+    [Fact]
+    public void 위인_영입_금액을_편집하면_포인트와_기타_정보가_유지된다()
+    {
+        const string json = """
+        [{"general":6,"type":"faction","recruit_point_cost":250,"recruit_gold":750,"future":"keep"}]
+        """;
+        var saved = GeneralEditorStore.ReplaceHeroRecruitment(json, 6, 1500, null,
+            new HashSet<int> { 6 }, recruitGoldCost: 4000);
+        var item = JsonNode.Parse(saved)!.AsArray()[0]!;
+        Assert.Equal(4000, GeneralEditorStore.LoadHeroRecruitGoldCosts(saved)[6]);
+        Assert.Equal(1500, item["recruit_point_cost"]!.GetValue<int>());
+        Assert.Equal("keep", item["future"]!.GetValue<string>());
+    }
+
     [Theory]
     [InlineData(-1)]
-    [InlineData(1001)]
-    public void 위인_영입포인트는_0부터_1000까지만_허용한다(int value)
+    [InlineData(3001)]
+    public void 위인_영입포인트는_0부터_3000까지만_허용한다(int value)
     {
         const string json = "[{\"general\":6,\"recruit_point_cost\":250}]";
 
         var error = Assert.Throws<InvalidDataException>(
             () => GeneralEditorStore.ReplaceHeroRecruitPointCost(json, 6, value));
 
-        Assert.Contains("0~1,000", error.Message);
+        Assert.Contains("0~3,000", error.Message);
     }
 
     [Fact]

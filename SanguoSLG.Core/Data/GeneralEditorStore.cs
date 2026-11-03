@@ -64,6 +64,22 @@ public sealed class GeneralEditorStore
         return costs;
     }
 
+    public static IReadOnlyDictionary<int, int> LoadHeroRecruitGoldCosts(string json)
+    {
+        var root = JsonNode.Parse(json) as JsonArray
+            ?? throw new InvalidDataException("hero_unlocks.json 루트는 배열이어야 합니다.");
+        var costs = new Dictionary<int, int>();
+        foreach (var node in root.OfType<JsonObject>())
+        {
+            var id = node["general"]?.GetValue<int>()
+                ?? throw new InvalidDataException("위인 정의에 general ID가 없습니다.");
+            var cost = node["recruit_gold"]?.GetValue<int>() ?? 0;
+            ValidateRecruitGoldCost(id, cost);
+            if (!costs.TryAdd(id, cost)) throw new InvalidDataException($"중복 위인 장수 ID: {id}");
+        }
+        return costs;
+    }
+
     public static IReadOnlyDictionary<int, int?> LoadHeroRecruitPrerequisites(string json)
     {
         var root = JsonNode.Parse(json) as JsonArray
@@ -242,9 +258,10 @@ public sealed class GeneralEditorStore
     }
 
     public static string ReplaceHeroRecruitment(string originalJson, int generalId, int recruitPointCost,
-        int? requiredGeneral, IReadOnlySet<int> generalIds, string? title = null)
+        int? requiredGeneral, IReadOnlySet<int> generalIds, string? title = null, int recruitGoldCost = 0)
     {
         ValidateRecruitPointCost(generalId, recruitPointCost);
+        ValidateRecruitGoldCost(generalId, recruitGoldCost);
         if (requiredGeneral is { } required && (required == generalId || !generalIds.Contains(required)))
             throw new InvalidDataException("선행 장수는 명단에 있는 다른 장수여야 합니다.");
 
@@ -266,6 +283,7 @@ public sealed class GeneralEditorStore
             root.Add(target);
         }
         target["recruit_point_cost"] = recruitPointCost;
+        if (recruitGoldCost > 0) target["recruit_gold"] = recruitGoldCost;
         target["required_general"] = requiredGeneral;
 
         var prerequisites = LoadHeroRecruitPrerequisites(root.ToJsonString());
@@ -374,10 +392,16 @@ public sealed class GeneralEditorStore
 
     private static void ValidateRecruitPointCost(int generalId, int value)
     {
-        if (value is < 0 or > 1000)
+        if (value is < 0 or > 3000)
         {
-            throw new InvalidDataException($"{generalId}: 요구 영입 포인트는 0~1,000이어야 합니다.");
+            throw new InvalidDataException($"{generalId}: 요구 영입 포인트는 0~3,000이어야 합니다.");
         }
+    }
+
+    private static void ValidateRecruitGoldCost(int generalId, int value)
+    {
+        if (value is < 0 or > 100000)
+            throw new InvalidDataException($"{generalId}: 영입 금은 0~100,000이어야 합니다.");
     }
 
     private static void ValidateSkills(

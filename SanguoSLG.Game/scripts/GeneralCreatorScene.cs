@@ -166,7 +166,7 @@ public partial class GeneralCreatorScene : Control
         _region = new OptionButton();
         AddField(identity, "출신", _region);
         var recruitment = GeneralWorkspaceStyle.Section(basic, "영입 조건");
-        _points = Spin(0, 1000, 100);
+        _points = Spin(0, 3000, 100);
         AddField(recruitment, "영입 포인트", _points);
         _requiredGeneral = new OptionButton();
         _requiredGeneral.Pressed += StopNativeNameInput;
