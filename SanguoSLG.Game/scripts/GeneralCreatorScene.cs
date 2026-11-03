@@ -51,6 +51,7 @@ public partial class GeneralCreatorScene : Control
     private string? _portraitPath;
     private string? _pendingExternalPath;
     private int? _editingId;
+    private string _savedFormSnapshot = "";
     private string _dataDirectory = "";
 
     public override void _Ready()
@@ -97,7 +98,7 @@ public partial class GeneralCreatorScene : Control
         if (ScenarioStartMenu.FromStartMenu)
         {
             var back = new Button { Text = "시작 화면" };
-            back.Pressed += () => ScenarioStartMenu.ReturnToStart(GetTree());
+            back.Pressed += RequestReturnToStart;
             toolbar.AddChild(back);
         }
         toolbar.AddChild(new Label { Text = "생성 장수는 다음 새 게임부터 영입 후보에 추가됩니다.",
@@ -556,6 +557,7 @@ public partial class GeneralCreatorScene : Control
         SelectPortrait(DefaultPortrait());
         RebuildPortraitGrid();
         _status.Text = "새 장수를 입력하세요. 초상은 나중에 추가할 수 있습니다.";
+        _savedFormSnapshot = "";
         StartNativeNameInput();
     }
 
@@ -591,6 +593,7 @@ public partial class GeneralCreatorScene : Control
         SelectPortrait(entry.PortraitPath);
         RebuildPortraitGrid();
         _status.Text = $"{general.Name} 편집 중 · ID {general.Id}";
+        _savedFormSnapshot = FormSnapshot();
         StartNativeNameInput();
     }
 
@@ -624,6 +627,24 @@ public partial class GeneralCreatorScene : Control
             previous?.FaceZoom ?? 1);
     }
 
+    private string FormSnapshot()
+    {
+        try { return System.Text.Json.JsonSerializer.Serialize(FromForm(_editingId ?? 10000)); }
+        catch { return CurrentName(); }
+    }
+
+    private void RequestReturnToStart()
+    {
+        StopNativeNameInput();
+        if (FormSnapshot() == _savedFormSnapshot) { ScenarioStartMenu.ReturnToStart(GetTree()); return; }
+        var dialog = new ConfirmationDialog { Title = "저장하지 않은 신규 장수", DialogText = "장수를 저장하고 시작 화면으로 돌아갈까요?", OkButtonText = "저장 후 나가기", CancelButtonText = "계속 편집" };
+        dialog.AddButton("변경 버리기", true, "discard");
+        AddChild(dialog);
+        dialog.Confirmed += () => { SaveSelected(); if (FormSnapshot() == _savedFormSnapshot) ScenarioStartMenu.ReturnToStart(GetTree()); };
+        dialog.CustomAction += action => { if (action == "discard") ScenarioStartMenu.ReturnToStart(GetTree()); };
+        dialog.PopupCentered();
+    }
+
     private void SaveSelected()
     {
         try
@@ -645,6 +666,7 @@ public partial class GeneralCreatorScene : Control
             _overview.Text = $"{entry.General.Name} · 생성 장수 ID {id}";
             _pendingExternalPath = null;
             _portraitPath = entry.PortraitPath;
+            _savedFormSnapshot = FormSnapshot();
             RefreshList();
             PopulateRequiredGenerals(entry.RequiredGeneralId);
             _status.Text = $"{entry.General.Name} 저장 완료 · 다음 새 게임부터 영입 후보로 등장합니다.";

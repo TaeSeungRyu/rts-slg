@@ -78,6 +78,26 @@ public partial class GeneralEditorScene : Control
         ActiveSkillIcons.ClearCache();
     }
 
+    private void RequestReturnToStart()
+    {
+        if (_selected is null) { ScenarioStartMenu.ReturnToStart(GetTree()); return; }
+        var current = CurrentEditedRecord();
+        var portrait = CurrentPortraitRecord(current.Id);
+        var originalPortrait = _portraitsByGeneralId.GetValueOrDefault(current.Id);
+        var changed = System.Text.Json.JsonSerializer.Serialize(current) != System.Text.Json.JsonSerializer.Serialize(_selected)
+            || (int)_recruitPointInput.Value != _heroRecruitPointCosts.GetValueOrDefault(current.Id)
+            || (int)_recruitGoldInput.Value != _heroRecruitGoldCosts.GetValueOrDefault(current.Id)
+            || SelectedRequiredGeneral() != _heroRecruitPrerequisites.GetValueOrDefault(current.Id)
+            || originalPortrait is not null && portrait != originalPortrait;
+        if (!changed) { ScenarioStartMenu.ReturnToStart(GetTree()); return; }
+        var dialog = new ConfirmationDialog { Title = "저장하지 않은 장수", DialogText = "변경한 장수를 저장하고 시작 화면으로 돌아갈까요?", OkButtonText = "저장 후 나가기", CancelButtonText = "계속 편집" };
+        dialog.AddButton("변경 버리기", true, "discard");
+        AddChild(dialog);
+        dialog.Confirmed += () => { SaveSelected(); if (System.Text.Json.JsonSerializer.Serialize(CurrentEditedRecord()) == System.Text.Json.JsonSerializer.Serialize(_selected)) ScenarioStartMenu.ReturnToStart(GetTree()); };
+        dialog.CustomAction += action => { if (action == "discard") ScenarioStartMenu.ReturnToStart(GetTree()); };
+        dialog.PopupCentered();
+    }
+
     private void BuildUi()
     {
         GeneralWorkspaceStyle.AddBackground(this);
@@ -106,7 +126,7 @@ public partial class GeneralEditorScene : Control
         if (ScenarioStartMenu.FromStartMenu)
         {
             var back = new Button { Text = "시작 화면" };
-            back.Pressed += () => ScenarioStartMenu.ReturnToStart(GetTree());
+            back.Pressed += RequestReturnToStart;
             toolbar.AddChild(back);
         }
 
