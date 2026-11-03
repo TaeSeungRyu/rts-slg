@@ -65,6 +65,7 @@ public sealed partial class EditMapScene : Control
 
     public override void _Ready()
     {
+        GetTree().AutoAcceptQuit = true;
         using var document = JsonDocument.Parse(Godot.FileAccess.GetFileAsString(
             "res://assets/maps/east-asia-map.json"));
         var root = document.RootElement;
@@ -708,7 +709,8 @@ public sealed partial class EditMapScene : Control
         {
             if (File.Exists(qaPresetPath)) File.Delete(qaPresetPath);
         }
-        GD.Print($"[edit-map-qa] passed={valid} ports={_sites.Count(site => site.Kind == "port")} tiles={_width * _height} visible={_visibleTiles.Count} bounds={_west}-{_east}E,{_south}-{_north}N");
+        valid &= GetTree().AutoAcceptQuit;
+        GD.Print($"[edit-map-qa] passed={valid} windowClose={GetTree().AutoAcceptQuit} ports={_sites.Count(site => site.Kind == "port")} tiles={_width * _height} visible={_visibleTiles.Count} bounds={_west}-{_east}E,{_south}-{_north}N");
         GetTree().Quit(valid ? 0 : 1);
     }
 }
