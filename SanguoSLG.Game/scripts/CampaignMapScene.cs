@@ -745,7 +745,8 @@ public sealed partial class CampaignMapScene : Node3D
         }
         else camera.Setup(_view.HexToWorld(new HexCoord(4, 2)), 14f);
         Redraw("자기 성(파란색)을 클릭해 명령을 내리세요. 적(촉)은 AI입니다.");
-        if (args.Contains("--menulaunchqa")) CallDeferred(nameof(RunMenuLaunchQa));
+        if (args.Contains("--menulaunchqa") || args.Contains("--menuloadqa"))
+            CallDeferred(nameof(RunMenuLaunchQa));
         if (args.Contains("--maptestgaugelifetimeqa")) CallDeferred(nameof(RunActiveGaugeLifetimeQa));
         if (args.Contains("--maptestgaugeprogressqa")) CallDeferred(nameof(RunActiveGaugeProgressQa));
         if (args.Contains("--maptestsiegeactivepresentationqa")) CallDeferred(nameof(RunSiegeActivePresentationQa));
@@ -9544,11 +9545,12 @@ public sealed partial class CampaignMapScene : Node3D
         var rulerCity = ruler is { } id ? _state.PostingOf(id)?.Location : null;
         var startCity = _state.Cities.FirstOrDefault(city => city.Id == rulerCity && city.Owner == Player)
             ?? _state.Cities.FirstOrDefault(city => city.Owner == Player);
+        var savedGameQa = OS.GetCmdlineUserArgs().Contains("--menuloadqa");
         var passed = startCity is not null && _camera.IsIntroZoomPlaying
             && _camera.FocusPivot.DistanceTo(_view.HexToWorld(startCity.Position)) < 0.01f
             && ScenarioStartMenu.IsLoadingVisible && ScenarioStartMenu.CampaignStartedFromMenu
-            && !string.IsNullOrWhiteSpace(_state.ScenarioTitle);
-        GD.Print($"[menu-launch-qa] passed={passed} scenario={_state.ScenarioTitle} cameraIntro={_camera.IsIntroZoomPlaying} loading={ScenarioStartMenu.IsLoadingVisible}");
+            && (savedGameQa || !string.IsNullOrWhiteSpace(_state.ScenarioTitle));
+        GD.Print($"[{(savedGameQa ? "menu-load-qa" : "menu-launch-qa")}] passed={passed} scenario={_state.ScenarioTitle} cameraIntro={_camera.IsIntroZoomPlaying} loading={ScenarioStartMenu.IsLoadingVisible}");
         GetTree().Quit(passed ? 0 : 1);
     }
 

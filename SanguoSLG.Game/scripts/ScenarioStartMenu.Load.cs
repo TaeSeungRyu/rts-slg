@@ -83,4 +83,22 @@ public sealed partial class ScenarioStartMenu
             warning.Text = $"슬롯 {slot:00}을 불러올 수 없습니다: {error.Message}";
         }
     }
+
+    private void RunMenuLoadQa(Control menuCenter)
+    {
+        var store = new SaveSlotStore(ProjectSettings.GlobalizePath("user://saves"),
+            ProjectSettings.GlobalizePath("user://sanguo-save.json"));
+        var valid = store.InspectAll().FirstOrDefault(slot => slot.Exists && !slot.Corrupt);
+        if (valid is null)
+        {
+            GD.Print("[menu-load-qa] skipped=no-save");
+            GetTree().Quit();
+            return;
+        }
+        OpenLoadSlots(menuCenter);
+        var choice = _loadView?.FindChildren("*", "Button", true, false)
+            .OfType<Button>().FirstOrDefault(button => button.Text.StartsWith($"{valid.Slot:00}  "));
+        if (choice is null) { GD.Print("[menu-load-qa] passed=False reason=missing-slot"); GetTree().Quit(1); return; }
+        choice.EmitSignal(BaseButton.SignalName.Pressed);
+    }
 }

@@ -65,7 +65,8 @@ public partial class GameRoot3D : Node3D
         var launchFromMenu = ScenarioStartMenu.ConsumeLaunchRequest();
 
         if ((OS.GetCmdlineUserArgs().Contains("--startmenuqa")
-            || OS.GetCmdlineUserArgs().Contains("--menulaunchqa") || OS.GetCmdlineArgs().Length == 0 &&
+            || OS.GetCmdlineUserArgs().Contains("--menulaunchqa")
+            || OS.GetCmdlineUserArgs().Contains("--menuloadqa") || OS.GetCmdlineArgs().Length == 0 &&
             OS.GetCmdlineUserArgs().Length == 0)
             && !launchFromMenu)
         {

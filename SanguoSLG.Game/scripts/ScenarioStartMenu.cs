@@ -258,6 +258,8 @@ void fragment() {
         if (OS.GetCmdlineUserArgs().Contains("--startmenuqa")) CallDeferred(nameof(RunQa));
         if (OS.GetCmdlineUserArgs().Contains("--menulaunchqa"))
             Callable.From(() => start.EmitSignal(BaseButton.SignalName.Pressed)).CallDeferred();
+        if (OS.GetCmdlineUserArgs().Contains("--menuloadqa"))
+            Callable.From(() => RunMenuLoadQa(menuCenter)).CallDeferred();
     }
 
     private static SanguoSLG.Core.Data.ScenarioMapPreset LoadScenarioMap(

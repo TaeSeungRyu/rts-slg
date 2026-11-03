@@ -8,7 +8,8 @@ public sealed partial class ScenarioStartMenu
     private void ShowOptionalIntro(Control menuCenter)
     {
         if (OS.GetCmdlineUserArgs().Contains("--startmenuqa")
-            || OS.GetCmdlineUserArgs().Contains("--menulaunchqa")) return;
+            || OS.GetCmdlineUserArgs().Contains("--menulaunchqa")
+            || OS.GetCmdlineUserArgs().Contains("--menuloadqa")) return;
         const string path = "res://assets/video/intro.ogv";
         if (!ResourceLoader.Exists(path)) return;
         var video = new VideoStreamPlayer { Stream = GD.Load<VideoStream>(path), Expand = true };
