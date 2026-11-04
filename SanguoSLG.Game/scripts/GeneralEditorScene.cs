@@ -67,6 +67,8 @@ public partial class GeneralEditorScene : Control
     public override void _Ready()
     {
         BuildUi();
+        foreach (var option in new[] { _activeInput, _passiveSelect, _adminSelect })
+            option.GetPopup().MaxSize = new Vector2I(4096, 300);
         Reload();
         if (OS.GetCmdlineUserArgs().Contains("--generaleditorqa"))
         {
@@ -183,6 +185,11 @@ public partial class GeneralEditorScene : Control
         skillBorder.AddThemeStyleboxOverride("panel", borderStyle);
         _skillDetailDialog.GetLabel().GetParent().AddChild(skillBorder);
         skillBorder.AddChild(skillFrame);
+        var outerStyle = GeneralWorkspaceStyle.SectionBox();
+        outerStyle.BorderColor = new Color("d9ae5f");
+        outerStyle.SetBorderWidthAll(2);
+        outerStyle.SetCornerRadiusAll(10);
+        _skillDetailDialog.AddThemeStyleboxOverride("panel", outerStyle);
         var skillContent = new VBoxContainer();
         skillContent.AddThemeConstantOverride("separation", 12);
         skillFrame.AddChild(skillContent);
