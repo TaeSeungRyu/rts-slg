@@ -236,6 +236,7 @@ public partial class GeneralEditorScene : Control
 
         var portraitSection = AddSection(editor, "초상·원형 얼굴");
         var portraitRow = new HBoxContainer();
+        portraitRow.AddThemeConstantOverride("separation", 18);
         portraitSection.AddChild(portraitRow);
         _portraitPreview = new TextureRect
         {
@@ -268,9 +269,13 @@ public partial class GeneralEditorScene : Control
             UpdatePortraitPreview();
         };
         faceBox.AddChild(resetFace);
+        var photoActions = new VBoxContainer { CustomMinimumSize = new Vector2(150, 0) };
+        photoActions.AddThemeConstantOverride("separation", 10);
+        portraitRow.AddChild(photoActions);
+        photoActions.AddChild(new Label { Text = "사진 관리" });
         var changePhoto = new Button { Text = "사진변경" };
         changePhoto.Pressed += () => _portraitFileDialog.PopupCentered(new Vector2I(850, 620));
-        faceBox.AddChild(changePhoto);
+        photoActions.AddChild(changePhoto);
         var restorePhoto = new Button { Text = "사진복구" };
         restorePhoto.Pressed += () =>
         {
@@ -280,7 +285,7 @@ public partial class GeneralEditorScene : Control
                 : $"SanguoSLG.Game/assets/portraits/{_selected.Id}.png";
             UpdatePortraitPreview();
         };
-        faceBox.AddChild(restorePhoto);
+        photoActions.AddChild(restorePhoto);
         _portraitFileDialog = new FileDialog { Access = FileDialog.AccessEnum.Filesystem,
             FileMode = FileDialog.FileModeEnum.OpenFile, Title = "장수 사진 변경" };
         _portraitFileDialog.AddFilter("*.png, *.jpg, *.jpeg, *.webp", "이미지 파일");
