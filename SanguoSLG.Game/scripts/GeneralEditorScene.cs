@@ -176,7 +176,13 @@ public partial class GeneralEditorScene : Control
         skillFrame.AddThemeConstantOverride("margin_right", 16);
         skillFrame.AddThemeConstantOverride("margin_top", 12);
         skillFrame.AddThemeConstantOverride("margin_bottom", 12);
-        _skillDetailDialog.GetLabel().GetParent().AddChild(skillFrame);
+        var skillBorder = new PanelContainer();
+        var borderStyle = GeneralWorkspaceStyle.SectionBox();
+        borderStyle.BorderColor = new Color("d9ae5f");
+        borderStyle.SetBorderWidthAll(2);
+        skillBorder.AddThemeStyleboxOverride("panel", borderStyle);
+        _skillDetailDialog.GetLabel().GetParent().AddChild(skillBorder);
+        skillBorder.AddChild(skillFrame);
         var skillContent = new VBoxContainer();
         skillContent.AddThemeConstantOverride("separation", 12);
         skillFrame.AddChild(skillContent);
