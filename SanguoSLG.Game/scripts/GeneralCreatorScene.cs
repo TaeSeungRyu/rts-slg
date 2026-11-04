@@ -199,8 +199,8 @@ public partial class GeneralCreatorScene : Control
         var register = new Button { Text = "+ 외부 이미지 등록하기", CustomMinimumSize = new Vector2(0, 40) };
         register.Pressed += () => _galleryFileDialog.PopupCentered(new Vector2I(850, 620));
         gallery.AddChild(register);
-        _portraitGrid = new GridContainer { Columns = 6, SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        _portraitGrid.AddThemeConstantOverride("h_separation", 10);
+        _portraitGrid = new GridContainer { Columns = 12, SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        _portraitGrid.AddThemeConstantOverride("h_separation", 6);
         _portraitGrid.AddThemeConstantOverride("v_separation", 10);
         gallery.AddChild(_portraitGrid);
         var portraitNavigation = new HBoxContainer { Alignment = BoxContainer.AlignmentMode.Center };
@@ -439,7 +439,7 @@ public partial class GeneralCreatorScene : Control
     private string DefaultPortrait()
         => $"res://assets/portraits/created/{(_gender.Selected == 1 ? "women" : "man")}1.png";
 
-    private static int PortraitPageCount(int count) => Math.Max(1, (count + 11) / 12);
+    private static int PortraitPageCount(int count) => Math.Max(1, (count + 23) / 24);
 
     private void RebuildPortraitGrid(string? focusPath = null)
     {
@@ -461,7 +461,7 @@ public partial class GeneralCreatorScene : Control
             foreach (var file in Directory.EnumerateFiles(galleryDirectory, "*.png").OrderBy(Path.GetFileName))
                 choices.Add(("user://general-presets/portraits/" + Path.GetFileName(file), "등록",
                     $"외부 초상 · {Path.GetFileName(file)}"));
-        const int pageSize = 12;
+        const int pageSize = 24;
         if (focusPath is not null)
         {
             var focusIndex = choices.FindIndex(choice => choice.Path == focusPath);
@@ -473,9 +473,9 @@ public partial class GeneralCreatorScene : Control
         {
             var image = Image.LoadFromFile(ProjectSettings.GlobalizePath(portrait));
             if (image is null || image.IsEmpty()) continue;
-            image.Resize(64, 76);
+            image.Resize(44, 52);
             var choice = new Button { Icon = ImageTexture.CreateFromImage(image),
-                ExpandIcon = true, CustomMinimumSize = new Vector2(88, 104),
+                ExpandIcon = true, CustomMinimumSize = new Vector2(50, 68),
                 SizeFlagsHorizontal = SizeFlags.ExpandFill, TooltipText = tooltip };
             choice.Pressed += () => SelectPortrait(portrait);
             _portraitGrid.AddChild(choice);
@@ -795,7 +795,7 @@ public partial class GeneralCreatorScene : Control
             RebuildPortraitGrid();
             SelectPortrait(registered);
             passed &= _portraitPath == registered && _portraitGrid.GetChildCount() >= 11
-                && _portraitGrid.Columns == 6 && PortraitPageCount(21) == 2
+                && _portraitGrid.Columns == 12 && PortraitPageCount(25) == 2
                 && _galleryFileDialog.FileMode == FileDialog.FileModeEnum.OpenFiles
                 && _galleryLoadingLabel is not null
                 && CreatedGeneralStore.Load(CreatedGeneralStore.Save([FromForm(10002)]))[0].PortraitPath == registered;
