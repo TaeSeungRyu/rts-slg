@@ -179,8 +179,13 @@ public sealed partial class ScenarioEditorScene : Control
             .Concat(Directory.Exists(_scenarioDirectory) ? Directory.EnumerateFiles(_scenarioDirectory, "*.json") : [])
             .GroupBy(path => Path.GetFileName(path), StringComparer.OrdinalIgnoreCase)
             .Select(group => group.FirstOrDefault(path => path.StartsWith(_scenarioDirectory, StringComparison.OrdinalIgnoreCase)) ?? group.First())
-            .OrderBy(path => Path.GetFileName(path).StartsWith("fictional-", StringComparison.Ordinal) ? 9999
-                : ScenarioDraftStore.Load(path).StartYear).ThenBy(path => path);
+            .OrderBy(path => File.Exists(Path.Combine(builtIn, Path.GetFileName(path))) ? 0 : 1)
+            .ThenBy(path => File.Exists(Path.Combine(builtIn, Path.GetFileName(path)))
+                ? (Path.GetFileName(path).StartsWith("fictional-", StringComparison.Ordinal) ? 9999
+                    : ScenarioDraftStore.Load(path).StartYear) : 0)
+            .ThenBy(path => File.Exists(Path.Combine(builtIn, Path.GetFileName(path)))
+                ? DateTime.MinValue : File.GetCreationTimeUtc(path))
+            .ThenBy(path => path);
         foreach (var path in paths)
         {
             try
@@ -256,7 +261,7 @@ public sealed partial class ScenarioEditorScene : Control
         var index = _list.AddItem("작성 중 · 저장 전");
         _list.SetItemMetadata(index, "");
         _list.Select(index);
-        _list.EnsureCurrentIsVisible();
+        Callable.From(() => _list.EnsureCurrentIsVisible()).CallDeferred();
         ShowBasics();
     }
 
@@ -849,6 +854,13 @@ public sealed partial class ScenarioEditorScene : Control
             ScenarioDraftStore.Save(path, _draft, map.Preset, known);
             _savedDraftSnapshot = SnapshotDraft();
             RefreshList();
+            for (var index = 0; index < _list.ItemCount; index++)
+                if (_list.GetItemMetadata(index).AsString() == path)
+                {
+                    _list.Select(index);
+                    Callable.From(() => _list.EnsureCurrentIsVisible()).CallDeferred();
+                    break;
+                }
             _message.Text = "시나리오를 저장했습니다.";
         }
         catch (Exception error) { _message.Text = "저장 불가: " + error.Message; }
