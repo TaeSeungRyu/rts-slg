@@ -401,7 +401,7 @@ public partial class GeneralEditorScene : Control
         };
         buttons.AddChild(reset);
 
-        var save = new Button { Text = "변경 저장", CustomMinimumSize = new Vector2(120, 38) };
+        var save = new Button { Text = "변경저장", CustomMinimumSize = new Vector2(120, 38) };
         save.Pressed += SaveSelected;
         buttons.AddChild(save);
 
