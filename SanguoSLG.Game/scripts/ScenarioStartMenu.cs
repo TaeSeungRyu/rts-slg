@@ -54,7 +54,7 @@ void fragment() {
         center.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
         AddChild(center);
         var panel = new PanelContainer { CustomMinimumSize = new Vector2(
-            Mathf.Min(1030, GetViewport().GetVisibleRect().Size.X - 28), 0) };
+            Mathf.Min(1339, GetViewport().GetVisibleRect().Size.X - 28), 0) };
         var style = new StyleBoxFlat { BgColor = new Color("1e2524"), BorderColor = new Color("d1ae65") };
         style.SetBorderWidthAll(2);
         style.SetCornerRadiusAll(12);
@@ -95,10 +95,24 @@ void fragment() {
         content.AddChild(scenarioChoice);
         var scenarioLayout = new HBoxContainer();
         scenarioLayout.AddThemeConstantOverride("separation", 18);
+        scenarioLayout.SizeFlagsVertical = SizeFlags.ExpandFill;
         content.AddChild(scenarioLayout);
-        var cards = new VBoxContainer { CustomMinimumSize = new Vector2(255, 0) };
-        cards.AddThemeConstantOverride("separation", 6);
-        scenarioLayout.AddChild(cards);
+        var leftColumn = new VBoxContainer { Name = "ScenarioSelectionColumn",
+            SizeFlagsHorizontal = SizeFlags.ExpandFill, SizeFlagsStretchRatio = 1 };
+        leftColumn.AddThemeConstantOverride("separation", 9);
+        scenarioLayout.AddChild(leftColumn);
+        var rightColumn = new VBoxContainer { Name = "FactionSelectionColumn",
+            SizeFlagsHorizontal = SizeFlags.ExpandFill, SizeFlagsStretchRatio = 1 };
+        rightColumn.AddThemeConstantOverride("separation", 9);
+        scenarioLayout.AddChild(rightColumn);
+        leftColumn.AddChild(new Label { Text = "시나리오 선택" });
+        var scenarioScroll = new ScrollContainer { CustomMinimumSize = new Vector2(0, 160),
+            HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled };
+        leftColumn.AddChild(scenarioScroll);
+        var cards = new GridContainer { Columns = 2, SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        cards.AddThemeConstantOverride("h_separation", 6);
+        cards.AddThemeConstantOverride("v_separation", 6);
+        scenarioScroll.AddChild(cards);
         var details = new PanelContainer { CustomMinimumSize = new Vector2(0, 310),
             SizeFlagsHorizontal = SizeFlags.ExpandFill };
         var detailsStyle = new StyleBoxFlat { BgColor = new Color("29322e"), BorderColor = new Color("826c47") };
@@ -106,7 +120,7 @@ void fragment() {
         detailsStyle.SetCornerRadiusAll(8);
         detailsStyle.SetContentMarginAll(14);
         details.AddThemeStyleboxOverride("panel", detailsStyle);
-        scenarioLayout.AddChild(details);
+        leftColumn.AddChild(details);
         var mapColumn = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
         mapColumn.AddThemeConstantOverride("separation", 6);
         details.AddChild(mapColumn);
@@ -138,9 +152,9 @@ void fragment() {
         var preview = new Label { AutowrapMode = TextServer.AutowrapMode.WordSmart };
         var factionHeader = new Label { Text = "세력 선택  ·  지도 또는 세력 이름을 누르세요" };
         factionHeader.AddThemeColorOverride("font_color", new Color("e5c985"));
-        var factionScroll = new ScrollContainer { CustomMinimumSize = new Vector2(0, 82),
+        var factionScroll = new ScrollContainer { CustomMinimumSize = new Vector2(0, 200),
             SizeFlagsHorizontal = SizeFlags.ExpandFill, HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled };
-        var factionButtons = new GridContainer { Columns = 4, SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        var factionButtons = new GridContainer { Columns = 3, SizeFlagsHorizontal = SizeFlags.ExpandFill };
         factionButtons.AddThemeConstantOverride("h_separation", 6);
         factionButtons.AddThemeConstantOverride("v_separation", 5);
         factionScroll.AddChild(factionButtons);
@@ -197,7 +211,8 @@ void fragment() {
         {
             var cardIndex = index;
             var draft = SanguoSLG.Core.Data.ScenarioDraftStore.Load(scenarioPaths[index]!);
-            var card = new Button { Text = draft.Title, CustomMinimumSize = new Vector2(245, 45),
+            var card = new Button { Text = draft.Title, CustomMinimumSize = new Vector2(195, 45),
+                SizeFlagsHorizontal = SizeFlags.ExpandFill,
                 Alignment = HorizontalAlignment.Left, TooltipText = draft.Description };
             card.AddThemeStyleboxOverride("normal", CardStyle(false, false));
             card.AddThemeStyleboxOverride("hover", CardStyle(false, true));
@@ -208,10 +223,10 @@ void fragment() {
             cardButtons.Add(card);
         }
         if (scenarioChoice.ItemCount > 0) scenarioChoice.Select(0);
-        content.AddChild(factionHeader);
-        content.AddChild(factionChoice);
-        content.AddChild(factionScroll);
-        content.AddChild(factionSummary);
+        rightColumn.AddChild(factionHeader);
+        rightColumn.AddChild(factionChoice);
+        rightColumn.AddChild(factionScroll);
+        rightColumn.AddChild(factionSummary);
         factionMap.FactionPicked += id =>
         {
             SelectFaction(id);
@@ -243,7 +258,7 @@ void fragment() {
         }
         scenarioChoice.ItemSelected += _ => RefreshFactions();
         if (scenarioChoice.ItemCount > 0) RefreshFactions();
-        content.AddChild(preview);
+        leftColumn.AddChild(preview);
         void RefreshPreview()
         {
             try
@@ -265,9 +280,9 @@ void fragment() {
         var difficulty = new OptionButton { CustomMinimumSize = new Vector2(0, 38) };
         difficulty.AddItem("난이도: 보통", 0);
         difficulty.AddItem("난이도: 어려움", 1);
-        content.AddChild(difficulty);
+        rightColumn.AddChild(difficulty);
         var error = new Label { Text = "", Modulate = new Color("f0a486") };
-        content.AddChild(error);
+        rightColumn.AddChild(error);
         var start = new Button { Text = "게임 시작", CustomMinimumSize = new Vector2(0, 48) };
         start.Pressed += () =>
         {
@@ -314,7 +329,7 @@ void fragment() {
             CampaignStartedFromMenu = true;
             ChangeToCampaign();
         };
-        content.AddChild(start);
+        rightColumn.AddChild(start);
         var menuCenter = new CenterContainer();
         menuCenter.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
         AddChild(menuCenter);
@@ -345,7 +360,7 @@ void fragment() {
         MenuItem("시나리오 에디터", () => EnterEditor(GetTree(), "res://ScenarioEditor.tscn"));
         var back = new Button { Text = "← 메인 메뉴", CustomMinimumSize = new Vector2(140, 36) };
         back.Pressed += () => { center.Visible = false; menuCenter.Visible = true; };
-        content.AddChild(back);
+        rightColumn.AddChild(back);
         ShowOptionalIntro(menuCenter);
         if (OS.GetCmdlineUserArgs().Contains("--startmenuqa")) CallDeferred(nameof(RunQa));
         if (OS.GetCmdlineUserArgs().Contains("--menulaunchqa"))
@@ -369,12 +384,19 @@ void fragment() {
         var buttons = FindChildren("*", "Button", true, false).OfType<Button>().Select(button => button.Text).ToArray();
         var scenarios = FindChildren("*", "OptionButton", true, false).OfType<OptionButton>().FirstOrDefault();
         var factionMap = FindChildren("*", "", true, false).OfType<ScenarioFactionMap>().FirstOrDefault();
+        var scenarioColumn = FindChild("ScenarioSelectionColumn", true, false) as VBoxContainer;
+        var factionColumn = FindChild("FactionSelectionColumn", true, false) as VBoxContainer;
         var factionControls = FindChildren("*", "Button", true, false).OfType<Button>()
             .Where(button => button.HasMeta("faction_id")).ToArray();
         var passed = buttons.Contains("게임 시작") && buttons.Contains("새 게임 시작하기")
             && scenarios?.ItemCount >= 6
             && !Enumerable.Range(0, scenarios?.ItemCount ?? 0).Any(index => scenarios!.GetItemText(index) == "새 시나리오")
             && factionMap is { HasTerrain: true, CityCount: > 0 }
+            && scenarioColumn is not null && factionColumn is not null
+            && ReferenceEquals(scenarioColumn.GetParent(), factionColumn.GetParent())
+            && ReferenceEquals(factionMap.GetParent()?.GetParent()?.GetParent(), scenarioColumn)
+            && factionColumn.FindChildren("*", "Button", true, false).OfType<Button>()
+                .Any(button => button.Text == "게임 시작")
             && factionControls.Length > 0 && factionControls.Any(button => button.ButtonPressed)
             && FindChildren("*", "Label", true, false).OfType<Label>()
                 .Any(label => label.Text.Contains("점령 거점") && label.Text.Contains("병력") && label.Text.Contains("장수"))
