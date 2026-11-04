@@ -193,8 +193,17 @@ void fragment() {
                 rulerPortrait.Texture = Godot.FileAccess.FileExists(path) ? GD.Load<Texture2D>(path) : null;
             }
             catch (Exception failure) { factionNumbers.Text = "세력 정보 확인 불가: " + failure.Message; }
-            foreach (var button in factionButtons.GetChildren().OfType<Button>())
+            foreach (var button in factionButtons.GetChildren().OfType<Button>()
+                .Where(button => !button.IsQueuedForDeletion()))
+            {
                 button.ButtonPressed = (int)button.GetMeta("faction_id") == id;
+                if (button.ButtonPressed)
+                    Callable.From(() =>
+                    {
+                        if (IsInstanceValid(button) && !button.IsQueuedForDeletion())
+                            factionScroll.EnsureControlVisible(button);
+                    }).CallDeferred();
+            }
         }
         void SelectScenario(int index)
         {
