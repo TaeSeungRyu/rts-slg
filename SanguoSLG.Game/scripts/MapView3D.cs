@@ -15,6 +15,7 @@ public partial class MapView3D : Node3D
     private readonly Dictionary<TerrainType, PackedScene[]> _terrainVariants = new();
     private readonly Dictionary<HexCoord, int> _presetTerrainVariants = new();
     private PackedScene _water = null!;
+    private PackedScene _riverRocky = null!;
     private PackedScene _farmBroken = null!;
     private float _size = 1f;      // 헥사 중심~꼭짓점(월드 단위)
     private float _topY;           // 타일 윗면 높이(마커·유닛 배치 기준)
@@ -86,6 +87,7 @@ public partial class MapView3D : Node3D
         _riverCorner = GD.Load<PackedScene>("res://assets/models/river-corner.glb");
         _riverCornerSharp = GD.Load<PackedScene>("res://assets/models/river-corner-sharp.glb");
         _riverEnd = GD.Load<PackedScene>("res://assets/models/river-end.glb");
+        _riverRocky = GD.Load<PackedScene>("res://assets/models/river-rocky.glb");
         _bridge = GD.Load<PackedScene>("res://assets/models/bridge.glb");
         MeasureTile(_tiles[TerrainType.Plains]);
         WaterTopY = MeasureTopY(_water);
@@ -94,7 +96,8 @@ public partial class MapView3D : Node3D
     /// <summary>지형별 타일 모델(UI 미리보기용). 없으면 null.</summary>
     public PackedScene? TileScene(TerrainType terrain) => terrain switch
     {
-        TerrainType.River or TerrainType.WaterShallow or TerrainType.WaterDeep => _water,
+        TerrainType.River => _riverRocky,
+        TerrainType.WaterShallow or TerrainType.WaterDeep => _water,
         TerrainType.Bridge => _bridge,
         _ => _tiles.TryGetValue(terrain, out var scene) ? scene : null,
     };
@@ -773,7 +776,7 @@ public partial class MapView3D : Node3D
     {
         if (terrain == TerrainType.River)
         {
-            var water = _water.Instantiate<Node3D>();
+            var water = _riverRocky.Instantiate<Node3D>();
             water.Position = HexToWorld(tile);
             TintRiverTile(water);
             AddChild(water);
@@ -805,7 +808,10 @@ public partial class MapView3D : Node3D
 
     public static void TintRiverTile(Node3D visual)
     {
-        if (FindMesh(visual) is not { } mesh) return;
+        var mesh = visual.FindChildren("*", "MeshInstance3D", true, false).OfType<MeshInstance3D>()
+            .FirstOrDefault(node => node.Name.ToString().Contains("water", System.StringComparison.OrdinalIgnoreCase))
+            ?? FindMesh(visual);
+        if (mesh is null) return;
         mesh.MaterialOverride = new StandardMaterial3D
         {
             AlbedoColor = new Color(0.22f, 0.58f, 0.78f),
