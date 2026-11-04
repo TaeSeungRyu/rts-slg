@@ -27,7 +27,7 @@ public static class TerrainRules
         // 산악 통행 병종만 지나는 것은 산 지물(중간산 이상) — PassabilityMap이 건다
         return domain switch
         {
-            // 배는 대하만 — 소하천(River)·암초(WaterRocks)는 지나지 못한다
+            MovementDomain.SmallBoat => terrain is TerrainType.River or TerrainType.WaterShallow or TerrainType.WaterDeep,
             MovementDomain.DeepWater => terrain is TerrainType.WaterShallow or TerrainType.WaterDeep,
             _ => !deepWater,
         };

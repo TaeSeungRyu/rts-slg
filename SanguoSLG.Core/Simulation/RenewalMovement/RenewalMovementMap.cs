@@ -72,7 +72,7 @@ public sealed class RenewalMovementMap
 
     private bool IsBlocked(HexCoord hex, MovementDomain domain, FactionId? owner) =>
         _buildingTiles.Contains(hex) || _gateTiles.TryGetValue(hex, out var gateOwner)
-        && (domain == MovementDomain.DeepWater || owner is null
+        && (domain is MovementDomain.DeepWater or MovementDomain.SmallBoat || owner is null
             || !(_areAllied?.Invoke(owner.Value, gateOwner) ?? owner.Value == gateOwner));
 
     public bool CanEnter(MovementDomain domain, HexCoord hex, FactionId? owner = null) => _map.Contains(hex)

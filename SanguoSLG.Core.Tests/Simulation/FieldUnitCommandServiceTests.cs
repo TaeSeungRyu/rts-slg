@@ -47,6 +47,27 @@ public class FieldUnitCommandServiceTests
     }
 
     [Fact]
+    public void 출항한_소선은_소하천으로_명령을_재지정할_수_있다()
+    {
+        var river = new HexCoord(2, 0);
+        var ship = NavalUnit(1, Player, new HexCoord(1, 0)) with
+        {
+            TroopCode = "small_boat",
+            Field = NavalUnit(1, Player, new HexCoord(1, 0)).Field with
+            {
+                Domain = MovementDomain.SmallBoat,
+                Target = new HexCoord(3, 0),
+            },
+        };
+        var state = new GameState(1, 190, [], [], [], FieldArmies: [ship]);
+        var result = Service((domain, tile) => tile != river
+            || TerrainRules.CanEnter(domain, TerrainType.River)).Reassign(state, Player,
+            new FieldUnitCommandRequest(ship.Id, UnitMode.March, river));
+        Assert.True(result.Ok, result.Error);
+        Assert.Equal(river, result.State.Armies.Single().Field.Target);
+    }
+
+    [Fact]
     public void 적성_목표를_찍어도_행군명령은_유지된다()
     {
         var enemyCity = City(2, Enemy, new HexCoord(5, 0));

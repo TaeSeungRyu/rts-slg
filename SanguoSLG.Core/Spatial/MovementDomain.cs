@@ -14,4 +14,5 @@ public enum MovementDomain
 
     /// <summary>대하 유닛(배) — 대하(깊은 물) 타일만.</summary>
     DeepWater,
+    SmallBoat,
 }

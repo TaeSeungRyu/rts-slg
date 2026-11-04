@@ -3054,7 +3054,7 @@ public sealed partial class CampaignMapScene : Node3D
             && TerrainMovementInfo(TerrainType.Forest, true, false) == "육상 속도 100%"
             && TerrainMovementInfo(TerrainType.Mountain, true, false) == "육상 속도 50% (지형 접촉 중)"
             && TerrainMovementInfo(TerrainType.Swamp, true, false) == "육상 속도 50% (지형 접촉 중)"
-            && TerrainMovementInfo(TerrainType.River, true, false) == "육상 속도 50% (지형 접촉 중)"
+            && TerrainMovementInfo(TerrainType.River, true, true) == "육상병력·소선 이동 가능 · 육상 속도 50% (지형 접촉 중)"
             && TerrainMovementInfo(TerrainType.WaterDeep, false, true) == "육상 병력 이동 불가 · 선박 속도 100%"
             && TerrainMovementInfo(TerrainType.Cliff, false, false) == "육상·선박 이동 불가";
         if (!passed)
@@ -3077,6 +3077,7 @@ public sealed partial class CampaignMapScene : Node3D
 
     private static string TerrainMovementInfo(TerrainType terrain, bool landPassable, bool shipPassable)
     {
+        if (terrain == TerrainType.River) return "육상병력·소선 이동 가능 · 육상 속도 50% (지형 접촉 중)";
         if (!landPassable && !shipPassable) return "육상·선박 이동 불가";
         if (!landPassable) return "육상 병력 이동 불가 · 선박 속도 100%";
         return terrain is TerrainType.Mountain or TerrainType.Swamp or TerrainType.River
@@ -3182,7 +3183,7 @@ public sealed partial class CampaignMapScene : Node3D
         ShowTargetHint((transport
             ? "수송부대 목표 지정 · 도착할 아군 성을 클릭 · '확인'으로 확정 · 우클릭 취소"
             : naval
-            ? "출항 목표 지정 · 바다/대하 타일만 클릭 · '확인'으로 확정 · 우클릭 취소"
+            ? "출항 목표 지정 · 물 타일 선택(소선은 소하천 포함) · '확인'으로 확정 · 우클릭 취소"
             : armyGroup
             ? "집단군 목표 지정 · 지점을 순서대로 클릭 · '확인'으로 확정 · 적 성 = 공격 · 우클릭 취소"
             : supply
@@ -3197,9 +3198,20 @@ public sealed partial class CampaignMapScene : Node3D
     // start→goal에 지형 통행 A* 경로가 존재하는가.
     private bool HasPath(HexCoord start, HexCoord goal)
     {
-        var domain = (_targetingNavalDeploy || _targetingNavalUnit) ? MovementDomain.DeepWater : MovementDomain.Land;
+        var domain = TargetWaterDomain();
         var pf = new HexPathfinder(c => c == start || c == goal || _passability.CanExitThrough(domain, start, c));
         return pf.FindPath(start, goal).Count > 0;
+    }
+
+    private MovementDomain TargetWaterDomain()
+    {
+        if (_targetingNavalUnit)
+            return _state.Armies.FirstOrDefault(unit => unit.Id.Value == _retargetUnitId)?.Field.Domain
+                ?? MovementDomain.DeepWater;
+        if (_targetingNavalDeploy && _depTargetIndex >= 0 && _depTargetIndex < _pendingNavalDeploys.Count)
+            return _pendingNavalDeploys[_depTargetIndex].Req.ShipCode == "small_boat"
+                ? MovementDomain.SmallBoat : MovementDomain.DeepWater;
+        return MovementDomain.Land;
     }
 
     // 경유지 목록이 바뀔 때: 취소 버튼을 다시 만들고 경로 프리뷰를 다시 그린다.
@@ -3288,7 +3300,7 @@ public sealed partial class CampaignMapScene : Node3D
     }
 
     private MovementDomain TargetDeploymentDomain()
-        => _targetingNavalDeploy ? MovementDomain.DeepWater : MovementDomain.Land;
+        => _targetingNavalDeploy ? TargetWaterDomain() : MovementDomain.Land;
 
     private HexCoord? TargetEgressExit(City city, DeploymentDirection direction, HexCoord? target = null)
         => DeploymentEgressRules.RepresentativeExit(city, direction, target,
@@ -3489,9 +3501,9 @@ public sealed partial class CampaignMapScene : Node3D
         }
         else if (_targetingNavalDeploy && idx >= 0 && idx < _pendingNavalDeploys.Count)
         {
-            if (!_passability.CanEnter(MovementDomain.DeepWater, h) && RuinAt(h) is not { Naval: true })
+            if (!_passability.CanEnter(TargetWaterDomain(), h) && RuinAt(h) is not { Naval: true })
             {
-                RejectTarget("출항 목표 불가", "출항 목표는 바다/대하 타일만 선택할 수 있습니다.");
+                RejectTarget("출항 목표 불가", "선박이 이동할 수 있는 물 타일을 선택하세요. 소선은 소하천에도 이동할 수 있습니다.");
                 return;
             }
             var (req, label) = _pendingNavalDeploys[idx];
@@ -6312,7 +6324,7 @@ public sealed partial class CampaignMapScene : Node3D
         _targetStart = _state.Armies.FirstOrDefault(a => a.Id.Value == unitId)?.Field.Position ?? default;
         RebuildTargetEdit();
         ShowTargetHint(_targetingNavalUnit
-            ? $"{ModeName(mode)}: 바다/항구를 클릭 = 경유지  ·  '확인'으로 확정  ·  적 항구 = 공격  ·  우클릭 취소"
+            ? $"{ModeName(mode)}: 물/항구를 클릭 = 경유지(소선은 소하천 포함)  ·  '확인'으로 확정  ·  적 항구 = 공격  ·  우클릭 취소"
             : $"{ModeName(mode)}: 지점을 순서대로 클릭 = 경유지  ·  각 지점 위 취소로 삭제  ·  '확인'으로 확정  ·  적 성 = 공격  ·  자기 성 = 복귀  ·  우클릭 취소");
     }
 
@@ -6411,10 +6423,10 @@ public sealed partial class CampaignMapScene : Node3D
 
         var enemyCity = CityAtHex(h, c => c.Owner != Player);
         var ownCity = CityAtHex(h, c => c.Owner == Player);
-        if (navalUnit && !_passability.CanEnter(MovementDomain.DeepWater, h)
+        if (navalUnit && !_passability.CanEnter(u.Field.Domain, h)
             && CityAtHex(h) is null && RuinAt(h) is not { Naval: true })
         {
-            RejectTarget("해상 목표 불가", "해상 부대는 바다·대하 또는 항구만 목표로 지정할 수 있습니다.");
+            RejectTarget("해상 목표 불가", "선박이 이동할 수 있는 물 또는 항구를 선택하세요. 소선은 소하천에도 이동할 수 있습니다.");
             return;
         }
         var enemyUnit = DisplayedArmies.FirstOrDefault(a => a.Field.Position == h && a.Field.Owner != Player && CanSeeUnit(a));
@@ -7841,7 +7853,7 @@ public sealed partial class CampaignMapScene : Node3D
 
     private void UpdateRiverImmersion(UnitController3D token, CombatUnit unit, Vector3 world)
     {
-        if (unit.Field.Domain == MovementDomain.DeepWater || unit.IsSummon)
+        if (unit.Field.Domain is MovementDomain.DeepWater or MovementDomain.SmallBoat || unit.IsSummon)
         {
             token.SetRiverImmersion(0f);
             return;

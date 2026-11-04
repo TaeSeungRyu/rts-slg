@@ -338,6 +338,7 @@ public class DeployServiceTests
         Assert.True(r.Ok, r.Error);
         var unit = r.State.Armies.Single();
         Assert.Equal("small_boat", unit.TroopCode);
+        Assert.Equal(MovementDomain.SmallBoat, unit.Field.Domain);
         Assert.Equal(TroopClass.Naval, unit.Class);
         Assert.Equal(10000, unit.Pool.Active);
         Assert.Equal(4, unit.DeploymentDelayDays);

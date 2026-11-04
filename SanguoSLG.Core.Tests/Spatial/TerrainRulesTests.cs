@@ -34,6 +34,13 @@ public class TerrainRulesTests
     }
 
     [Theory]
+    [InlineData(TerrainType.River)]
+    [InlineData(TerrainType.WaterShallow)]
+    [InlineData(TerrainType.WaterDeep)]
+    public void CanEnter_소선이소하천과바다를지나면_참(TerrainType terrain)
+        => Assert.True(TerrainRules.CanEnter(MovementDomain.SmallBoat, terrain));
+
+    [Theory]
     [InlineData(TerrainType.Plains)]
     [InlineData(TerrainType.Mountain)]
     [InlineData(TerrainType.River)]

@@ -673,7 +673,9 @@ public sealed class DeployService
         unit = unit with { Provisions = carried, ProvisionsCapacity = capacityPer10k,
             LootGold = req.Gold, Training = garrison.TrainingLevel, OriginCity = city.Id,
             EmbarkedTroopCode = req.SourceTroopCode,
-            Field = unit.Field with { ContinuousTarget = req.ContinuousTarget,
+            Field = unit.Field with { Domain = req.ShipCode == "small_boat"
+                ? MovementDomain.SmallBoat : MovementDomain.DeepWater,
+                ContinuousTarget = req.ContinuousTarget,
                 ContinuousWaypoints = req.ContinuousWaypoints },
             DeploymentDelayDays = req.DelayDays, EgressDirection = egressDirection, EgressExit = req.EgressExit,
             // 출항 방향을 아직 지정하지 않았으면 항구 내부 대기열에 남긴다.
