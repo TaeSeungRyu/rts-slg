@@ -47,6 +47,9 @@ public partial class GeneralEditorScene : Control
     private OptionButton _adminSelect = null!;
     private Label _adminDescription = null!;
     private AcceptDialog _skillDetailDialog = null!;
+    private Label _skillDetailName = null!;
+    private Label _skillDetailType = null!;
+    private Label _skillDetailBody = null!;
     private VBoxContainer _adminList = null!;
     private TextureRect _portraitPreview = null!;
     private TextureRect _facePreview = null!;
@@ -144,7 +147,7 @@ public partial class GeneralEditorScene : Control
         body.AddThemeConstantOverride("separation", 12);
         root.AddChild(body);
 
-        var left = GeneralWorkspaceStyle.Column(body, "장수 명감", 310);
+        var left = GeneralWorkspaceStyle.Column(body, "장수 목록", 310);
         _list = new ItemList
         {
             SizeFlagsVertical = SizeFlags.ExpandFill,
@@ -166,8 +169,31 @@ public partial class GeneralEditorScene : Control
         var tabs = new TabContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill, SizeFlagsVertical = SizeFlags.ExpandFill };
         right.AddChild(new Control { CustomMinimumSize = new Vector2(0, 5), MouseFilter = MouseFilterEnum.Ignore });
         right.AddChild(tabs);
-        _skillDetailDialog = new AcceptDialog { Title = "스킬 설명", MinSize = new Vector2I(600, 330) };
+        _skillDetailDialog = new AcceptDialog { Title = "스킬 설명", MinSize = new Vector2I(640, 300) };
         AddChild(_skillDetailDialog);
+        var skillFrame = new MarginContainer();
+        skillFrame.AddThemeConstantOverride("margin_left", 16);
+        skillFrame.AddThemeConstantOverride("margin_right", 16);
+        skillFrame.AddThemeConstantOverride("margin_top", 12);
+        skillFrame.AddThemeConstantOverride("margin_bottom", 12);
+        _skillDetailDialog.GetLabel().GetParent().AddChild(skillFrame);
+        var skillContent = new VBoxContainer();
+        skillContent.AddThemeConstantOverride("separation", 12);
+        skillFrame.AddChild(skillContent);
+        _skillDetailName = new Label();
+        _skillDetailName.AddThemeFontSizeOverride("font_size", 23);
+        _skillDetailName.AddThemeColorOverride("font_color", new Color("e8c475"));
+        skillContent.AddChild(_skillDetailName);
+        _skillDetailType = new Label();
+        _skillDetailType.AddThemeColorOverride("font_color", new Color("c8ad7b"));
+        skillContent.AddChild(_skillDetailType);
+        skillContent.AddChild(new HSeparator());
+        var skillPanel = new PanelContainer();
+        skillPanel.AddThemeStyleboxOverride("panel", GeneralWorkspaceStyle.DescriptionBox());
+        skillContent.AddChild(skillPanel);
+        _skillDetailBody = new Label { AutowrapMode = TextServer.AutowrapMode.WordSmart,
+            CustomMinimumSize = new Vector2(540, 145) };
+        skillPanel.AddChild(_skillDetailBody);
         VBoxContainer AddPage(string name)
         {
             var content = new VBoxContainer { Name = name, SizeFlagsHorizontal = SizeFlags.ExpandFill,
@@ -301,7 +327,7 @@ public partial class GeneralEditorScene : Control
         passiveSection.AddChild(passiveBody);
         var passiveLeft = new VBoxContainer
         {
-            CustomMinimumSize = new Vector2(360, 0),
+            CustomMinimumSize = new Vector2(300, 0),
             SizeFlagsHorizontal = SizeFlags.ExpandFill,
         };
         passiveBody.AddChild(passiveLeft);
@@ -330,7 +356,7 @@ public partial class GeneralEditorScene : Control
         adminSection.AddChild(adminBody);
         var adminLeft = new VBoxContainer
         {
-            CustomMinimumSize = new Vector2(360, 0),
+            CustomMinimumSize = new Vector2(300, 0),
             SizeFlagsHorizontal = SizeFlags.ExpandFill,
         };
         adminBody.AddChild(adminLeft);
@@ -534,6 +560,12 @@ public partial class GeneralEditorScene : Control
         if (_selected is not null)
         {
             ShowGeneral(_selected);
+            for (var index = 0; index < _list.ItemCount; index++)
+                if (_list.GetItemMetadata(index).AsInt32() == _selected.Id)
+                {
+                    _list.Select(index);
+                    break;
+                }
         }
     }
 
@@ -995,6 +1027,8 @@ public partial class GeneralEditorScene : Control
             _generalsById[record.Id] = record;
             RefreshList();
             ShowGeneral(record);
+            for (var item = 0; item < _list.ItemCount; item++)
+                if (_list.GetItemMetadata(item).AsInt32() == record.Id) { _list.Select(item); break; }
             createdOk = Enumerable.Range(0, _list.ItemCount).Any(index => _list.GetItemText(index).Contains("창작 장수 QA"))
                 && _recruitPointInput.Editable && (int)_recruitPointInput.Value == 275
                 && (int)_recruitGoldInput.Value == 700
@@ -1012,19 +1046,21 @@ public partial class GeneralEditorScene : Control
         var battleButton = FindChild("BattlePassiveDescriptionButton", true, false) as Button;
         battleButton?.EmitSignal(BaseButton.SignalName.Pressed);
         var battleDescriptionOk = battleButton is not null && _skillDetailDialog.Visible
-            && _skillDetailDialog.DialogText.Contains("전투 패시브", StringComparison.Ordinal);
+            && _skillDetailBody.Text.Contains("전투 패시브", StringComparison.Ordinal);
         _skillDetailDialog.Hide();
         _adminSelect.Select(0);
         AddSelectedAdminPassive();
         var adminButton = FindChild("AdminPassiveDescriptionButton", true, false) as Button;
         adminButton?.EmitSignal(BaseButton.SignalName.Pressed);
         var adminDescriptionOk = adminButton is not null && _skillDetailDialog.Visible
-            && _skillDetailDialog.DialogText.Contains("내정 패시브", StringComparison.Ordinal);
+            && _skillDetailBody.Text.Contains("내정 패시브", StringComparison.Ordinal);
         _skillDetailDialog.Hide();
 
         var tabs = FindChildren("*", "TabContainer", true, false).OfType<TabContainer>().Single();
         var layoutOk = GeneralWorkspaceStyle.EditorFooterLayoutValid(this, _status)
             && tabs.GetChildren().All(child => child is not ScrollContainer)
+            && _list.GetSelectedItems().Length == 1
+            && _list.GetItemMetadata(_list.GetSelectedItems()[0]).AsInt32() == _selected?.Id
             && _regionFilter.ItemCount > 1
             && _regionFilter.GetItemText(1) == RegionName(_regionFilter.GetItemMetadata(1).AsString())
             && _activeInput.ItemCount > 1
@@ -1184,6 +1220,7 @@ public partial class GeneralEditorScene : Control
             {
                 Text = name,
                 SizeFlagsHorizontal = SizeFlags.ExpandFill,
+                TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis,
                 TooltipText = _passiveSkills.TryGetValue(skill.Code, out var def) ? SkillDescriptions.Passive(def, skill.Tier) : "",
             };
             row.AddChild(label);
@@ -1251,6 +1288,7 @@ public partial class GeneralEditorScene : Control
             {
                 Text = name,
                 SizeFlagsHorizontal = SizeFlags.ExpandFill,
+                TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis,
                 TooltipText = _adminSkills.TryGetValue(skill.Code, out var def) ? SkillDescriptions.Admin(def, skill.Tier) : "",
             };
             row.AddChild(label);
@@ -1316,9 +1354,13 @@ public partial class GeneralEditorScene : Control
 
     private void ShowSkillDetail(string name, string description)
     {
-        _skillDetailDialog.Title = name;
-        _skillDetailDialog.DialogText = description;
-        _skillDetailDialog.PopupCentered(new Vector2I(600, 330));
+        _skillDetailDialog.Title = "스킬 설명";
+        _skillDetailDialog.DialogText = "";
+        _skillDetailName.Text = name;
+        _skillDetailType.Text = description.Contains("내정 패시브", StringComparison.Ordinal)
+            ? "내정 패시브 · 자동 적용" : "전투 패시브 · 교전 시 적용";
+        _skillDetailBody.Text = description;
+        _skillDetailDialog.PopupCentered(new Vector2I(640, 300));
     }
 
     private GeneralPortraitRecord PortraitFor(int generalId)
