@@ -183,12 +183,6 @@ public sealed partial class CampaignMapScene
                     StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
                     ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
                 });
-            box.AddChild(new TextureRect
-            {
-                Texture = OfficerPortrait(general.Id), CustomMinimumSize = new Vector2(0, 240),
-                StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
-                ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
-            });
             var details = MakeLabel($"{general.Name} · {kindName}\n무력 {general.Might}   지력 {general.Intellect}   정치 {general.Politics}", 18, GoldBright);
             details.HorizontalAlignment = HorizontalAlignment.Center;
             box.AddChild(details);
@@ -375,7 +369,7 @@ public sealed partial class CampaignMapScene
             }
             var appointment = _genericRecruitLayer;
             dialogueOk &= appointment?.FindChildren("*", "TextureRect", true, false)
-                .OfType<TextureRect>().Count(image => image.Texture is not null) >= 2;
+                .OfType<TextureRect>().Count(image => image.Texture is not null) == 1;
             await ToSignal(GetTree().CreateTimer(3.4), SceneTreeTimer.SignalName.Timeout);
             dialogueOk &= _state.GenericRecruitmentHistory.Last().Presented;
             dialogueOk &= RecruitmentSummaryVisible(entry.General);
