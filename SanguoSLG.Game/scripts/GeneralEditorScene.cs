@@ -57,6 +57,8 @@ public partial class GeneralEditorScene : Control
     private HSlider _faceY = null!;
     private HSlider _faceZoom = null!;
     private Label _faceLabel = null!;
+    private FileDialog _portraitFileDialog = null!;
+    private string? _portraitPathOverride;
     private GeneralEditorRecord? _selected;
     private string _dataDirectory = "";
     private DateTime _generalsLoadedAt;
@@ -266,6 +268,24 @@ public partial class GeneralEditorScene : Control
             UpdatePortraitPreview();
         };
         faceBox.AddChild(resetFace);
+        var changePhoto = new Button { Text = "사진변경" };
+        changePhoto.Pressed += () => _portraitFileDialog.PopupCentered(new Vector2I(850, 620));
+        faceBox.AddChild(changePhoto);
+        var restorePhoto = new Button { Text = "사진복구" };
+        restorePhoto.Pressed += () =>
+        {
+            if (_selected is null) return;
+            _portraitPathOverride = _createdGenerals.TryGetValue(_selected.Id, out var created)
+                ? $"res://assets/portraits/created/{(created.Gender == "female" ? "women" : "man")}1.png"
+                : $"SanguoSLG.Game/assets/portraits/{_selected.Id}.png";
+            UpdatePortraitPreview();
+        };
+        faceBox.AddChild(restorePhoto);
+        _portraitFileDialog = new FileDialog { Access = FileDialog.AccessEnum.Filesystem,
+            FileMode = FileDialog.FileModeEnum.OpenFile, Title = "장수 사진 변경" };
+        _portraitFileDialog.AddFilter("*.png, *.jpg, *.jpeg, *.webp", "이미지 파일");
+        _portraitFileDialog.FileSelected += ChangePortrait;
+        AddChild(_portraitFileDialog);
 
         editor = AddPage("능력·적성");
         var statSection = AddSection(editor, "능력치 및 영입 조건");
@@ -618,6 +638,7 @@ public partial class GeneralEditorScene : Control
 
     private void ShowGeneral(GeneralEditorRecord general)
     {
+        _portraitPathOverride = null;
         _selected = general;
         var aptitudes = string.Join(" / ", general.Aptitudes.Select(kv => $"{TroopLabel(kv.Key)} {kv.Value}"));
         var battleActive = string.IsNullOrWhiteSpace(general.BattleActive) ? "없음"
@@ -862,7 +883,8 @@ public partial class GeneralEditorScene : Control
         var updated = _createdGenerals.Values.Select(entry => entry.General.Id == edited.Id
             ? entry with { General = edited, RecruitPointCost = (int)_recruitPointInput.Value,
                 RecruitGoldCost = (int)_recruitGoldInput.Value,
-                RequiredGeneralId = SelectedRequiredGeneral(), FaceCenterX = portrait.FaceCenterX,
+                RequiredGeneralId = SelectedRequiredGeneral(), PortraitPath = portrait.PortraitPath,
+                FaceCenterX = portrait.FaceCenterX,
                 FaceCenterY = portrait.FaceCenterY, FaceZoom = portrait.FaceZoom }
             : entry).OrderBy(entry => entry.General.Id).ToList();
         CreatedGeneralStore.Apply(new ScenarioLoader().LoadFromDirectory(_dataDirectory), updated);
@@ -872,7 +894,7 @@ public partial class GeneralEditorScene : Control
         _createdGeneralsLoadedAt = File.GetLastWriteTimeUtc(path);
         _createdGenerals[edited.Id] = current with { General = edited,
             RecruitPointCost = (int)_recruitPointInput.Value, RecruitGoldCost = (int)_recruitGoldInput.Value,
-            RequiredGeneralId = SelectedRequiredGeneral(),
+            RequiredGeneralId = SelectedRequiredGeneral(), PortraitPath = portrait.PortraitPath,
             FaceCenterX = portrait.FaceCenterX, FaceCenterY = portrait.FaceCenterY, FaceZoom = portrait.FaceZoom };
         _heroRecruitPointCosts[edited.Id] = (int)_recruitPointInput.Value;
         _heroRecruitGoldCosts[edited.Id] = (int)_recruitGoldInput.Value;
@@ -1401,6 +1423,7 @@ public partial class GeneralEditorScene : Control
         var current = PortraitFor(generalId);
         return current with
         {
+            PortraitPath = _portraitPathOverride ?? current.PortraitPath,
             FaceCenterX = _faceX.Value,
             FaceCenterY = _faceY.Value,
             FaceZoom = _faceZoom.Value,
@@ -1450,6 +1473,29 @@ public partial class GeneralEditorScene : Control
         _portraitPreview.Texture = ImageTexture.CreateFromImage(image);
         _facePreview.Texture = ImageTexture.CreateFromImage(BuildFaceImage(image, portrait));
         _faceLabel.Text = $"X {portrait.FaceCenterX:0.00} / Y {portrait.FaceCenterY:0.00} / 확대 {portrait.FaceZoom:0.00}";
+    }
+
+    private void ChangePortrait(string sourcePath)
+    {
+        if (_selected is null) return;
+        try
+        {
+            if (!File.Exists(sourcePath) || new FileInfo(sourcePath).Length > 20 * 1024 * 1024)
+                throw new InvalidDataException("20MB 이하의 사진을 선택하세요.");
+            var image = Image.LoadFromFile(sourcePath);
+            if (image is null || image.IsEmpty()) throw new InvalidDataException("사진을 읽을 수 없습니다.");
+            var hash = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(File.ReadAllBytes(sourcePath))).ToLowerInvariant()[..16];
+            var relative = $"SanguoSLG.Game/assets/portraits/edited/{_selected.Id}_{hash}.png";
+            var destination = Path.Combine(RepositoryRoot(), relative);
+            Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
+            if (!File.Exists(destination) && image.SavePng(destination) != Error.Ok)
+                throw new IOException("사진 저장에 실패했습니다.");
+            _portraitPathOverride = _createdGenerals.ContainsKey(_selected.Id)
+                ? $"res://assets/portraits/edited/{_selected.Id}_{hash}.png" : relative;
+            UpdatePortraitPreview();
+            _status.Text = "사진을 선택했습니다. 변경저장을 누르면 적용됩니다.";
+        }
+        catch (Exception error) { _status.Text = "사진 변경 실패: " + error.Message; }
     }
 
     private static Image BuildFaceImage(Image source, GeneralPortraitRecord portrait, int previewSize = 192)
