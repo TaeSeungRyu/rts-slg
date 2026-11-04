@@ -101,6 +101,18 @@ public static class ScenarioDraftStore
         => JsonSerializer.Deserialize<ScenarioDraft>(File.ReadAllText(path), Options)
             ?? throw new InvalidDataException("시나리오 파일을 읽을 수 없습니다.");
 
+    public static void DeleteUserScenario(string path, string userDirectory, string builtInDirectory)
+    {
+        var fullPath = Path.GetFullPath(path);
+        var fullUserDirectory = Path.GetFullPath(userDirectory);
+        if (!string.Equals(Path.GetDirectoryName(fullPath), fullUserDirectory,
+                StringComparison.OrdinalIgnoreCase)
+            || File.Exists(Path.Combine(builtInDirectory, Path.GetFileName(fullPath))))
+            throw new InvalidOperationException("기본 시나리오는 삭제할 수 없습니다.");
+        if (!File.Exists(fullPath)) throw new FileNotFoundException("시나리오를 찾을 수 없습니다.", fullPath);
+        File.Delete(fullPath);
+    }
+
     public static void Save(string path, ScenarioDraft draft, ScenarioMapPreset map,
         IReadOnlySet<int> knownGenerals)
     {

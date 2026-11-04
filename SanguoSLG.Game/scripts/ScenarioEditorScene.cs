@@ -13,6 +13,7 @@ public sealed partial class ScenarioEditorScene : Control
     private ItemList _list = null!;
     private VBoxContainer _body = null!;
     private Label _message = null!;
+    private Button _deleteButton = null!;
     private string _scenarioDirectory = "";
     private NativeNameEdit? _nativeText;
     private LineEdit? _nativePlaceholder;
@@ -127,6 +128,9 @@ public sealed partial class ScenarioEditorScene : Control
         var cloneButton = new Button { Text = "복제" };
         cloneButton.Pressed += CloneCurrent;
         header.AddChild(cloneButton);
+        _deleteButton = new Button { Text = "삭제", Disabled = true };
+        _deleteButton.Pressed += ConfirmDeleteCurrent;
+        header.AddChild(_deleteButton);
         var saveButton = new Button { Text = "검증 후 저장" };
         saveButton.Pressed += SaveCurrent;
         header.AddChild(saveButton);
@@ -174,6 +178,7 @@ public sealed partial class ScenarioEditorScene : Control
     private void RefreshList()
     {
         _list.Clear();
+        _deleteButton.Disabled = true;
         var builtIn = ProjectSettings.GlobalizePath("res://assets/scenarios");
         var paths = (Directory.Exists(builtIn) ? Directory.EnumerateFiles(builtIn, "*.json") : [])
             .Concat(Directory.Exists(_scenarioDirectory) ? Directory.EnumerateFiles(_scenarioDirectory, "*.json") : [])
@@ -200,8 +205,50 @@ public sealed partial class ScenarioEditorScene : Control
         }
     }
 
+    private void UpdateDeleteButton(string path)
+    {
+        var builtIn = ProjectSettings.GlobalizePath("res://assets/scenarios");
+        _deleteButton.Disabled = string.IsNullOrEmpty(path)
+            || File.Exists(Path.Combine(builtIn, Path.GetFileName(path)))
+            || !File.Exists(path);
+    }
+
+    private void ConfirmDeleteCurrent()
+    {
+        var selected = _list.GetSelectedItems();
+        if (selected.Length != 1) return;
+        var path = _list.GetItemMetadata(selected[0]).AsString();
+        UpdateDeleteButton(path);
+        if (_deleteButton.Disabled) return;
+        var dialog = new ConfirmationDialog
+        {
+            Title = "시나리오 삭제",
+            DialogText = $"{ScenarioDraftStore.Load(path).Title} 시나리오를 삭제하시겠습니까?\n지도와 저장된 게임은 유지됩니다.",
+            OkButtonText = "삭제",
+        };
+        AddChild(dialog);
+        dialog.Confirmed += () =>
+        {
+            try
+            {
+                ScenarioDraftStore.DeleteUserScenario(path, _scenarioDirectory,
+                    ProjectSettings.GlobalizePath("res://assets/scenarios"));
+                RefreshList();
+                _draft = ScenarioDraftApplier.CreateSeed("custom-190", "작성 중", _source, _maps[0]);
+                _savedDraftSnapshot = SnapshotDraft();
+                ShowBasics();
+                _message.Text = "시나리오를 삭제했습니다.";
+            }
+            catch (Exception error) { _message.Text = "삭제 불가: " + error.Message; }
+        };
+        dialog.Confirmed += dialog.QueueFree;
+        dialog.Canceled += dialog.QueueFree;
+        dialog.PopupCentered();
+    }
+
     private void OpenScenario(string path)
     {
+        UpdateDeleteButton(path);
         var previous = _draft;
         try
         {
@@ -261,6 +308,7 @@ public sealed partial class ScenarioEditorScene : Control
         var index = _list.AddItem("작성 중 · 저장 전");
         _list.SetItemMetadata(index, "");
         _list.Select(index);
+        _deleteButton.Disabled = true;
         Callable.From(() => _list.EnsureCurrentIsVisible()).CallDeferred();
         ShowBasics();
     }
@@ -858,6 +906,7 @@ public sealed partial class ScenarioEditorScene : Control
                 if (_list.GetItemMetadata(index).AsString() == path)
                 {
                     _list.Select(index);
+                    UpdateDeleteButton(path);
                     Callable.From(() => _list.EnsureCurrentIsVisible()).CallDeferred();
                     break;
                 }

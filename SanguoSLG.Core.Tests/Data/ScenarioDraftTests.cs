@@ -35,6 +35,30 @@ public sealed class ScenarioDraftTests
         [new ScenarioGeneralEntry(1, 1, 1)]);
 
     [Fact]
+    public void DeleteRemovesOnlyUserScenarioFile()
+    {
+        var root = Path.Combine(Path.GetTempPath(), $"scenario-delete-{Guid.NewGuid():N}");
+        var users = Path.Combine(root, "users");
+        var builtIn = Path.Combine(root, "built-in");
+        Directory.CreateDirectory(users);
+        Directory.CreateDirectory(builtIn);
+        try
+        {
+            var custom = Path.Combine(users, "custom.json");
+            var protectedPath = Path.Combine(users, "historical.json");
+            File.WriteAllText(custom, "{}");
+            File.WriteAllText(protectedPath, "{}");
+            File.WriteAllText(Path.Combine(builtIn, "historical.json"), "{}");
+            Assert.Throws<InvalidOperationException>(() => ScenarioDraftStore.DeleteUserScenario(protectedPath, users, builtIn));
+            Assert.Throws<InvalidOperationException>(() => ScenarioDraftStore.DeleteUserScenario(Path.Combine(root, "outside.json"), users, builtIn));
+            ScenarioDraftStore.DeleteUserScenario(custom, users, builtIn);
+            Assert.False(File.Exists(custom));
+            Assert.True(File.Exists(protectedPath));
+        }
+        finally { Directory.Delete(root, true); }
+    }
+
+    [Fact]
     public void ValidScenarioRoundTripsWithoutChangingMap()
     {
         var map = Map();
