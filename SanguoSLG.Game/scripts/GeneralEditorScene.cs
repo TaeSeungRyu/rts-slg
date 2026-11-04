@@ -174,6 +174,7 @@ public partial class GeneralEditorScene : Control
         _skillDetailDialog = new PopupPanel { MinSize = new Vector2I(640, 300) };
         AddChild(_skillDetailDialog);
         var outerStyle = GeneralWorkspaceStyle.SectionBox();
+        outerStyle.BgColor = new Color(0.08f, 0.055f, 0.045f, 1f);
         outerStyle.BorderColor = new Color("d9ae5f");
         outerStyle.SetBorderWidthAll(2);
         outerStyle.SetCornerRadiusAll(10);
@@ -205,7 +206,9 @@ public partial class GeneralEditorScene : Control
         skillContent.AddChild(_skillDetailType);
         skillContent.AddChild(new HSeparator());
         var skillPanel = new PanelContainer();
-        skillPanel.AddThemeStyleboxOverride("panel", GeneralWorkspaceStyle.DescriptionBox());
+        var descriptionStyle = GeneralWorkspaceStyle.DescriptionBox();
+        descriptionStyle.BgColor = new Color(0.04f, 0.035f, 0.03f, 1f);
+        skillPanel.AddThemeStyleboxOverride("panel", descriptionStyle);
         skillContent.AddChild(skillPanel);
         _skillDetailBody = new Label { AutowrapMode = TextServer.AutowrapMode.WordSmart,
             CustomMinimumSize = new Vector2(540, 145) };
