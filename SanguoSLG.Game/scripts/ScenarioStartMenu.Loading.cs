@@ -31,32 +31,53 @@ public sealed partial class ScenarioStartMenu
         var layer = new CanvasLayer { Layer = 100 };
         _loadingLayer = layer;
         GetTree().Root.AddChild(layer);
-        var overlay = new ColorRect { Color = new Color("101a1a"), MouseFilter = MouseFilterEnum.Stop,
+        var overlay = new ColorRect { Color = Colors.White, MouseFilter = MouseFilterEnum.Stop,
             Modulate = new Color(1, 1, 1, 0) };
         overlay.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
         layer.AddChild(overlay);
-        var center = new CenterContainer();
-        center.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
-        overlay.AddChild(center);
-        var panel = new PanelContainer { CustomMinimumSize = new Vector2(440, 225) };
-        var frame = new StyleBoxFlat { BgColor = new Color("202b28"), BorderColor = new Color("d1ae65") };
-        frame.SetBorderWidthAll(2);
-        frame.SetCornerRadiusAll(10);
+        var backdrop = new TextureRect { Texture = GD.Load<Texture2D>("res://assets/ui/loading/loading_bg.png"),
+            ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
+            StretchMode = TextureRect.StretchModeEnum.KeepAspectCovered,
+            MouseFilter = MouseFilterEnum.Ignore };
+        backdrop.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+        overlay.AddChild(backdrop);
+        var shade = new ColorRect { Color = new Color(0.025f, 0.02f, 0.025f, 0.22f),
+            MouseFilter = MouseFilterEnum.Ignore };
+        shade.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+        overlay.AddChild(shade);
+        var bottom = new PanelContainer { MouseFilter = MouseFilterEnum.Ignore };
+        bottom.SetAnchorsAndOffsetsPreset(LayoutPreset.BottomWide);
+        bottom.OffsetTop = -190;
+        var frame = new StyleBoxFlat { BgColor = new Color(0.055f, 0.045f, 0.045f, 0.94f),
+            BorderColor = new Color("d1ae65") };
+        frame.BorderWidthTop = 2;
         frame.SetContentMarginAll(20);
-        panel.AddThemeStyleboxOverride("panel", frame);
-        center.AddChild(panel);
-        var column = new VBoxContainer { Alignment = BoxContainer.AlignmentMode.Center };
-        column.AddThemeConstantOverride("separation", 12);
-        panel.AddChild(column);
-        var emblem = new MenuLoadingEmblem { CustomMinimumSize = new Vector2(92, 92),
-            SizeFlagsHorizontal = SizeFlags.ShrinkCenter };
-        column.AddChild(emblem);
-        var title = new Label { Text = "전장을 준비하고 있습니다", HorizontalAlignment = HorizontalAlignment.Center };
-        title.AddThemeFontSizeOverride("font_size", 22);
+        bottom.AddThemeStyleboxOverride("panel", frame);
+        overlay.AddChild(bottom);
+        var row = new HBoxContainer { Alignment = BoxContainer.AlignmentMode.Center };
+        row.AddThemeConstantOverride("separation", 20);
+        bottom.AddChild(row);
+        var emblem = new MenuLoadingEmblem { CustomMinimumSize = new Vector2(100, 100),
+            SizeFlagsVertical = SizeFlags.ShrinkCenter };
+        row.AddChild(emblem);
+        var column = new VBoxContainer { CustomMinimumSize = new Vector2(460, 0),
+            SizeFlagsVertical = SizeFlags.ShrinkCenter };
+        column.AddThemeConstantOverride("separation", 10);
+        row.AddChild(column);
+        var title = new Label { Text = "전장을 준비하고 있습니다" };
+        title.AddThemeFontSizeOverride("font_size", 23);
         title.AddThemeColorOverride("font_color", new Color("e5c985"));
         column.AddChild(title);
-        column.AddChild(new Label { Text = "지도와 장수, 세력의 기록을 불러오는 중입니다...",
-            HorizontalAlignment = HorizontalAlignment.Center });
+        var bar = new ProgressBar { Indeterminate = true, ShowPercentage = false,
+            CustomMinimumSize = new Vector2(0, 18) };
+        column.AddChild(bar);
+        var tips = new[] { "지휘 능력이 높으면 더 많은 병력을 편성할 수 있습니다.",
+            "공성전에서는 보급과 군량을 확인하세요.",
+            "궁병은 원거리 공격에 강하지만 가까운 적을 경계해야 합니다.",
+            "기병은 평지에서 빠르게 이동합니다." };
+        var tip = new Label { Text = tips[GD.RandRange(0, tips.Length - 1)] };
+        tip.AddThemeFontSizeOverride("font_size", 15);
+        column.AddChild(tip);
         CreateTween().TweenProperty(overlay, "modulate:a", 1f, 0.2f);
         await ToSignal(GetTree().CreateTimer(0.23), SceneTreeTimer.SignalName.Timeout);
         if (IsInsideTree()) GetTree().ReloadCurrentScene();
