@@ -713,6 +713,9 @@ public sealed partial class CampaignMapScene : Node3D
             ScenarioTitle = _scenarioOverride is null ? null : _scenarioTitle,
         };
         if (_loadedState is not null) _state = _loadedState;
+        if (_loadedState is null && (args.Contains("--newmap") || ScenarioStartMenu.CampaignStartedFromMenu))
+            _state = _state with { RecruitmentPoints =
+                [new FactionRecruitmentPoints(Player, 3000)] };
         if (incremental) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
         if (_aiTestFixture is not null && _scenarioOverride is null && !args.Contains("--newmap"))
             SeedAiTestConstructionBuilders();
@@ -9564,6 +9567,7 @@ public sealed partial class CampaignMapScene : Node3D
             && ScenarioStartMenu.IsLoadingVisible && ScenarioStartMenu.IsLoadingAnimationActive
             && ScenarioStartMenu.LoadingAnimationFrames >= (savedGameQa ? 3 : 20)
             && ScenarioStartMenu.CampaignStartedFromMenu
+            && (savedGameQa || RecruitmentPointBank.Balance(_state, Player) == 3000)
             && (savedGameQa || !string.IsNullOrWhiteSpace(_state.ScenarioTitle));
         GD.Print($"[{(savedGameQa ? "menu-load-qa" : "menu-launch-qa")}] passed={passed} scenario={_state.ScenarioTitle} cameraIntro={_camera.IsIntroZoomPlaying} loadingFrames={ScenarioStartMenu.LoadingAnimationFrames}");
         GetTree().Quit(passed ? 0 : 1);
