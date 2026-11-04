@@ -133,12 +133,12 @@ public sealed partial class CampaignMapScene
         box.AddThemeConstantOverride("separation", 12);
         panel.AddChild(box);
         var kindName = entry.Kind == "martial" ? "무관" : "문관";
-        var title = MakeLabel(page < dialogue.Length ? $"{kindName} 발탁 · {city?.Name ?? "도시"}" : $"{kindName}임명", 19, GoldBright);
-        title.HorizontalAlignment = HorizontalAlignment.Center;
-        box.AddChild(title);
-        box.AddChild(GoldRule());
         if (page < dialogue.Length)
         {
+            var title = MakeLabel($"{kindName} 발탁 · {city?.Name ?? "도시"}", 19, GoldBright);
+            title.HorizontalAlignment = HorizontalAlignment.Center;
+            box.AddChild(title);
+            box.AddChild(GoldRule());
             var speakerId = page switch { 0 or 2 => entry.Ruler, 1 or 3 => entry.Companion, _ => entry.General };
             var speakerName = _state.Generals.FirstOrDefault(g => g.Id == speakerId)?.Name ?? "장수";
             var row = new HBoxContainer();
@@ -176,20 +176,14 @@ public sealed partial class CampaignMapScene
                     _genericRecruitArtwork[artworkPath] = artwork;
                 }
             }
-            if (artwork is not null)
-                box.AddChild(new TextureRect
-                {
-                    Texture = artwork, CustomMinimumSize = new Vector2(0, 170),
-                    StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
-                    ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
-                });
-            var details = MakeLabel($"{general.Name} · {kindName}\n무력 {general.Might}   지력 {general.Intellect}   정치 {general.Politics}", 18, GoldBright);
-            details.HorizontalAlignment = HorizontalAlignment.Center;
-            box.AddChild(details);
-            var flourish = MakeLabel("✦  새로운 인재가 합류했습니다  ✦", 16, GoldBright);
-            flourish.HorizontalAlignment = HorizontalAlignment.Center;
-            box.AddChild(flourish);
-            StartAppointmentAnimation(layer, panel, flourish, () =>
+            var appointmentImage = new TextureRect
+            {
+                Texture = artwork, CustomMinimumSize = new Vector2(650, 300),
+                StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
+                ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
+            };
+            box.AddChild(appointmentImage);
+            StartAppointmentAnimation(layer, panel, appointmentImage, () =>
             {
                 _state = GenericRecruitmentService.MarkPresented(_state, entry.General);
                 ShowRecruitmentSummary(entry.General);
@@ -370,6 +364,7 @@ public sealed partial class CampaignMapScene
             var appointment = _genericRecruitLayer;
             dialogueOk &= appointment?.FindChildren("*", "TextureRect", true, false)
                 .OfType<TextureRect>().Count(image => image.Texture is not null) == 1;
+            dialogueOk &= appointment?.FindChildren("*", "Label", true, false).Count == 0;
             await ToSignal(GetTree().CreateTimer(3.4), SceneTreeTimer.SignalName.Timeout);
             dialogueOk &= _state.GenericRecruitmentHistory.Last().Presented;
             dialogueOk &= RecruitmentSummaryVisible(entry.General);
