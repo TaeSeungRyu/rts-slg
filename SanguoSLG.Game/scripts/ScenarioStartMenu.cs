@@ -329,14 +329,17 @@ void fragment() {
                 error.Text = "시나리오 시작 불가: " + failure.Message;
                 return;
             }
-            SelectedPresetPath = null;
-            SelectedScenarioPath = scenarioPaths[scenarioChoice.Selected];
-            SelectedPlayerFactionId = factionChoice.GetSelectedId();
-            SelectedScenarioTitle = scenarioChoice.GetItemText(scenarioChoice.Selected);
-            SelectedDifficulty = (SanguoSLG.Core.Simulation.GameDifficulty)difficulty.GetSelectedId();
-            _launchRequested = true;
-            CampaignStartedFromMenu = true;
-            ChangeToCampaign();
+            ShowStartConfirmation(() =>
+            {
+                SelectedPresetPath = null;
+                SelectedScenarioPath = scenarioPaths[scenarioChoice.Selected];
+                SelectedPlayerFactionId = factionChoice.GetSelectedId();
+                SelectedScenarioTitle = scenarioChoice.GetItemText(scenarioChoice.Selected);
+                SelectedDifficulty = (SanguoSLG.Core.Simulation.GameDifficulty)difficulty.GetSelectedId();
+                _launchRequested = true;
+                CampaignStartedFromMenu = true;
+                ChangeToCampaign();
+            });
         };
         rightColumn.AddChild(start);
         var menuCenter = new CenterContainer();
@@ -388,8 +391,69 @@ void fragment() {
             .Load(draft.MapId, draft.MapRevision).Preset;
     }
 
+    private void ShowStartConfirmation(Action onConfirmed)
+    {
+        // 전장에서 쓰는 장수 컨펌창과 같은 금테·초상·대사·확인/취소 구성.
+        var layer = new CanvasLayer { Layer = 40 };
+        AddChild(layer);
+        void Close() => layer.QueueFree();
+        var backdrop = new ColorRect { Color = new Color(0, 0, 0, 0.55f), MouseFilter = MouseFilterEnum.Stop };
+        backdrop.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+        backdrop.GuiInput += input =>
+        {
+            if (input is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left }) Close();
+        };
+        layer.AddChild(backdrop);
+        var center = new CenterContainer { MouseFilter = MouseFilterEnum.Ignore };
+        center.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+        layer.AddChild(center);
+        var frame = new StyleBoxFlat { BgColor = new Color(0.10f, 0.055f, 0.05f, 0.97f),
+            BorderColor = new Color(0.82f, 0.67f, 0.36f) };
+        frame.SetBorderWidthAll(2);
+        frame.SetCornerRadiusAll(10);
+        frame.SetContentMarginAll(14);
+        var panel = new PanelContainer { MouseFilter = MouseFilterEnum.Stop };
+        panel.AddThemeStyleboxOverride("panel", frame);
+        center.AddChild(panel);
+        var content = new VBoxContainer { CustomMinimumSize = new Vector2(340, 0) };
+        content.AddThemeConstantOverride("separation", 10);
+        panel.AddChild(content);
+        var title = new Label { Text = "새 게임 시작 확인", HorizontalAlignment = HorizontalAlignment.Center };
+        title.AddThemeColorOverride("font_color", new Color(0.82f, 0.67f, 0.36f));
+        title.AddThemeFontSizeOverride("font_size", 17);
+        content.AddChild(title);
+        content.AddChild(new HSeparator());
+        var texture = GD.Load<Texture2D>("res://assets/portraits/113.png");
+        if (texture is not null)
+            content.AddChild(new TextureRect { Texture = texture, CustomMinimumSize = new Vector2(200, 270),
+                ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
+                StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered });
+        var speech = new Label { Text = "초선: 이 세력과 함께 새로운 역사를 시작하시겠습니까?",
+            HorizontalAlignment = HorizontalAlignment.Center, AutowrapMode = TextServer.AutowrapMode.WordSmart };
+        speech.AddThemeColorOverride("font_color", new Color(0.98f, 0.85f, 0.52f));
+        content.AddChild(speech);
+        var buttons = new HBoxContainer { Alignment = BoxContainer.AlignmentMode.Center };
+        buttons.AddThemeConstantOverride("separation", 12);
+        content.AddChild(buttons);
+        var confirm = new Button { Text = "확인", CustomMinimumSize = new Vector2(110, 34) };
+        confirm.Pressed += () => { Close(); onConfirmed(); };
+        buttons.AddChild(confirm);
+        var cancel = new Button { Text = "취소", CustomMinimumSize = new Vector2(110, 34) };
+        cancel.Pressed += Close;
+        buttons.AddChild(cancel);
+    }
+
     private void RunQa()
     {
+        ShowStartConfirmation(() => { });
+        var confirmLayer = GetChildren().OfType<CanvasLayer>().LastOrDefault();
+        var hasOfficerConfirm = confirmLayer is not null
+            && confirmLayer.FindChildren("*", "TextureRect", true, false).OfType<TextureRect>()
+                .Any(portrait => portrait.Texture is not null)
+            && confirmLayer.FindChildren("*", "Label", true, false).OfType<Label>()
+                .Any(label => label.Text.Contains("초선:", StringComparison.Ordinal))
+            && confirmLayer.FindChildren("*", "Button", true, false).OfType<Button>()
+                .Count(button => button.Text is "확인" or "취소") == 2;
         var buttons = FindChildren("*", "Button", true, false).OfType<Button>().Select(button => button.Text).ToArray();
         var scenarios = FindChildren("*", "OptionButton", true, false).OfType<OptionButton>().FirstOrDefault();
         var factionMap = FindChildren("*", "", true, false).OfType<ScenarioFactionMap>().FirstOrDefault();
@@ -397,7 +461,7 @@ void fragment() {
         var factionColumn = FindChild("FactionSelectionColumn", true, false) as VBoxContainer;
         var factionControls = FindChildren("*", "Button", true, false).OfType<Button>()
             .Where(button => button.HasMeta("faction_id")).ToArray();
-        var passed = buttons.Contains("게임 시작") && buttons.Contains("새 게임 시작하기")
+        var passed = hasOfficerConfirm && buttons.Contains("게임 시작") && buttons.Contains("새 게임 시작하기")
             && scenarios?.ItemCount >= 6
             && !Enumerable.Range(0, scenarios?.ItemCount ?? 0).Any(index => scenarios!.GetItemText(index) == "새 시나리오")
             && factionMap is { HasTerrain: true, CityCount: > 0 }
