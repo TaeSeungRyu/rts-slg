@@ -412,7 +412,10 @@ public sealed class RenewalCampaignAdvanceRunner(
             CommandId: unit.Field.CommandOrder,
             BuildingAttackRange: unit.Field.RangeCastle,
             CastleAttackRange: unit.Field.RangeCastle,
-            AiAdvanceIgnoresOtherSites: unit.AiAdvanceIgnoresOtherSites);
+            AiAdvanceIgnoresOtherSites: unit.AiAdvanceIgnoresOtherSites,
+            SpeedPercent: OperationalPassiveRules.MovementPercent(unit.Class,
+                _campaign?.Generals.FirstOrDefault(general => general.Id == unit.VanguardId),
+                _campaign?.Generals.FirstOrDefault(general => general.Id == unit.AdjutantId)));
     }
 
     private RenewalTargetId? AssignedTarget(CombatUnit source,

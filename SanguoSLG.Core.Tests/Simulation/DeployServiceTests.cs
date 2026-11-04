@@ -54,6 +54,21 @@ public class DeployServiceTests
     };
 
     [Fact]
+    public void 상급지휘_패시브는_일반부대_편성한도를_늘린다()
+    {
+        var city = Town(1, new HexCoord(2, 0));
+        var commander = Gen(1) with { BattlePassives =
+            [new GeneralSkill(OperationalPassiveRules.SeniorCommand, 3)] };
+        var state = State([city], [commander],
+            garrisons: [new GarrisonForce(city.Id, "swordsman", 13_000, 60)],
+            postings: [At(1, 1)]);
+        var result = Service().Deploy(state,
+            new DeployRequest(city.Id, "swordsman", 13_000, commander.Id));
+        Assert.True(result.Ok, result.Error);
+        Assert.Equal(13_000, Assert.Single(result.State.Armies).Pool.Active);
+    }
+
+    [Fact]
     public void 군단장은_태수와_군사를_겸하고_일반부대를_천명_더_지휘한다()
     {
         var city = Town(1, new HexCoord(2, 0));

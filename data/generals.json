@@ -27,6 +27,10 @@
       {
         "code": "momentum",
         "tier": 1
+      },
+      {
+        "code": "senior_command",
+        "tier": 1
       }
     ],
     "admin_passives": [
@@ -212,6 +216,10 @@
       {
         "code": "castle_defender",
         "tier": 1
+      },
+      {
+        "code": "senior_command",
+        "tier": 3
       }
     ],
     "admin_passives": [
@@ -256,7 +264,7 @@
         "tier": 1
       },
       {
-        "code": "endurance",
+        "code": "naval_mobility",
         "tier": 1
       }
     ],
@@ -290,6 +298,10 @@
     "battle_passives": [
       {
         "code": "steadfast_guard",
+        "tier": 1
+      },
+      {
+        "code": "cavalry_mobility",
         "tier": 1
       }
     ],
@@ -325,6 +337,10 @@
       {
         "code": "pursuit",
         "tier": 1
+      },
+      {
+        "code": "cavalry_mobility",
+        "tier": 1
       }
     ],
     "admin_passives": [
@@ -358,6 +374,10 @@
       {
         "code": "ambush",
         "tier": 1
+      },
+      {
+        "code": "naval_mobility",
+        "tier": 1
       }
     ],
     "admin_passives": []
@@ -387,6 +407,10 @@
       {
         "code": "rough_ambush",
         "tier": 1
+      },
+      {
+        "code": "archer_mobility",
+        "tier": 1
       }
     ]
   },
@@ -413,6 +437,10 @@
     "battle_passives": [
       {
         "code": "siege_expert",
+        "tier": 1
+      },
+      {
+        "code": "senior_command",
         "tier": 1
       }
     ],
@@ -451,6 +479,10 @@
       {
         "code": "momentum",
         "tier": 1
+      },
+      {
+        "code": "infantry_mobility",
+        "tier": 1
       }
     ],
     "admin_passives": []
@@ -478,6 +510,10 @@
     "battle_passives": [
       {
         "code": "rough_ambush",
+        "tier": 1
+      },
+      {
+        "code": "infantry_mobility",
         "tier": 1
       }
     ],
@@ -707,6 +743,10 @@
       {
         "code": "charge_drill",
         "tier": 1
+      },
+      {
+        "code": "archer_mobility",
+        "tier": 1
       }
     ],
     "admin_passives": []
@@ -734,6 +774,10 @@
     "battle_passives": [
       {
         "code": "castle_defender",
+        "tier": 1
+      },
+      {
+        "code": "junior_command",
         "tier": 1
       }
     ],
@@ -1134,6 +1178,10 @@
       {
         "code": "entrench",
         "tier": 1
+      },
+      {
+        "code": "junior_command",
+        "tier": 1
       }
     ],
     "admin_passives": [
@@ -1194,6 +1242,10 @@
     "battle_passives": [
       {
         "code": "rough_ambush",
+        "tier": 1
+      },
+      {
+        "code": "infantry_mobility",
         "tier": 1
       }
     ],
@@ -1325,6 +1377,10 @@
       {
         "code": "charge_drill",
         "tier": 1
+      },
+      {
+        "code": "cavalry_mobility",
+        "tier": 1
       }
     ]
   },
@@ -1351,6 +1407,10 @@
     "battle_passives": [
       {
         "code": "war_cry",
+        "tier": 1
+      },
+      {
+        "code": "infantry_mobility",
         "tier": 1
       }
     ],
@@ -1379,6 +1439,10 @@
     "battle_passives": [
       {
         "code": "momentum",
+        "tier": 1
+      },
+      {
+        "code": "infantry_mobility",
         "tier": 1
       }
     ]
@@ -1942,6 +2006,10 @@
       {
         "code": "momentum",
         "tier": 1
+      },
+      {
+        "code": "junior_command",
+        "tier": 1
       }
     ]
   },
@@ -2005,6 +2073,10 @@
       {
         "code": "fierce_assault",
         "tier": 1
+      },
+      {
+        "code": "infantry_mobility",
+        "tier": 1
       }
     ]
   },
@@ -2065,6 +2137,10 @@
       {
         "code": "plunder",
         "tier": 1
+      },
+      {
+        "code": "naval_mobility",
+        "tier": 1
       }
     ],
     "admin_passives": []
@@ -2120,6 +2196,10 @@
       {
         "code": "grit",
         "tier": 1
+      },
+      {
+        "code": "junior_command",
+        "tier": 1
       }
     ]
   },
@@ -2174,6 +2254,10 @@
       {
         "code": "steadfast_guard",
         "tier": 1
+      },
+      {
+        "code": "infantry_mobility",
+        "tier": 1
       }
     ],
     "admin_passives": [
@@ -2206,6 +2290,10 @@
     "battle_passives": [
       {
         "code": "momentum",
+        "tier": 1
+      },
+      {
+        "code": "naval_mobility",
         "tier": 1
       }
     ],
@@ -2243,6 +2331,10 @@
     "battle_passives": [
       {
         "code": "castle_defender",
+        "tier": 1
+      },
+      {
+        "code": "junior_command",
         "tier": 1
       }
     ],
@@ -2623,6 +2715,10 @@
       {
         "code": "charge_drill",
         "tier": 1
+      },
+      {
+        "code": "cavalry_mobility",
+        "tier": 1
       }
     ],
     "admin_passives": [
@@ -2889,6 +2985,10 @@
     "battle_passives": [
       {
         "code": "charge_drill",
+        "tier": 1
+      },
+      {
+        "code": "cavalry_mobility",
         "tier": 1
       }
     ],
@@ -3419,6 +3519,10 @@
       {
         "code": "momentum",
         "tier": 1
+      },
+      {
+        "code": "senior_command",
+        "tier": 1
       }
     ],
     "admin_passives": [
@@ -3459,6 +3563,10 @@
       },
       {
         "code": "shield_wall",
+        "tier": 1
+      },
+      {
+        "code": "senior_command",
         "tier": 1
       }
     ],
@@ -3530,6 +3638,10 @@
       {
         "code": "castle_defender",
         "tier": 1
+      },
+      {
+        "code": "archer_mobility",
+        "tier": 1
       }
     ],
     "admin_passives": [
@@ -3562,6 +3674,10 @@
     "battle_passives": [
       {
         "code": "grit",
+        "tier": 1
+      },
+      {
+        "code": "cavalry_mobility",
         "tier": 1
       }
     ],
@@ -3627,6 +3743,10 @@
     "battle_passives": [
       {
         "code": "last_stand",
+        "tier": 1
+      },
+      {
+        "code": "junior_command",
         "tier": 1
       }
     ]
@@ -3734,6 +3854,10 @@
       {
         "code": "momentum",
         "tier": 1
+      },
+      {
+        "code": "infantry_mobility",
+        "tier": 1
       }
     ],
     "admin_passives": [
@@ -3821,6 +3945,10 @@
     "battle_passives": [
       {
         "code": "plunder",
+        "tier": 1
+      },
+      {
+        "code": "naval_mobility",
         "tier": 1
       }
     ],
@@ -3970,6 +4098,10 @@
       {
         "code": "charge_drill",
         "tier": 1
+      },
+      {
+        "code": "cavalry_mobility",
+        "tier": 1
       }
     ],
     "admin_passives": [
@@ -4006,6 +4138,10 @@
     "battle_passives": [
       {
         "code": "war_cry",
+        "tier": 1
+      },
+      {
+        "code": "infantry_mobility",
         "tier": 1
       }
     ],

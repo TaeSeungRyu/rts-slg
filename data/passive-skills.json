@@ -41,5 +41,12 @@
   { "code": "wall_helper", "name": "수성보조", "grade": "low", "effects": [ { "bucket": "defense", "condition": "castle_garrison", "tiers": [3, 5, 8] } ] },
   { "code": "shield_basics", "name": "방패술", "grade": "low", "effects": [ { "bucket": "defense", "condition": "melee_incoming", "tiers": [2, 3, 5] } ] },
   { "code": "dodge", "name": "회피", "grade": "low", "effects": [ { "bucket": "defense", "condition": "ranged_incoming", "tiers": [2, 3, 5] } ] },
-  { "code": "entrench", "name": "진지구축", "grade": "low", "effects": [ { "bucket": "defense", "condition": "field", "tiers": [1, 3, 4] } ] }
+  { "code": "entrench", "name": "진지구축", "grade": "low", "effects": [ { "bucket": "defense", "condition": "field", "tiers": [1, 3, 4] } ] },
+  { "code": "infantry_mobility", "name": "보병기동", "grade": "high", "effects": [] },
+  { "code": "archer_mobility", "name": "궁병기동", "grade": "high", "effects": [] },
+  { "code": "cavalry_mobility", "name": "기마기동", "grade": "high", "effects": [] },
+  { "code": "naval_mobility", "name": "해상기동", "grade": "high", "effects": [] },
+  { "code": "junior_command", "name": "초급지휘", "grade": "high", "effects": [] },
+  { "code": "senior_command", "name": "상급지휘", "grade": "high", "effects": [] }
+
 ]

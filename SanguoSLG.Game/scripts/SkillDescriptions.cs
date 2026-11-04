@@ -96,6 +96,18 @@ internal static class SkillDescriptions
     public static string Passive(PassiveSkill? skill, int tier)
     {
         if (skill is null) { return "스킬 정보를 찾을 수 없습니다."; }
+        var operational = skill.Code switch
+        {
+            OperationalPassiveRules.InfantryMobility => $"보병류 부대의 이동속도 +{5 * Math.Clamp(tier, 1, 3)}%",
+            OperationalPassiveRules.ArcherMobility => $"궁병류 부대의 이동속도 +{5 * Math.Clamp(tier, 1, 3)}%",
+            OperationalPassiveRules.CavalryMobility => $"기마류 부대의 이동속도 +{5 * Math.Clamp(tier, 1, 3)}%",
+            OperationalPassiveRules.NavalMobility => $"해상 부대의 이동속도 +{5 * Math.Clamp(tier, 1, 3)}%",
+            OperationalPassiveRules.JuniorCommand => $"부대 편성 상한 +{500 * Math.Clamp(tier, 1, 3):N0}명",
+            OperationalPassiveRules.SeniorCommand => $"부대 편성 상한 +{1000 * Math.Clamp(tier, 1, 3):N0}명",
+            _ => null,
+        };
+        if (operational is not null)
+            return $"전투 패시브 · Lv{tier}\n{operational}\n\n선봉과 부관의 해당 효과가 함께 적용됩니다.";
         var lines = skill.Effects.Select(effect =>
             $"{Condition(effect.Condition)}: {(effect.Bucket == SkillBucket.Attack ? "공격" : "방어")} 보정 {effect.AmountAtTier(tier):+0;-0;0}%");
         return $"전투 패시브 · Lv{tier}\n조건을 만족하면 자동 적용됩니다.\n\n{string.Join("\n", lines)}\n\n선봉과 부관의 패시브가 함께 반영됩니다.";

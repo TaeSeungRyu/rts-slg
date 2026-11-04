@@ -12809,7 +12809,10 @@ public sealed partial class CampaignMapScene : Node3D
         if (_depPreview is null) { return; }
         var city = _state.Cities.First(c => c.Id == _depModalCity);
         var maxTroops = CommandEfficiency.ArmyGroupDeployLimit(_state.ResearchOf(city.Owner, FactionResearch.ArmyGroupCode), _cb)
-            + (_depVan is { } van ? ArmyCorpsService.CommandBonus(_state, city.Owner, van) : 0);
+            + (_depVan is { } van ? ArmyCorpsService.CommandBonus(_state, city.Owner, van) : 0)
+            + OperationalPassiveRules.CommandBonus(
+                _depVan is { } leader ? _state.Generals.FirstOrDefault(general => general.Id == leader) : null,
+                _depAdj is { } adjutant ? _state.Generals.FirstOrDefault(general => general.Id == adjutant) : null);
         if (_modalLayer?.FindChild("ArmyGroupCapLabel", true, false) is Label capLabel)
             capLabel.Text = $"편성 상한 {maxTroops:N0}명 · 필수 최소 {_cb.ArmyGroupMinClassTroops:N0}명: 보병 / 궁병 / 공성";
         var lines = _armyGroupDraft.Where(p => p.Value > 0).Select(p => new SupplyLine(p.Key, p.Value)).ToList();
@@ -13952,7 +13955,10 @@ public sealed partial class CampaignMapScene : Node3D
     {
         var faction = _state.Cities.First(c => c.Id == city).Owner;
         return CommandEfficiency.CommandTroopDeployLimit(_state.ResearchOf(faction, FactionResearch.CommandTroopsCode), _cb)
-            + (vanguard is { } id ? ArmyCorpsService.CommandBonus(_state, faction, id) : 0);
+            + (vanguard is { } id ? ArmyCorpsService.CommandBonus(_state, faction, id) : 0)
+            + OperationalPassiveRules.CommandBonus(
+                vanguard is { } leader ? _state.Generals.FirstOrDefault(general => general.Id == leader) : null,
+                _depAdj is { } adjutant ? _state.Generals.FirstOrDefault(general => general.Id == adjutant) : null);
     }
 
     private int AvailableDeployTroops(CityId city, string troopCode, int editIndex)

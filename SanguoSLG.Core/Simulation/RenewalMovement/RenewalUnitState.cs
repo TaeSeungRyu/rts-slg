@@ -35,7 +35,8 @@ public sealed record RenewalUnitState(
     RenewalTargetId? GarrisonStructure = null,
     long? ProductionOperationId = null,
     UnitId? BlockingUnit = null,
-    bool AiAdvanceIgnoresOtherSites = false)
+    bool AiAdvanceIgnoresOtherSites = false,
+    int SpeedPercent = 100)
 {
     public static RenewalUnitState Create(UnitId id, ContinuousPosition position,
         ContinuousPosition destination, int movementPerDay)

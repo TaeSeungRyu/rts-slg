@@ -331,7 +331,8 @@ public sealed class RenewalAdvanceSimulator
             return unit;
         }
 
-        var speedPercent = _movementMap?.SpeedPercentAt(unit.Position, UnitCollisionRadius) ?? 100;
+        var speedPercent = (_movementMap?.SpeedPercentAt(unit.Position, UnitCollisionRadius) ?? 100)
+            * unit.SpeedPercent / 100;
         var numerator = checked(unit.MovementPerDay * (int)ContinuousPosition.UnitsPerTile
             * speedPercent + unit.MovementRemainder);
         var divisor = MovementTicksPerDay * 100;
