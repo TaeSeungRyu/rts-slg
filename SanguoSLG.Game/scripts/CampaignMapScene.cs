@@ -7347,6 +7347,7 @@ public sealed partial class CampaignMapScene : Node3D
                     label.Text = CityMapLabel(capturedCity, troops);
                     label.Modulate = MapRelationTextColor(capturedCity.Owner);
                     UpdateCityVitalsGauge(capturedCity, capturedCity.Wall, troops);
+                    QueueCityCapturePresentation(capturedCity, capture.Report);
                 }
                 _animCaptureIdx++;
             }
