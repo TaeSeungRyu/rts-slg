@@ -57,6 +57,8 @@ public partial class GeneralCreatorScene : Control
     public override void _Ready()
     {
         BuildUi();
+        foreach (var option in new[] { _active, _requiredGeneral }.Concat(_battlePassives).Concat(_adminPassives))
+            option.GetPopup().MaxSize = new Vector2I(4096, 300);
         try
         {
             _dataDirectory = FindDataDirectory();
