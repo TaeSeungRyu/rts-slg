@@ -92,8 +92,9 @@ public sealed partial class EditMapScene
                 for (var column = 1; column < 5; column++) Cell(new Control());
                 continue;
             }
-            var title = path == RootMapPath() ? "기본 지도"
-                : MapArchive().SaveVersion(MapIdFor(path), Path.GetFileNameWithoutExtension(path), preset).Title;
+            var version = MapArchive().SaveVersion(MapIdFor(path), path == RootMapPath()
+                ? "기본 지도" : Path.GetFileNameWithoutExtension(path), preset);
+            var title = version.Title;
             Cell(new Label
             {
                 Text = title,
@@ -110,6 +111,9 @@ public sealed partial class EditMapScene
             var edit = new Button { Text = "수정", SizeFlagsHorizontal = SizeFlags.ExpandFill };
             edit.Pressed += () => LoadSelectedMap(path, preset);
             actions.AddChild(edit);
+            var rename = new Button { Text = "이름 변경", SizeFlagsHorizontal = SizeFlags.ExpandFill };
+            rename.Pressed += () => RenameMap(path, version);
+            actions.AddChild(rename);
             var clone = new Button { Text = "복제", SizeFlagsHorizontal = SizeFlags.ExpandFill };
             clone.Pressed += () => CreateMapCopy(preset);
             actions.AddChild(clone);
@@ -121,6 +125,28 @@ public sealed partial class EditMapScene
         var add = new Button { Text = "새 지도 추가 · 기본 지도에서 시작" };
         add.Pressed += () => CreateMapCopy(ScenarioMapPresetStore.Load(RootMapPath()));
         content.AddChild(add);
+    }
+
+    private void RenameMap(string path, ScenarioMapVersion version)
+    {
+        var content = OpenEditorModal("지도 이름 변경");
+        var input = new LineEdit { Text = version.Title, MaxLength = 60,
+            CustomMinimumSize = new Vector2(360, 36) };
+        content.AddChild(input);
+        UseNativeNameInput(input);
+        var save = new Button { Text = "이름 저장" };
+        save.Pressed += () =>
+        {
+            try
+            {
+                var title = _nativeNameEdit?.Text ?? input.Text;
+                _activeMapVersion = MapArchive().RenameMap(version.Id, title, version.Revision);
+                CloseEditorModal();
+                ShowMapLibrary();
+            }
+            catch (Exception error) { if (_editorError is not null) _editorError.Text = error.Message; }
+        };
+        content.AddChild(save);
     }
 
     private void CloseMapLibrary()

@@ -9,6 +9,28 @@ public sealed class ScenarioMapArchiveTests
         [new MapEditorSite(cityId, "성", "city", "small", 1, 1)]);
 
     [Fact]
+    public void RenamingKeepsRevisionsAndScenarioReferences()
+    {
+        var root = Path.Combine(Path.GetTempPath(), $"map-archive-{Guid.NewGuid():N}");
+        try
+        {
+            var archive = new ScenarioMapArchive(Path.Combine(root, "maps"), Path.Combine(root, "scenarios"));
+            var first = archive.SaveVersion("test-map", "기존 이름", Map());
+            var second = archive.SaveVersion("test-map", "기존 이름", Map(2));
+            var scenarioPath = Path.Combine(root, "scenarios", "test.json");
+            Directory.CreateDirectory(Path.GetDirectoryName(scenarioPath)!);
+            File.WriteAllText(scenarioPath, System.Text.Json.JsonSerializer.Serialize(
+                new ScenarioDraft(1, "test", "연동 시나리오", "", 190, 1, 1,
+                    first.Id, first.Revision, [], [], [])));
+            var renamed = archive.RenameMap(first.Id, "새 지도", second.Revision);
+            Assert.Equal(second.Revision, renamed.Revision);
+            Assert.All(archive.ListVersions(), version => Assert.Equal("새 지도", version.Title));
+            Assert.Equal(["연동 시나리오"], archive.ReferencingScenarios(first.Id, first.Revision));
+        }
+        finally { if (Directory.Exists(root)) Directory.Delete(root, true); }
+    }
+
+    [Fact]
     public void SavesImmutableVersionsAndDetectsScenarioReferences()
     {
         var root = Path.Combine(Path.GetTempPath(), $"map-archive-{Guid.NewGuid():N}");

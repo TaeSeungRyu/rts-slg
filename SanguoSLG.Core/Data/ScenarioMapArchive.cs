@@ -56,6 +56,29 @@ public sealed class ScenarioMapArchive(string mapDirectory, string scenarioDirec
         return version;
     }
 
+    public ScenarioMapVersion RenameMap(string id, string title, string revision)
+    {
+        ValidateId(id);
+        ValidateRevision(revision);
+        title = title.Trim();
+        if (string.IsNullOrWhiteSpace(title)) throw new InvalidDataException("지도 이름이 필요합니다.");
+        var directory = Path.Combine(_mapDirectory, id);
+        if (!Directory.Exists(directory)) throw new FileNotFoundException("지도를 찾을 수 없습니다.");
+        foreach (var path in Directory.EnumerateFiles(directory, "*.json"))
+        {
+            var currentRevision = Path.GetFileNameWithoutExtension(path);
+            var version = Load(id, currentRevision) with { Title = title };
+            var temporary = path + ".tmp";
+            try
+            {
+                File.WriteAllText(temporary, JsonSerializer.Serialize(version, Options));
+                File.Move(temporary, path, true);
+            }
+            finally { if (File.Exists(temporary)) File.Delete(temporary); }
+        }
+        return Load(id, revision);
+    }
+
     public IReadOnlyList<ScenarioMapVersion> ListVersions()
     {
         if (!Directory.Exists(_mapDirectory)) return [];

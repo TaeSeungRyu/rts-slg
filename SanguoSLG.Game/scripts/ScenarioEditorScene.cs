@@ -91,7 +91,7 @@ public sealed partial class ScenarioEditorScene : Control
     private void LoadMaps()
     {
         var version = ScenarioRootMapSource.OpenVersion(_archive);
-        _maps.Add(version with { Title = "기본 지도" });
+        _maps.Add(version);
         GD.Print($"[scenario-editor-map] root={ScenarioRootMapSource.Path} revision={version.Revision} sites={version.Preset.Sites.Count}");
         var custom = ProjectSettings.GlobalizePath("user://map-presets/custom");
         if (!Directory.Exists(custom)) return;
@@ -222,7 +222,7 @@ public sealed partial class ScenarioEditorScene : Control
     {
         var version = ScenarioRootMapSource.OpenVersion(_archive);
         _maps.RemoveAll(map => map.Id == "default-east-asia");
-        _maps.Insert(0, version with { Title = "기본 지도" });
+        _maps.Insert(0, version);
     }
 
     private bool ApplyCurrentRootMap()
