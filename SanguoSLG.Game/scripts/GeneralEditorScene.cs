@@ -196,10 +196,13 @@ public partial class GeneralEditorScene : Control
         skillPanel.AddChild(_skillDetailBody);
         VBoxContainer AddPage(string name)
         {
-            var content = new VBoxContainer { Name = name, SizeFlagsHorizontal = SizeFlags.ExpandFill,
-                SizeFlagsVertical = SizeFlags.ExpandFill };
+            var page = new ScrollContainer { Name = name,
+                SizeFlagsHorizontal = SizeFlags.ExpandFill, SizeFlagsVertical = SizeFlags.ExpandFill,
+                HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled };
+            tabs.AddChild(page);
+            var content = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
             content.AddThemeConstantOverride("separation", 8);
-            tabs.AddChild(content);
+            page.AddChild(content);
             return content;
         }
 
@@ -1058,7 +1061,7 @@ public partial class GeneralEditorScene : Control
 
         var tabs = FindChildren("*", "TabContainer", true, false).OfType<TabContainer>().Single();
         var layoutOk = GeneralWorkspaceStyle.EditorFooterLayoutValid(this, _status)
-            && tabs.GetChildren().All(child => child is not ScrollContainer)
+            && tabs.GetChildren().All(child => child is ScrollContainer)
             && _list.GetSelectedItems().Length == 1
             && _list.GetItemMetadata(_list.GetSelectedItems()[0]).AsInt32() == _selected?.Id
             && _regionFilter.ItemCount > 1
