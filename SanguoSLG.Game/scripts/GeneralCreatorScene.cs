@@ -268,14 +268,13 @@ public partial class GeneralCreatorScene : Control
             _adminDescriptions.Add(description);
             option.ItemSelected += _ => ShowSkillDescription(description, option, _adminDetails);
         }
-        var footer = GeneralWorkspaceStyle.Footer(root);
+        _status = new Label { AutowrapMode = TextServer.AutowrapMode.Off };
+        var footer = GeneralWorkspaceStyle.EditorFooter(root, _status);
         footer.AddChild(new Label { Text = "등록 내용은 다음 새 게임부터 적용됩니다.",
             SizeFlagsHorizontal = SizeFlags.ExpandFill, VerticalAlignment = VerticalAlignment.Center });
-        var save = new Button { Text = "저장", CustomMinimumSize = new Vector2(0, 42) };
+        var save = new Button { Text = "장수 저장", CustomMinimumSize = new Vector2(140, 38) };
         save.Pressed += SaveSelected;
         footer.AddChild(save);
-        _status = new Label { AutowrapMode = TextServer.AutowrapMode.WordSmart };
-        footer.AddChild(_status);
     }
 
     private static SpinBox Spin(double min, double max, double value)
@@ -734,7 +733,8 @@ public partial class GeneralCreatorScene : Control
         };
         var applied = CreatedGeneralStore.Apply(scenario,
             CreatedGeneralStore.Load(CreatedGeneralStore.Save([sample, virtualHero])));
-        var passed = firstSelected && applied.Generals.Count == scenario.Generals.Count + 2
+        var passed = firstSelected && GeneralWorkspaceStyle.EditorFooterLayoutValid(this, _status)
+            && applied.Generals.Count == scenario.Generals.Count + 2
             && _tabs.GetTabTitle(0) == "초상·얼굴" && _tabs.GetTabTitle(1) == "기본 정보"
             && applied.HeroUnlockList.Any(hero => hero.General.Value == 10000)
             && scenario.Generals.All(general => general.Id.Value != 10000)

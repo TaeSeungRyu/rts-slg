@@ -118,6 +118,34 @@ internal static class GeneralWorkspaceStyle
         return row;
     }
 
+    internal static HBoxContainer EditorFooter(VBoxContainer root, Label status)
+    {
+        var panel = new PanelContainer();
+        panel.AddThemeStyleboxOverride("panel", SectionBox());
+        root.AddChild(panel);
+        var content = new VBoxContainer();
+        content.AddThemeConstantOverride("separation", 5);
+        panel.AddChild(content);
+        status.CustomMinimumSize = new Vector2(0, 22);
+        status.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+        status.TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis;
+        content.AddChild(status);
+        content.AddChild(new HSeparator());
+        var actions = new HBoxContainer { Name = "EditorFooterActions",
+            CustomMinimumSize = new Vector2(0, 38) };
+        actions.AddThemeConstantOverride("separation", 10);
+        content.AddChild(actions);
+        return actions;
+    }
+
+    internal static bool EditorFooterLayoutValid(Control scene, Label status)
+    {
+        var actions = scene.FindChild("EditorFooterActions", true, false) as HBoxContainer;
+        return actions is not null && ReferenceEquals(actions.GetParent(), status.GetParent())
+            && actions.GetChildCount() >= 2
+            && !actions.GetChildren().Contains(status);
+    }
+
     private static StyleBoxFlat Box(Color background, Color border, int borderWidth)
         => new()
         {

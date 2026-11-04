@@ -352,14 +352,17 @@ public partial class GeneralEditorScene : Control
         _adminList = new VBoxContainer();
         adminLeft.AddChild(_adminList);
 
-        var footer = GeneralWorkspaceStyle.Footer(root);
-        _changePreview = new Label { Text = "", AutowrapMode = TextServer.AutowrapMode.WordSmart };
+        _status = new Label { Text = "", AutowrapMode = TextServer.AutowrapMode.Off };
+        var footer = GeneralWorkspaceStyle.EditorFooter(root, _status);
+        _changePreview = new Label { Text = "", AutowrapMode = TextServer.AutowrapMode.Off,
+            VerticalAlignment = VerticalAlignment.Center,
+            TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis };
         _changePreview.SizeFlagsHorizontal = SizeFlags.ExpandFill;
         footer.AddChild(_changePreview);
 
         var buttons = new HBoxContainer();
         footer.AddChild(buttons);
-        var reset = new Button { Text = "선택 장수 되돌리기" };
+        var reset = new Button { Text = "되돌리기", CustomMinimumSize = new Vector2(105, 38) };
         reset.Pressed += () =>
         {
             if (_selected is not null)
@@ -369,12 +372,10 @@ public partial class GeneralEditorScene : Control
         };
         buttons.AddChild(reset);
 
-        var save = new Button { Text = "저장" };
+        var save = new Button { Text = "변경 저장", CustomMinimumSize = new Vector2(120, 38) };
         save.Pressed += SaveSelected;
         buttons.AddChild(save);
 
-        _status = new Label { Text = "", AutowrapMode = TextServer.AutowrapMode.WordSmart };
-        footer.AddChild(_status);
     }
 
     private void Reload()
@@ -1022,7 +1023,8 @@ public partial class GeneralEditorScene : Control
         _skillDetailDialog.Hide();
 
         var tabs = FindChildren("*", "TabContainer", true, false).OfType<TabContainer>().Single();
-        var layoutOk = tabs.GetChildren().All(child => child is not ScrollContainer)
+        var layoutOk = GeneralWorkspaceStyle.EditorFooterLayoutValid(this, _status)
+            && tabs.GetChildren().All(child => child is not ScrollContainer)
             && _regionFilter.ItemCount > 1
             && _regionFilter.GetItemText(1) == RegionName(_regionFilter.GetItemMetadata(1).AsString())
             && _activeInput.ItemCount > 1
