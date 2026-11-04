@@ -415,7 +415,7 @@ void fragment() {
         var panel = new PanelContainer { MouseFilter = MouseFilterEnum.Stop };
         panel.AddThemeStyleboxOverride("panel", frame);
         center.AddChild(panel);
-        var content = new VBoxContainer { CustomMinimumSize = new Vector2(340, 0) };
+        var content = new VBoxContainer { CustomMinimumSize = new Vector2(520, 0) };
         content.AddThemeConstantOverride("separation", 10);
         panel.AddChild(content);
         var title = new Label { Text = "새 게임 시작 확인", HorizontalAlignment = HorizontalAlignment.Center };
@@ -426,10 +426,12 @@ void fragment() {
         var texture = GD.Load<Texture2D>("res://assets/portraits/113.png");
         if (texture is not null)
             content.AddChild(new TextureRect { Texture = texture, CustomMinimumSize = new Vector2(200, 270),
+                SizeFlagsHorizontal = SizeFlags.ShrinkCenter,
                 ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
                 StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered });
         var speech = new Label { Text = "초선: 이 세력과 함께 새로운 역사를 시작하시겠습니까?",
-            HorizontalAlignment = HorizontalAlignment.Center, AutowrapMode = TextServer.AutowrapMode.WordSmart };
+            HorizontalAlignment = HorizontalAlignment.Center, AutowrapMode = TextServer.AutowrapMode.Off,
+            CustomMinimumSize = new Vector2(500, 0) };
         speech.AddThemeColorOverride("font_color", new Color(0.98f, 0.85f, 0.52f));
         content.AddChild(speech);
         var buttons = new HBoxContainer { Alignment = BoxContainer.AlignmentMode.Center };
