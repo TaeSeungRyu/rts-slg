@@ -155,7 +155,6 @@ public sealed partial class ScenarioEditorScene : Control
         AddTab(tabs, "기본 정보·지도", ShowBasics);
         AddTab(tabs, "세력", ShowFactions);
         AddTab(tabs, "세력·거점", ShowCities);
-        AddTab(tabs, "장수 배치", ShowGenerals);
         var scroll = new ScrollContainer { SizeFlagsVertical = SizeFlags.ExpandFill };
         right.AddChild(scroll);
         _body = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
@@ -327,6 +326,13 @@ public sealed partial class ScenarioEditorScene : Control
     {
         EndNativeText();
         foreach (var child in _body.GetChildren()) child.QueueFree();
+        CallDeferred(nameof(LimitDropdownHeights));
+    }
+
+    private void LimitDropdownHeights()
+    {
+        foreach (var option in FindChildren("*", "OptionButton", true, false).OfType<OptionButton>())
+            if (!option.IsQueuedForDeletion()) option.GetPopup().MaxSize = new Vector2I(4096, 200);
     }
 
     private void ShowBasics()
@@ -426,7 +432,14 @@ public sealed partial class ScenarioEditorScene : Control
         var site = map.Sites.FirstOrDefault(site => site.Id == _selectedCityId);
         if (city is null || site is null) return;
         _body.AddChild(new HSeparator());
-        _body.AddChild(new Label { Text = $"{site.Name} · {(site.Kind == "port" ? "항구" : site.Kind == "gate" ? "관문" : "성")}" });
+        var details = new HBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        details.AddThemeConstantOverride("separation", 16);
+        _body.AddChild(details);
+        var cityDetails = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        details.AddChild(cityDetails);
+        var generalDetails = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        details.AddChild(generalDetails);
+        cityDetails.AddChild(new Label { Text = $"{site.Name} · {(site.Kind == "port" ? "항구" : site.Kind == "gate" ? "관문" : "성")}" });
         var owner = new OptionButton();
         owner.AddItem("중립", 0);
         foreach (var faction in _draft.Factions) owner.AddItem(faction.Name, faction.Id);
@@ -445,9 +458,9 @@ public sealed partial class ScenarioEditorScene : Control
                     ? general with { SiteId = null } : general).ToArray() };
             ShowCities();
         };
-        _body.AddChild(owner);
+        cityDetails.AddChild(owner);
         var resources = new HBoxContainer();
-        _body.AddChild(resources);
+        cityDetails.AddChild(resources);
         AddCompactNumber(resources, "금", city.Gold, 0, 10000000, value => UpdateCity(city.SiteId, c => c with { Gold = value }));
         AddCompactNumber(resources, "군량", city.Provisions, 0, 10000000, value => UpdateCity(city.SiteId, c => c with { Provisions = value }));
         resources.AddChild(new Label { Text = "성벽" });
@@ -462,10 +475,11 @@ public sealed partial class ScenarioEditorScene : Control
         AddCompactNumber(resources, "치안", city.Security, 0, 100, value => UpdateCity(city.SiteId, c => c with { Security = value }));
         if (city.OwnerFactionId > 0)
         {
-            _body.AddChild(new HSeparator());
-            _body.AddChild(new Label { Text = "주둔 병력·선박" });
-            AddForceEditor(city, site, ShowCities);
+            cityDetails.AddChild(new HSeparator());
+            cityDetails.AddChild(new Label { Text = "주둔 병력·선박" });
+            AddForceEditor(city, site, ShowCities, cityDetails);
         }
+        ShowGeneralsForCity(generalDetails, city);
     }
 
     private void ShowFactions()
@@ -709,6 +723,62 @@ public sealed partial class ScenarioEditorScene : Control
         addRow.AddChild(add);
     }
 
+    private void ShowGeneralsForCity(VBoxContainer host, ScenarioCityEntry city)
+    {
+        host.AddChild(new Label { Text = "장수 배치 · " + CurrentMap().Preset.Sites.First(site => site.Id == city.SiteId).Name });
+        if (city.OwnerFactionId == 0)
+        {
+            host.AddChild(new Label { Text = "세력을 지정하면 장수를 배치할 수 있습니다." });
+            return;
+        }
+        var names = _source.Generals.ToDictionary(general => general.Id.Value, general => general.Name);
+        host.AddChild(new Label { Text = "주둔 장수" });
+        var roster = new GridContainer { Columns = 2, SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        host.AddChild(roster);
+        foreach (var general in _draft.Generals.Where(general => general.SiteId == city.SiteId).ToArray())
+        {
+            roster.AddChild(new Label { Text = names.GetValueOrDefault(general.GeneralId, general.GeneralId.ToString()),
+                SizeFlagsHorizontal = SizeFlags.ExpandFill });
+            var remove = new Button { Text = "제거" };
+            remove.Pressed += () =>
+            {
+                _draft = _draft with { Generals = _draft.Generals.Where(value => value.GeneralId != general.GeneralId).ToArray() };
+                ShowCities();
+            };
+            roster.AddChild(remove);
+        }
+        host.AddChild(new HSeparator());
+        var search = new LineEdit { PlaceholderText = "장수 검색", Text = _generalSearch };
+        host.AddChild(search);
+        var row = new HBoxContainer();
+        host.AddChild(row);
+        var selection = new OptionButton { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        row.AddChild(selection);
+        void Fill(string query)
+        {
+            selection.Clear();
+            foreach (var general in _source.Generals.Where(general => general.Name.Contains(query, StringComparison.OrdinalIgnoreCase)
+                && _draft.Generals.All(current => current.GeneralId != general.Id.Value || current.SiteId != city.SiteId))
+                .OrderBy(general => general.Name))
+                selection.AddItem(general.Name, general.Id.Value);
+            if (selection.ItemCount > 0) selection.Select(0);
+        }
+        Fill(_generalSearch);
+        search.TextChanged += value => { _generalSearch = value; Fill(value); };
+        var add = new Button { Text = "장수 등록" };
+        add.Pressed += () =>
+        {
+            if (selection.ItemCount == 0) return;
+            var id = selection.GetSelectedId();
+            if (_draft.Generals.Any(general => general.GeneralId == id))
+                UpdateGeneral(id, general => general with { FactionId = city.OwnerFactionId, SiteId = city.SiteId });
+            else _draft = _draft with { Generals = [.. _draft.Generals,
+                new ScenarioGeneralEntry(id, city.OwnerFactionId, city.SiteId)] };
+            ShowCities();
+        };
+        row.AddChild(add);
+    }
+
     private void SpreadGeneralsAcrossOwnedSites()
     {
         var postings = _draft.Generals.ToArray();
@@ -732,12 +802,12 @@ public sealed partial class ScenarioEditorScene : Control
         _draft = _draft with { Generals = postings };
     }
 
-    private void AddForceEditor(ScenarioCityEntry selected, MapEditorSite site, Action refresh)
+    private void AddForceEditor(ScenarioCityEntry selected, MapEditorSite site, Action refresh, VBoxContainer parent)
     {
         var data = Path.GetFullPath(Path.Combine(ProjectSettings.GlobalizePath("res://"), "..", "data"));
         var catalog = new TroopCatalogLoader().LoadFromDirectory(data);
         var table = new GridContainer { Columns = 3, SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        _body.AddChild(table);
+        parent.AddChild(table);
         table.AddChild(new Label { Text = "병종" });
         table.AddChild(new Label { Text = "주둔 병력" });
         table.AddChild(new Label { Text = "관리" });
@@ -783,13 +853,13 @@ public sealed partial class ScenarioEditorScene : Control
                 refresh();
             };
             addRow.AddChild(add);
-            _body.AddChild(addRow);
+            parent.AddChild(addRow);
         }
         if (site.Kind != "port") return;
-        _body.AddChild(new HSeparator());
-        _body.AddChild(new Label { Text = "보유 선박" });
+        parent.AddChild(new HSeparator());
+        parent.AddChild(new Label { Text = "보유 선박" });
         var ships = new GridContainer { Columns = 3 };
-        _body.AddChild(ships);
+        parent.AddChild(ships);
         ships.AddChild(new Label { Text = "선박" });
         ships.AddChild(new Label { Text = "보유 수량" });
         ships.AddChild(new Label { Text = "관리" });
@@ -834,7 +904,7 @@ public sealed partial class ScenarioEditorScene : Control
             refresh();
         };
         addShipRow.AddChild(addShip);
-        _body.AddChild(addShipRow);
+        parent.AddChild(addShipRow);
     }
 
     private void UpdateCity(int siteId, Func<ScenarioCityEntry, ScenarioCityEntry> update)
