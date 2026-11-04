@@ -44,6 +44,12 @@ public sealed class HistoricalScenarioTests
             Assert.Equal(draft.Generals.Count, applied.PostingList.Count);
             Assert.All(draft.Factions, faction => Assert.Contains(applied.Cities,
                 city => city.Owner.Value == faction.Id));
+            Assert.All(applied.Cities.Where(city => city.Owner.Value > 0), city =>
+            {
+                Assert.NotNull(city.Governor);
+                Assert.Contains(draft.Generals, general => general.SiteId == city.Id.Value
+                    && general.GeneralId == city.Governor?.Value);
+            });
         }
     }
 }

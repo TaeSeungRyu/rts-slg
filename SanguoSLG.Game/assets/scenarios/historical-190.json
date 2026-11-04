@@ -1695,7 +1695,7 @@
     {
       "GeneralId": 341,
       "FactionId": 5,
-      "SiteId": 1
+      "SiteId": 69
     },
     {
       "GeneralId": 318,
@@ -1740,7 +1740,7 @@
     {
       "GeneralId": 463,
       "FactionId": 7,
-      "SiteId": 13
+      "SiteId": 108
     },
     {
       "GeneralId": 502,
@@ -1765,7 +1765,7 @@
     {
       "GeneralId": 386,
       "FactionId": 8,
-      "SiteId": 131
+      "SiteId": 139
     },
     {
       "GeneralId": 370,
@@ -1791,6 +1791,36 @@
       "GeneralId": 413,
       "FactionId": 11,
       "SiteId": 34
+    },
+    {
+      "GeneralId": 328,
+      "FactionId": 5,
+      "SiteId": 1
+    },
+    {
+      "GeneralId": 497,
+      "FactionId": 7,
+      "SiteId": 13
+    },
+    {
+      "GeneralId": 398,
+      "FactionId": 5,
+      "SiteId": 69
+    },
+    {
+      "GeneralId": 381,
+      "FactionId": 6,
+      "SiteId": 74
+    },
+    {
+      "GeneralId": 371,
+      "FactionId": 8,
+      "SiteId": 131
+    },
+    {
+      "GeneralId": 376,
+      "FactionId": 8,
+      "SiteId": 139
     }
   ]
 }

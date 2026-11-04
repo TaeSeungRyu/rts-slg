@@ -1301,7 +1301,7 @@
     {
       "GeneralId": 480,
       "FactionId": 2,
-      "SiteId": 15
+      "SiteId": 139
     },
     {
       "GeneralId": 432,
@@ -1311,7 +1311,7 @@
     {
       "GeneralId": 493,
       "FactionId": 2,
-      "SiteId": 13
+      "SiteId": 108
     },
     {
       "GeneralId": 536,
@@ -1332,6 +1332,31 @@
       "GeneralId": 322,
       "FactionId": 2,
       "SiteId": 32
+    },
+    {
+      "GeneralId": 3,
+      "FactionId": 2,
+      "SiteId": 13
+    },
+    {
+      "GeneralId": 4,
+      "FactionId": 2,
+      "SiteId": 15
+    },
+    {
+      "GeneralId": 8,
+      "FactionId": 2,
+      "SiteId": 92
+    },
+    {
+      "GeneralId": 9,
+      "FactionId": 2,
+      "SiteId": 108
+    },
+    {
+      "GeneralId": 11,
+      "FactionId": 2,
+      "SiteId": 139
     }
   ]
 }

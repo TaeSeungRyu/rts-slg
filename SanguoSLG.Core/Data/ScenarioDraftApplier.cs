@@ -13,6 +13,12 @@ public static class ScenarioDraftApplier
         var citySetup = draft.Cities.ToDictionary(city => city.SiteId);
         var siteSetup = map.Sites.Where(site => site.Kind is "city" or "port" or "gate")
             .ToDictionary(site => site.Id);
+        var generalPolitics = source.Generals.ToDictionary(general => general.Id.Value, general => general.Politics);
+        var governors = draft.Generals.Where(general => general.SiteId is not null)
+            .GroupBy(general => general.SiteId!.Value)
+            .ToDictionary(group => group.Key, group => group
+                .OrderByDescending(general => generalPolitics.GetValueOrDefault(general.GeneralId))
+                .ThenBy(general => general.GeneralId).First().GeneralId);
         return mapped with
         {
             Factions = draft.Factions.Where(entry => !entry.Hidden).Select(entry => new Faction(new FactionId(entry.Id),
@@ -25,7 +31,10 @@ public static class ScenarioDraftApplier
                     Owner = new FactionId(setup.OwnerFactionId), Gold = setup.Gold,
                     Provisions = setup.Provisions,
                     Wall = ScenarioWallDefaults.ForSite(siteSetup[city.Id.Value], source.Balance),
-                    Security = setup.Security, Governor = null, Strategist = null,
+                    Security = setup.Security,
+                    Governor = setup.OwnerFactionId > 0 && governors.TryGetValue(city.Id.Value, out var governor)
+                        ? new GeneralId(governor) : null,
+                    Strategist = null,
                 };
             }).ToArray(),
             Postings = draft.Generals.Where(entry => !draft.Factions.Any(faction => faction.Id == entry.FactionId
