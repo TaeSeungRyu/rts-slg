@@ -37,7 +37,7 @@ public sealed partial class ScenarioEditorScene : Control
         _source = CreatedGeneralPresets.ApplyAtNewGame(
             new ScenarioLoader().LoadFromDirectory(data));
         LoadMaps();
-        _draft = ScenarioDraftApplier.CreateSeed("custom-190", "새 시나리오", _source, _maps[0]);
+        _draft = ScenarioDraftApplier.CreateSeed("custom-190", "작성 중", _source, _maps[0]);
         _savedDraftSnapshot = SnapshotDraft();
         BuildUi();
         RefreshList();
@@ -121,7 +121,7 @@ public sealed partial class ScenarioEditorScene : Control
         vertical.AddChild(header);
         header.AddChild(new Label { Text = "시나리오 작업", SizeFlagsHorizontal = SizeFlags.ExpandFill,
             VerticalAlignment = VerticalAlignment.Center });
-        var newButton = new Button { Text = "새 시나리오" };
+        var newButton = new Button { Text = "+ 시나리오 만들기" };
         newButton.Pressed += CreateNew;
         header.AddChild(newButton);
         var cloneButton = new Button { Text = "복제" };
@@ -186,6 +186,7 @@ public sealed partial class ScenarioEditorScene : Control
             try
             {
                 var draft = ScenarioDraftStore.Load(path);
+                if (draft.Title.Trim() == "새 시나리오") continue;
                 var isBuiltIn = File.Exists(Path.Combine(builtIn, Path.GetFileName(path)));
                 var index = _list.AddItem((isBuiltIn ? "기본 · " : "") + draft.Title);
                 _list.SetItemMetadata(index, path);
@@ -251,8 +252,8 @@ public sealed partial class ScenarioEditorScene : Control
         RefreshList();
         RefreshCurrentRootMap();
         _draft = ScenarioDraftApplier.CreateSeed("scenario-" + DateTime.UtcNow.ToString("yyyyMMddHHmmss"),
-            "새 시나리오", _source, _maps[0]);
-        var index = _list.AddItem("새 시나리오 · 저장 전");
+            "작성 중", _source, _maps[0]);
+        var index = _list.AddItem("작성 중 · 저장 전");
         _list.SetItemMetadata(index, "");
         _list.Select(index);
         _list.EnsureCurrentIsVisible();
@@ -970,7 +971,7 @@ public sealed partial class ScenarioEditorScene : Control
                 });
                 CreateNew();
                 var newScenarioAtBottom = _list.ItemCount > 0
-                    && _list.GetItemText(_list.ItemCount - 1) == "새 시나리오 · 저장 전"
+                    && _list.GetItemText(_list.ItemCount - 1) == "작성 중 · 저장 전"
                     && _list.IsSelected(_list.ItemCount - 1);
                 _draft = originalDraft;
                 RefreshList();
