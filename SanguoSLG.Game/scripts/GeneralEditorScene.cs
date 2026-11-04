@@ -46,7 +46,7 @@ public partial class GeneralEditorScene : Control
     private VBoxContainer _passiveList = null!;
     private OptionButton _adminSelect = null!;
     private Label _adminDescription = null!;
-    private AcceptDialog _skillDetailDialog = null!;
+    private PopupPanel _skillDetailDialog = null!;
     private Label _skillDetailName = null!;
     private Label _skillDetailType = null!;
     private Label _skillDetailBody = null!;
@@ -171,28 +171,31 @@ public partial class GeneralEditorScene : Control
         var tabs = new TabContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill, SizeFlagsVertical = SizeFlags.ExpandFill };
         right.AddChild(new Control { CustomMinimumSize = new Vector2(0, 5), MouseFilter = MouseFilterEnum.Ignore });
         right.AddChild(tabs);
-        _skillDetailDialog = new AcceptDialog { Title = "스킬 설명", MinSize = new Vector2I(640, 300) };
+        _skillDetailDialog = new PopupPanel { MinSize = new Vector2I(640, 300) };
         AddChild(_skillDetailDialog);
-        var skillFrame = new MarginContainer();
-        skillFrame.AddThemeConstantOverride("margin_left", 16);
-        skillFrame.AddThemeConstantOverride("margin_right", 16);
-        skillFrame.AddThemeConstantOverride("margin_top", 12);
-        skillFrame.AddThemeConstantOverride("margin_bottom", 12);
-        var skillBorder = new PanelContainer();
-        var borderStyle = GeneralWorkspaceStyle.SectionBox();
-        borderStyle.BorderColor = new Color("d9ae5f");
-        borderStyle.SetBorderWidthAll(2);
-        skillBorder.AddThemeStyleboxOverride("panel", borderStyle);
-        _skillDetailDialog.GetLabel().GetParent().AddChild(skillBorder);
-        skillBorder.AddChild(skillFrame);
         var outerStyle = GeneralWorkspaceStyle.SectionBox();
         outerStyle.BorderColor = new Color("d9ae5f");
         outerStyle.SetBorderWidthAll(2);
         outerStyle.SetCornerRadiusAll(10);
         _skillDetailDialog.AddThemeStyleboxOverride("panel", outerStyle);
+        var skillFrame = new MarginContainer();
+        skillFrame.AddThemeConstantOverride("margin_left", 16);
+        skillFrame.AddThemeConstantOverride("margin_right", 16);
+        skillFrame.AddThemeConstantOverride("margin_top", 12);
+        skillFrame.AddThemeConstantOverride("margin_bottom", 12);
+        _skillDetailDialog.AddChild(skillFrame);
         var skillContent = new VBoxContainer();
         skillContent.AddThemeConstantOverride("separation", 12);
         skillFrame.AddChild(skillContent);
+        var skillHeader = new HBoxContainer();
+        skillContent.AddChild(skillHeader);
+        var headerTitle = new Label { Text = "스킬 설명", SizeFlagsHorizontal = SizeFlags.ExpandFill,
+            HorizontalAlignment = HorizontalAlignment.Center };
+        skillHeader.AddChild(headerTitle);
+        var skillClose = new Button { Text = "✕" };
+        skillClose.Pressed += () => _skillDetailDialog.Hide();
+        skillHeader.AddChild(skillClose);
+        skillContent.AddChild(new HSeparator());
         _skillDetailName = new Label();
         _skillDetailName.AddThemeFontSizeOverride("font_size", 23);
         _skillDetailName.AddThemeColorOverride("font_color", new Color("e8c475"));
@@ -207,6 +210,11 @@ public partial class GeneralEditorScene : Control
         _skillDetailBody = new Label { AutowrapMode = TextServer.AutowrapMode.WordSmart,
             CustomMinimumSize = new Vector2(540, 145) };
         skillPanel.AddChild(_skillDetailBody);
+        var skillFooter = new HBoxContainer { Alignment = BoxContainer.AlignmentMode.Center };
+        skillContent.AddChild(skillFooter);
+        var skillOkay = new Button { Text = "확인", CustomMinimumSize = new Vector2(76, 32) };
+        skillOkay.Pressed += () => _skillDetailDialog.Hide();
+        skillFooter.AddChild(skillOkay);
         VBoxContainer AddPage(string name)
         {
             var page = new ScrollContainer { Name = name,
@@ -1370,8 +1378,6 @@ public partial class GeneralEditorScene : Control
 
     private void ShowSkillDetail(string name, string description)
     {
-        _skillDetailDialog.Title = "스킬 설명";
-        _skillDetailDialog.DialogText = "";
         _skillDetailName.Text = name;
         _skillDetailType.Text = description.Contains("내정 패시브", StringComparison.Ordinal)
             ? "내정 패시브 · 자동 적용" : "전투 패시브 · 교전 시 적용";
