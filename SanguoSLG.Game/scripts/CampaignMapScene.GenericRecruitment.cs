@@ -64,7 +64,7 @@ public sealed partial class CampaignMapScene
         var city = _state.Cities.FirstOrDefault(c => c.Id == cityId);
         if (city is null || city.Owner != Player) return;
         var title = martial ? "무관모집" : "문관모집";
-        var actor = _state.Assignments.FirstOrDefault(p => p.Faction == city.Owner && p.Location == city.Id)?.General
+        var actor = city.Governor ?? _state.Assignments.FirstOrDefault(p => p.Faction == city.Owner && p.Location == city.Id)?.General
             ?? _state.Factions.First(f => f.Id == city.Owner).Ruler;
         var month = (_state.Day - 1) / GameState.DaysPerMonth;
         if (_state.GenericRecruitmentHistory.Any(e => e.City == city.Id && e.MonthIndex == month))
@@ -72,6 +72,15 @@ public sealed partial class CampaignMapScene
             ShowNotice(title, "이 도시에서는 이번 달에 이미 장수를 모집했습니다.");
             return;
         }
+        ShowOfficerConfirm(title, $"{city.Name}에 장수가 필요한 것 같습니다.\n금 1,000을 들여 {title}을 진행하겠습니까?",
+            actor, () => ExecuteGenericRecruitment(cityId, martial, actor));
+    }
+
+    private void ExecuteGenericRecruitment(CityId cityId, bool martial, GeneralId actor)
+    {
+        var city = _state.Cities.FirstOrDefault(c => c.Id == cityId);
+        if (city is null || city.Owner != Player) return;
+        var title = martial ? "무관모집" : "문관모집";
         var kind = martial ? CommandKind.RecruitMartial : CommandKind.RecruitCivil;
         var result = _commander.Issue(_state, new CommandRequest(city.Id, kind, actor));
         if (!result.Ok)
@@ -343,6 +352,11 @@ public sealed partial class CampaignMapScene
                 $"res://assets/portraits/generic/{age}0s-{kind}.png")));
         _state = _state with { Cities = _state.Cities.Select(c => c.Id == city.Id
             ? c with { Gold = Math.Max(c.Gold, 1000) } : c).ToArray() };
+        ConfirmGenericRecruitment(city.Id, true);
+        var confirmOk = _confirmLayer?.FindChildren("*", "Label", true, false).OfType<Label>()
+            .Any(label => label.Text.Contains("장수가 필요한 것 같습니다", StringComparison.Ordinal)) == true;
+        _confirmLayer?.QueueFree();
+        _confirmLayer = null;
         var result = _commander.Issue(_state,
             new CommandRequest(city.Id, CommandKind.RecruitMartial, actor.Value));
         var dialogueOk = result.Ok;
@@ -376,8 +390,8 @@ public sealed partial class CampaignMapScene
         heroOk &= RecruitmentSummaryVisible(actor.Value);
         CloseModal();
         _state = original;
-        var passed = menuOk && scriptsOk && imagesOk && dialogueOk && heroOk;
-        GD.Print($"[genericrecruitqa] passed={passed} menu={menuOk} scripts={scriptsOk} images={imagesOk} dialogue={dialogueOk} hero={heroOk}");
+        var passed = menuOk && confirmOk && scriptsOk && imagesOk && dialogueOk && heroOk;
+        GD.Print($"[genericrecruitqa] passed={passed} menu={menuOk} confirm={confirmOk} scripts={scriptsOk} images={imagesOk} dialogue={dialogueOk} hero={heroOk}");
         GetTree().Quit(passed ? 0 : 1);
     }
 
