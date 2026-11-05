@@ -10,10 +10,22 @@ public sealed partial class TitleOrnatePanel : Control
     {
         CustomMinimumSize = new Vector2(620, 720);
         const float artworkScale = 0.68f;
+        using var panelImage = Image.LoadFromFile(ProjectSettings.GlobalizePath("res://assets/ui/title/components/menu_panel.png"));
+        for (var x = 95; x <= 805; x++)
+        {
+            for (var y = 20; y <= 21; y++)
+            {
+                var pixel = panelImage.GetPixel(x, y);
+                if (pixel.A <= 0f)
+                    continue;
+                pixel.A = 0f;
+                panelImage.SetPixel(x, y, pixel);
+            }
+        }
         var background = new NinePatchRect
         {
             Name = "TitlePanelNinePatch",
-            Texture = GD.Load<Texture2D>("res://assets/ui/title/components/menu_panel.png"),
+            Texture = ImageTexture.CreateFromImage(panelImage),
             PatchMarginLeft = 95,
             PatchMarginTop = 95,
             PatchMarginRight = 95,
