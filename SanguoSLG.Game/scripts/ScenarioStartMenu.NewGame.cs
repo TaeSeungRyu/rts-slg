@@ -1,0 +1,736 @@
+using Godot;
+using SanguoSLG.Core.Data;
+using SanguoSLG.Core.Simulation;
+
+namespace SanguoSLG.Game;
+
+public sealed partial class ScenarioStartMenu
+{
+    private readonly List<(string Path, ScenarioDraft Draft)> _newGameScenarios = [];
+    private readonly List<Button> _newGameScenarioCards = [];
+    private Button? _newGameStartButton;
+    private ScenarioFactionMap? _newGameFactionMap;
+    private Label? _newGameFactionName;
+    private Label? _newGameFactionNumbers;
+    private Label? _newGameFactionHint;
+    private TextureRect? _newGameRulerPortrait;
+    private Label? _newGameError;
+    private Button? _normalDifficultyButton;
+    private Button? _hardDifficultyButton;
+    private ImageTexture? _newGameFallbackThumbnail;
+    private int _newGameSelectedScenarioIndex = -1;
+    private int _newGameSelectedFactionId;
+    private GameDifficulty _newGameDifficulty = GameDifficulty.Normal;
+    private Dictionary<int, string>? _newGameRulerNames;
+    private string _newGameScenarioDirectory = "";
+
+    private static Font NewGameSerif(int weight) => new FontVariation
+    {
+        BaseFont = GD.Load<FontFile>("res://assets/fonts/NotoSerifKR-variable.ttf"),
+        VariationOpentype = new Godot.Collections.Dictionary { ["wght"] = weight }
+    };
+
+    private static FontFile NewGameBodyFont()
+        => GD.Load<FontFile>("res://assets/fonts/Pretendard-SemiBold.otf");
+
+    private static StyleBoxFlat NewGameFrame(Color background, Color border, int width = 1,
+        int radius = 7, float contentMargin = 12)
+    {
+        var style = new StyleBoxFlat { BgColor = background, BorderColor = border };
+        style.SetBorderWidthAll(width);
+        style.SetCornerRadiusAll(radius);
+        style.SetContentMarginAll(contentMargin);
+        return style;
+    }
+
+    private static StyleBoxFlat NewGameButtonStyle(Color background, Color border, int width = 1)
+        => NewGameFrame(background, border, width, 5, 8);
+
+    private CenterContainer BuildNewGameScreen()
+    {
+        var center = new CenterContainer { Name = "NewGameScreen", Visible = false };
+        center.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+        AddChild(center);
+
+        var panel = new PanelContainer { Name = "NewGamePanel", MouseFilter = MouseFilterEnum.Stop };
+        panel.AddThemeStyleboxOverride("panel", NewGameFrame(
+            new Color(0.10f, 0.045f, 0.04f, 0.965f), new Color("c9a65f"), 1, 9, 20));
+        center.AddChild(panel);
+        void FitPanel()
+        {
+            var viewport = GetViewport().GetVisibleRect().Size;
+            panel.CustomMinimumSize = CalculateNewGamePanelSize(viewport);
+        }
+        GetViewport().SizeChanged += FitPanel;
+        TreeExiting += () => GetViewport().SizeChanged -= FitPanel;
+        FitPanel();
+
+        var root = new VBoxContainer { Name = "NewGameRoot", SizeFlagsVertical = SizeFlags.ExpandFill };
+        root.AddThemeConstantOverride("separation", 10);
+        panel.AddChild(root);
+
+        var title = new Label
+        {
+            Text = "새로운 역사를 시작하다",
+            HorizontalAlignment = HorizontalAlignment.Center
+        };
+        title.AddThemeFontOverride("font", NewGameSerif(700));
+        title.AddThemeFontSizeOverride("font_size", 29);
+        title.AddThemeColorOverride("font_color", new Color("f1d38c"));
+        title.AddThemeColorOverride("font_shadow_color", new Color(0, 0, 0, 0.9f));
+        title.AddThemeConstantOverride("shadow_offset_y", 2);
+        root.AddChild(title);
+        var subtitle = new Label
+        {
+            Text = "시대를 선택하고 지도 위 거점에서 천하를 이끌 세력을 정하십시오.",
+            HorizontalAlignment = HorizontalAlignment.Center
+        };
+        subtitle.AddThemeFontOverride("font", NewGameBodyFont());
+        subtitle.AddThemeFontSizeOverride("font_size", 14);
+        subtitle.AddThemeColorOverride("font_color", new Color("cdbb98"));
+        root.AddChild(subtitle);
+        root.AddChild(NewGameRule());
+
+        var columns = new HBoxContainer
+        {
+            Name = "NewGameColumns",
+            SizeFlagsVertical = SizeFlags.ExpandFill,
+            SizeFlagsHorizontal = SizeFlags.ExpandFill
+        };
+        columns.AddThemeConstantOverride("separation", 12);
+        root.AddChild(columns);
+
+        var left = NewGameColumn("ScenarioSelectionColumn", 0.82f);
+        var middle = NewGameColumn("ScenarioMapColumn", 1.48f);
+        var right = NewGameColumn("FactionSelectionColumn", 0.88f);
+        columns.AddChild(left);
+        columns.AddChild(middle);
+        columns.AddChild(right);
+        BuildScenarioColumn(left);
+        BuildMapColumn(middle);
+        BuildFactionColumn(right);
+        BuildNewGameFooter(root, center);
+        LoadNewGameScenarios();
+        return center;
+    }
+
+    private static Vector2 CalculateNewGamePanelSize(Vector2 viewport)
+        => new(Mathf.Min(1500, Mathf.Max(960, viewport.X - 32)),
+            Mathf.Min(830, Mathf.Max(700, viewport.Y - 32)));
+
+    private static VBoxContainer NewGameColumn(string name, float ratio)
+    {
+        var column = new VBoxContainer
+        {
+            Name = name,
+            SizeFlagsHorizontal = SizeFlags.ExpandFill,
+            SizeFlagsVertical = SizeFlags.ExpandFill,
+            SizeFlagsStretchRatio = ratio
+        };
+        column.AddThemeConstantOverride("separation", 8);
+        return column;
+    }
+
+    private static Label NewGameSectionTitle(string text)
+    {
+        var label = new Label { Text = text };
+        label.AddThemeFontOverride("font", NewGameSerif(700));
+        label.AddThemeFontSizeOverride("font_size", 18);
+        label.AddThemeColorOverride("font_color", new Color("e7c77f"));
+        return label;
+    }
+
+    private static Control NewGameRule()
+    {
+        var margin = new MarginContainer { CustomMinimumSize = new Vector2(0, 5) };
+        margin.AddThemeConstantOverride("margin_top", 2);
+        margin.AddThemeConstantOverride("margin_bottom", 2);
+        var line = new ColorRect { Color = new Color(0.77f, 0.62f, 0.34f, 0.48f), CustomMinimumSize = new Vector2(0, 1) };
+        margin.AddChild(line);
+        return margin;
+    }
+
+    private void BuildScenarioColumn(VBoxContainer column)
+    {
+        column.AddChild(NewGameSectionTitle("시나리오 선택"));
+        var frame = new PanelContainer { SizeFlagsVertical = SizeFlags.ExpandFill };
+        frame.AddThemeStyleboxOverride("panel", NewGameFrame(
+            new Color(0.06f, 0.035f, 0.032f, 0.76f), new Color(0.55f, 0.43f, 0.25f, 0.85f), 1, 6, 7));
+        column.AddChild(frame);
+        var scroll = new ScrollContainer
+        {
+            Name = "ScenarioCardScroll",
+            HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled,
+            SizeFlagsVertical = SizeFlags.ExpandFill,
+            SizeFlagsHorizontal = SizeFlags.ExpandFill
+        };
+        frame.AddChild(scroll);
+        var cards = new VBoxContainer { Name = "ScenarioCards", SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        cards.AddThemeConstantOverride("separation", 7);
+        scroll.AddChild(cards);
+    }
+
+    private void BuildMapColumn(VBoxContainer column)
+    {
+        column.AddChild(NewGameSectionTitle("세력 배치 지도"));
+        var mapFrame = new PanelContainer { SizeFlagsVertical = SizeFlags.ExpandFill };
+        mapFrame.AddThemeStyleboxOverride("panel", NewGameFrame(
+            new Color(0.04f, 0.055f, 0.05f, 0.92f), new Color("9d7e43"), 1, 6, 7));
+        column.AddChild(mapFrame);
+        _newGameFactionMap = new ScenarioFactionMap
+        {
+            Name = "ScenarioFactionMap",
+            CustomMinimumSize = new Vector2(0, 390),
+            SizeFlagsHorizontal = SizeFlags.ExpandFill,
+            SizeFlagsVertical = SizeFlags.ExpandFill
+        };
+        _newGameFactionMap.FactionPicked += SelectNewGameFaction;
+        mapFrame.AddChild(_newGameFactionMap);
+
+        var infoFrame = new PanelContainer { CustomMinimumSize = new Vector2(0, 112) };
+        infoFrame.AddThemeStyleboxOverride("panel", NewGameFrame(
+            new Color(0.09f, 0.045f, 0.038f, 0.84f), new Color(0.49f, 0.38f, 0.23f, 0.8f), 1, 5, 11));
+        column.AddChild(infoFrame);
+        var info = new VBoxContainer();
+        info.AddThemeConstantOverride("separation", 4);
+        infoFrame.AddChild(info);
+        var scenarioTitle = new Label { Name = "SelectedScenarioTitle" };
+        scenarioTitle.AddThemeFontOverride("font", NewGameSerif(650));
+        scenarioTitle.AddThemeFontSizeOverride("font_size", 17);
+        scenarioTitle.AddThemeColorOverride("font_color", new Color("e8cb8b"));
+        info.AddChild(scenarioTitle);
+        var description = new Label
+        {
+            Name = "SelectedScenarioDescription",
+            AutowrapMode = TextServer.AutowrapMode.WordSmart,
+            SizeFlagsVertical = SizeFlags.ExpandFill
+        };
+        description.AddThemeFontOverride("font", NewGameBodyFont());
+        description.AddThemeFontSizeOverride("font_size", 13);
+        description.AddThemeColorOverride("font_color", new Color("d8d0c0"));
+        info.AddChild(description);
+        var summary = new Label { Name = "SelectedScenarioSummary" };
+        summary.AddThemeFontOverride("font", NewGameBodyFont());
+        summary.AddThemeFontSizeOverride("font_size", 12);
+        summary.AddThemeColorOverride("font_color", new Color("bca979"));
+        info.AddChild(summary);
+    }
+
+    private void BuildFactionColumn(VBoxContainer column)
+    {
+        column.AddChild(NewGameSectionTitle("군주와 세력"));
+        var details = new PanelContainer
+        {
+            Name = "FactionDetails",
+            SizeFlagsVertical = SizeFlags.ExpandFill,
+            CustomMinimumSize = new Vector2(0, 390)
+        };
+        details.AddThemeStyleboxOverride("panel", NewGameFrame(
+            new Color(0.07f, 0.035f, 0.032f, 0.84f), new Color(0.57f, 0.43f, 0.23f, 0.9f), 1, 6, 13));
+        column.AddChild(details);
+        var detailColumn = new VBoxContainer { Alignment = BoxContainer.AlignmentMode.Center };
+        detailColumn.AddThemeConstantOverride("separation", 10);
+        details.AddChild(detailColumn);
+        _newGameFactionHint = new Label
+        {
+            Text = "지도에서 플레이할 세력의\n거점을 선택하십시오.",
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center,
+            AutowrapMode = TextServer.AutowrapMode.WordSmart,
+            SizeFlagsVertical = SizeFlags.ExpandFill
+        };
+        _newGameFactionHint.AddThemeFontOverride("font", NewGameSerif(500));
+        _newGameFactionHint.AddThemeFontSizeOverride("font_size", 16);
+        _newGameFactionHint.AddThemeColorOverride("font_color", new Color("c8b896"));
+        detailColumn.AddChild(_newGameFactionHint);
+        _newGameRulerPortrait = new TextureRect
+        {
+            Name = "NewGameRulerPortrait",
+            Visible = false,
+            CustomMinimumSize = new Vector2(0, 240),
+            SizeFlagsHorizontal = SizeFlags.ExpandFill,
+            ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
+            StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered
+        };
+        detailColumn.AddChild(_newGameRulerPortrait);
+        _newGameFactionName = new Label { Visible = false, HorizontalAlignment = HorizontalAlignment.Center };
+        _newGameFactionName.AddThemeFontOverride("font", NewGameSerif(700));
+        _newGameFactionName.AddThemeFontSizeOverride("font_size", 21);
+        _newGameFactionName.AddThemeColorOverride("font_color", new Color("f0d18a"));
+        detailColumn.AddChild(_newGameFactionName);
+        _newGameFactionNumbers = new Label
+        {
+            Visible = false,
+            HorizontalAlignment = HorizontalAlignment.Center,
+            AutowrapMode = TextServer.AutowrapMode.WordSmart
+        };
+        _newGameFactionNumbers.AddThemeFontOverride("font", NewGameBodyFont());
+        _newGameFactionNumbers.AddThemeFontSizeOverride("font_size", 14);
+        _newGameFactionNumbers.AddThemeColorOverride("font_color", new Color("dfd5c2"));
+        detailColumn.AddChild(_newGameFactionNumbers);
+
+        column.AddChild(NewGameRule());
+        column.AddChild(NewGameSectionTitle("게임 난이도"));
+        var difficultyRow = new HBoxContainer { Name = "DifficultyButtons" };
+        difficultyRow.AddThemeConstantOverride("separation", 8);
+        column.AddChild(difficultyRow);
+        _normalDifficultyButton = NewGameDifficultyButton("DifficultyNormal", "보통");
+        _hardDifficultyButton = NewGameDifficultyButton("DifficultyHard", "어려움");
+        _normalDifficultyButton.Pressed += () => SetNewGameDifficulty(GameDifficulty.Normal);
+        _hardDifficultyButton.Pressed += () => SetNewGameDifficulty(GameDifficulty.Hard);
+        difficultyRow.AddChild(_normalDifficultyButton);
+        difficultyRow.AddChild(_hardDifficultyButton);
+        SetNewGameDifficulty(GameDifficulty.Normal);
+        var difficultyHelp = new Label
+        {
+            Text = "어려움에서는 다른 세력의 생산량이 증가합니다.",
+            AutowrapMode = TextServer.AutowrapMode.WordSmart
+        };
+        difficultyHelp.AddThemeFontOverride("font", NewGameBodyFont());
+        difficultyHelp.AddThemeFontSizeOverride("font_size", 12);
+        difficultyHelp.AddThemeColorOverride("font_color", new Color("aa9f8b"));
+        column.AddChild(difficultyHelp);
+        _newGameError = new Label { Modulate = new Color("ef9b7e"), AutowrapMode = TextServer.AutowrapMode.WordSmart };
+        _newGameError.AddThemeFontOverride("font", NewGameBodyFont());
+        _newGameError.AddThemeFontSizeOverride("font_size", 12);
+        column.AddChild(_newGameError);
+    }
+
+    private static Button NewGameDifficultyButton(string name, string text)
+    {
+        var button = new Button
+        {
+            Name = name,
+            Text = text,
+            ToggleMode = true,
+            CustomMinimumSize = new Vector2(0, 42),
+            SizeFlagsHorizontal = SizeFlags.ExpandFill
+        };
+        button.AddThemeFontOverride("font", NewGameSerif(600));
+        button.AddThemeFontSizeOverride("font_size", 16);
+        return button;
+    }
+
+    private void BuildNewGameFooter(VBoxContainer root, CenterContainer screen)
+    {
+        root.AddChild(NewGameRule());
+        var footer = new HBoxContainer { Name = "NewGameFooter" };
+        footer.AddThemeConstantOverride("separation", 12);
+        root.AddChild(footer);
+        var back = NewGameFooterButton("NewGameBackButton", "←  메인 메뉴로 돌아가기", false);
+        back.Pressed += () =>
+        {
+            screen.Visible = false;
+            if (FindChild("TitleMenuCenter", true, false) is Control titleMenu) titleMenu.Visible = true;
+        };
+        footer.AddChild(back);
+        var spacer = new Control { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        footer.AddChild(spacer);
+        _newGameStartButton = NewGameFooterButton("NewGameLaunchButton", "천하에 출정하기  →", true);
+        _newGameStartButton.Disabled = true;
+        _newGameStartButton.TooltipText = "지도에서 플레이할 세력을 선택하십시오.";
+        _newGameStartButton.Pressed += StartSelectedNewGame;
+        footer.AddChild(_newGameStartButton);
+    }
+
+    private static Button NewGameFooterButton(string name, string text, bool primary)
+    {
+        var button = new Button { Name = name, Text = text, CustomMinimumSize = new Vector2(250, 48) };
+        button.AddThemeFontOverride("font", NewGameSerif(primary ? 700 : 550));
+        button.AddThemeFontSizeOverride("font_size", primary ? 17 : 15);
+        button.AddThemeStyleboxOverride("normal", NewGameButtonStyle(
+            primary ? new Color("6d211a") : new Color("231915"), new Color("b58a43"), 1));
+        button.AddThemeStyleboxOverride("hover", NewGameButtonStyle(
+            primary ? new Color("8c3023") : new Color("37231b"), new Color("e0b95f"), 1));
+        button.AddThemeStyleboxOverride("pressed", NewGameButtonStyle(
+            new Color("4d1713"), new Color("f0cc73"), 2));
+        button.AddThemeStyleboxOverride("disabled", NewGameButtonStyle(
+            new Color("211b19"), new Color("5a5143"), 1));
+        button.AddThemeColorOverride("font_color", new Color("ecd49a"));
+        button.AddThemeColorOverride("font_disabled_color", new Color("756d60"));
+        return button;
+    }
+
+    private void LoadNewGameScenarios()
+    {
+        _newGameScenarioDirectory = ProjectSettings.GlobalizePath("user://scenarios");
+        var builtInDirectory = ProjectSettings.GlobalizePath("res://assets/scenarios");
+        var builtIn = Directory.Exists(builtInDirectory)
+            ? Directory.EnumerateFiles(builtInDirectory, "*.json") : [];
+        var user = Directory.Exists(_newGameScenarioDirectory)
+            ? Directory.EnumerateFiles(_newGameScenarioDirectory, "*.json") : [];
+        foreach (var path in builtIn.Concat(user)
+            .GroupBy(Path.GetFileName, StringComparer.OrdinalIgnoreCase)
+            .Select(group => group.FirstOrDefault(path => path.StartsWith(_newGameScenarioDirectory,
+                StringComparison.OrdinalIgnoreCase)) ?? group.First())
+            .OrderBy(path => Path.GetFileName(path).StartsWith("fictional-", StringComparison.Ordinal) ? 9999
+                : ScenarioDraftStore.Load(path).StartYear).ThenBy(path => path))
+        {
+            try
+            {
+                var draft = ScenarioDraftStore.Load(path);
+                if (draft.Title.Trim() == "새 시나리오") continue;
+                _newGameScenarios.Add((path, draft));
+            }
+            catch (Exception failure)
+            {
+                GD.PushWarning("시나리오 목록: " + failure.Message);
+            }
+        }
+        if (FindChild("ScenarioCards", true, false) is not VBoxContainer cards) return;
+        foreach (var (entry, index) in _newGameScenarios.Select((entry, index) => (entry, index)))
+        {
+            var card = BuildScenarioCard(entry.Path, entry.Draft, index);
+            cards.AddChild(card);
+            _newGameScenarioCards.Add(card);
+        }
+        if (_newGameScenarios.Count > 0) SelectNewGameScenario(0);
+        else if (_newGameError is not null) _newGameError.Text = "사용 가능한 시나리오가 없습니다.";
+    }
+
+    private Button BuildScenarioCard(string path, ScenarioDraft draft, int index)
+    {
+        var card = new Button
+        {
+            Name = $"ScenarioCard_{draft.Id}",
+            CustomMinimumSize = new Vector2(0, 102),
+            SizeFlagsHorizontal = SizeFlags.ExpandFill,
+            Alignment = HorizontalAlignment.Left,
+            TooltipText = draft.Description,
+            ClipContents = true
+        };
+        ApplyScenarioCardStyle(card, false);
+        card.Pressed += () => SelectNewGameScenario(index);
+        var inset = new MarginContainer { MouseFilter = MouseFilterEnum.Ignore };
+        inset.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+        inset.AddThemeConstantOverride("margin_left", 8);
+        inset.AddThemeConstantOverride("margin_top", 8);
+        inset.AddThemeConstantOverride("margin_right", 8);
+        inset.AddThemeConstantOverride("margin_bottom", 8);
+        card.AddChild(inset);
+        var row = new HBoxContainer { MouseFilter = MouseFilterEnum.Ignore };
+        row.AddThemeConstantOverride("separation", 9);
+        inset.AddChild(row);
+        var thumbnail = new TextureRect
+        {
+            Texture = ResolveScenarioThumbnail(path, draft),
+            CustomMinimumSize = new Vector2(126, 71),
+            ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
+            StretchMode = TextureRect.StretchModeEnum.KeepAspectCovered,
+            MouseFilter = MouseFilterEnum.Ignore
+        };
+        row.AddChild(thumbnail);
+        var text = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill, MouseFilter = MouseFilterEnum.Ignore };
+        text.AddThemeConstantOverride("separation", 2);
+        row.AddChild(text);
+        var year = new Label { Text = $"{draft.StartYear}년", MouseFilter = MouseFilterEnum.Ignore };
+        year.AddThemeFontOverride("font", NewGameSerif(700));
+        year.AddThemeFontSizeOverride("font_size", 13);
+        year.AddThemeColorOverride("font_color", new Color("d3aa57"));
+        text.AddChild(year);
+        var displayTitle = draft.Title.StartsWith($"{draft.StartYear}년,", StringComparison.Ordinal)
+            ? draft.Title[($"{draft.StartYear}년,").Length..].Trim() : draft.Title;
+        var title = new Label { Text = displayTitle, MouseFilter = MouseFilterEnum.Ignore };
+        title.AddThemeFontOverride("font", NewGameSerif(650));
+        title.AddThemeFontSizeOverride("font_size", 16);
+        title.AddThemeColorOverride("font_color", new Color("f0dfb7"));
+        text.AddChild(title);
+        var synopsis = draft.Description.Length > 46 ? draft.Description[..46] + "…" : draft.Description;
+        var description = new Label
+        {
+            Text = synopsis,
+            AutowrapMode = TextServer.AutowrapMode.WordSmart,
+            MouseFilter = MouseFilterEnum.Ignore
+        };
+        description.AddThemeFontOverride("font", NewGameBodyFont());
+        description.AddThemeFontSizeOverride("font_size", 11);
+        description.AddThemeColorOverride("font_color", new Color("bdb4a2"));
+        text.AddChild(description);
+        return card;
+    }
+
+    private static void ApplyScenarioCardStyle(Button card, bool selected)
+    {
+        card.AddThemeStyleboxOverride("normal", NewGameButtonStyle(
+            selected ? new Color("5b211b") : new Color("1d1715"),
+            selected ? new Color("e1b45d") : new Color("5c4a32"), selected ? 2 : 1));
+        card.AddThemeStyleboxOverride("hover", NewGameButtonStyle(
+            selected ? new Color("6c2820") : new Color("33221d"), new Color("d0a252"), selected ? 2 : 1));
+        card.AddThemeStyleboxOverride("pressed", NewGameButtonStyle(
+            new Color("491914"), new Color("f0ca72"), 2));
+    }
+
+    private Texture2D ResolveScenarioThumbnail(string scenarioPath, ScenarioDraft draft)
+    {
+        var resourcePath = $"res://assets/ui/scenarios/scenario_{draft.Id}.png";
+        if (Godot.FileAccess.FileExists(resourcePath))
+            return GD.Load<Texture2D>(resourcePath);
+        var directory = Path.GetDirectoryName(scenarioPath)!;
+        foreach (var candidate in new[]
+        {
+            Path.Combine(directory, $"scenario_{draft.Id}.png"),
+            Path.ChangeExtension(scenarioPath, ".png")
+        })
+        {
+            if (!File.Exists(candidate)) continue;
+            using var image = Image.LoadFromFile(candidate);
+            if (image is not null && !image.IsEmpty()) return ImageTexture.CreateFromImage(image);
+        }
+        const string commonPath = "res://assets/ui/scenarios/custom_scenario.png";
+        if (Godot.FileAccess.FileExists(commonPath)) return GD.Load<Texture2D>(commonPath);
+        return _newGameFallbackThumbnail ??= CreateScenarioFallbackTexture();
+    }
+
+    private static ImageTexture CreateScenarioFallbackTexture()
+    {
+        using var image = Image.CreateEmpty(320, 180, false, Image.Format.Rgba8);
+        for (var y = 0; y < image.GetHeight(); y++)
+            for (var x = 0; x < image.GetWidth(); x++)
+            {
+                var vertical = y / 179f;
+                var glow = Mathf.Max(0, 1f - new Vector2((x - 220) / 150f, (y - 82) / 95f).Length());
+                var color = new Color(0.10f + glow * 0.20f, 0.055f + glow * 0.08f,
+                    0.045f + glow * 0.025f, 1).Lerp(new Color("28130f"), vertical * 0.35f);
+                image.SetPixel(x, y, color);
+            }
+        for (var x = 0; x < image.GetWidth(); x++)
+            image.SetPixel(x, 136 + (x % 17 > 10 ? 1 : 0), new Color("9b6b32"));
+        return ImageTexture.CreateFromImage(image);
+    }
+
+    private void SelectNewGameScenario(int index)
+    {
+        if (index < 0 || index >= _newGameScenarios.Count || _newGameFactionMap is null) return;
+        _newGameSelectedScenarioIndex = index;
+        _newGameSelectedFactionId = 0;
+        for (var cardIndex = 0; cardIndex < _newGameScenarioCards.Count; cardIndex++)
+            ApplyScenarioCardStyle(_newGameScenarioCards[cardIndex], cardIndex == index);
+        try
+        {
+            var (path, draft) = _newGameScenarios[index];
+            var preset = LoadScenarioMap(draft, _newGameScenarioDirectory);
+            _newGameFactionMap.SetScenario(draft, preset, 0);
+            SetNamedLabel("SelectedScenarioTitle", $"{draft.StartYear}년  ·  {draft.Title}");
+            SetNamedLabel("SelectedScenarioDescription", draft.Description);
+            SetNamedLabel("SelectedScenarioSummary",
+                $"지도 {preset.Width}×{preset.Height}  ·  거점 {preset.Sites.Count(site => site.Kind is "city" or "port" or "gate")}  ·  시작 가능 세력 {draft.Factions.Count(faction => faction.Playable && !faction.Hidden)}");
+            ResetNewGameFactionDetails();
+            if (_newGameError is not null) _newGameError.Text = "";
+            _newGameScenarioCards[index].GrabFocus();
+        }
+        catch (Exception failure)
+        {
+            _newGameFactionMap.ClearScenario();
+            ResetNewGameFactionDetails();
+            if (_newGameError is not null) _newGameError.Text = "시나리오 미리보기 오류: " + failure.Message;
+        }
+    }
+
+    private void SetNamedLabel(string name, string text)
+    {
+        if (FindChild(name, true, false) is Label label) label.Text = text;
+    }
+
+    private void ResetNewGameFactionDetails()
+    {
+        _newGameSelectedFactionId = 0;
+        _newGameFactionMap?.SelectFaction(0);
+        if (_newGameFactionHint is not null) _newGameFactionHint.Visible = true;
+        if (_newGameRulerPortrait is not null)
+        {
+            _newGameRulerPortrait.Visible = false;
+            _newGameRulerPortrait.Texture = null;
+        }
+        if (_newGameFactionName is not null) _newGameFactionName.Visible = false;
+        if (_newGameFactionNumbers is not null) _newGameFactionNumbers.Visible = false;
+        if (_newGameStartButton is not null)
+        {
+            _newGameStartButton.Disabled = true;
+            _newGameStartButton.TooltipText = "지도에서 플레이할 세력을 선택하십시오.";
+        }
+    }
+
+    private void SelectNewGameFaction(int factionId)
+    {
+        if (_newGameSelectedScenarioIndex < 0 || _newGameSelectedScenarioIndex >= _newGameScenarios.Count) return;
+        var draft = _newGameScenarios[_newGameSelectedScenarioIndex].Draft;
+        var faction = draft.Factions.FirstOrDefault(entry => entry.Id == factionId
+            && entry.Playable && !entry.Hidden);
+        if (faction is null) return;
+        _newGameSelectedFactionId = factionId;
+        _newGameFactionMap?.SelectFaction(factionId);
+        _newGameRulerNames ??= new ScenarioLoader().LoadFromDirectory(
+            Path.GetFullPath(Path.Combine(ProjectSettings.GlobalizePath("res://"), "..", "data")))
+            .Generals.ToDictionary(entry => entry.Id.Value, entry => entry.Name);
+        var rulerName = _newGameRulerNames.GetValueOrDefault(faction.RulerGeneralId, "미지정");
+        var cities = draft.Cities.Where(entry => entry.OwnerFactionId == factionId).ToArray();
+        if (_newGameFactionHint is not null) _newGameFactionHint.Visible = false;
+        if (_newGameRulerPortrait is not null)
+        {
+            var portraitPath = $"res://assets/portraits/{faction.RulerGeneralId}.png";
+            _newGameRulerPortrait.Texture = Godot.FileAccess.FileExists(portraitPath)
+                ? GD.Load<Texture2D>(portraitPath) : null;
+            _newGameRulerPortrait.Visible = true;
+        }
+        if (_newGameFactionName is not null)
+        {
+            _newGameFactionName.Text = $"{faction.Name}  ·  군주 {rulerName}";
+            _newGameFactionName.Visible = true;
+        }
+        if (_newGameFactionNumbers is not null)
+        {
+            _newGameFactionNumbers.Text = $"점령 거점  {cities.Length:N0}\n병력  {cities.Sum(city => city.Garrisons.Sum(garrison => garrison.Troops)):N0}\n장수  {draft.Generals.Count(entry => entry.FactionId == factionId):N0}";
+            _newGameFactionNumbers.Visible = true;
+        }
+        if (_newGameStartButton is not null)
+        {
+            _newGameStartButton.Disabled = false;
+            _newGameStartButton.TooltipText = $"{faction.Name} 세력으로 시작합니다.";
+        }
+        if (_newGameError is not null) _newGameError.Text = "";
+    }
+
+    private void SetNewGameDifficulty(GameDifficulty difficulty)
+    {
+        _newGameDifficulty = difficulty;
+        StyleDifficultyButton(_normalDifficultyButton, difficulty == GameDifficulty.Normal);
+        StyleDifficultyButton(_hardDifficultyButton, difficulty == GameDifficulty.Hard);
+    }
+
+    private static void StyleDifficultyButton(Button? button, bool selected)
+    {
+        if (button is null) return;
+        button.ButtonPressed = selected;
+        button.AddThemeStyleboxOverride("normal", NewGameButtonStyle(
+            selected ? new Color("63231c") : new Color("211917"),
+            selected ? new Color("e2b860") : new Color("69563a"), selected ? 2 : 1));
+        button.AddThemeStyleboxOverride("hover", NewGameButtonStyle(
+            selected ? new Color("743027") : new Color("36241e"), new Color("d5ab58"), selected ? 2 : 1));
+        button.AddThemeStyleboxOverride("pressed", NewGameButtonStyle(
+            new Color("501a16"), new Color("f0cb72"), 2));
+        button.AddThemeColorOverride("font_color", selected ? new Color("f4d58c") : new Color("c9b88f"));
+    }
+
+    private void StartSelectedNewGame()
+    {
+        if (_newGameSelectedScenarioIndex < 0 || _newGameSelectedScenarioIndex >= _newGameScenarios.Count)
+        {
+            if (_newGameError is not null) _newGameError.Text = "시나리오를 선택하십시오.";
+            return;
+        }
+        if (_newGameSelectedFactionId <= 0)
+        {
+            if (_newGameError is not null) _newGameError.Text = "지도에서 플레이할 세력을 선택하십시오.";
+            return;
+        }
+        var (selectedPath, selectedDraft) = _newGameScenarios[_newGameSelectedScenarioIndex];
+        try
+        {
+            var data = Path.GetFullPath(Path.Combine(ProjectSettings.GlobalizePath("res://"), "..", "data"));
+            var source = CreatedGeneralPresets.ApplyAtNewGame(new ScenarioLoader().LoadFromDirectory(data));
+            var archive = new ScenarioMapArchive(ProjectSettings.GlobalizePath("user://maps"),
+                _newGameScenarioDirectory);
+            ScenarioMapVersion map;
+            var draft = selectedDraft;
+            if (ScenarioRootMapBinding.UsesRoot(draft.MapId))
+            {
+                map = ScenarioRootMapSource.OpenVersion(archive);
+                draft = ScenarioRootMapBinding.Bind(draft, map, ScenarioRootMapSource.PreviousVersion(archive, draft));
+            }
+            else map = archive.Load(draft.MapId, draft.MapRevision);
+            ScenarioDraftApplier.Apply(source, draft, map.Preset);
+        }
+        catch (Exception failure)
+        {
+            if (_newGameError is not null) _newGameError.Text = "시나리오 시작 불가: " + failure.Message;
+            return;
+        }
+        ShowStartConfirmation(() =>
+        {
+            SelectedPresetPath = null;
+            SelectedScenarioPath = selectedPath;
+            SelectedPlayerFactionId = _newGameSelectedFactionId;
+            SelectedScenarioTitle = selectedDraft.Title;
+            SelectedDifficulty = _newGameDifficulty;
+            _launchRequested = true;
+            CampaignStartedFromMenu = true;
+            ChangeToCampaign();
+        });
+    }
+
+    private void ShowStartConfirmation(Action onConfirmed)
+    {
+        var layer = new CanvasLayer { Name = "NewGameConfirmation", Layer = 40 };
+        AddChild(layer);
+        void Close() => layer.QueueFree();
+        var backdrop = new ColorRect
+        {
+            Color = new Color(0, 0, 0, 0.66f),
+            MouseFilter = MouseFilterEnum.Stop
+        };
+        backdrop.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+        backdrop.GuiInput += input =>
+        {
+            if (input is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left }) Close();
+        };
+        layer.AddChild(backdrop);
+        var center = new CenterContainer { MouseFilter = MouseFilterEnum.Ignore };
+        center.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+        layer.AddChild(center);
+        var panel = new PanelContainer { Name = "NewGameConfirmationPanel", MouseFilter = MouseFilterEnum.Stop };
+        panel.AddThemeStyleboxOverride("panel", NewGameFrame(
+            new Color(0.105f, 0.04f, 0.035f, 0.985f), new Color("d1aa5b"), 1, 7, 18));
+        center.AddChild(panel);
+        var content = new VBoxContainer { CustomMinimumSize = new Vector2(620, 0) };
+        content.AddThemeConstantOverride("separation", 10);
+        panel.AddChild(content);
+        var title = new Label { Text = "새 게임 시작 확인", HorizontalAlignment = HorizontalAlignment.Center };
+        title.AddThemeFontOverride("font", NewGameSerif(700));
+        title.AddThemeFontSizeOverride("font_size", 20);
+        title.AddThemeColorOverride("font_color", new Color("e8c879"));
+        content.AddChild(title);
+        content.AddChild(NewGameRule());
+        var dialogue = new HBoxContainer();
+        dialogue.AddThemeConstantOverride("separation", 18);
+        content.AddChild(dialogue);
+        var texture = GD.Load<Texture2D>("res://assets/portraits/113.png");
+        if (texture is not null)
+            dialogue.AddChild(new TextureRect
+            {
+                Texture = texture,
+                CustomMinimumSize = new Vector2(155, 210),
+                ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
+                StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered
+            });
+        var speech = new Label
+        {
+            Text = "초선: 이 세력과 함께\n새로운 역사를 시작하시겠습니까?",
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center,
+            AutowrapMode = TextServer.AutowrapMode.WordSmart,
+            SizeFlagsHorizontal = SizeFlags.ExpandFill
+        };
+        speech.AddThemeFontOverride("font", NewGameSerif(550));
+        speech.AddThemeFontSizeOverride("font_size", 17);
+        speech.AddThemeColorOverride("font_color", new Color("f2d28a"));
+        dialogue.AddChild(speech);
+        content.AddChild(NewGameRule());
+        var buttons = new HBoxContainer { Alignment = BoxContainer.AlignmentMode.End };
+        buttons.AddThemeConstantOverride("separation", 10);
+        content.AddChild(buttons);
+        var cancel = NewGameFooterButton("NewGameConfirmCancel", "취소", false);
+        cancel.CustomMinimumSize = new Vector2(120, 38);
+        cancel.Pressed += Close;
+        buttons.AddChild(cancel);
+        var confirm = NewGameFooterButton("NewGameConfirmAccept", "확인", true);
+        confirm.CustomMinimumSize = new Vector2(120, 38);
+        confirm.Pressed += () => { Close(); onConfirmed(); };
+        buttons.AddChild(confirm);
+    }
+
+    private void SelectFirstFactionForQa()
+    {
+        if (_newGameFactionMap is { FirstSelectableFactionId: > 0 } map)
+            map.SelectFactionAt(map.FirstSelectableSitePosition);
+    }
+}
