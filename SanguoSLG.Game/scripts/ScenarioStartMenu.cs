@@ -36,20 +36,7 @@ public sealed partial class ScenarioStartMenu : Control
     {
         SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
         MouseFilter = MouseFilterEnum.Stop;
-        var background = new ColorRect();
-        background.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
-        background.Material = new ShaderMaterial { Shader = new Shader { Code = """
-shader_type canvas_item;
-void fragment() {
-    vec2 p = UV;
-    float drift = sin(p.x * 9.0 + TIME * 0.16) * 0.025;
-    float ridge = smoothstep(0.53, 0.56, p.y + sin(p.x * 9.0 + TIME * 0.05) * 0.028);
-    float near_ridge = smoothstep(0.76, 0.79, p.y + sin(p.x * 15.0 - TIME * 0.035) * 0.018);
-    vec3 sky = mix(vec3(0.075, 0.15, 0.16), vec3(0.18, 0.27, 0.25), p.y + drift);
-    COLOR = vec4(mix(mix(sky, vec3(0.09, 0.16, 0.15), ridge * 0.65), vec3(0.045, 0.085, 0.08), near_ridge * 0.8), 1.0);
-}
-""" } };
-        AddChild(background);
+        var illustration = AddTitleBackdrop();
         var center = new CenterContainer();
         center.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
         AddChild(center);
@@ -344,23 +331,33 @@ void fragment() {
         rightColumn.AddChild(start);
         var menuCenter = new CenterContainer();
         menuCenter.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+        menuCenter.AnchorLeft = 0.56f;
+        menuCenter.AnchorRight = 0.96f;
         AddChild(menuCenter);
-        var menuPanel = new PanelContainer { CustomMinimumSize = new Vector2(440, 0) };
-        menuPanel.AddThemeStyleboxOverride("panel", style);
+        var menuPanel = new PanelContainer { CustomMinimumSize = new Vector2(430, 0) };
+        var menuStyle = new StyleBoxFlat { BgColor = new Color(0.045f, 0.045f, 0.07f, 0.86f),
+            BorderColor = new Color("b78a49") };
+        menuStyle.SetBorderWidthAll(2);
+        menuStyle.SetCornerRadiusAll(12);
+        menuStyle.SetContentMarginAll(22);
+        menuPanel.AddThemeStyleboxOverride("panel", menuStyle);
         menuCenter.AddChild(menuPanel);
         var menu = new VBoxContainer();
-        menu.AddThemeConstantOverride("separation", 11);
+        menu.AddThemeConstantOverride("separation", 10);
         menuPanel.AddChild(menu);
         var gameTitle = new Label { Text = "삼국지", HorizontalAlignment = HorizontalAlignment.Center };
-        gameTitle.AddThemeFontSizeOverride("font_size", 40);
-        gameTitle.AddThemeColorOverride("font_color", new Color("e5c985"));
+        gameTitle.AddThemeFontSizeOverride("font_size", 48);
+        gameTitle.AddThemeColorOverride("font_color", new Color("f4d38e"));
         menu.AddChild(gameTitle);
-        menu.AddChild(new Label { Text = "영웅의 시대", HorizontalAlignment = HorizontalAlignment.Center });
+        var menuSubtitle = new Label { Text = "영웅의 시대 · 천하의 운명", HorizontalAlignment = HorizontalAlignment.Center };
+        menuSubtitle.AddThemeColorOverride("font_color", new Color("d9b77a"));
+        menu.AddChild(menuSubtitle);
         menu.AddChild(new HSeparator());
         void MenuItem(string label, Action pressed)
         {
-            var button = new Button { Text = label, CustomMinimumSize = new Vector2(0, 46) };
-            button.AddThemeFontSizeOverride("font_size", 17);
+            var button = new Button { Text = label, CustomMinimumSize = new Vector2(0, 48) };
+            button.AddThemeFontSizeOverride("font_size", 18);
+            StyleTitleButton(button);
             button.Pressed += pressed;
             menu.AddChild(button);
         }
@@ -370,13 +367,23 @@ void fragment() {
         MenuItem("장수 에디터", () => EnterEditor(GetTree(), "res://GeneralEditor.tscn"));
         MenuItem("지형 에디터", () => EnterEditor(GetTree(), "res://EditMap.tscn"));
         MenuItem("시나리오 에디터", () => EnterEditor(GetTree(), "res://ScenarioEditor.tscn"));
+        MenuItem("게임 종료", () => GetTree().Quit());
+        AddTitleTips(menu);
+        AnimateTitleEntrance(illustration, menu);
         var back = new Button { Text = "← 메인 메뉴", CustomMinimumSize = new Vector2(140, 36) };
         back.Pressed += () => { center.Visible = false; menuCenter.Visible = true; };
         rightColumn.AddChild(back);
         ShowOptionalIntro(menuCenter);
         if (OS.GetCmdlineUserArgs().Contains("--startmenuqa")) CallDeferred(nameof(RunQa));
         if (OS.GetCmdlineUserArgs().Contains("--menulaunchqa"))
-            Callable.From(() => start.EmitSignal(BaseButton.SignalName.Pressed)).CallDeferred();
+            Callable.From(() =>
+            {
+                start.EmitSignal(BaseButton.SignalName.Pressed);
+                var confirm = GetChildren().OfType<CanvasLayer>().LastOrDefault()
+                    ?.FindChildren("*", "Button", true, false).OfType<Button>()
+                    .FirstOrDefault(button => button.Text == "확인");
+                confirm?.EmitSignal(BaseButton.SignalName.Pressed);
+            }).CallDeferred();
         if (OS.GetCmdlineUserArgs().Contains("--menuloadqa"))
             Callable.From(() => RunMenuLoadQa(menuCenter)).CallDeferred();
     }
@@ -463,7 +470,14 @@ void fragment() {
         var factionColumn = FindChild("FactionSelectionColumn", true, false) as VBoxContainer;
         var factionControls = FindChildren("*", "Button", true, false).OfType<Button>()
             .Where(button => button.HasMeta("faction_id")).ToArray();
-        var passed = hasOfficerConfirm && buttons.Contains("게임 시작") && buttons.Contains("새 게임 시작하기")
+        var titleArt = FindChild("TitleIllustration", true, false) as TextureRect;
+        var titleCrop = titleArt?.Texture as AtlasTexture;
+        var titlePresentation = titleCrop?.Atlas is not null
+            && titleCrop.Region == new Rect2(0, 0, 1000, 1000)
+            && FindChild("TitleEmbers", true, false) is CpuParticles2D { Emitting: true }
+            && FindChild("TitleGameTip", true, false) is Label tip && tip.Text.Length > 0;
+        var passed = titlePresentation && hasOfficerConfirm
+            && buttons.Contains("게임 시작") && buttons.Contains("새 게임 시작하기")
             && scenarios?.ItemCount >= 6
             && !Enumerable.Range(0, scenarios?.ItemCount ?? 0).Any(index => scenarios!.GetItemText(index) == "새 시나리오")
             && factionMap is { HasTerrain: true, CityCount: > 0 }
