@@ -357,10 +357,10 @@ public sealed partial class ScenarioStartMenu
         {
             Name = name,
             CustomMinimumSize = primary ? new Vector2(370, 58.14f) : new Vector2(286, 50.05f),
-            TextureNormal = GD.Load<Texture2D>($"res://assets/ui/title/components/{tier}_normal.png"),
-            TextureHover = GD.Load<Texture2D>($"res://assets/ui/title/components/{tier}_hover.png"),
-            TexturePressed = GD.Load<Texture2D>($"res://assets/ui/title/components/{tier}_pressed.png"),
-            TextureDisabled = GD.Load<Texture2D>($"res://assets/ui/title/components/{tier}_normal.png"),
+            TextureNormal = GD.Load<Texture2D>($"res://assets/ui/new_game/buttons/{tier}_normal.png"),
+            TextureHover = GD.Load<Texture2D>($"res://assets/ui/new_game/buttons/{tier}_hover.png"),
+            TexturePressed = GD.Load<Texture2D>($"res://assets/ui/new_game/buttons/{tier}_pressed.png"),
+            TextureDisabled = GD.Load<Texture2D>($"res://assets/ui/new_game/buttons/{tier}_disabled.png"),
             IgnoreTextureSize = true,
             StretchMode = TextureButton.StretchModeEnum.KeepAspectCentered,
             MouseDefaultCursorShape = CursorShape.PointingHand

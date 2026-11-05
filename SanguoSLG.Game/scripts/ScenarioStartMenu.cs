@@ -232,10 +232,12 @@ public sealed partial class ScenarioStartMenu : Control
             .OfType<TextureButton>().Where(button =>
                 button.Name.ToString() is "NewGameBackButton" or "NewGameLaunchButton").ToArray();
         var styledFooter = footerActions.Length == 2 && footerActions.All(button => button is
-            { TextureNormal: not null, TextureHover: not null, TexturePressed: not null,
+            { TextureNormal: not null, TextureHover: not null, TexturePressed: not null, TextureDisabled: not null,
                 StretchMode: TextureButton.StretchModeEnum.KeepAspectCentered }
             && button.FindChild("Caption", false, false) is Label
-                { HorizontalAlignment: HorizontalAlignment.Center });
+                { HorizontalAlignment: HorizontalAlignment.Center }
+            && Mathf.Abs(button.CustomMinimumSize.X / button.CustomMinimumSize.Y
+                - button.TextureNormal.GetWidth() / (float)button.TextureNormal.GetHeight()) < 0.02f);
         var readableMap = FindChild("ScenarioMapTooltip", true, false) is PanelContainer
             && _newGameFactionMap is { HasTerrain: true };
         var difficultyButtons = FindChildren("Difficulty*", "Button", true, false).OfType<Button>().ToArray();
