@@ -12,6 +12,8 @@ public partial class ScenarioFactionMap : Control
     private ScenarioMapPreset? _preset;
     private ImageTexture? _terrain;
     private readonly List<MapSite> _cities = [];
+    private PanelContainer? _tooltipPanel;
+    private Label? _tooltipLabel;
     private int _selectedFactionId;
     private int _hoveredSite = -1;
     public int CityCount => _cities.Count;
@@ -35,6 +37,7 @@ public partial class ScenarioFactionMap : Control
     {
         MouseFilter = MouseFilterEnum.Stop;
         TextureFilter = TextureFilterEnum.Linear;
+        BuildMapTooltip();
     }
 
     public override void _ExitTree()
@@ -92,6 +95,7 @@ public partial class ScenarioFactionMap : Control
                 color, site.Name, knownFaction ? faction!.Name : "중립", selectable));
         }
         _hoveredSite = -1;
+        if (_tooltipPanel is not null) _tooltipPanel.Visible = false;
         TooltipText = "거점을 눌러 플레이할 세력을 선택하십시오.";
         QueueRedraw();
     }
@@ -117,20 +121,24 @@ public partial class ScenarioFactionMap : Control
 
     public override void _Draw()
     {
-        DrawRect(new Rect2(Vector2.Zero, Size), new Color("142522"));
+        DrawRect(new Rect2(Vector2.Zero, Size), new Color("121a18"));
         if (_terrain is null || _preset is null) return;
         var bounds = CalculateMapBounds();
         DrawTextureRect(_terrain, bounds, false);
-        DrawRect(bounds, new Color("9a8256"), false, 1.5f);
+        DrawRect(bounds, new Color("c6a258"), false, 1.5f);
         for (var index = 0; index < _cities.Count; index++)
         {
             var city = _cities[index];
             var point = Project(city.Tile, bounds);
             var chosen = city.FactionId == _selectedFactionId;
             var hovered = index == _hoveredSite;
-            DrawCircle(point, chosen ? 6.4f : 4.2f, new Color("1a201d"));
-            DrawCircle(point, chosen ? 4.7f : 2.8f, city.Color);
-            if (chosen) DrawArc(point, 8.2f, 0, Mathf.Tau, 24, new Color("ffdf8e"), 1.5f, true);
+            DrawCircle(point, chosen ? 7.2f : 4.5f, new Color("15100d"));
+            DrawCircle(point, chosen ? 5.2f : 3.0f, city.Color);
+            if (chosen)
+            {
+                DrawArc(point, 8.8f, 0, Mathf.Tau, 28, new Color("ffe29a"), 2.0f, true);
+                DrawArc(point, 11.2f, 0, Mathf.Tau, 28, new Color(0.95f, 0.67f, 0.22f, 0.5f), 1.0f, true);
+            }
             if (hovered) DrawArc(point, chosen ? 10.4f : 7.2f, 0, Mathf.Tau, 24,
                 new Color("fff0b4"), 1.4f, true);
         }
@@ -146,14 +154,17 @@ public partial class ScenarioFactionMap : Control
             if (_hoveredSite >= 0)
             {
                 var city = _cities[_hoveredSite];
-                TooltipText = city.Selectable
+                var tooltip = city.Selectable
                     ? $"{city.Name}\n{city.FactionName} 세력 · 클릭하여 선택"
                     : $"{city.Name}\n{city.FactionName} · 선택할 수 없는 세력";
+                TooltipText = tooltip;
+                ShowMapTooltip(tooltip, motion.Position);
                 MouseDefaultCursorShape = city.Selectable ? CursorShape.PointingHand : CursorShape.Arrow;
             }
             else
             {
                 TooltipText = "거점을 눌러 플레이할 세력을 선택하십시오.";
+                if (_tooltipPanel is not null) _tooltipPanel.Visible = false;
                 MouseDefaultCursorShape = CursorShape.Arrow;
             }
             QueueRedraw();
@@ -161,6 +172,47 @@ public partial class ScenarioFactionMap : Control
         }
         if (input is not InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left } click) return;
         if (SelectFactionAt(click.Position)) AcceptEvent();
+    }
+
+    private void BuildMapTooltip()
+    {
+        _tooltipPanel = new PanelContainer
+        {
+            Name = "ScenarioMapTooltip",
+            Visible = false,
+            MouseFilter = MouseFilterEnum.Ignore,
+            ZIndex = 20
+        };
+        var style = new StyleBoxFlat
+        {
+            BgColor = new Color(0.075f, 0.03f, 0.027f, 0.97f),
+            BorderColor = new Color("d7ad59")
+        };
+        style.SetBorderWidthAll(1);
+        style.SetCornerRadiusAll(4);
+        style.SetContentMarginAll(7);
+        _tooltipPanel.AddThemeStyleboxOverride("panel", style);
+        AddChild(_tooltipPanel);
+        _tooltipLabel = new Label
+        {
+            MouseFilter = MouseFilterEnum.Ignore,
+            HorizontalAlignment = HorizontalAlignment.Center
+        };
+        _tooltipLabel.AddThemeFontOverride("font", GD.Load<FontFile>("res://assets/fonts/Pretendard-SemiBold.otf"));
+        _tooltipLabel.AddThemeFontSizeOverride("font_size", 12);
+        _tooltipLabel.AddThemeColorOverride("font_color", new Color("eee3cc"));
+        _tooltipPanel.AddChild(_tooltipLabel);
+    }
+
+    private void ShowMapTooltip(string text, Vector2 pointer)
+    {
+        if (_tooltipPanel is null || _tooltipLabel is null) return;
+        _tooltipLabel.Text = text;
+        _tooltipPanel.Visible = true;
+        var proposed = pointer + new Vector2(14, 14);
+        _tooltipPanel.Position = new Vector2(
+            Mathf.Min(proposed.X, Mathf.Max(0, Size.X - _tooltipPanel.Size.X - 4)),
+            Mathf.Min(proposed.Y, Mathf.Max(0, Size.Y - _tooltipPanel.Size.Y - 4)));
     }
 
     public bool SelectFactionAt(Vector2 localPosition)

@@ -223,6 +223,16 @@ public sealed partial class ScenarioStartMenu : Control
             && FindChild("NewGameFooter", true, false) is HBoxContainer;
         var noFactionButtonList = !FindChildren("*", "Button", true, false).OfType<Button>()
             .Any(button => button.HasMeta("faction_id"));
+        var scenarioThumbnails = FindChildren("ScenarioThumbnail", "TextureRect", true, false)
+            .OfType<TextureRect>().ToArray();
+        var scenarioCardsReady = scenarioThumbnails.Length == _newGameScenarios.Count
+            && scenarioThumbnails.All(thumbnail => thumbnail is
+                { Texture: not null, StretchMode: TextureRect.StretchModeEnum.KeepAspectCovered });
+        var styledFooter = FindChildren("NewGame*Button", "Button", true, false).OfType<Button>()
+            .Where(button => button.Name.ToString() is "NewGameBackButton" or "NewGameLaunchButton")
+            .All(button => button.GetThemeStylebox("normal") is StyleBoxTexture { Texture: not null });
+        var readableMap = FindChild("ScenarioMapTooltip", true, false) is PanelContainer
+            && _newGameFactionMap is { HasTerrain: true };
         var difficultyButtons = FindChildren("Difficulty*", "Button", true, false).OfType<Button>().ToArray();
         var viewport = GetViewport().GetVisibleRect().Size;
         var newGamePanel = FindChild("NewGamePanel", true, false) as PanelContainer;
@@ -237,7 +247,7 @@ public sealed partial class ScenarioStartMenu : Control
         });
         var passed = titlePresentation && hasOfficerConfirm && initiallyUnselected && selectedFromMap
             && scenarioReset && hardDifficulty && responsiveBounds && resolutionLayout
-            && newGameLayout && noFactionButtonList
+            && newGameLayout && noFactionButtonList && scenarioCardsReady && styledFooter && readableMap
             && _newGameScenarios.Count >= 6
             && _newGameFactionMap is { HasTerrain: true, CityCount: > 0, SelectableFactionCount: > 0 }
             && difficultyButtons.Length == 2
@@ -246,7 +256,7 @@ public sealed partial class ScenarioStartMenu : Control
                         StretchMode: TextureButton.StretchModeEnum.KeepAspectCentered }
                     && button.FindChild("Caption", true, false) is Label { Text.Length: > 0 } caption
                     && caption.GetThemeFont("font").HasChar('가')) == 7;
-        GD.Print($"[scenario-start-qa] passed={passed} scenarios={_newGameScenarios.Count} selectable={_newGameFactionMap?.SelectableFactionCount} selected={_newGameSelectedFactionId} reset={scenarioReset} hard={hardDifficulty} viewport={viewport} panel={newGamePanel?.Size} resolutionLayout={resolutionLayout} columns={newGameLayout}");
+        GD.Print($"[scenario-start-qa] passed={passed} scenarios={_newGameScenarios.Count} thumbnails={scenarioCardsReady} selectable={_newGameFactionMap?.SelectableFactionCount} selected={_newGameSelectedFactionId} reset={scenarioReset} hard={hardDifficulty} footer={styledFooter} viewport={viewport} panel={newGamePanel?.Size} resolutionLayout={resolutionLayout} columns={newGameLayout}");
         GetTree().Quit(passed ? 0 : 1);
     }
 
