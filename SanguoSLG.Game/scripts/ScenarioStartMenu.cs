@@ -334,15 +334,25 @@ public sealed partial class ScenarioStartMenu : Control
         menuCenter.AnchorLeft = 0.52f;
         menuCenter.AnchorRight = 0.97f;
         AddChild(menuCenter);
-        var menuPanel = new TitleOrnatePanel { Name = "TitleMenuPanel",
-            CustomMinimumSize = new Vector2(Mathf.Min(650, GetViewport().GetVisibleRect().Size.X * 0.42f), 0) };
+        var menuPanel = new TitleOrnatePanel { Name = "TitleMenuPanel" };
         menuCenter.AddChild(menuPanel);
+        void FitTitleMenu()
+        {
+            var viewport = GetViewport().GetVisibleRect().Size;
+            var scale = Mathf.Min(viewport.X / 1600f, viewport.Y / 900f);
+            menuPanel.Scale = Vector2.One * scale;
+        }
+        menuPanel.Resized += () => menuPanel.PivotOffset = menuPanel.Size / 2;
+        GetViewport().SizeChanged += FitTitleMenu;
+        TreeExiting += () => GetViewport().SizeChanged -= FitTitleMenu;
+        FitTitleMenu();
         var menu = new VBoxContainer();
-        menu.AddThemeConstantOverride("separation", 8);
-        menuPanel.AddChild(menu);
+        menu.AddThemeConstantOverride("separation", 7);
+        menuPanel.Content.AddChild(menu);
+        var logoImage = GD.Load<Texture2D>("res://assets/ui/title/components/title_logo.png");
         var gameTitle = new TextureRect { Name = "TitleGameLogo",
-            Texture = GD.Load<Texture2D>("res://assets/ui/title/components/title_logo.png"),
-            CustomMinimumSize = new Vector2(0, 142),
+            Texture = new AtlasTexture { Atlas = logoImage, Region = new Rect2(145, 0, 1160, 375) },
+            CustomMinimumSize = new Vector2(0, 162),
             SizeFlagsHorizontal = SizeFlags.ExpandFill,
             ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
             StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
@@ -350,9 +360,13 @@ public sealed partial class ScenarioStartMenu : Control
         menu.AddChild(gameTitle);
         var menuSubtitle = new Label { Text = "영웅의 시대   ·   천하의 운명", HorizontalAlignment = HorizontalAlignment.Center };
         menuSubtitle.AddThemeColorOverride("font_color", new Color("d9b77a"));
+        menuSubtitle.AddThemeFontOverride("font", new FontVariation { BaseFont = GD.Load<FontFile>("res://assets/fonts/NotoSerifKR-variable.ttf"),
+            VariationOpentype = new Godot.Collections.Dictionary { ["wght"] = 500 } });
+        menuSubtitle.AddThemeFontSizeOverride("font_size", 17);
         menu.AddChild(menuSubtitle);
         var titleRule = new Label { Text = "──────────  ◈  ──────────", HorizontalAlignment = HorizontalAlignment.Center };
         titleRule.AddThemeColorOverride("font_color", new Color("cba969"));
+        titleRule.AddThemeFontOverride("font", GD.Load<FontFile>("res://assets/fonts/NotoSerifKR-variable.ttf"));
         menu.AddChild(titleRule);
         var mainActions = new VBoxContainer { Name = "TitlePrimaryActions" };
         mainActions.AddThemeConstantOverride("separation", 4);
@@ -367,6 +381,9 @@ public sealed partial class ScenarioStartMenu : Control
         AddAction(mainActions, "이어하기 · 저장된 게임", "flag", () => OpenLoadSlots(menuCenter), true);
         var editorHeader = new Label { Text = "역사와 장수 편집", HorizontalAlignment = HorizontalAlignment.Center };
         editorHeader.AddThemeColorOverride("font_color", new Color("c8ad7d"));
+        editorHeader.AddThemeFontOverride("font", new FontVariation { BaseFont = GD.Load<FontFile>("res://assets/fonts/NotoSerifKR-variable.ttf"),
+            VariationOpentype = new Godot.Collections.Dictionary { ["wght"] = 500 } });
+        editorHeader.AddThemeFontSizeOverride("font_size", 16);
         menu.AddChild(editorHeader);
         var editorActions = new VBoxContainer { Name = "TitleEditorActions" };
         editorActions.AddThemeConstantOverride("separation", 2);
@@ -485,12 +502,14 @@ public sealed partial class ScenarioStartMenu : Control
         var factionColumn = FindChild("FactionSelectionColumn", true, false) as VBoxContainer;
         var factionControls = FindChildren("*", "Button", true, false).OfType<Button>()
             .Where(button => button.HasMeta("faction_id")).ToArray();
+        var titleButtons = FindChildren("*", "", true, false).OfType<TitleMenuButton>().ToArray();
         var titleArt = FindChild("TitleIllustration", true, false) as TextureRect;
         var titlePresentation = titleArt?.Texture is ImageTexture
             && titleArt.StretchMode == TextureRect.StretchModeEnum.KeepAspectCovered
             && FindChild("TitleAtmosphere", true, false) is ColorRect
             && FindChild("TitleMenuPanel", true, false) is TitleOrnatePanel
-            && FindChild("TitleGameLogo", true, false) is TextureRect { Texture: not null }
+            && FindChild("TitleGameLogo", true, false) is TextureRect
+                { Texture: AtlasTexture { Atlas: not null }, StretchMode: TextureRect.StretchModeEnum.KeepAspectCentered }
             && FindChild("TitleEmbers", true, false) is CpuParticles2D { Emitting: true }
             && FindChild("TitleGameTip", true, false) is Label tip && tip.Text.Length > 0;
         var passed = titlePresentation && hasOfficerConfirm
@@ -506,13 +525,14 @@ public sealed partial class ScenarioStartMenu : Control
             && factionControls.Length > 0 && factionControls.Any(button => button.ButtonPressed)
             && FindChildren("*", "Label", true, false).OfType<Label>()
                 .Any(label => label.Text.Contains("점령 거점") && label.Text.Contains("병력") && label.Text.Contains("장수"))
-            && FindChildren("*", "", true, false).OfType<TitleMenuButton>()
-                .Count(button => button.FindChild("HitArea", false, false) is TextureButton
-                    { TextureNormal: not null, TextureHover: not null, TexturePressed: not null }
-                    && button.FindChild("Caption", true, false) is Label { Text.Length: > 0 }) == 7
+            && titleButtons.Count(button => button.FindChild("HitArea", false, false) is TextureButton
+                    { TextureNormal: not null, TextureHover: not null, TexturePressed: not null,
+                        StretchMode: TextureButton.StretchModeEnum.KeepAspectCentered }
+                    && button.FindChild("Caption", true, false) is Label { Text.Length: > 0 } caption
+                    && caption.GetThemeFont("font").HasChar('가')) == 7
             && FindChild("TitlePrimaryActions", true, false) is VBoxContainer
             && FindChild("TitleEditorActions", true, false) is VBoxContainer;
-        GD.Print($"[scenario-start-qa] passed={passed} buttons={buttons.Length} scenarios={scenarios?.ItemCount}");
+        GD.Print($"[scenario-start-qa] passed={passed} buttons={buttons.Length} scenarios={scenarios?.ItemCount} viewport={GetViewport().GetVisibleRect().Size} panel={(FindChild("TitleMenuPanel", true, false) as Control)?.Size} logo={(FindChild("TitleGameLogo", true, false) as Control)?.Size} primary={titleButtons.FirstOrDefault()?.Size}");
         GetTree().Quit(passed ? 0 : 1);
     }
 

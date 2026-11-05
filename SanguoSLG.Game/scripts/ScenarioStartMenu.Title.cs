@@ -93,9 +93,11 @@ public sealed partial class ScenarioStartMenu
             Name = "TitleGameTip",
             Text = TitleTips[0],
             HorizontalAlignment = HorizontalAlignment.Center,
-            AutowrapMode = TextServer.AutowrapMode.WordSmart,
+            AutowrapMode = TextServer.AutowrapMode.Off,
         };
         _titleTip.AddThemeColorOverride("font_color", new Color("e8d2a8"));
+        _titleTip.AddThemeFontOverride("font", GD.Load<FontFile>("res://assets/fonts/NotoSansKR-Regular.otf"));
+        _titleTip.AddThemeFontSizeOverride("font_size", 13);
         tipFrame.AddChild(_titleTip);
     }
 
