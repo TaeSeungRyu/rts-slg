@@ -80,18 +80,6 @@ public sealed partial class ScenarioStartMenu
         return style;
     }
 
-    private void StyleTitleButton(Button button, bool primary = false)
-    {
-        button.AddThemeColorOverride("font_color", new Color("f4dfb2"));
-        button.AddThemeColorOverride("font_hover_color", new Color("fff1c4"));
-        button.AddThemeStyleboxOverride("normal", TitleButtonStyle(primary ? new Color(0.34f, 0.18f, 0.075f, 0.90f) : new Color(0.10f, 0.085f, 0.08f, 0.62f), primary ? new Color("d9a859") : new Color("806749")));
-        button.AddThemeStyleboxOverride("hover", TitleButtonStyle(new Color(0.48f, 0.28f, 0.09f, 0.94f), new Color("ffcf73")));
-        button.AddThemeStyleboxOverride("pressed", TitleButtonStyle(new Color("8c4d24"), new Color("fff0ac")));
-        button.Resized += () => button.PivotOffset = button.Size / 2;
-        button.MouseEntered += () => { CreateTween().TweenProperty(button, "scale", new Vector2(1.025f, 1.025f), 0.16); CreateTween().TweenProperty(button, "modulate", new Color(1f, 0.94f, 0.76f), 0.16); };
-        button.MouseExited += () => { CreateTween().TweenProperty(button, "scale", Vector2.One, 0.18); CreateTween().TweenProperty(button, "modulate", Colors.White, 0.18); };
-    }
-
     private void AddTitleTips(VBoxContainer menu)
     {
         var tipFrame = new PanelContainer();
@@ -111,12 +99,8 @@ public sealed partial class ScenarioStartMenu
         tipFrame.AddChild(_titleTip);
     }
 
-    private void AnimateTitleEntrance(TextureRect illustration, VBoxContainer menu)
+    private void AnimateTitleEntrance(Control menu)
     {
-        illustration.PivotOffset = GetViewport().GetVisibleRect().Size / 2;
-        var breathing = CreateTween().SetLoops();
-        breathing.TweenProperty(illustration, "scale", new Vector2(1.012f, 1.012f), 12);
-        breathing.TweenProperty(illustration, "scale", Vector2.One, 12);
         menu.Modulate = new Color(1, 1, 1, 0);
         var entrance = CreateTween();
         entrance.TweenInterval(0.2);
