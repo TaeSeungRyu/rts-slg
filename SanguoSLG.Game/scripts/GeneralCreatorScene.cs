@@ -490,7 +490,8 @@ public partial class GeneralCreatorScene : Control
                 if (image is null || image.IsEmpty()) continue;
                 image.Resize(82, 98);
                 var choice = new Button { Icon = ImageTexture.CreateFromImage(image),
-                    ExpandIcon = true, TooltipText = tooltip };
+                    ExpandIcon = true, IconAlignment = HorizontalAlignment.Center,
+                    VerticalIconAlignment = VerticalAlignment.Center, TooltipText = tooltip };
                 choice.AddThemeStyleboxOverride("normal", PortraitTileStyle(_portraitPath == portrait, false));
                 choice.AddThemeStyleboxOverride("hover", PortraitTileStyle(_portraitPath == portrait, true));
                 choice.AddThemeStyleboxOverride("pressed", PortraitTileStyle(true, true));
@@ -914,6 +915,12 @@ public partial class GeneralCreatorScene : Control
             var registeredFile = ProjectSettings.GlobalizePath(registered);
             RebuildPortraitGrid();
             SelectPortrait(registered);
+            var portraitButtons = _portraitGrid.GetChildren().OfType<Control>()
+                .SelectMany(cell => cell.GetChildren().OfType<Button>())
+                .Where(button => button.Icon is not null).ToArray();
+            var portraitsCentered = portraitButtons.Length > 0
+                && portraitButtons.All(button => button.IconAlignment == HorizontalAlignment.Center
+                    && button.VerticalIconAlignment == VerticalAlignment.Center);
             ConfirmRemoveGalleryPortrait(registered);
             var removalLayer = GetChildren().OfType<CanvasLayer>().LastOrDefault();
             var styledRemovalConfirm = removalLayer is not null
@@ -921,7 +928,7 @@ public partial class GeneralCreatorScene : Control
                 && removalLayer.FindChildren("*", "Button", true, false).OfType<Button>()
                     .Count(button => button.Text is "제거" or "취소") == 2;
             removalLayer?.QueueFree();
-            passed &= _portraitPath == registered && _portraitGrid.GetChildCount() >= 1
+            passed &= portraitsCentered && _portraitPath == registered && _portraitGrid.GetChildCount() >= 1
                 && _portraitGrid.Columns is >= 2 and <= 6 && PortraitPageCount(25, 12) == 3
                 && styledRemovalConfirm
                 && _galleryFileDialog.FileMode == FileDialog.FileModeEnum.OpenFiles
