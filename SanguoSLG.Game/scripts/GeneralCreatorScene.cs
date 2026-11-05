@@ -198,14 +198,14 @@ public partial class GeneralCreatorScene : Control
         selectedPortrait.AddChild(clear);
         var galleryHost = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
         portraitRow.AddChild(galleryHost);
-        var gallery = GeneralWorkspaceStyle.Section(galleryHost, "기본 얼굴 · 클릭해서 선택");
+        var gallery = GeneralWorkspaceStyle.Section(galleryHost, "초상 선택");
         gallery.SizeFlagsHorizontal = SizeFlags.ExpandFill;
         var register = new Button { Text = "+ 외부 이미지 등록하기", CustomMinimumSize = new Vector2(0, 40) };
         register.Pressed += () => _galleryFileDialog.PopupCentered(new Vector2I(850, 620));
         gallery.AddChild(register);
         _portraitGrid = new GridContainer { Columns = 6, SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        _portraitGrid.AddThemeConstantOverride("h_separation", 6);
-        _portraitGrid.AddThemeConstantOverride("v_separation", 10);
+        _portraitGrid.AddThemeConstantOverride("h_separation", 10);
+        _portraitGrid.AddThemeConstantOverride("v_separation", 12);
         gallery.AddChild(_portraitGrid);
         var portraitNavigation = new HBoxContainer { Alignment = BoxContainer.AlignmentMode.Center };
         portraitNavigation.AddThemeConstantOverride("separation", 14);
@@ -443,7 +443,7 @@ public partial class GeneralCreatorScene : Control
     private string DefaultPortrait()
         => $"res://assets/portraits/created/{(_gender.Selected == 1 ? "women" : "man")}1.png";
 
-    private static int PortraitPageCount(int count) => Math.Max(1, (count + 11) / 12);
+    private static int PortraitPageCount(int count, int pageSize) => Math.Max(1, (count + pageSize - 1) / pageSize);
 
     private void RebuildPortraitGrid(string? focusPath = null)
     {
@@ -465,24 +465,30 @@ public partial class GeneralCreatorScene : Control
             foreach (var file in Directory.EnumerateFiles(galleryDirectory, "*.png").OrderBy(Path.GetFileName))
                 choices.Add(("user://general-presets/portraits/" + Path.GetFileName(file),
                     $"외부 초상 · {Path.GetFileName(file)}", true));
-        const int pageSize = 12;
+        var viewportWidth = GetViewport().GetVisibleRect().Size.X;
+        var columns = viewportWidth >= 1150 ? 6 : viewportWidth >= 900 ? 4 : 2;
+        var pageSize = columns * 2;
+        _portraitGrid.Columns = columns;
         if (focusPath is not null)
         {
             var focusIndex = choices.FindIndex(choice => choice.Path == focusPath);
             if (focusIndex >= 0) _portraitPage = focusIndex / pageSize;
         }
-        var pageCount = PortraitPageCount(choices.Count);
+        var pageCount = PortraitPageCount(choices.Count, pageSize);
         _portraitPage = Math.Clamp(_portraitPage, 0, pageCount - 1);
         foreach (var (portrait, tooltip, imported) in choices.Skip(_portraitPage * pageSize).Take(pageSize))
         {
             var image = Image.LoadFromFile(ProjectSettings.GlobalizePath(portrait));
             if (image is null || image.IsEmpty()) continue;
-            image.Resize(44, 52);
-            var cell = new Control { CustomMinimumSize = new Vector2(50, 68),
+            image.Resize(82, 98);
+            var cell = new Control { CustomMinimumSize = new Vector2(96, 124),
                 SizeFlagsHorizontal = SizeFlags.ExpandFill };
             var choice = new Button { Icon = ImageTexture.CreateFromImage(image),
-                ExpandIcon = true, CustomMinimumSize = new Vector2(50, 68),
+                ExpandIcon = true, CustomMinimumSize = new Vector2(96, 124),
                 SizeFlagsHorizontal = SizeFlags.ExpandFill, TooltipText = tooltip };
+            choice.AddThemeStyleboxOverride("normal", PortraitTileStyle(_portraitPath == portrait, false));
+            choice.AddThemeStyleboxOverride("hover", PortraitTileStyle(_portraitPath == portrait, true));
+            choice.AddThemeStyleboxOverride("pressed", PortraitTileStyle(true, true));
             choice.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
             choice.Pressed += () => SelectPortrait(portrait);
             cell.AddChild(choice);
@@ -511,6 +517,20 @@ public partial class GeneralCreatorScene : Control
         _portraitPath = path;
         ShowPortrait(path is null ? null : ProjectSettings.GlobalizePath(path),
             path is null ? "사진 없음" : Path.GetFileName(path));
+        RebuildPortraitGrid(path);
+    }
+
+    private static StyleBoxFlat PortraitTileStyle(bool selected, bool hover)
+    {
+        var style = new StyleBoxFlat
+        {
+            BgColor = hover ? new Color("573322") : new Color("211713"),
+            BorderColor = selected ? new Color("f3c96d") : new Color("846840"),
+        };
+        style.SetBorderWidthAll(selected ? 2 : 1);
+        style.SetCornerRadiusAll(7);
+        style.SetContentMarginAll(4);
+        return style;
     }
 
     private void ConfirmRemoveGalleryPortrait(string portrait)
@@ -840,8 +860,8 @@ public partial class GeneralCreatorScene : Control
             var registeredFile = ProjectSettings.GlobalizePath(registered);
             RebuildPortraitGrid();
             SelectPortrait(registered);
-            passed &= _portraitPath == registered && _portraitGrid.GetChildCount() >= 11
-                && _portraitGrid.Columns == 6 && PortraitPageCount(13) == 2
+            passed &= _portraitPath == registered && _portraitGrid.GetChildCount() >= 1
+                && _portraitGrid.Columns is >= 2 and <= 6 && PortraitPageCount(25, 12) == 3
                 && _galleryFileDialog.FileMode == FileDialog.FileModeEnum.OpenFiles
                 && _galleryLoadingLabel is not null
                 && CreatedGeneralStore.Load(CreatedGeneralStore.Save([FromForm(10002)]))[0].PortraitPath == registered;
