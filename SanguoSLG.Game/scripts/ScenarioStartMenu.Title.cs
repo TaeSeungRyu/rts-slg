@@ -71,28 +71,24 @@ public sealed partial class ScenarioStartMenu
         return illustration;
     }
 
-    private static StyleBoxFlat TitleButtonStyle(Color background, Color border)
-    {
-        var style = new StyleBoxFlat { BgColor = background, BorderColor = border };
-        style.SetBorderWidthAll(2);
-        style.SetCornerRadiusAll(6);
-        style.SetContentMarginAll(8);
-        return style;
-    }
-
     private void AddTitleTips(VBoxContainer menu)
     {
-        var tipFrame = new PanelContainer();
-        var frame = TitleButtonStyle(new Color(0.025f, 0.025f, 0.04f, 0.82f), new Color("947247"));
-        frame.BorderWidthLeft = 0;
-        frame.BorderWidthRight = 0;
+        var inset = new MarginContainer { Name = "TitleTipInset" };
+        inset.AddThemeConstantOverride("margin_left", 12);
+        inset.AddThemeConstantOverride("margin_right", 12);
+        menu.AddChild(inset);
+        var tipFrame = new PanelContainer { Name = "TitleTipFrame", CustomMinimumSize = new Vector2(0, 36) };
+        var frame = new StyleBoxFlat { BgColor = new Color(0.08f, 0.065f, 0.058f, 0.46f) };
+        frame.SetCornerRadiusAll(3);
+        frame.SetContentMarginAll(4);
         tipFrame.AddThemeStyleboxOverride("panel", frame);
-        menu.AddChild(tipFrame);
+        inset.AddChild(tipFrame);
         _titleTip = new Label
         {
             Name = "TitleGameTip",
             Text = TitleTips[0],
             HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center,
             AutowrapMode = TextServer.AutowrapMode.Off,
         };
         _titleTip.AddThemeColorOverride("font_color", new Color("e8d2a8"));

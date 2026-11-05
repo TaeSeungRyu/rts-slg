@@ -9,18 +9,22 @@ public sealed partial class TitleOrnatePanel : Control
     public TitleOrnatePanel()
     {
         CustomMinimumSize = new Vector2(620, 720);
+        const float artworkScale = 0.68f;
         var background = new NinePatchRect
         {
+            Name = "TitlePanelNinePatch",
             Texture = GD.Load<Texture2D>("res://assets/ui/title/components/menu_panel.png"),
-            PatchMarginLeft = 52,
-            PatchMarginTop = 52,
-            PatchMarginRight = 52,
-            PatchMarginBottom = 52,
+            PatchMarginLeft = 95,
+            PatchMarginTop = 95,
+            PatchMarginRight = 95,
+            PatchMarginBottom = 95,
             SelfModulate = new Color(1, 1, 1, 0.88f),
             MouseFilter = MouseFilterEnum.Ignore,
+            Scale = Vector2.One * artworkScale,
         };
-        background.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
         AddChild(background);
+        Resized += () => background.Size = Size / artworkScale;
+        Callable.From(() => background.Size = Size / artworkScale).CallDeferred();
         Content = new MarginContainer();
         Content.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
         Content.AddThemeConstantOverride("margin_left", 30);

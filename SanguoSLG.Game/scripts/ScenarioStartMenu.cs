@@ -364,9 +364,9 @@ public sealed partial class ScenarioStartMenu : Control
             VariationOpentype = new Godot.Collections.Dictionary { ["wght"] = 500 } });
         menuSubtitle.AddThemeFontSizeOverride("font_size", 17);
         menu.AddChild(menuSubtitle);
-        var titleRule = new Label { Text = "──────────  ◈  ──────────", HorizontalAlignment = HorizontalAlignment.Center };
-        titleRule.AddThemeColorOverride("font_color", new Color("cba969"));
-        titleRule.AddThemeFontOverride("font", GD.Load<FontFile>("res://assets/fonts/NotoSerifKR-variable.ttf"));
+        var titleRule = new CenterContainer { Name = "TitleInnerDivider", CustomMinimumSize = new Vector2(0, 24) };
+        titleRule.AddChild(new ColorRect { Color = new Color(0.80f, 0.65f, 0.40f, 0.55f),
+            CustomMinimumSize = new Vector2(240, 1), MouseFilter = MouseFilterEnum.Ignore });
         menu.AddChild(titleRule);
         var mainActions = new VBoxContainer { Name = "TitlePrimaryActions" };
         mainActions.AddThemeConstantOverride("separation", 4);
@@ -384,6 +384,8 @@ public sealed partial class ScenarioStartMenu : Control
         editorHeader.AddThemeFontOverride("font", new FontVariation { BaseFont = GD.Load<FontFile>("res://assets/fonts/NotoSerifKR-variable.ttf"),
             VariationOpentype = new Godot.Collections.Dictionary { ["wght"] = 500 } });
         editorHeader.AddThemeFontSizeOverride("font_size", 16);
+        editorHeader.AddThemeColorOverride("font_shadow_color", new Color(0, 0, 0, 0.85f));
+        editorHeader.AddThemeConstantOverride("shadow_offset_y", 2);
         menu.AddChild(editorHeader);
         var editorActions = new VBoxContainer { Name = "TitleEditorActions" };
         editorActions.AddThemeConstantOverride("separation", 2);
@@ -504,10 +506,20 @@ public sealed partial class ScenarioStartMenu : Control
             .Where(button => button.HasMeta("faction_id")).ToArray();
         var titleButtons = FindChildren("*", "", true, false).OfType<TitleMenuButton>().ToArray();
         var titleArt = FindChild("TitleIllustration", true, false) as TextureRect;
+        var titlePanel = FindChild("TitleMenuPanel", true, false) as TitleOrnatePanel;
+        var panelPatch = FindChild("TitlePanelNinePatch", true, false) as NinePatchRect;
+        var tipFrame = FindChild("TitleTipFrame", true, false) as PanelContainer;
+        var tipInset = titlePanel is not null && tipFrame is not null
+            && tipFrame.GetGlobalRect().Position.X > titlePanel.GetGlobalRect().Position.X + 20 * titlePanel.Scale.X
+            && tipFrame.GetGlobalRect().End.X < titlePanel.GetGlobalRect().End.X - 20 * titlePanel.Scale.X
+            && tipFrame.GetGlobalRect().End.Y < titlePanel.GetGlobalRect().End.Y - 20 * titlePanel.Scale.Y
+            && tipFrame.Size.Y is >= 32 and <= 40;
         var titlePresentation = titleArt?.Texture is ImageTexture
             && titleArt.StretchMode == TextureRect.StretchModeEnum.KeepAspectCovered
             && FindChild("TitleAtmosphere", true, false) is ColorRect
-            && FindChild("TitleMenuPanel", true, false) is TitleOrnatePanel
+            && titlePanel is not null && panelPatch is
+                { PatchMarginLeft: 95, PatchMarginRight: 95, PatchMarginTop: 95, PatchMarginBottom: 95 }
+            && tipInset
             && FindChild("TitleGameLogo", true, false) is TextureRect
                 { Texture: AtlasTexture { Atlas: not null }, StretchMode: TextureRect.StretchModeEnum.KeepAspectCentered }
             && FindChild("TitleEmbers", true, false) is CpuParticles2D { Emitting: true }
