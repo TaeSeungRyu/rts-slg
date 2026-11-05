@@ -20,7 +20,7 @@ public sealed partial class ScenarioSiteMap : Control
             faction => new Color(faction.Color));
         _selectedId = selectedId;
         _selected = selected;
-        CustomMinimumSize = new Vector2(660, 360);
+        CustomMinimumSize = new Vector2(540, 230);
         SizeFlagsHorizontal = SizeFlags.ExpandFill;
         MouseFilter = MouseFilterEnum.Stop;
     }

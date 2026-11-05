@@ -725,27 +725,40 @@ public sealed partial class ScenarioEditorScene : Control
 
     private void ShowGeneralsForCity(VBoxContainer host, ScenarioCityEntry city)
     {
-        host.AddChild(new Label { Text = "장수 배치 · " + CurrentMap().Preset.Sites.First(site => site.Id == city.SiteId).Name });
+        host.AddThemeConstantOverride("separation", 3);
+        var posted = _draft.Generals.Where(general => general.SiteId == city.SiteId).ToArray();
+        host.AddChild(new Label { Text = $"장수 배치 · {CurrentMap().Preset.Sites.First(site => site.Id == city.SiteId).Name}  ({posted.Length}명)" });
         if (city.OwnerFactionId == 0)
         {
             host.AddChild(new Label { Text = "세력을 지정하면 장수를 배치할 수 있습니다." });
             return;
         }
         var names = _source.Generals.ToDictionary(general => general.Id.Value, general => general.Name);
-        host.AddChild(new Label { Text = "주둔 장수" });
-        var roster = new GridContainer { Columns = 2, SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        host.AddChild(roster);
-        foreach (var general in _draft.Generals.Where(general => general.SiteId == city.SiteId).ToArray())
+        var rosterScroll = new ScrollContainer { CustomMinimumSize = new Vector2(0, 155),
+            SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        host.AddChild(rosterScroll);
+        var roster = new GridContainer { Columns = 4, SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        roster.AddThemeConstantOverride("h_separation", 8);
+        roster.AddThemeConstantOverride("v_separation", 2);
+        rosterScroll.AddChild(roster);
+        foreach (var general in posted)
         {
-            roster.AddChild(new Label { Text = names.GetValueOrDefault(general.GeneralId, general.GeneralId.ToString()),
-                SizeFlagsHorizontal = SizeFlags.ExpandFill });
-            var remove = new Button { Text = "제거" };
+            var name = new Label { Text = names.GetValueOrDefault(general.GeneralId, general.GeneralId.ToString()),
+                SizeFlagsHorizontal = SizeFlags.ExpandFill };
+            name.AddThemeFontSizeOverride("font_size", 13);
+            roster.AddChild(name);
+            var remove = new Button { Text = "제거", CustomMinimumSize = new Vector2(46, 24) };
             remove.Pressed += () =>
             {
                 _draft = _draft with { Generals = _draft.Generals.Where(value => value.GeneralId != general.GeneralId).ToArray() };
                 ShowCities();
             };
             roster.AddChild(remove);
+        }
+        if (posted.Length % 2 != 0)
+        {
+            roster.AddChild(new Control());
+            roster.AddChild(new Control());
         }
         host.AddChild(new HSeparator());
         var search = new LineEdit { PlaceholderText = "장수 검색", Text = _generalSearch };
