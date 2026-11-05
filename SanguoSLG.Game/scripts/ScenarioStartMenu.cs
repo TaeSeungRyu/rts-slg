@@ -331,43 +331,60 @@ public sealed partial class ScenarioStartMenu : Control
         rightColumn.AddChild(start);
         var menuCenter = new CenterContainer();
         menuCenter.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
-        menuCenter.AnchorLeft = 0.56f;
-        menuCenter.AnchorRight = 0.96f;
+        menuCenter.AnchorLeft = 0.54f;
+        menuCenter.AnchorRight = 0.97f;
         AddChild(menuCenter);
-        var menuPanel = new PanelContainer { CustomMinimumSize = new Vector2(430, 0) };
-        var menuStyle = new StyleBoxFlat { BgColor = new Color(0.045f, 0.045f, 0.07f, 0.86f),
-            BorderColor = new Color("b78a49") };
+        var menuPanel = new PanelContainer { Name = "TitleMenuPanel", CustomMinimumSize = new Vector2(470, 0) };
+        var menuStyle = new StyleBoxFlat { BgColor = new Color(0.075f, 0.065f, 0.061f, 0.72f),
+            BorderColor = new Color("c59b5d") };
         menuStyle.SetBorderWidthAll(2);
         menuStyle.SetCornerRadiusAll(12);
-        menuStyle.SetContentMarginAll(22);
+        menuStyle.SetContentMarginAll(25);
         menuPanel.AddThemeStyleboxOverride("panel", menuStyle);
         menuCenter.AddChild(menuPanel);
         var menu = new VBoxContainer();
-        menu.AddThemeConstantOverride("separation", 10);
+        menu.AddThemeConstantOverride("separation", 12);
         menuPanel.AddChild(menu);
-        var gameTitle = new Label { Text = "삼국지", HorizontalAlignment = HorizontalAlignment.Center };
-        gameTitle.AddThemeFontSizeOverride("font_size", 48);
-        gameTitle.AddThemeColorOverride("font_color", new Color("f4d38e"));
+        var gameTitle = new Label { Name = "TitleGameName", Text = "삼국지", HorizontalAlignment = HorizontalAlignment.Center };
+        gameTitle.AddThemeFontOverride("font", GD.Load<FontFile>("res://assets/fonts/Pretendard-SemiBold.otf"));
+        gameTitle.AddThemeFontSizeOverride("font_size", 70);
+        gameTitle.AddThemeColorOverride("font_color", new Color("f9d891"));
+        gameTitle.AddThemeColorOverride("font_shadow_color", new Color(0, 0, 0, 0.85f));
+        gameTitle.AddThemeConstantOverride("shadow_offset_x", 3);
+        gameTitle.AddThemeConstantOverride("shadow_offset_y", 4);
         menu.AddChild(gameTitle);
-        var menuSubtitle = new Label { Text = "영웅의 시대 · 천하의 운명", HorizontalAlignment = HorizontalAlignment.Center };
+        var menuSubtitle = new Label { Text = "영웅의 시대   ·   천하의 운명", HorizontalAlignment = HorizontalAlignment.Center };
         menuSubtitle.AddThemeColorOverride("font_color", new Color("d9b77a"));
         menu.AddChild(menuSubtitle);
-        menu.AddChild(new HSeparator());
-        void MenuItem(string label, Action pressed)
+        var titleRule = new Label { Text = "──────────  ◈  ──────────", HorizontalAlignment = HorizontalAlignment.Center };
+        titleRule.AddThemeColorOverride("font_color", new Color("cba969"));
+        menu.AddChild(titleRule);
+        void MenuItem(VBoxContainer group, string label, Action pressed, bool primary = false)
         {
-            var button = new Button { Text = label, CustomMinimumSize = new Vector2(0, 48) };
-            button.AddThemeFontSizeOverride("font_size", 18);
-            StyleTitleButton(button);
+            var button = new Button { Text = label, CustomMinimumSize = new Vector2(0, primary ? 57 : 41) };
+            button.AddThemeFontSizeOverride("font_size", primary ? 20 : 16);
+            StyleTitleButton(button, primary);
             button.Pressed += pressed;
-            menu.AddChild(button);
+            group.AddChild(button);
         }
-        MenuItem("새 게임 시작하기", () => { menuCenter.Visible = false; center.Visible = true; });
-        MenuItem("저장된 게임 시작하기", () => OpenLoadSlots(menuCenter));
-        MenuItem("신규장수 등록", () => EnterEditor(GetTree(), "res://GeneralCreator.tscn"));
-        MenuItem("장수 에디터", () => EnterEditor(GetTree(), "res://GeneralEditor.tscn"));
-        MenuItem("지형 에디터", () => EnterEditor(GetTree(), "res://EditMap.tscn"));
-        MenuItem("시나리오 에디터", () => EnterEditor(GetTree(), "res://ScenarioEditor.tscn"));
-        MenuItem("게임 종료", () => GetTree().Quit());
+        var mainActions = new VBoxContainer { Name = "TitlePrimaryActions" };
+        mainActions.AddThemeConstantOverride("separation", 10);
+        menu.AddChild(mainActions);
+        MenuItem(mainActions, "새 게임 시작하기", () => { menuCenter.Visible = false; center.Visible = true; }, true);
+        MenuItem(mainActions, "이어하기 · 저장된 게임", () => OpenLoadSlots(menuCenter), true);
+        var editorHeader = new Label { Text = "역사와 장수 편집", HorizontalAlignment = HorizontalAlignment.Center };
+        editorHeader.AddThemeColorOverride("font_color", new Color("c8ad7d"));
+        menu.AddChild(editorHeader);
+        var editorActions = new VBoxContainer { Name = "TitleEditorActions" };
+        editorActions.AddThemeConstantOverride("separation", 7);
+        menu.AddChild(editorActions);
+        MenuItem(editorActions, "신규장수 등록", () => EnterEditor(GetTree(), "res://GeneralCreator.tscn"));
+        MenuItem(editorActions, "장수 에디터", () => EnterEditor(GetTree(), "res://GeneralEditor.tscn"));
+        MenuItem(editorActions, "지형 에디터", () => EnterEditor(GetTree(), "res://EditMap.tscn"));
+        MenuItem(editorActions, "시나리오 에디터", () => EnterEditor(GetTree(), "res://ScenarioEditor.tscn"));
+        var quitActions = new VBoxContainer();
+        menu.AddChild(quitActions);
+        MenuItem(quitActions, "게임 종료", () => GetTree().Quit());
         AddTitleTips(menu);
         AnimateTitleEntrance(illustration, menu);
         var back = new Button { Text = "← 메인 메뉴", CustomMinimumSize = new Vector2(140, 36) };
@@ -471,9 +488,10 @@ public sealed partial class ScenarioStartMenu : Control
         var factionControls = FindChildren("*", "Button", true, false).OfType<Button>()
             .Where(button => button.HasMeta("faction_id")).ToArray();
         var titleArt = FindChild("TitleIllustration", true, false) as TextureRect;
-        var titleCrop = titleArt?.Texture as AtlasTexture;
-        var titlePresentation = titleCrop?.Atlas is not null
-            && titleCrop.Region == new Rect2(0, 0, 1000, 1000)
+        var titlePresentation = titleArt?.Texture is ImageTexture
+            && titleArt.StretchMode == TextureRect.StretchModeEnum.KeepAspectCovered
+            && FindChild("TitleAtmosphere", true, false) is ColorRect
+            && FindChild("TitleMenuPanel", true, false) is PanelContainer
             && FindChild("TitleEmbers", true, false) is CpuParticles2D { Emitting: true }
             && FindChild("TitleGameTip", true, false) is Label tip && tip.Text.Length > 0;
         var passed = titlePresentation && hasOfficerConfirm
@@ -491,7 +509,9 @@ public sealed partial class ScenarioStartMenu : Control
                 .Any(label => label.Text.Contains("점령 거점") && label.Text.Contains("병력") && label.Text.Contains("장수"))
             && buttons.Contains("지형 에디터")
             && buttons.Contains("시나리오 에디터") && buttons.Contains("장수 에디터")
-            && buttons.Contains("신규장수 등록") && buttons.Contains("저장된 게임 시작하기");
+            && buttons.Contains("신규장수 등록") && buttons.Contains("이어하기 · 저장된 게임")
+            && FindChild("TitlePrimaryActions", true, false) is VBoxContainer
+            && FindChild("TitleEditorActions", true, false) is VBoxContainer;
         GD.Print($"[scenario-start-qa] passed={passed} buttons={buttons.Length} scenarios={scenarios?.ItemCount}");
         GetTree().Quit(passed ? 0 : 1);
     }

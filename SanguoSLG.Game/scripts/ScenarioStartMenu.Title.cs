@@ -20,35 +20,33 @@ public sealed partial class ScenarioStartMenu
 
     private TextureRect AddTitleBackdrop()
     {
-        var darkness = new ColorRect { Color = new Color("1b171c"), MouseFilter = MouseFilterEnum.Ignore };
-        darkness.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
-        AddChild(darkness);
-
-        var image = Image.LoadFromFile(ProjectSettings.GlobalizePath("res://assets/ui/title/red_cliffs_cleaned.png"));
+        var image = Image.LoadFromFile(ProjectSettings.GlobalizePath("res://assets/ui/title/red_cliffs_fullscreen.png"));
         if (image is null || image.IsEmpty()) throw new InvalidDataException("시작 화면 이미지를 읽을 수 없습니다.");
-        var original = ImageTexture.CreateFromImage(image);
-        var cropped = new AtlasTexture { Atlas = original, Region = new Rect2(0, 0, 1000, 1000) };
         var illustration = new TextureRect
         {
             Name = "TitleIllustration",
-            Texture = cropped,
+            Texture = ImageTexture.CreateFromImage(image),
             ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
             StretchMode = TextureRect.StretchModeEnum.KeepAspectCovered,
             MouseFilter = MouseFilterEnum.Ignore,
         };
-        illustration.AnchorRight = 0.57f;
-        illustration.AnchorBottom = 1;
+        illustration.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
         AddChild(illustration);
+        var atmosphere = new ColorRect { Name = "TitleAtmosphere", MouseFilter = MouseFilterEnum.Ignore };
+        atmosphere.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+        var fogShader = new Shader { Code = "shader_type canvas_item; uniform float time_shift = 0.0; void fragment() { vec2 p = UV; float wave = sin(p.x * 7.0 + time_shift) * 0.025 + sin(p.x * 12.0 - time_shift * 0.57) * 0.012; float band = exp(-pow((p.y - 0.66 - wave) * 9.0, 2.0)); COLOR = vec4(0.54, 0.48, 0.44, band * 0.09); }" };
+        atmosphere.Material = new ShaderMaterial { Shader = fogShader };
+        AddChild(atmosphere);
+        var fogMotion = CreateTween().SetLoops();
+        fogMotion.TweenMethod(Callable.From<float>(value => ((ShaderMaterial)atmosphere.Material).SetShaderParameter("time_shift", value)), 0f, 6.28f, 28f);
 
-        var menuBackground = new ColorRect
-        {
-            Color = new Color(0.055f, 0.047f, 0.068f, 0.96f),
-            MouseFilter = MouseFilterEnum.Ignore,
-        };
-        menuBackground.AnchorLeft = 0.55f;
-        menuBackground.AnchorRight = 1;
-        menuBackground.AnchorBottom = 1;
-        AddChild(menuBackground);
+        var fireGlow = new ColorRect { Name = "TitleFireGlow", MouseFilter = MouseFilterEnum.Ignore };
+        fireGlow.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+        fireGlow.Material = new ShaderMaterial { Shader = new Shader { Code = "shader_type canvas_item; void fragment() { vec2 d = (UV - vec2(0.38, 0.66)) * vec2(1.8, 2.4); float glow = exp(-dot(d,d) * 9.0); COLOR = vec4(1.0, 0.32, 0.04, glow * 0.075); }" } };
+        AddChild(fireGlow);
+        var firePulse = CreateTween().SetLoops();
+        firePulse.TweenProperty(fireGlow, "modulate:a", 0.5f, 3.8f);
+        firePulse.TweenProperty(fireGlow, "modulate:a", 1f, 4.5f);
 
         var embers = new CpuParticles2D
         {
@@ -82,14 +80,16 @@ public sealed partial class ScenarioStartMenu
         return style;
     }
 
-    private void StyleTitleButton(Button button)
+    private void StyleTitleButton(Button button, bool primary = false)
     {
         button.AddThemeColorOverride("font_color", new Color("f4dfb2"));
-        button.AddThemeStyleboxOverride("normal", TitleButtonStyle(new Color("231b1a"), new Color("886638")));
-        button.AddThemeStyleboxOverride("hover", TitleButtonStyle(new Color("684021"), new Color("ffcf73")));
+        button.AddThemeColorOverride("font_hover_color", new Color("fff1c4"));
+        button.AddThemeStyleboxOverride("normal", TitleButtonStyle(primary ? new Color(0.34f, 0.18f, 0.075f, 0.90f) : new Color(0.10f, 0.085f, 0.08f, 0.62f), primary ? new Color("d9a859") : new Color("806749")));
+        button.AddThemeStyleboxOverride("hover", TitleButtonStyle(new Color(0.48f, 0.28f, 0.09f, 0.94f), new Color("ffcf73")));
         button.AddThemeStyleboxOverride("pressed", TitleButtonStyle(new Color("8c4d24"), new Color("fff0ac")));
-        button.MouseEntered += () => CreateTween().TweenProperty(button, "modulate", new Color(1f, 0.9f, 0.68f), 0.13);
-        button.MouseExited += () => CreateTween().TweenProperty(button, "modulate", Colors.White, 0.16);
+        button.Resized += () => button.PivotOffset = button.Size / 2;
+        button.MouseEntered += () => { CreateTween().TweenProperty(button, "scale", new Vector2(1.025f, 1.025f), 0.16); CreateTween().TweenProperty(button, "modulate", new Color(1f, 0.94f, 0.76f), 0.16); };
+        button.MouseExited += () => { CreateTween().TweenProperty(button, "scale", Vector2.One, 0.18); CreateTween().TweenProperty(button, "modulate", Colors.White, 0.18); };
     }
 
     private void AddTitleTips(VBoxContainer menu)
@@ -113,10 +113,10 @@ public sealed partial class ScenarioStartMenu
 
     private void AnimateTitleEntrance(TextureRect illustration, VBoxContainer menu)
     {
-        illustration.PivotOffset = new Vector2(500, 500);
+        illustration.PivotOffset = GetViewport().GetVisibleRect().Size / 2;
         var breathing = CreateTween().SetLoops();
-        breathing.TweenProperty(illustration, "scale", new Vector2(1.018f, 1.018f), 10);
-        breathing.TweenProperty(illustration, "scale", Vector2.One, 10);
+        breathing.TweenProperty(illustration, "scale", new Vector2(1.012f, 1.012f), 12);
+        breathing.TweenProperty(illustration, "scale", Vector2.One, 12);
         menu.Modulate = new Color(1, 1, 1, 0);
         var entrance = CreateTween();
         entrance.TweenInterval(0.2);
