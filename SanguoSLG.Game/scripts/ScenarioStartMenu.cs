@@ -228,9 +228,14 @@ public sealed partial class ScenarioStartMenu : Control
         var scenarioCardsReady = scenarioThumbnails.Length == _newGameScenarios.Count
             && scenarioThumbnails.All(thumbnail => thumbnail is
                 { Texture: not null, StretchMode: TextureRect.StretchModeEnum.KeepAspectCovered });
-        var styledFooter = FindChildren("NewGame*Button", "Button", true, false).OfType<Button>()
-            .Where(button => button.Name.ToString() is "NewGameBackButton" or "NewGameLaunchButton")
-            .All(button => button.GetThemeStylebox("normal") is StyleBoxTexture { Texture: not null });
+        var footerActions = FindChildren("NewGame*Button", "TextureButton", true, false)
+            .OfType<TextureButton>().Where(button =>
+                button.Name.ToString() is "NewGameBackButton" or "NewGameLaunchButton").ToArray();
+        var styledFooter = footerActions.Length == 2 && footerActions.All(button => button is
+            { TextureNormal: not null, TextureHover: not null, TexturePressed: not null,
+                StretchMode: TextureButton.StretchModeEnum.KeepAspectCentered }
+            && button.FindChild("Caption", false, false) is Label
+                { HorizontalAlignment: HorizontalAlignment.Center });
         var readableMap = FindChild("ScenarioMapTooltip", true, false) is PanelContainer
             && _newGameFactionMap is { HasTerrain: true };
         var difficultyButtons = FindChildren("Difficulty*", "Button", true, false).OfType<Button>().ToArray();

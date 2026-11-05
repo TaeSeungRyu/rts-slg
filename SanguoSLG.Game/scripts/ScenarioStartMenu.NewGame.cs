@@ -8,9 +8,10 @@ public sealed partial class ScenarioStartMenu
 {
     private readonly List<(string Path, ScenarioDraft Draft)> _newGameScenarios = [];
     private readonly List<Button> _newGameScenarioCards = [];
-    private Button? _newGameStartButton;
+    private TextureButton? _newGameStartButton;
     private ScenarioFactionMap? _newGameFactionMap;
     private Label? _newGameFactionName;
+    private Label? _newGameRulerName;
     private Label? _newGameFactionNumbers;
     private Label? _newGameFactionHint;
     private TextureRect? _newGameRulerPortrait;
@@ -28,6 +29,11 @@ public sealed partial class ScenarioStartMenu
     private static readonly Color NewGameGoldBright = new("f0cf7c");
     private static readonly Color NewGameIvory = new("eee3cc");
     private static readonly Color NewGameMuted = new("b6aa94");
+    private static readonly HashSet<string> OfficialScenarioIds =
+    [
+        "historical-184", "historical-190", "historical-194",
+        "historical-208", "historical-214", "fictional-revival"
+    ];
 
     private static Font NewGameSerif(int weight) => new FontVariation
     {
@@ -263,6 +269,11 @@ public sealed partial class ScenarioStartMenu
         _newGameFactionName.AddThemeFontSizeOverride("font_size", 21);
         _newGameFactionName.AddThemeColorOverride("font_color", NewGameGoldBright);
         detailColumn.AddChild(_newGameFactionName);
+        _newGameRulerName = new Label { Visible = false, HorizontalAlignment = HorizontalAlignment.Center };
+        _newGameRulerName.AddThemeFontOverride("font", NewGameSerif(600));
+        _newGameRulerName.AddThemeFontSizeOverride("font_size", 17);
+        _newGameRulerName.AddThemeColorOverride("font_color", NewGameIvory);
+        detailColumn.AddChild(_newGameRulerName);
         _newGameFactionNumbers = new Label
         {
             Visible = false,
@@ -322,7 +333,7 @@ public sealed partial class ScenarioStartMenu
         var footer = new HBoxContainer { Name = "NewGameFooter" };
         footer.AddThemeConstantOverride("separation", 12);
         root.AddChild(footer);
-        var back = NewGameFooterButton("NewGameBackButton", "←  메인 메뉴로 돌아가기", false);
+        var back = NewGameFooterAction("NewGameBackButton", "←  메인 메뉴로 돌아가기", false);
         back.Pressed += () =>
         {
             screen.Visible = false;
@@ -331,54 +342,51 @@ public sealed partial class ScenarioStartMenu
         footer.AddChild(back);
         var spacer = new Control { SizeFlagsHorizontal = SizeFlags.ExpandFill };
         footer.AddChild(spacer);
-        _newGameStartButton = NewGameFooterButton("NewGameLaunchButton", "천하에 출정하기  →", true);
+        _newGameStartButton = NewGameFooterAction("NewGameLaunchButton", "천하에 출정하기  →", true);
         _newGameStartButton.Disabled = true;
+        SetFooterActionEnabled(_newGameStartButton, false);
         _newGameStartButton.TooltipText = "지도에서 플레이할 세력을 선택하십시오.";
         _newGameStartButton.Pressed += StartSelectedNewGame;
         footer.AddChild(_newGameStartButton);
     }
 
-    private static Button NewGameFooterButton(string name, string text, bool primary)
+    private static TextureButton NewGameFooterAction(string name, string text, bool primary)
     {
-        var button = new Button
+        var tier = primary ? "primary" : "secondary";
+        var button = new TextureButton
         {
             Name = name,
-            Text = text,
-            CustomMinimumSize = primary ? new Vector2(300, 47) : new Vector2(270, 47)
+            CustomMinimumSize = primary ? new Vector2(370, 58.14f) : new Vector2(286, 50.05f),
+            TextureNormal = GD.Load<Texture2D>($"res://assets/ui/title/components/{tier}_normal.png"),
+            TextureHover = GD.Load<Texture2D>($"res://assets/ui/title/components/{tier}_hover.png"),
+            TexturePressed = GD.Load<Texture2D>($"res://assets/ui/title/components/{tier}_pressed.png"),
+            TextureDisabled = GD.Load<Texture2D>($"res://assets/ui/title/components/{tier}_normal.png"),
+            IgnoreTextureSize = true,
+            StretchMode = TextureButton.StretchModeEnum.KeepAspectCentered,
+            MouseDefaultCursorShape = CursorShape.PointingHand
         };
-        button.AddThemeFontOverride("font", NewGameSerif(primary ? 700 : 550));
-        button.AddThemeFontSizeOverride("font_size", primary ? 17 : 15);
-        var tier = primary ? "primary" : "secondary";
-        button.AddThemeStyleboxOverride("normal", NewGameImageButtonStyle(tier, "normal", primary));
-        button.AddThemeStyleboxOverride("hover", NewGameImageButtonStyle(tier, "hover", primary));
-        button.AddThemeStyleboxOverride("pressed", NewGameImageButtonStyle(tier, "pressed", primary));
-        button.AddThemeStyleboxOverride("disabled", NewGameButtonStyle(
-            new Color("211b19"), new Color("5a5143"), 1));
-        button.AddThemeColorOverride("font_color", NewGameGoldBright);
-        button.AddThemeColorOverride("font_hover_color", new Color("fff0bc"));
-        button.AddThemeColorOverride("font_pressed_color", new Color("f7d986"));
-        button.AddThemeColorOverride("font_disabled_color", new Color("756d60"));
+        var caption = new Label
+        {
+            Name = "Caption",
+            Text = text,
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center,
+            MouseFilter = MouseFilterEnum.Ignore
+        };
+        caption.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+        caption.AddThemeFontOverride("font", NewGameSerif(primary ? 700 : 550));
+        caption.AddThemeFontSizeOverride("font_size", primary ? 18 : 15);
+        caption.AddThemeColorOverride("font_color", NewGameGoldBright);
+        button.AddChild(caption);
         return button;
     }
 
-    private static StyleBoxTexture NewGameImageButtonStyle(string tier, string state, bool primary)
+    private static void SetFooterActionEnabled(TextureButton? button, bool enabled)
     {
-        var style = new StyleBoxTexture
-        {
-            Texture = GD.Load<Texture2D>($"res://assets/ui/title/components/{tier}_{state}.png"),
-            ModulateColor = primary ? Colors.White : new Color(0.9f, 0.88f, 0.82f)
-        };
-        var horizontal = primary ? 82 : 68;
-        var vertical = primary ? 32 : 28;
-        style.TextureMarginLeft = horizontal;
-        style.TextureMarginRight = horizontal;
-        style.TextureMarginTop = vertical;
-        style.TextureMarginBottom = vertical;
-        style.ContentMarginLeft = 18;
-        style.ContentMarginRight = 18;
-        style.ContentMarginTop = 7;
-        style.ContentMarginBottom = 7;
-        return style;
+        if (button is null) return;
+        button.Disabled = !enabled;
+        button.Modulate = enabled ? Colors.White : new Color(0.48f, 0.46f, 0.42f, 0.88f);
+        button.MouseDefaultCursorShape = enabled ? CursorShape.PointingHand : CursorShape.Arrow;
     }
 
     private void LoadNewGameScenarios()
@@ -466,7 +474,10 @@ public sealed partial class ScenarioStartMenu
         title.AddThemeFontSizeOverride("font_size", 16);
         title.AddThemeColorOverride("font_color", NewGameIvory);
         text.AddChild(title);
-        var synopsis = draft.Description.Length > 46 ? draft.Description[..46] + "…" : draft.Description;
+        var rawSynopsis = string.IsNullOrWhiteSpace(draft.Description)
+            ? "설명이 등록되지 않았습니다."
+            : draft.Description.Trim();
+        var synopsis = rawSynopsis.Length > 46 ? rawSynopsis[..46] + "…" : rawSynopsis;
         var description = new Label
         {
             Text = synopsis,
@@ -493,19 +504,26 @@ public sealed partial class ScenarioStartMenu
 
     private Texture2D ResolveScenarioThumbnail(string scenarioPath, ScenarioDraft draft)
     {
-        var resourcePath = $"res://assets/ui/scenarios/scenario_{draft.Id}.png";
-        if (Godot.FileAccess.FileExists(resourcePath))
-            return GD.Load<Texture2D>(resourcePath);
+        var isUserScenario = Path.GetFullPath(scenarioPath).StartsWith(
+            Path.GetFullPath(_newGameScenarioDirectory), StringComparison.OrdinalIgnoreCase);
+        if (!isUserScenario && OfficialScenarioIds.Contains(draft.Id))
+        {
+            var resourcePath = $"res://assets/ui/scenarios/scenario_{draft.Id}.png";
+            if (Godot.FileAccess.FileExists(resourcePath)) return GD.Load<Texture2D>(resourcePath);
+        }
         var directory = Path.GetDirectoryName(scenarioPath)!;
-        foreach (var candidate in new[]
+        if (!isUserScenario)
         {
-            Path.Combine(directory, $"scenario_{draft.Id}.png"),
-            Path.ChangeExtension(scenarioPath, ".png")
-        })
-        {
-            if (!File.Exists(candidate)) continue;
-            using var image = Image.LoadFromFile(candidate);
-            if (image is not null && !image.IsEmpty()) return ImageTexture.CreateFromImage(image);
+            foreach (var candidate in new[]
+            {
+                Path.Combine(directory, $"scenario_{draft.Id}.png"),
+                Path.ChangeExtension(scenarioPath, ".png")
+            })
+            {
+                if (!File.Exists(candidate)) continue;
+                using var image = Image.LoadFromFile(candidate);
+                if (image is not null && !image.IsEmpty()) return ImageTexture.CreateFromImage(image);
+            }
         }
         const string commonPath = "res://assets/ui/scenarios/custom_scenario.png";
         if (Godot.FileAccess.FileExists(commonPath)) return GD.Load<Texture2D>(commonPath);
@@ -578,10 +596,11 @@ public sealed partial class ScenarioStartMenu
             _newGameRulerPortrait.Texture = null;
         }
         if (_newGameFactionName is not null) _newGameFactionName.Visible = false;
+        if (_newGameRulerName is not null) _newGameRulerName.Visible = false;
         if (_newGameFactionNumbers is not null) _newGameFactionNumbers.Visible = false;
         if (_newGameStartButton is not null)
         {
-            _newGameStartButton.Disabled = true;
+            SetFooterActionEnabled(_newGameStartButton, false);
             _newGameStartButton.TooltipText = "지도에서 플레이할 세력을 선택하십시오.";
         }
     }
@@ -610,8 +629,13 @@ public sealed partial class ScenarioStartMenu
         }
         if (_newGameFactionName is not null)
         {
-            _newGameFactionName.Text = $"{faction.Name}  ·  군주 {rulerName}";
+            _newGameFactionName.Text = faction.Name;
             _newGameFactionName.Visible = true;
+        }
+        if (_newGameRulerName is not null)
+        {
+            _newGameRulerName.Text = $"군주  {rulerName}";
+            _newGameRulerName.Visible = true;
         }
         if (_newGameFactionNumbers is not null)
         {
@@ -620,7 +644,7 @@ public sealed partial class ScenarioStartMenu
         }
         if (_newGameStartButton is not null)
         {
-            _newGameStartButton.Disabled = false;
+            SetFooterActionEnabled(_newGameStartButton, true);
             _newGameStartButton.TooltipText = $"{faction.Name} 세력으로 시작합니다.";
         }
         if (_newGameError is not null) _newGameError.Text = "";
@@ -754,14 +778,29 @@ public sealed partial class ScenarioStartMenu
         var buttons = new HBoxContainer { Alignment = BoxContainer.AlignmentMode.End };
         buttons.AddThemeConstantOverride("separation", 10);
         content.AddChild(buttons);
-        var cancel = NewGameFooterButton("NewGameConfirmCancel", "취소", false);
+        var cancel = NewGameDialogButton("NewGameConfirmCancel", "취소", false);
         cancel.CustomMinimumSize = new Vector2(120, 38);
         cancel.Pressed += Close;
         buttons.AddChild(cancel);
-        var confirm = NewGameFooterButton("NewGameConfirmAccept", "확인", true);
+        var confirm = NewGameDialogButton("NewGameConfirmAccept", "확인", true);
         confirm.CustomMinimumSize = new Vector2(120, 38);
         confirm.Pressed += () => { Close(); onConfirmed(); };
         buttons.AddChild(confirm);
+    }
+
+    private static Button NewGameDialogButton(string name, string text, bool primary)
+    {
+        var button = new Button { Name = name, Text = text };
+        button.AddThemeFontOverride("font", NewGameSerif(primary ? 700 : 550));
+        button.AddThemeFontSizeOverride("font_size", primary ? 17 : 15);
+        button.AddThemeStyleboxOverride("normal", NewGameButtonStyle(
+            primary ? new Color("6d211a") : new Color("231915"), new Color("b58a43"), 1));
+        button.AddThemeStyleboxOverride("hover", NewGameButtonStyle(
+            primary ? new Color("8c3023") : new Color("37231b"), new Color("e0b95f"), 1));
+        button.AddThemeStyleboxOverride("pressed", NewGameButtonStyle(
+            new Color("4d1713"), new Color("f0cc73"), 2));
+        button.AddThemeColorOverride("font_color", NewGameGoldBright);
+        return button;
     }
 
     private void SelectFirstFactionForQa()
