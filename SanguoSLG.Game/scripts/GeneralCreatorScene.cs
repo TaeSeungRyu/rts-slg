@@ -176,8 +176,8 @@ public partial class GeneralCreatorScene : Control
         _description = new TextEdit { CustomMinimumSize = new Vector2(0, 115) };
         introduction.AddChild(_description);
 
-        var portraitSection = GeneralWorkspaceStyle.Section(portraits, "초상·얼굴");
-        portraitSection.AddChild(new Label { Text = "기본 얼굴을 고르거나 외부 PNG·JPG·WEBP 파일을 가져오세요." });
+        var portraitSection = GeneralWorkspaceStyle.Section(portraits,
+            "초상 얼굴 (기본 얼굴을 고르거나 외부 PNG·JPG·WEBP 파일을 가져오세요.)");
         var portraitRow = new HBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
         portraitRow.AddThemeConstantOverride("separation", 18);
         portraitSection.AddChild(portraitRow);
