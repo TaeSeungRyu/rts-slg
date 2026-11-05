@@ -235,12 +235,23 @@ public sealed partial class ScenarioStartMenu : Control
                 button.Name.ToString() is "NewGameBackButton" or "NewGameLaunchButton").ToArray();
         var styledFooter = footerActions.Length == 2 && footerActions.All(button => button is
             { TextureNormal: not null, TextureHover: not null, TexturePressed: not null, TextureDisabled: not null,
-                StretchMode: TextureButton.StretchModeEnum.KeepAspectCentered }
+                StretchMode: TextureButton.StretchModeEnum.KeepAspectCentered, FocusMode: FocusModeEnum.None }
             && button.TextureHover == button.TextureNormal
+            && button.TexturePressed == button.TextureNormal
+            && button.TextureDisabled == button.TextureNormal
             && button.FindChild("Caption", false, false) is Label
                 { HorizontalAlignment: HorizontalAlignment.Center }
             && Mathf.Abs(button.CustomMinimumSize.X / button.CustomMinimumSize.Y
                 - button.TextureNormal.GetWidth() / (float)button.TextureNormal.GetHeight()) < 0.02f);
+        var scenarioInfo = FindChild("SelectedScenarioTitle", true, false) is Label scenarioTitle
+            && !scenarioTitle.Text.Contains("년", StringComparison.Ordinal)
+            && FindChild("SelectedScenarioDate", true, false) is Label scenarioDate
+            && scenarioDate.Text.Contains("년", StringComparison.Ordinal)
+            && FindChild("SelectedScenarioDescription", true, false) is Label scenarioDescription
+            && !string.Equals(scenarioDescription.Text, scenarioTitle.Text, StringComparison.Ordinal)
+            && FindChild("SelectedScenarioSummary", true, false) is Label scenarioSummary
+            && scenarioSummary.Text.Contains("주요 세력", StringComparison.Ordinal)
+            && scenarioSummary.Text.Contains("총 거점", StringComparison.Ordinal);
         var readableMap = FindChild("ScenarioMapTooltip", true, false) is PanelContainer
             && _newGameFactionMap is { HasTerrain: true };
         var difficultyButtons = FindChildren("Difficulty*", "Button", true, false).OfType<Button>().ToArray();
@@ -258,7 +269,7 @@ public sealed partial class ScenarioStartMenu : Control
         var passed = titlePresentation && hasOfficerConfirm && initiallyUnselected && selectedFromMap
             && scenarioReset && hardDifficulty && responsiveBounds && resolutionLayout
             && newGameLayout && noFactionButtonList && scenarioCardsReady && scenarioSelection
-            && styledFooter && readableMap && _newGameFactionMap is { HasSelectedSite: true }
+            && styledFooter && scenarioInfo && readableMap && _newGameFactionMap is { HasSelectedSite: true }
             && _newGameScenarios.Count >= 6
             && _newGameFactionMap is { HasTerrain: true, CityCount: > 0, SelectableFactionCount: > 0 }
             && difficultyButtons.Length == 2
@@ -267,7 +278,7 @@ public sealed partial class ScenarioStartMenu : Control
                         StretchMode: TextureButton.StretchModeEnum.KeepAspectCentered }
                     && button.FindChild("Caption", true, false) is Label { Text.Length: > 0 } caption
                     && caption.GetThemeFont("font").HasChar('가')) == 7;
-        GD.Print($"[scenario-start-qa] passed={passed} scenarios={_newGameScenarios.Count} thumbnails={scenarioCardsReady} cardMark={scenarioSelection} selectable={_newGameFactionMap?.SelectableFactionCount} selected={_newGameSelectedFactionId} site={_newGameFactionMap?.HasSelectedSite} reset={scenarioReset} hard={hardDifficulty} footer={styledFooter} viewport={viewport} panel={newGamePanel?.Size} resolutionLayout={resolutionLayout} columns={newGameLayout}");
+        GD.Print($"[scenario-start-qa] passed={passed} scenarios={_newGameScenarios.Count} thumbnails={scenarioCardsReady} cardMark={scenarioSelection} info={scenarioInfo} selectable={_newGameFactionMap?.SelectableFactionCount} selected={_newGameSelectedFactionId} site={_newGameFactionMap?.HasSelectedSite} reset={scenarioReset} hard={hardDifficulty} footer={styledFooter} viewport={viewport} panel={newGamePanel?.Size} resolutionLayout={resolutionLayout} columns={newGameLayout}");
         GetTree().Quit(passed ? 0 : 1);
     }
 

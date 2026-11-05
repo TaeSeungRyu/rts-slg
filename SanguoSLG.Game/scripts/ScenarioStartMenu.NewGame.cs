@@ -200,20 +200,37 @@ public sealed partial class ScenarioStartMenu
 
         var infoFrame = new PanelContainer { CustomMinimumSize = new Vector2(0, 112) };
         infoFrame.AddThemeStyleboxOverride("panel", NewGameFrame(
-            new Color(0.09f, 0.035f, 0.032f, 0.94f), new Color("846637"), 1, 5, 12));
+            new Color(0.09f, 0.035f, 0.032f, 0.94f), new Color("846637"), 1, 5, 8));
         column.AddChild(infoFrame);
         var info = new VBoxContainer();
-        info.AddThemeConstantOverride("separation", 4);
+        info.AddThemeConstantOverride("separation", 2);
         infoFrame.AddChild(info);
-        var scenarioTitle = new Label { Name = "SelectedScenarioTitle" };
+        var heading = new HBoxContainer();
+        heading.AddThemeConstantOverride("separation", 8);
+        info.AddChild(heading);
+        var scenarioTitle = new Label
+        {
+            Name = "SelectedScenarioTitle",
+            SizeFlagsHorizontal = SizeFlags.ExpandFill
+        };
         scenarioTitle.AddThemeFontOverride("font", NewGameSerif(650));
         scenarioTitle.AddThemeFontSizeOverride("font_size", 17);
         scenarioTitle.AddThemeColorOverride("font_color", NewGameGoldBright);
-        info.AddChild(scenarioTitle);
+        heading.AddChild(scenarioTitle);
+        var scenarioDate = new Label
+        {
+            Name = "SelectedScenarioDate",
+            HorizontalAlignment = HorizontalAlignment.Right
+        };
+        scenarioDate.AddThemeFontOverride("font", NewGameSerif(600));
+        scenarioDate.AddThemeFontSizeOverride("font_size", 14);
+        scenarioDate.AddThemeColorOverride("font_color", NewGameMuted);
+        heading.AddChild(scenarioDate);
         var description = new Label
         {
             Name = "SelectedScenarioDescription",
             AutowrapMode = TextServer.AutowrapMode.WordSmart,
+            MaxLinesVisible = 2,
             SizeFlagsVertical = SizeFlags.ExpandFill
         };
         description.AddThemeFontOverride("font", NewGameBodyFont());
@@ -362,10 +379,11 @@ public sealed partial class ScenarioStartMenu
             CustomMinimumSize = primary ? new Vector2(370, 58.14f) : new Vector2(286, 50.05f),
             TextureNormal = GD.Load<Texture2D>($"res://assets/ui/new_game/buttons/{tier}_normal.png"),
             TextureHover = GD.Load<Texture2D>($"res://assets/ui/new_game/buttons/{tier}_normal.png"),
-            TexturePressed = GD.Load<Texture2D>($"res://assets/ui/new_game/buttons/{tier}_pressed.png"),
-            TextureDisabled = GD.Load<Texture2D>($"res://assets/ui/new_game/buttons/{tier}_disabled.png"),
+            TexturePressed = GD.Load<Texture2D>($"res://assets/ui/new_game/buttons/{tier}_normal.png"),
+            TextureDisabled = GD.Load<Texture2D>($"res://assets/ui/new_game/buttons/{tier}_normal.png"),
             IgnoreTextureSize = true,
             StretchMode = TextureButton.StretchModeEnum.KeepAspectCentered,
+            FocusMode = FocusModeEnum.None,
             MouseDefaultCursorShape = CursorShape.PointingHand
         };
         var caption = new Label
@@ -381,10 +399,21 @@ public sealed partial class ScenarioStartMenu
         caption.AddThemeFontSizeOverride("font_size", primary ? 18 : 15);
         caption.AddThemeColorOverride("font_color", NewGameGoldBright);
         button.AddChild(caption);
-        button.MouseEntered += () => button.CreateTween().TweenProperty(
-            button, "self_modulate", new Color(1.08f, 1.04f, 0.92f), 0.12);
-        button.MouseExited += () => button.CreateTween().TweenProperty(
-            button, "self_modulate", Colors.White, 0.14);
+        var hovered = false;
+        button.MouseEntered += () =>
+        {
+            hovered = true;
+            button.SelfModulate = new Color(1.12f, 1.12f, 1.12f);
+        };
+        button.MouseExited += () =>
+        {
+            hovered = false;
+            button.SelfModulate = Colors.White;
+        };
+        button.ButtonDown += () => button.SelfModulate = new Color(0.85f, 0.85f, 0.85f);
+        button.ButtonUp += () => button.SelfModulate = hovered
+            ? new Color(1.12f, 1.12f, 1.12f)
+            : Colors.White;
         return button;
     }
 
@@ -589,10 +618,12 @@ public sealed partial class ScenarioStartMenu
             var (path, draft) = _newGameScenarios[index];
             var preset = LoadScenarioMap(draft, _newGameScenarioDirectory);
             _newGameFactionMap.SetScenario(draft, preset, 0);
-            SetNamedLabel("SelectedScenarioTitle", $"{draft.StartYear}년  ·  {ScenarioDisplayTitle(draft)}");
-            SetNamedLabel("SelectedScenarioDescription", draft.Description);
+            var displayTitle = ScenarioDisplayTitle(draft);
+            SetNamedLabel("SelectedScenarioTitle", displayTitle);
+            SetNamedLabel("SelectedScenarioDate", $"{draft.StartYear}년 {draft.StartMonth}월");
+            SetNamedLabel("SelectedScenarioDescription", ScenarioDescription(draft, displayTitle));
             SetNamedLabel("SelectedScenarioSummary",
-                $"▣ 시작  {draft.StartYear}년 {draft.StartMonth}월 {draft.StartDay}일  ·  ⚔ 주요 세력  {draft.Factions.Count(faction => faction.Playable && !faction.Hidden)}  ·  ▥ 총 거점  {preset.Sites.Count(site => site.Kind is "city" or "port" or "gate")}");
+                $"⚑  주요 세력  {draft.Factions.Count(faction => faction.Playable && !faction.Hidden)}\n▥  총 거점  {preset.Sites.Count(site => site.Kind is "city" or "port" or "gate")}");
             ResetNewGameFactionDetails();
             if (_newGameError is not null) _newGameError.Text = "";
             _newGameScenarioCards[index].GrabFocus();
@@ -609,6 +640,16 @@ public sealed partial class ScenarioStartMenu
         => draft.Title.StartsWith($"{draft.StartYear}년,", StringComparison.Ordinal)
             ? draft.Title[($"{draft.StartYear}년,").Length..].Trim()
             : draft.Title;
+
+    private static string ScenarioDescription(ScenarioDraft draft, string displayTitle)
+    {
+        var description = draft.Description.Trim();
+        return string.IsNullOrWhiteSpace(description)
+            || string.Equals(description, displayTitle, StringComparison.OrdinalIgnoreCase)
+            || string.Equals(description, draft.Title.Trim(), StringComparison.OrdinalIgnoreCase)
+            ? "등록된 시나리오 설명이 없습니다."
+            : description;
+    }
 
     private void SetNamedLabel(string name, string text)
     {
