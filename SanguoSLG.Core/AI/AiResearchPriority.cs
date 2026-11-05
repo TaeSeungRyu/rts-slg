@@ -48,10 +48,11 @@ public static class AiResearchPriority
             FactionResearch.PublicOrderCode,
             FactionResearch.TrainingCode,
             FactionResearch.CombatBackpackCode,
+            FactionResearch.ObservationCode,
             FactionResearch.ResearchDurationCode,
         ]);
         return priorities.Distinct().Where(code => state.ResearchOf(faction, code)
-            < GeneralResearchRules.MaxLevel).ToList();
+            < GeneralResearchRules.MaxLevelFor(code)).ToList();
     }
 
     public static IReadOnlyList<string> Stratagem(GameState state, FactionId faction)

@@ -30,6 +30,29 @@ public class ResearchSystemTests
         new(1, 1, new List<Faction>(), cities.ToList(), generals.ToList());
 
     [Fact]
+    public void 관측술은_3단계까지_전용_비용과_기간을_사용한다()
+    {
+        var code = FactionResearch.ObservationCode;
+        Assert.Equal(3, GeneralResearchRules.MaxLevelFor(code));
+        Assert.Equal(new[] { 2000, 4000, 8000 },
+            Enumerable.Range(1, 3).Select(level => GeneralResearchRules.Cost(code, level, B)));
+        Assert.Equal(new[] { 21, 42, 63 },
+            Enumerable.Range(1, 3).Select(level => ResearchDurationRules.BaseDays(code, level, B)));
+        var world = new WorldEngine(new BalanceConfig(MonthlyTaxPerCity: 0), B);
+        var state = State([Town(1, workshop: false, gold: 30000)], [Wit(1, 50)]);
+        foreach (var level in Enumerable.Range(1, 3))
+        {
+            var issued = Service().Issue(state, new CommandRequest(new CityId(1), CommandKind.Research,
+                new GeneralId(1), TroopCode: code));
+            Assert.True(issued.Ok, issued.Error);
+            state = world.AdvanceDays(issued.State, issued.State.Commands.Single().CompletionDay - issued.State.Day);
+            Assert.Equal(level, state.ResearchOf(new FactionId(1), code));
+        }
+        Assert.False(Service().Issue(state, new CommandRequest(new CityId(1), CommandKind.Research,
+            new GeneralId(1), TroopCode: code)).Ok);
+    }
+
+    [Fact]
     public void 전투배낭은_레벨당_고정3일을_더하고_해상은_기존절감을_따른다()
     {
         var balance = new BalanceConfig(MonthlyTaxPerCity: 100);

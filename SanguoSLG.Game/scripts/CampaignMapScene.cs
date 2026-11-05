@@ -6597,7 +6597,7 @@ public sealed partial class CampaignMapScene : Node3D
 
         Clear(_infoRows);
         _infoRows.AddChild(MakeLabel(c.Name, 15, GoldBright));
-        _infoRows.AddChild(MakeLabel($"성 시야 {_vision.CityRadius(c.Castle)}칸", 13, Parchment));
+        _infoRows.AddChild(MakeLabel($"성 시야 {_vision.CityRadius(c.Castle) + _state.ResearchOf(c.Owner, FactionResearch.ObservationCode)}칸", 13, Parchment));
         if (!owned && _state.IsScouted(Player, id))
             _infoRows.AddChild(MakeLabel($"정찰 남은 일수: {ScoutDaysLeft(id)}일", 13, GoldBright));
         if (!known)
@@ -14335,11 +14335,12 @@ public sealed partial class CampaignMapScene : Node3D
                 foreach (var definition in GeneralResearchRules.Definitions)
                 {
                     var level = _state.ResearchOf(city.Owner, definition.Code);
-                    var cost = level >= GeneralResearchRules.MaxLevel
+                    var maxLevel = GeneralResearchRules.MaxLevelFor(definition.Code);
+                    var cost = level >= maxLevel
                         ? 0
                         : GeneralResearchRules.Cost(definition.Code, level + 1, _cb);
-                    var detail = ResearchStars(level, GeneralResearchRules.MaxLevel)
-                        + (level >= GeneralResearchRules.MaxLevel
+                    var detail = ResearchStars(level, maxLevel)
+                        + (level >= maxLevel
                             ? "\n연구 완료"
                             : $"\n{GeneralResearchRules.NextEffectText(definition.Code, level)}\n{cost}금");
                     list.Add((definition.Name, Icon(Sym.Scroll), detail));
@@ -15055,9 +15056,10 @@ public sealed partial class CampaignMapScene : Node3D
         var city = _state.Cities.First(c => c.Id == cityId);
         var definition = GeneralResearchRules.Definitions[index];
         var level = _state.ResearchOf(city.Owner, definition.Code);
-        if (level >= GeneralResearchRules.MaxLevel)
+        var maxLevel = GeneralResearchRules.MaxLevelFor(definition.Code);
+        if (level >= maxLevel)
         {
-            return $"{definition.Name}  ·  Lv.{level}/{GeneralResearchRules.MaxLevel}\n{definition.Description}\n연구가 완료된 분야입니다.";
+            return $"{definition.Name}  ·  Lv.{level}/{maxLevel}\n{definition.Description}\n연구가 완료된 분야입니다.";
         }
 
         var next = level + 1;
@@ -15305,7 +15307,7 @@ public sealed partial class CampaignMapScene : Node3D
 
             var code = GeneralResearchRules.Definitions[_modalParam].Code;
             var generalLevel = _state.ResearchOf(city.Owner, code);
-            return generalLevel >= GeneralResearchRules.MaxLevel ? 0 : GeneralResearchRules.Cost(code, generalLevel + 1, _cb);
+            return generalLevel >= GeneralResearchRules.MaxLevelFor(code) ? 0 : GeneralResearchRules.Cost(code, generalLevel + 1, _cb);
         }
 
         if (cmd.Param == "stratagem_research")
@@ -16329,8 +16331,9 @@ public sealed partial class CampaignMapScene : Node3D
             var cityData = _state.Cities.First(c => c.Id == city);
             var caster = _state.Generals.First(g => g.Id == general);
             var level = _state.ResearchOf(cityData.Owner, troopCode);
-            var next = System.Math.Min(level + 1, GeneralResearchRules.MaxLevel);
-            var cost = level >= GeneralResearchRules.MaxLevel ? 0 : GeneralResearchRules.Cost(troopCode, next, _cb);
+            var maxLevel = GeneralResearchRules.MaxLevelFor(troopCode);
+            var next = System.Math.Min(level + 1, maxLevel);
+            var cost = level >= maxLevel ? 0 : GeneralResearchRules.Cost(troopCode, next, _cb);
             var days = ResearchDurationRules.Days(troopCode, next, AdministrationGrowth.EffectiveIntellectRounded(caster),
                 _state.ResearchOf(cityData.Owner, FactionResearch.ResearchDurationCode), _cb);
             var active = _state.Commands.FirstOrDefault(c => c.Kind == CommandKind.Research
@@ -16338,15 +16341,15 @@ public sealed partial class CampaignMapScene : Node3D
                 && _state.Cities.FirstOrDefault(x => x.Id == c.City)?.Owner == cityData.Owner);
             var definition = GeneralResearchRules.Definitions.First(d => d.Code == troopCode);
             extra = $"\n{definition.Name}"
-                + $"\nLv.{level} → Lv.{next}/{GeneralResearchRules.MaxLevel}"
+                + $"\nLv.{level} → Lv.{next}/{maxLevel}"
                 + $"\n{definition.Description}"
-                + (level >= GeneralResearchRules.MaxLevel
+                + (level >= maxLevel
                     ? "\n※ 이미 최대 단계입니다"
                     : $"\n다음 효과: {GeneralResearchRules.NextEffectText(troopCode, level)}"
                         + $"\n비용 {cost}금"
                         + $"\n[소요 {days}일]")
                 + (active is null ? "" : $"\n※ 일반연구 진행 중: {TroopName(active.TroopCode)} · 남은 {System.Math.Max(0, active.CompletionDay - _state.Day)}일")
-                + (level < GeneralResearchRules.MaxLevel && !ResearchFundingCanCover(cityData, cost) ? "\n※ 연구비 분담 도시의 금이 부족합니다" : "");
+                + (level < maxLevel && !ResearchFundingCanCover(cityData, cost) ? "\n※ 연구비 분담 도시의 금이 부족합니다" : "");
         }
 
         if (cmd.Kind == CommandKind.Research && cmd.Param == "stratagem_research")
@@ -18532,10 +18535,10 @@ public sealed partial class CampaignMapScene : Node3D
         var ownedCityCount = _state.Cities.Count(c => c.Owner == city.Owner);
         var generalOptions = OptionList(Cmds[commandIndex], city);
         var names = generalOptions.Select(o => o.Name).ToList();
-        var generalResearchUsesStars = generalOptions.All(option =>
-            option.Detail.Count(c => c == '★') == GeneralResearchRules.MaxLevel
-            && option.Detail.Contains("#777777", System.StringComparison.Ordinal)
-            && !option.Detail.Contains("Lv.", System.StringComparison.Ordinal));
+        var generalResearchUsesStars = generalOptions.Select((option, index) => (option, index)).All(entry =>
+            entry.option.Detail.Count(c => c == '★') == GeneralResearchRules.MaxLevelFor(GeneralResearchRules.Definitions[entry.index].Code)
+            && entry.option.Detail.Contains("#777777", System.StringComparison.Ordinal)
+            && !entry.option.Detail.Contains("Lv.", System.StringComparison.Ordinal));
         var framedGeneralResearchArt = _optionCards.All(card => card.FindChildren("*", "PanelContainer", true, false)
             .OfType<PanelContainer>().Any(frame => frame.GetMeta("rounded_option_art").AsBool()
                 && frame.GetMeta("option_art_size").AsInt32() == 54));
@@ -18544,7 +18547,7 @@ public sealed partial class CampaignMapScene : Node3D
             .OrderByDescending(p => p.Size.X * p.Size.Y).FirstOrDefault();
         var layoutOk = mainPanel is not null
             && mainPanel.Size.X <= viewportSize.X - 16f && mainPanel.Size.Y <= viewportSize.Y - 16f
-            && _optionCards.All(c => c.GetCombinedMinimumSize().X <= 190f && c.GetCombinedMinimumSize().Y <= 164f);
+            && _optionCards.All(c => c.GetCombinedMinimumSize().X <= 190f && c.GetCombinedMinimumSize().Y <= 180f);
         var maxCardSize = _optionCards.Aggregate(Vector2.Zero, (max, card) => new Vector2(
             Mathf.Max(max.X, card.GetCombinedMinimumSize().X), Mathf.Max(max.Y, card.GetCombinedMinimumSize().Y)));
         var fundingPanel = _modalLayer?.FindChild("ResearchFundingPanel", true, false) as PanelContainer;

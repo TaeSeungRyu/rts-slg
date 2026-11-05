@@ -37,6 +37,16 @@ public class BattlefieldVisionTests
         Assert.DoesNotContain(new HexCoord(radius + 1, 0), visible);
     }
 
+    [Fact]
+    public void 관측술은_아군성_시야를_단계만큼_확장한다()
+    {
+        var state = new GameState(1, 190, [], [City(1, 0, Player)], [],
+            ResearchTracks: [new FactionResearch(Player, FactionResearch.ObservationCode, 3)]);
+        var visible = Vision.VisibleTiles(state, Player, Map);
+        Assert.Contains(new HexCoord(8, 0), visible);
+        Assert.DoesNotContain(new HexCoord(9, 0), visible);
+    }
+
     [Theory]
     [InlineData("swordsman", 3)]
     [InlineData("archer", 3)]

@@ -31,6 +31,7 @@ public sealed record FactionResearch(FactionId Faction, string TroopCode, int Le
     public const string MedicineCode = "__general_medicine__";
     public const string ResearchDurationCode = "__general_research_duration__";
     public const string CombatBackpackCode = "__general_combat_backpack__";
+    public const string ObservationCode = "__general_observation__";
 
     public const string ScoutStratagemCode = "__stratagem_scout__";
     public const string WallBreakStratagemCode = "__stratagem_wall_break__";
@@ -48,6 +49,7 @@ public sealed record FactionResearch(FactionId Faction, string TroopCode, int Le
         MedicineCode,
         ResearchDurationCode,
         CombatBackpackCode,
+        ObservationCode,
     ];
 
     public static readonly IReadOnlyList<string> StratagemResearchCodes =

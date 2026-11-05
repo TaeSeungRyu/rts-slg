@@ -28,8 +28,9 @@ public sealed class BattlefieldVision(BalanceConfig balance, IReadOnlyList<Troop
     public IReadOnlySet<HexCoord> VisibleTiles(GameState state, FactionId viewer, HexMap map)
     {
         var visible = new HashSet<HexCoord>();
+        var observation = state.ResearchOf(viewer, FactionResearch.ObservationCode);
         foreach (var city in state.Cities.Where(c => c.Owner == viewer || state.IsScouted(viewer, c.Id)))
-            Reveal(city.Position, CityRadius(city.Castle));
+            Reveal(city.Position, CityRadius(city.Castle) + (city.Owner == viewer ? observation : 0));
         var completedBuildings = state.Buildings.Where(x => x.Owner == viewer && x.IsCompleted(state.Day)
             && !x.IsExpired(state.Day)).ToList();
         var watchtowers = completedBuildings.Where(x =>
@@ -38,12 +39,12 @@ public sealed class BattlefieldVision(BalanceConfig balance, IReadOnlyList<Troop
         foreach (var building in completedBuildings)
         {
             if (!_fieldBuildings.TryGetValue(building.DefinitionCode, out var definition)) continue;
-            Reveal(building.Position, definition.Kind switch
+            Reveal(building.Position, observation + (definition.Kind switch
             {
                 FieldBuildingKind.ScoutPost => definition.EffectRadius,
                 FieldBuildingKind.Watchtower => 3,
                 _ => 1,
-            });
+            }));
         }
         foreach (var unit in state.Armies.Where(u => u.Field.Owner == viewer && u.Pool.Active > 0 && !u.IsWaitingDeployment))
         {

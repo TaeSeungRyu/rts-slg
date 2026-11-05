@@ -26,6 +26,8 @@ public static class ResearchDurationRules
     public static int BaseDays(string researchCode, int nextLevel, CommandBalance balance)
         => researchCode == FactionResearch.ResearchDurationCode
             ? ResearchInnovationBaseDays
+            : researchCode == FactionResearch.ObservationCode
+                ? 21 * System.Math.Clamp(nextLevel, 1, GeneralResearchRules.ObservationMaxLevel)
             : UsesDoctrineLevelCurve(researchCode)
                 ? DoctrineBaseDays(nextLevel)
                 : balance.ResearchBaseDays;

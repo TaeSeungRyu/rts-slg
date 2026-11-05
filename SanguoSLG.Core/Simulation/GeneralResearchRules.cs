@@ -6,6 +6,8 @@ using SanguoSLG.Core.Domain;
 public static class GeneralResearchRules
 {
     public const int MaxLevel = 10;
+    public const int ObservationMaxLevel = 3;
+    public static int MaxLevelFor(string code) => code == FactionResearch.ObservationCode ? ObservationMaxLevel : MaxLevel;
     public const int DefaultLowSecurityThreshold = 70;
 
     public sealed record Definition(string Code, string Name, string Description);
@@ -20,6 +22,7 @@ public static class GeneralResearchRules
         new(FactionResearch.MedicineCode, "의술 연구", "수성 중이 아닌 도시의 부상병 회복 속도가 단계마다 10% 증가합니다."),
         new(FactionResearch.ResearchDurationCode, "연구 혁신", "완료한 단계에 따라 이후 모든 연구의 소요일이 단축됩니다."),
         new(FactionResearch.CombatBackpackCode, "전투배낭", "전투부대의 최대 휴대 군량이 레벨마다 기본 소비량 3일치씩 증가합니다."),
+        new(FactionResearch.ObservationCode, "관측술", "세력의 성과 야전 건축물 시야가 단계마다 1칸 증가합니다."),
     ];
 
     public static bool IsGeneralLane(string researchCode)
@@ -61,7 +64,9 @@ public static class GeneralResearchRules
         => CommandEfficiency.ResearchCost(System.Math.Clamp(nextLevel, 1, MaxLevel), balance);
 
     public static int Cost(string code, int nextLevel, CommandBalance balance)
-        => code == FactionResearch.ResearchDurationCode
+        => code == FactionResearch.ObservationCode
+            ? 2000 * (1 << (System.Math.Clamp(nextLevel, 1, ObservationMaxLevel) - 1))
+            : code == FactionResearch.ResearchDurationCode
             ? System.Math.Clamp(nextLevel, 1, MaxLevel) * 2000
             : Cost(nextLevel, balance);
 
@@ -87,6 +92,7 @@ public static class GeneralResearchRules
                 => $"연구 기간 -{ResearchDurationReduction(next) - ResearchDurationReduction(currentLevel)}일 · 누적 -{ResearchDurationReduction(next)}일",
             FactionResearch.CombatBackpackCode
                 => $"최대 휴대 군량 +3일 · 누적 +{CombatBackpackDays(next)}일",
+            FactionResearch.ObservationCode => $"성·건축물 시야 +1칸 · 누적 +{next}칸",
             _ => string.Empty,
         };
     }

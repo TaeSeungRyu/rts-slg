@@ -769,7 +769,8 @@ public sealed class WorldEngine
                         || FactionResearch.IsGeneralResearch(cmd.TroopCode)
                         || FactionResearch.IsStratagemResearch(cmd.TroopCode))
                     {
-                        completionAmount = ResearchUp(research, city.Owner, cmd.TroopCode, GeneralResearchRules.MaxLevel);
+                        completionAmount = ResearchUp(research, city.Owner, cmd.TroopCode,
+                            GeneralResearchRules.MaxLevelFor(cmd.TroopCode));
                         if (cmd.TroopCode == FactionResearch.CombatBackpackCode)
                         {
                             for (var armyIndex = 0; armyIndex < armies.Count; armyIndex++)

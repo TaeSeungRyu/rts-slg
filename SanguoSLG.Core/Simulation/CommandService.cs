@@ -614,7 +614,8 @@ public sealed class CommandService
         var level = isWall ? city.WallLevel : state.ResearchOf(city.Owner, req.TroopCode);
         var maxLevel = isWall ? _b.WallResearchMaxLevel
             : isStratagemResearch ? StratagemResearchRules.MaxLevel
-            : isCommandTroops || isArmyGroup || isGeneralResearch ? GeneralResearchRules.MaxLevel
+            : isGeneralResearch ? GeneralResearchRules.MaxLevelFor(req.TroopCode)
+            : isCommandTroops || isArmyGroup ? GeneralResearchRules.MaxLevel
             : ResearchMaxLevelFor(state, city.Owner, req.TroopCode);
         if (level >= maxLevel)
         {
