@@ -476,35 +476,46 @@ public partial class GeneralCreatorScene : Control
         }
         var pageCount = PortraitPageCount(choices.Count, pageSize);
         _portraitPage = Math.Clamp(_portraitPage, 0, pageCount - 1);
-        foreach (var (portrait, tooltip, imported) in choices.Skip(_portraitPage * pageSize).Take(pageSize))
+        var pageChoices = choices.Skip(_portraitPage * pageSize).Take(pageSize).ToArray();
+        for (var rowStart = 0; rowStart < pageChoices.Length; rowStart += columns)
         {
-            var image = Image.LoadFromFile(ProjectSettings.GlobalizePath(portrait));
-            if (image is null || image.IsEmpty()) continue;
-            image.Resize(82, 98);
-            var cell = new Control { CustomMinimumSize = new Vector2(96, 124),
-                SizeFlagsHorizontal = SizeFlags.ExpandFill };
-            var choice = new Button { Icon = ImageTexture.CreateFromImage(image),
-                ExpandIcon = true, CustomMinimumSize = new Vector2(96, 124),
-                SizeFlagsHorizontal = SizeFlags.ExpandFill, TooltipText = tooltip };
-            choice.AddThemeStyleboxOverride("normal", PortraitTileStyle(_portraitPath == portrait, false));
-            choice.AddThemeStyleboxOverride("hover", PortraitTileStyle(_portraitPath == portrait, true));
-            choice.AddThemeStyleboxOverride("pressed", PortraitTileStyle(true, true));
-            choice.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
-            choice.Pressed += () => SelectPortrait(portrait);
-            cell.AddChild(choice);
-            if (imported)
+            var count = Math.Min(columns, pageChoices.Length - rowStart);
+            var leftGap = (columns - count) / 2;
+            for (var empty = 0; empty < leftGap; empty++) _portraitGrid.AddChild(PortraitSpacer());
+            foreach (var (portrait, tooltip, imported) in pageChoices.Skip(rowStart).Take(count))
             {
-                var remove = new Button { Text = "×", TooltipText = "등록 이미지 제거",
-                    CustomMinimumSize = new Vector2(22, 22) };
+                var image = Image.LoadFromFile(ProjectSettings.GlobalizePath(portrait));
+                var cell = PortraitSpacer();
+                _portraitGrid.AddChild(cell);
+                if (image is null || image.IsEmpty()) continue;
+                image.Resize(82, 98);
+                var choice = new Button { Icon = ImageTexture.CreateFromImage(image),
+                    ExpandIcon = true, TooltipText = tooltip };
+                choice.AddThemeStyleboxOverride("normal", PortraitTileStyle(_portraitPath == portrait, false));
+                choice.AddThemeStyleboxOverride("hover", PortraitTileStyle(_portraitPath == portrait, true));
+                choice.AddThemeStyleboxOverride("pressed", PortraitTileStyle(true, true));
+                choice.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+                choice.Pressed += () => SelectPortrait(portrait);
+                cell.AddChild(choice);
+                if (!imported) continue;
+                var remove = new Button { Text = "×", TooltipText = "등록 이미지 제거" };
+                var removeStyle = new StyleBoxFlat { BgColor = new Color("291b18"),
+                    BorderColor = new Color("d3a85d") };
+                removeStyle.SetBorderWidthAll(1);
+                removeStyle.SetCornerRadiusAll(5);
+                removeStyle.SetContentMarginAll(0);
+                remove.AddThemeStyleboxOverride("normal", removeStyle);
+                remove.AddThemeStyleboxOverride("hover", PortraitTileStyle(true, true));
+                remove.AddThemeFontSizeOverride("font_size", 12);
                 remove.SetAnchorsPreset(LayoutPreset.TopRight);
                 remove.OffsetLeft = -24;
-                remove.OffsetRight = -2;
-                remove.OffsetTop = 2;
+                remove.OffsetRight = -5;
+                remove.OffsetTop = 5;
                 remove.OffsetBottom = 24;
                 remove.Pressed += () => ConfirmRemoveGalleryPortrait(portrait);
                 cell.AddChild(remove);
             }
-            _portraitGrid.AddChild(cell);
+            for (var empty = leftGap + count; empty < columns; empty++) _portraitGrid.AddChild(PortraitSpacer());
         }
         _portraitPageLabel.Text = $"{_portraitPage + 1} / {pageCount} · {choices.Count}장";
         _portraitPrevious.Disabled = _portraitPage == 0;
@@ -533,17 +544,61 @@ public partial class GeneralCreatorScene : Control
         return style;
     }
 
+    private static Control PortraitSpacer() => new()
+    {
+        CustomMinimumSize = new Vector2(96, 124),
+        SizeFlagsHorizontal = SizeFlags.ExpandFill,
+        MouseFilter = MouseFilterEnum.Ignore,
+    };
+
     private void ConfirmRemoveGalleryPortrait(string portrait)
     {
-        var dialog = new ConfirmationDialog { Title = "등록 이미지 제거",
-            DialogText = "선택한 외부 이미지를 목록에서 제거하시겠습니까?",
-            OkButtonText = "제거", CancelButtonText = "취소" };
-        AddChild(dialog);
-        dialog.Confirmed += () =>
+        var layer = new CanvasLayer { Layer = 40 };
+        AddChild(layer);
+        void Close() => layer.QueueFree();
+        var backdrop = new ColorRect { Color = new Color(0, 0, 0, 0.55f),
+            MouseFilter = MouseFilterEnum.Stop };
+        backdrop.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+        backdrop.GuiInput += input =>
+        {
+            if (input is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left }) Close();
+        };
+        layer.AddChild(backdrop);
+        var center = new CenterContainer { MouseFilter = MouseFilterEnum.Ignore };
+        center.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+        layer.AddChild(center);
+        var frame = new StyleBoxFlat { BgColor = new Color(0.10f, 0.055f, 0.05f, 0.97f),
+            BorderColor = new Color(0.82f, 0.67f, 0.36f) };
+        frame.SetBorderWidthAll(2);
+        frame.SetCornerRadiusAll(10);
+        frame.SetContentMarginAll(14);
+        var panel = new PanelContainer { MouseFilter = MouseFilterEnum.Stop };
+        panel.AddThemeStyleboxOverride("panel", frame);
+        center.AddChild(panel);
+        var box = new VBoxContainer { CustomMinimumSize = new Vector2(390, 0) };
+        box.AddThemeConstantOverride("separation", 12);
+        panel.AddChild(box);
+        var title = new Label { Text = "등록 이미지 제거", HorizontalAlignment = HorizontalAlignment.Center };
+        title.AddThemeColorOverride("font_color", new Color(0.82f, 0.67f, 0.36f));
+        title.AddThemeFontSizeOverride("font_size", 17);
+        box.AddChild(title);
+        box.AddChild(new HSeparator());
+        box.AddChild(new Label { Text = "선택한 외부 이미지를 목록에서 제거하시겠습니까?",
+            HorizontalAlignment = HorizontalAlignment.Center });
+        var actions = new HBoxContainer { Alignment = BoxContainer.AlignmentMode.Center };
+        actions.AddThemeConstantOverride("separation", 12);
+        box.AddChild(actions);
+        var confirm = new Button { Text = "제거", CustomMinimumSize = new Vector2(110, 34) };
+        actions.AddChild(confirm);
+        var cancel = new Button { Text = "취소", CustomMinimumSize = new Vector2(110, 34) };
+        cancel.Pressed += Close;
+        actions.AddChild(cancel);
+        confirm.Pressed += () =>
         {
             if (_created.Any(record => record.PortraitPath == portrait))
             {
                 _status.Text = "등록된 장수가 사용하는 사진은 제거할 수 없습니다.";
+                Close();
                 return;
             }
             var directory = Path.GetFullPath(ProjectSettings.GlobalizePath("user://general-presets/portraits/"));
@@ -554,9 +609,8 @@ public partial class GeneralCreatorScene : Control
             if (_portraitPath == portrait) SelectPortrait(null);
             RebuildPortraitGrid();
             _status.Text = "외부 이미지를 제거했습니다.";
+            Close();
         };
-        dialog.CloseRequested += dialog.QueueFree;
-        dialog.PopupCentered();
     }
 
     private void ShowPortrait(string? globalPath, string caption)
@@ -860,8 +914,16 @@ public partial class GeneralCreatorScene : Control
             var registeredFile = ProjectSettings.GlobalizePath(registered);
             RebuildPortraitGrid();
             SelectPortrait(registered);
+            ConfirmRemoveGalleryPortrait(registered);
+            var removalLayer = GetChildren().OfType<CanvasLayer>().LastOrDefault();
+            var styledRemovalConfirm = removalLayer is not null
+                && removalLayer.FindChildren("*", "PanelContainer", true, false).OfType<PanelContainer>().Any()
+                && removalLayer.FindChildren("*", "Button", true, false).OfType<Button>()
+                    .Count(button => button.Text is "제거" or "취소") == 2;
+            removalLayer?.QueueFree();
             passed &= _portraitPath == registered && _portraitGrid.GetChildCount() >= 1
                 && _portraitGrid.Columns is >= 2 and <= 6 && PortraitPageCount(25, 12) == 3
+                && styledRemovalConfirm
                 && _galleryFileDialog.FileMode == FileDialog.FileModeEnum.OpenFiles
                 && _galleryLoadingLabel is not null
                 && CreatedGeneralStore.Load(CreatedGeneralStore.Save([FromForm(10002)]))[0].PortraitPath == registered;
