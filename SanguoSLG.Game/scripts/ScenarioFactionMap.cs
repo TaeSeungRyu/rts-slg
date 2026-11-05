@@ -15,10 +15,12 @@ public partial class ScenarioFactionMap : Control
     private PanelContainer? _tooltipPanel;
     private Label? _tooltipLabel;
     private int _selectedFactionId;
+    private int _selectedSiteIndex = -1;
     private int _hoveredSite = -1;
     public int CityCount => _cities.Count;
     public bool HasTerrain => _terrain is not null;
     public int SelectedFactionId => _selectedFactionId;
+    public bool HasSelectedSite => _selectedSiteIndex >= 0;
     public int SelectableFactionCount => _cities.Where(city => city.Selectable)
         .Select(city => city.FactionId).Distinct().Count();
     public int FirstSelectableFactionId => _cities.FirstOrDefault(city => city.Selectable).FactionId;
@@ -95,6 +97,7 @@ public partial class ScenarioFactionMap : Control
                 color, site.Name, knownFaction ? faction!.Name : "중립", selectable));
         }
         _hoveredSite = -1;
+        _selectedSiteIndex = -1;
         if (_tooltipPanel is not null) _tooltipPanel.Visible = false;
         TooltipText = "거점을 눌러 플레이할 세력을 선택하십시오.";
         QueueRedraw();
@@ -108,6 +111,7 @@ public partial class ScenarioFactionMap : Control
         _terrain = null;
         _cities.Clear();
         _selectedFactionId = 0;
+        _selectedSiteIndex = -1;
         _hoveredSite = -1;
         TooltipText = "";
         QueueRedraw();
@@ -116,6 +120,7 @@ public partial class ScenarioFactionMap : Control
     public void SelectFaction(int factionId)
     {
         _selectedFactionId = factionId;
+        if (factionId <= 0) _selectedSiteIndex = -1;
         QueueRedraw();
     }
 
@@ -138,6 +143,11 @@ public partial class ScenarioFactionMap : Control
             {
                 DrawArc(point, 8.8f, 0, Mathf.Tau, 28, new Color("ffe29a"), 2.0f, true);
                 DrawArc(point, 11.2f, 0, Mathf.Tau, 28, new Color(0.95f, 0.67f, 0.22f, 0.5f), 1.0f, true);
+            }
+            if (index == _selectedSiteIndex)
+            {
+                DrawCircle(point, 2.1f, new Color("fff1b3"));
+                DrawCircle(point, 0.9f, Colors.White);
             }
             if (hovered) DrawArc(point, chosen ? 10.4f : 7.2f, 0, Mathf.Tau, 24,
                 new Color("fff0b4"), 1.4f, true);
@@ -220,6 +230,7 @@ public partial class ScenarioFactionMap : Control
         if (_preset is null || _draft is null) return false;
         var index = NearestSite(localPosition, CalculateMapBounds(), true);
         if (index < 0) return false;
+        _selectedSiteIndex = index;
         FactionPicked?.Invoke(_cities[index].FactionId);
         return true;
     }
