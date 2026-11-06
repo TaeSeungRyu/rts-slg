@@ -13,6 +13,7 @@ public partial class ImeInputTestScene : Control
 
     public override void _Ready()
     {
+        GD.Print($"[ime-environment] godot={Engine.GetVersionInfo()["string"]} os={OS.GetName()} display={DisplayServer.GetName()} renderer={RenderingServer.GetVideoAdapterName()} window_mode={GetWindow().Mode}");
         var layout = new VBoxContainer
         {
             AnchorRight = 1,
@@ -38,11 +39,13 @@ public partial class ImeInputTestScene : Control
         {
             _lineChanges++;
             _events.Text = $"LineEdit TextChanged #{_lineChanges}: [{value}]";
+            GD.Print($"[ime-line] #{_lineChanges} text=[{value}] caret={_line.CaretColumn} composing={_line.HasImeText()} selection={_line.HasSelection()}");
         };
         _multiline.TextChanged += () =>
         {
             _multilineChanges++;
             _events.Text = $"TextEdit TextChanged #{_multilineChanges}: [{_multiline.Text.Replace("\n", "\\n")}]";
+            GD.Print($"[ime-text] #{_multilineChanges} text=[{_multiline.Text.Replace("\n", "\\n")}] caret={_multiline.GetCaretLine()}:{_multiline.GetCaretColumn()} composing={_multiline.HasImeText()} selection={_multiline.HasSelection()}");
         };
     }
 
@@ -55,7 +58,7 @@ public partial class ImeInputTestScene : Control
             ? $"{_multiline.GetSelectionFromLine()}:{_multiline.GetSelectionFromColumn()}-" +
               $"{_multiline.GetSelectionToLine()}:{_multiline.GetSelectionToColumn()}" : "없음";
         _state.Text = $"Focus: {focus?.Name ?? "없음"} | " +
-            $"LineEdit caret: {_line.CaretColumn}, selection: {lineSelection} | " +
-            $"TextEdit caret: {_multiline.GetCaretLine()}:{_multiline.GetCaretColumn()}, selection: {multilineSelection}";
+            $"LineEdit caret: {_line.CaretColumn}, composing: {_line.HasImeText()}, selection: {lineSelection} | " +
+            $"TextEdit caret: {_multiline.GetCaretLine()}:{_multiline.GetCaretColumn()}, composing: {_multiline.HasImeText()}, selection: {multilineSelection}";
     }
 }

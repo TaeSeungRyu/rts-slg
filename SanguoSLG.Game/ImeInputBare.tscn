@@ -1,0 +1,31 @@
+[gd_scene format=3]
+
+[node name="ImeInputBare" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Instructions" type="Label" parent="."]
+layout_mode = 0
+offset_left = 24.0
+offset_top = 24.0
+offset_right = 780.0
+offset_bottom = 54.0
+text = "이벤트와 스크립트가 없는 기본 입력창: 안녕하세요를 연속 입력하세요"
+
+[node name="LineEdit" type="LineEdit" parent="."]
+layout_mode = 0
+offset_left = 24.0
+offset_top = 72.0
+offset_right = 780.0
+offset_bottom = 112.0
+
+[node name="TextEdit" type="TextEdit" parent="."]
+layout_mode = 0
+offset_left = 24.0
+offset_top = 136.0
+offset_right = 780.0
+offset_bottom = 320.0
