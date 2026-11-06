@@ -15,11 +15,6 @@ public sealed partial class ScenarioEditorScene : Control
     private Label _message = null!;
     private Button _deleteButton = null!;
     private string _scenarioDirectory = "";
-    private NativeNameEdit? _nativeText;
-    private Control? _nativePlaceholder;
-    private Action<string>? _nativeDisplayUpdate;
-    private Action<string>? _nativeUpdate;
-    private string _nativeLastText = "";
     private int _selectedCityId;
     private int _selectedGeneralCityId;
     private string _generalSearch = "";
@@ -47,78 +42,10 @@ public sealed partial class ScenarioEditorScene : Control
         if (OS.GetCmdlineUserArgs().Contains("--scenarioeditorqa")) CallDeferred(nameof(RunQa));
     }
 
-    public override void _Process(double delta)
-    {
-        if (_nativeText is null) return;
-        _nativeText.SyncBounds();
-        var value = _nativeText.Text;
-        if (value == _nativeLastText) return;
-        _nativeLastText = value;
-        _nativeUpdate?.Invoke(value);
-    }
-
     public override void _ExitTree()
     {
-        EndNativeText();
         foreach (var icon in _factionColorIcons.Values) icon.Dispose();
         _factionColorIcons.Clear();
-    }
-
-    private void BeginNativeText(Control field, Action<string> update)
-    {
-        if (!OperatingSystem.IsWindows() || DisplayServer.GetName() == "headless") return;
-        Callable.From(() =>
-        {
-            if (!field.IsInsideTree()) return;
-            EndNativeText();
-            _nativePlaceholder = field;
-            _nativeUpdate = update;
-            _nativeLastText = field switch
-            {
-                LineEdit line => line.Text,
-                TextEdit multiline => multiline.Text,
-                _ => ""
-            };
-            _nativeText = field switch
-            {
-                LineEdit line => NativeNameEdit.Create(line, GetViewport()),
-                TextEdit multiline => NativeNameEdit.Create(multiline, GetViewport()),
-                _ => null
-            };
-        }).CallDeferred();
-    }
-
-    private void BeginNativeField(Control field, string value, bool multiline,
-        Action<string> update, Action<string> displayUpdate)
-    {
-        Callable.From(() =>
-        {
-            if (!field.IsInsideTree()) return;
-            EndNativeText();
-            _nativePlaceholder = field;
-            _nativeUpdate = update;
-            _nativeDisplayUpdate = displayUpdate;
-            _nativeLastText = value;
-            _nativeText = NativeNameEdit.Create(field, value, GetViewport(), multiline);
-        }).CallDeferred();
-    }
-
-    private void EndNativeText()
-    {
-        if (_nativeText is null) return;
-        var value = _nativeText.Text;
-        _nativeUpdate?.Invoke(value);
-        _nativeText.Dispose();
-        if (_nativePlaceholder is { } field && GodotObject.IsInstanceValid(field))
-        {
-            if (field is LineEdit line) line.Text = value;
-            else if (field is TextEdit multiline) multiline.Text = value;
-        }
-        _nativeDisplayUpdate?.Invoke(value);
-        _nativeText = null;
-        _nativePlaceholder = null;
-        _nativeUpdate = null;
-        _nativeDisplayUpdate = null;
     }
 
     private void LoadMaps()
@@ -356,7 +283,6 @@ public sealed partial class ScenarioEditorScene : Control
 
     private void ClearBody()
     {
-        EndNativeText();
         foreach (var child in _body.GetChildren()) child.QueueFree();
         CallDeferred(nameof(LimitDropdownHeights));
     }
@@ -531,8 +457,6 @@ public sealed partial class ScenarioEditorScene : Control
             row.AddChild(new Label { Text = $"세력 {faction.Id}", CustomMinimumSize = new Vector2(90, 0) });
             var name = new LineEdit { Text = faction.Name, CustomMinimumSize = new Vector2(150, 0) };
             name.TextChanged += value => UpdateFaction(faction.Id, f => f with { Name = value });
-            name.FocusEntered += () => BeginNativeText(name,
-                value => UpdateFaction(faction.Id, f => f with { Name = value }));
             row.AddChild(name);
             var ruler = new OptionButton { CustomMinimumSize = new Vector2(150, 0) };
             foreach (var general in generals) ruler.AddItem(general.Name, general.Id.Value);
@@ -963,43 +887,10 @@ public sealed partial class ScenarioEditorScene : Control
     {
         var row = new HBoxContainer(); _body.AddChild(row);
         row.AddChild(new Label { Text = label, CustomMinimumSize = new Vector2(150, 0) });
-        if (OperatingSystem.IsWindows() && DisplayServer.GetName() != "headless")
-        {
-            row.AddChild(CreateNativeField(value, false, update));
-            return;
-        }
-        var field = new LineEdit { Text = value, SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        var field = new LineEdit { Name = "ScenarioTitleEditor", Text = value,
+            SizeFlagsHorizontal = SizeFlags.ExpandFill };
         field.TextChanged += text => update(text);
         row.AddChild(field);
-    }
-
-    private PanelContainer CreateNativeField(string value, bool multiline, Action<string> update)
-    {
-        var frame = new PanelContainer
-        {
-            Name = multiline ? "ScenarioDescriptionEditor" : "ScenarioTitleEditor",
-            CustomMinimumSize = new Vector2(0, multiline ? 108 : 34),
-            SizeFlagsHorizontal = SizeFlags.ExpandFill,
-            MouseFilter = MouseFilterEnum.Stop
-        };
-        frame.AddThemeStyleboxOverride("panel", Theme.GetStylebox("normal", multiline ? "TextEdit" : "LineEdit"));
-        var display = new Label
-        {
-            Text = value,
-            MouseFilter = MouseFilterEnum.Ignore,
-            VerticalAlignment = multiline ? VerticalAlignment.Top : VerticalAlignment.Center,
-            AutowrapMode = multiline ? TextServer.AutowrapMode.WordSmart : TextServer.AutowrapMode.Off,
-            ClipText = !multiline
-        };
-        frame.AddChild(display);
-        frame.GuiInput += input =>
-        {
-            if (input is not InputEventMouseButton { ButtonIndex: MouseButton.Left, Pressed: true }) return;
-            if (_nativePlaceholder == frame) return;
-            BeginNativeField(frame, display.Text, multiline, update, text => display.Text = text);
-            frame.AcceptEvent();
-        };
-        return frame;
     }
 
     private void AddDescription(string label, string value, Action<string> update)
@@ -1012,11 +903,6 @@ public sealed partial class ScenarioEditorScene : Control
             CustomMinimumSize = new Vector2(150, 0),
             VerticalAlignment = VerticalAlignment.Top
         });
-        if (OperatingSystem.IsWindows() && DisplayServer.GetName() != "headless")
-        {
-            row.AddChild(CreateNativeField(value, true, update));
-            return;
-        }
         var field = new TextEdit
         {
             Name = "ScenarioDescriptionEditor",
@@ -1050,7 +936,6 @@ public sealed partial class ScenarioEditorScene : Control
 
     private void RequestClose()
     {
-        EndNativeText();
         void Leave()
         {
             if (ScenarioStartMenu.FromStartMenu) ScenarioStartMenu.ReturnToStart(GetTree());
@@ -1067,7 +952,6 @@ public sealed partial class ScenarioEditorScene : Control
 
     private void SaveCurrent()
     {
-        EndNativeText();
         try
         {
             var known = _source.Generals.Select(general => general.Id.Value).ToHashSet();

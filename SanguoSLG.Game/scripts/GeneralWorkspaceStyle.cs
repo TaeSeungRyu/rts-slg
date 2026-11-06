@@ -30,13 +30,6 @@ internal static class GeneralWorkspaceStyle
         theme.SetStylebox("selected_focus", "ItemList", Box(new Color(0.46f, 0.23f, 0.11f), gold, 1));
         theme.SetColor("font_color", "ItemList", parchment);
         theme.SetColor("font_selected_color", "ItemList", Color.Color8(255, 241, 195));
-        foreach (var type in new[] { "LineEdit", "TextEdit" })
-        {
-            theme.SetStylebox("normal", type, Box(new Color(0.11f, 0.09f, 0.08f), new Color(gold, 0.46f), 1));
-            theme.SetStylebox("focus", type, Box(new Color(0.16f, 0.11f, 0.09f), gold, 2));
-            theme.SetColor("font_color", type, parchment);
-            theme.SetColor("font_placeholder_color", type, new Color(parchment, 0.48f));
-        }
         theme.SetStylebox("tab_selected", "TabBar", Box(new Color(0.42f, 0.21f, 0.10f), gold, 2));
         theme.SetStylebox("tab_unselected", "TabBar", Box(new Color(0.14f, 0.09f, 0.08f), new Color(gold, 0.40f), 1));
         theme.SetStylebox("tab_hovered", "TabBar", Box(new Color(0.31f, 0.15f, 0.09f), gold, 1));

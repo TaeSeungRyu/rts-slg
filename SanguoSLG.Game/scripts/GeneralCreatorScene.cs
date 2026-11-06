@@ -24,7 +24,6 @@ public partial class GeneralCreatorScene : Control
     private readonly Dictionary<string, string> _adminDetails = new();
     private ItemList _list = null!;
     private LineEdit _name = null!;
-    private NativeNameEdit? _nativeName;
     private TabContainer _tabs = null!;
     private OptionButton _region = null!;
     private OptionButton _requiredGeneral = null!;
@@ -79,12 +78,7 @@ public partial class GeneralCreatorScene : Control
         }
         catch (Exception error) { _status.Text = "불러오기 실패: " + error.Message; }
         if (OS.GetCmdlineUserArgs().Contains("--generalcreatorqa")) CallDeferred(nameof(RunQa));
-        else StartNativeNameInput();
     }
-
-    public override void _Process(double delta) => _nativeName?.SyncBounds();
-
-    public override void _ExitTree() => StopNativeNameInput();
 
     private void BuildUi()
     {
@@ -128,11 +122,6 @@ public partial class GeneralCreatorScene : Control
         _tabs = new TabContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill,
             SizeFlagsVertical = SizeFlags.ExpandFill };
         right.AddChild(_tabs);
-        _tabs.TabChanged += tab =>
-        {
-            if (tab == 1) StartNativeNameInput();
-            else StopNativeNameInput();
-        };
         VBoxContainer Page(string name)
         {
             var scroll = new ScrollContainer { Name = name, SizeFlagsHorizontal = SizeFlags.ExpandFill,
@@ -147,10 +136,6 @@ public partial class GeneralCreatorScene : Control
         var basic = Page("기본 정보");
         var identity = GeneralWorkspaceStyle.Section(basic, "신상 정보");
         _name = new LineEdit { MaxLength = 20, PlaceholderText = "장수 이름", KeepEditingOnTextSubmit = true };
-        _name.GuiInput += input =>
-        {
-            if (input is InputEventMouseButton { Pressed: true }) StartNativeNameInput();
-        };
         AddField(identity, "이름", _name);
         _gender = new OptionButton();
         _gender.AddItem("남성"); _gender.AddItem("여성");
@@ -169,7 +154,6 @@ public partial class GeneralCreatorScene : Control
         _points = Spin(0, 3000, 100);
         AddField(recruitment, "영입 포인트", _points);
         _requiredGeneral = new OptionButton();
-        _requiredGeneral.Pressed += StopNativeNameInput;
         AddField(recruitment, "영입 선행 장수", _requiredGeneral);
         recruitment.AddChild(new Label { Text = "선행 장수를 지정하면 해당 장수가 소속된 세력만 영입할 수 있습니다." });
         var introduction = GeneralWorkspaceStyle.Section(basic, "장수 소개");
@@ -418,27 +402,8 @@ public partial class GeneralCreatorScene : Control
     private static string SelectedCode(OptionButton option)
         => option.Selected < 0 ? "" : option.GetItemMetadata(option.Selected).AsString();
 
-    private void StartNativeNameInput()
-    {
-        if (!OperatingSystem.IsWindows() || DisplayServer.GetName() == "headless" || _name is null)
-            return;
-        Callable.From(() =>
-        {
-            if (_tabs.CurrentTab != 1 || _nativeName is not null || !_name.IsInsideTree()) return;
-            _nativeName = NativeNameEdit.Create(_name, GetViewport());
-        }).CallDeferred();
-    }
-
-    private void StopNativeNameInput()
-    {
-        if (_nativeName is null) return;
-        _name.Text = _nativeName.Text;
-        _nativeName.Dispose();
-        _nativeName = null;
-    }
-
     private string CurrentName()
-        => (_nativeName?.Text ?? _name.Text).Replace("\r", "").Replace("\n", "").Trim();
+        => _name.Text.Replace("\r", "").Replace("\n", "").Trim();
 
     private string DefaultPortrait()
         => $"res://assets/portraits/created/{(_gender.Selected == 1 ? "women" : "man")}1.png";
@@ -684,7 +649,6 @@ public partial class GeneralCreatorScene : Control
 
     private void NewGeneral()
     {
-        StopNativeNameInput();
         _editingId = null;
         _overview.Text = "새 장수 · 초상과 능력을 정해 주세요.";
         _list.DeselectAll();
@@ -701,7 +665,6 @@ public partial class GeneralCreatorScene : Control
         RebuildPortraitGrid();
         _status.Text = "새 장수를 입력하세요. 초상은 나중에 추가할 수 있습니다.";
         _savedFormSnapshot = "";
-        StartNativeNameInput();
     }
 
     private void LoadSelected(int index)
@@ -709,7 +672,6 @@ public partial class GeneralCreatorScene : Control
         if (index < 0 || index >= _created.Count) return;
         var entry = _created[index];
         var general = entry.General;
-        StopNativeNameInput();
         _editingId = general.Id;
         _overview.Text = $"{general.Name} · 생성 장수 ID {general.Id}";
         _name.Text = general.Name;
@@ -737,7 +699,6 @@ public partial class GeneralCreatorScene : Control
         RebuildPortraitGrid();
         _status.Text = $"{general.Name} 편집 중 · ID {general.Id}";
         _savedFormSnapshot = FormSnapshot();
-        StartNativeNameInput();
     }
 
     private static void SelectCode(OptionButton option, string code)
@@ -778,7 +739,6 @@ public partial class GeneralCreatorScene : Control
 
     private void RequestReturnToStart()
     {
-        StopNativeNameInput();
         if (FormSnapshot() == _savedFormSnapshot) { ScenarioStartMenu.ReturnToStart(GetTree()); return; }
         var dialog = new ConfirmationDialog { Title = "저장하지 않은 신규 장수", DialogText = "장수를 저장하고 시작 화면으로 돌아갈까요?", OkButtonText = "저장 후 나가기", CancelButtonText = "계속 편집" };
         dialog.AddButton("변경 버리기", true, "discard");

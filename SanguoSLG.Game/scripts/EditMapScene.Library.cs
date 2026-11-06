@@ -133,13 +133,12 @@ public sealed partial class EditMapScene
         var input = new LineEdit { Text = version.Title, MaxLength = 60,
             CustomMinimumSize = new Vector2(360, 36) };
         content.AddChild(input);
-        UseNativeNameInput(input);
         var save = new Button { Text = "이름 저장" };
         save.Pressed += () =>
         {
             try
             {
-                var title = _nativeNameEdit?.Text ?? input.Text;
+                var title = input.Text;
                 _activeMapVersion = MapArchive().RenameMap(version.Id, title, version.Revision);
                 CloseEditorModal();
                 ShowMapLibrary();

@@ -13,7 +13,6 @@ public sealed partial class EditMapScene
     private Control? _editorModal;
     private Label? _editorError;
     private Action? _editorCancelAction;
-    private NativeNameEdit? _nativeNameEdit;
     private int _nextSiteId = 1;
     private bool _draftChanged;
     private Button? _saveDraftButton;
@@ -516,9 +515,7 @@ public sealed partial class EditMapScene
         content.AddChild(new Label { Text = "관문 이름" });
         var name = new LineEdit { Text = existing?.Name ?? "", PlaceholderText = "관문 이름을 입력하세요",
             CustomMinimumSize = new Vector2(0f, 38f), KeepEditingOnTextSubmit = true };
-        name.AddThemeFontOverride("font", _font);
         content.AddChild(name);
-        UseNativeNameInput(name);
         var size = SelectOptions(content, "관문 종류", ["소형 관문 · 내구도 2,000", "중형 관문 · 내구도 3,000"],
             existing?.Size == "medium" ? 1 : 0);
         var direction = SelectOptions(content, "관문 방향", ["동", "남동", "남서", "서", "북서", "북동"],
@@ -529,8 +526,7 @@ public sealed partial class EditMapScene
         actions.AddChild(apply);
         apply.Pressed += () =>
         {
-            if (_nativeNameEdit is null) name.ApplyIme();
-            var trimmed = (_nativeNameEdit?.Text ?? name.Text).Replace("\r", "").Replace("\n", "").Trim();
+            var trimmed = name.Text.Replace("\r", "").Replace("\n", "").Trim();
             if (trimmed.Length == 0 || _sites.Any(site => site.Kind == "gate"
                 && site.Id != existing?.Id && site.Name == trimmed))
             {
@@ -609,11 +605,6 @@ public sealed partial class EditMapScene
                 if (dragging)
                 {
                     offset = GetGlobalMousePosition() - panel.GlobalPosition;
-                    _nativeNameEdit?.SetVisible(false);
-                }
-                else
-                {
-                    _nativeNameEdit?.SetVisible(true);
                 }
                 heading.AcceptEvent();
             }
@@ -644,8 +635,6 @@ public sealed partial class EditMapScene
 
     private void CloseEditorModal()
     {
-        _nativeNameEdit?.Dispose();
-        _nativeNameEdit = null;
         if (Input.MouseMode != Input.MouseModeEnum.Visible)
             Input.MouseMode = Input.MouseModeEnum.Visible;
         DisplayServer.CursorSetShape(DisplayServer.CursorShape.Arrow);
@@ -667,25 +656,6 @@ public sealed partial class EditMapScene
         return picker;
     }
 
-    private void UseNativeNameInput(LineEdit input)
-    {
-        if (!OperatingSystem.IsWindows()) return;
-        Callable.From(() =>
-        {
-            if (_editorModal is null || !GodotObject.IsInstanceValid(input)
-                || input.IsQueuedForDeletion() || !input.IsInsideTree()) return;
-            _nativeNameEdit = NativeNameEdit.Create(input, GetViewport());
-            if (_nativeNameEdit is null && DisplayServer.GetName() != "headless")
-                GD.PushWarning("Windows 이름 입력창을 만들지 못해 기본 입력창을 사용합니다.");
-        }).CallDeferred();
-    }
-
-    public override void _ExitTree()
-    {
-        _nativeNameEdit?.Dispose();
-        _nativeNameEdit = null;
-    }
-
     private void OpenCityEditor(Vector2I tile, MapEditorSite? existing)
     {
         var content = OpenEditorModal(existing is null ? "성 추가" : "성 편집");
@@ -693,9 +663,7 @@ public sealed partial class EditMapScene
         var name = new LineEdit { Text = existing?.Name ?? "", PlaceholderText = "성 이름을 입력하세요",
             CustomMinimumSize = new Vector2(0f, 38f), SizeFlagsHorizontal = SizeFlags.ExpandFill,
             KeepEditingOnTextSubmit = true };
-        name.AddThemeFontOverride("font", _font);
         content.AddChild(name);
-        UseNativeNameInput(name);
         var sizes = new[] { "small", "medium", "large" };
         var size = SelectOptions(content, "성 종류", ["소형성", "중형성", "대형성"],
             Math.Max(0, Array.IndexOf(sizes, existing?.Size ?? "small")));
@@ -707,8 +675,7 @@ public sealed partial class EditMapScene
         actions.AddChild(save);
         save.Pressed += () =>
         {
-            if (_nativeNameEdit is null) name.ApplyIme();
-            var trimmed = (_nativeNameEdit?.Text ?? name.Text).Replace("\r", "").Replace("\n", "").Trim();
+            var trimmed = name.Text.Replace("\r", "").Replace("\n", "").Trim();
             if (trimmed.Length == 0 || _sites.Any(site => site.Kind == "city" &&
                     site.Id != existing?.Id && site.Name == trimmed))
             {
@@ -1028,9 +995,7 @@ public sealed partial class EditMapScene
         var name = new LineEdit { Text = existing?.Name ?? "", PlaceholderText = "항구 이름을 입력하세요",
             CustomMinimumSize = new Vector2(0f, 38f), SizeFlagsHorizontal = SizeFlags.ExpandFill,
             KeepEditingOnTextSubmit = true };
-        name.AddThemeFontOverride("font", _font);
         content.AddChild(name);
-        UseNativeNameInput(name);
         var sizes = new[] { "small", "medium" };
         var size = SelectOptions(content, "항구 종류", ["소형항", "중형항"],
             Math.Max(0, Array.IndexOf(sizes, existing?.Size ?? "small")));
@@ -1066,8 +1031,7 @@ public sealed partial class EditMapScene
         var apply = new Button { Text = "적용", SizeFlagsHorizontal = SizeFlags.ExpandFill };
         apply.Pressed += () =>
         {
-            if (_nativeNameEdit is null) name.ApplyIme();
-            var trimmed = (_nativeNameEdit?.Text ?? name.Text).Replace("\r", "").Replace("\n", "").Trim();
+            var trimmed = name.Text.Replace("\r", "").Replace("\n", "").Trim();
             if (trimmed.Length == 0 || _sites.Any(site => site.Kind == "port" &&
                     site.Id != existing?.Id && site.Name == trimmed))
             {
