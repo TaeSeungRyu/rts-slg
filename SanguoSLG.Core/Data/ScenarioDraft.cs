@@ -3,7 +3,8 @@ namespace SanguoSLG.Core.Data;
 using System.Text.Json;
 
 public sealed record ScenarioFactionEntry(int Id, string Name, int RulerGeneralId, string Color,
-    bool Playable = true, bool Hidden = false, int ArrivalYear = 0, int ArrivalSiteId = 0);
+    bool Playable = true, bool Hidden = false, int ArrivalYear = 0, int ArrivalSiteId = 0,
+    string Description = "");
 
 public sealed record ScenarioGarrisonEntry(string TroopCode, int Troops);
 

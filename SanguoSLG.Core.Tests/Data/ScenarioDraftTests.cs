@@ -75,6 +75,35 @@ public sealed class ScenarioDraftTests
     }
 
     [Fact]
+    public void FactionDescriptionsStaySeparateAndOldScenarioFilesUseEmptyDescription()
+    {
+        var draft = Draft() with
+        {
+            Factions = [new ScenarioFactionEntry(1, "위", 1, "#3366AA", Description: "첫 세력\n설명"),
+                new ScenarioFactionEntry(2, "촉", 2, "#AA6633", Description: "둘째 세력 설명")],
+            Cities = [new ScenarioCityEntry(1, 1, 100, 100, 100, 80, [], []),
+                new ScenarioCityEntry(2, 2, 100, 100, 100, 80, [], [])],
+            Generals = [new ScenarioGeneralEntry(1, 1, 1), new ScenarioGeneralEntry(2, 2, 2)]
+        };
+        var path = Path.Combine(Path.GetTempPath(), $"scenario-descriptions-{Guid.NewGuid():N}.json");
+        try
+        {
+            ScenarioDraftStore.Save(path, draft, Map(), Generals);
+            var loaded = ScenarioDraftStore.Load(path);
+            Assert.Equal("첫 세력\n설명", loaded.Factions[0].Description);
+            Assert.Equal("둘째 세력 설명", loaded.Factions[1].Description);
+
+            var oldJson = System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(path))!;
+            foreach (var faction in oldJson["Factions"]!.AsArray())
+                faction!.AsObject().Remove("Description");
+            File.WriteAllText(path, oldJson.ToJsonString());
+            Assert.All(ScenarioDraftStore.Load(path).Factions,
+                faction => Assert.Equal("", faction.Description));
+        }
+        finally { if (File.Exists(path)) File.Delete(path); }
+    }
+
+    [Fact]
     public void DeletedCityAndOfficerPostingCannotBeSaved()
     {
         var draft = Draft() with

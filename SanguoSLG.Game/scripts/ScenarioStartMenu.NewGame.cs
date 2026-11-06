@@ -936,7 +936,8 @@ public sealed partial class ScenarioStartMenu
             _newGameFactionGenerals.Text = draft.Generals.Count(entry => entry.FactionId == factionId).ToString("N0");
         if (_newGameFactionDescription is not null)
         {
-            _newGameFactionDescription.Text = "세력 설명이 등록되지 않았습니다.";
+            _newGameFactionDescription.Text = string.IsNullOrWhiteSpace(faction.Description)
+                ? "세력 설명이 등록되지 않았습니다." : faction.Description;
             _newGameFactionDescription.Visible = true;
         }
         if (_newGameStartButton is not null)

@@ -276,6 +276,32 @@ public sealed partial class ScenarioStartMenu : Control
             && portraitMaterial.Shader.Code.Contains("COLOR.a *=", StringComparison.Ordinal)
             && !portraitMaterial.Shader.Code.Contains("COLOR.rgb", StringComparison.Ordinal)
             && !portraitMaterial.Shader.Code.Contains("texture(TEXTURE", StringComparison.Ordinal);
+        var factionDescriptionSwitch = false;
+        if (_newGameSelectedScenarioIndex >= 0)
+        {
+            var scenarioIndex = _newGameSelectedScenarioIndex;
+            var original = _newGameScenarios[scenarioIndex];
+            var playableFactions = original.Draft.Factions.Where(faction => faction.Playable && !faction.Hidden)
+                .Take(2).ToArray();
+            if (playableFactions.Length == 2)
+            {
+                _newGameScenarios[scenarioIndex] = (original.Path, original.Draft with
+                {
+                    Factions = original.Draft.Factions.Select(faction => faction.Id == playableFactions[0].Id
+                        ? faction with { Description = "첫 세력\n소개" }
+                        : faction.Id == playableFactions[1].Id
+                            ? faction with { Description = "둘째 세력 소개" } : faction).ToArray()
+                });
+                SelectNewGameFaction(playableFactions[0].Id);
+                var firstDescriptionVisible = _newGameFactionDescription?.Text == "첫 세력\n소개";
+                SelectNewGameFaction(playableFactions[1].Id);
+                factionDescriptionSwitch = firstDescriptionVisible
+                    && _newGameFactionDescription?.Text == "둘째 세력 소개";
+                _newGameScenarios[scenarioIndex] = original;
+                SelectNewGameScenario(scenarioIndex);
+                SelectFirstFactionForQa();
+            }
+        }
         var readableMap = FindChild("ScenarioMapTooltip", true, false) is PanelContainer
             && _newGameFactionMap is { HasTerrain: true };
         var difficultyButtons = FindChildren("Difficulty*", "Button", true, false).OfType<Button>().ToArray();
@@ -304,7 +330,7 @@ public sealed partial class ScenarioStartMenu : Control
         var passed = titlePresentation && hasOfficerConfirm && initiallySelected && selectedFromMap
             && scenarioReset && hardDifficulty && responsiveBounds && resolutionLayout
             && newGameLayout && noFactionButtonList && scenarioCardsReady && scenarioSelection
-            && styledFooter && scenarioInfo && portraitOriginalColor && readableMap && _newGameFactionMap is { HasSelectedSite: true }
+            && styledFooter && scenarioInfo && portraitOriginalColor && factionDescriptionSwitch && readableMap && _newGameFactionMap is { HasSelectedSite: true }
             && _newGameScenarios.Count >= 6 && customScenariosAtBottom
             && _newGameFactionMap is { HasTerrain: true, CityCount: > 0, SelectableFactionCount: > 0 }
             && difficultyButtons.Length == 2

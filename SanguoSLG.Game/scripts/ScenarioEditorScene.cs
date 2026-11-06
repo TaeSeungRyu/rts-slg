@@ -17,6 +17,7 @@ public sealed partial class ScenarioEditorScene : Control
     private string _scenarioDirectory = "";
     private int _selectedCityId;
     private int _selectedGeneralCityId;
+    private int _selectedDescriptionFactionId;
     private string _generalSearch = "";
     private static readonly Color[] FactionPalette = Enumerable.Range(0, 60)
         .Select(index => Color.FromHsv((index % 12) / 12f, 0.48f + (index / 12) * 0.105f,
@@ -550,6 +551,45 @@ public sealed partial class ScenarioEditorScene : Control
             ShowFactions();
         };
         _body.AddChild(add);
+        if (_draft.Factions.Count == 0) return;
+        if (_draft.Factions.All(faction => faction.Id != _selectedDescriptionFactionId))
+            _selectedDescriptionFactionId = _draft.Factions[0].Id;
+        _body.AddChild(new HSeparator());
+        _body.AddChild(new Label { Text = "세력 설명" });
+        var descriptionChoice = new OptionButton { CustomMinimumSize = new Vector2(220, 32) };
+        foreach (var faction in _draft.Factions)
+            descriptionChoice.AddItem(faction.Name, faction.Id);
+        descriptionChoice.Select(descriptionChoice.GetItemIndex(_selectedDescriptionFactionId));
+        _body.AddChild(descriptionChoice);
+        var descriptionHost = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        _body.AddChild(descriptionHost);
+        void ShowDescription()
+        {
+            foreach (var child in descriptionHost.GetChildren())
+            {
+                descriptionHost.RemoveChild(child);
+                child.QueueFree();
+            }
+            var factionId = _selectedDescriptionFactionId;
+            var description = _draft.Factions.First(faction => faction.Id == factionId).Description;
+            var field = new TextEdit
+            {
+                Name = "FactionDescriptionEditor", Text = description,
+                CustomMinimumSize = new Vector2(0, 120),
+                SizeFlagsHorizontal = SizeFlags.ExpandFill,
+                WrapMode = TextEdit.LineWrappingMode.Boundary
+            };
+            field.TextChanged += () => UpdateFaction(factionId,
+                faction => faction with { Description = field.Text });
+            descriptionHost.AddChild(field);
+            NativeTextInputDialog.Attach(field);
+        }
+        descriptionChoice.ItemSelected += index =>
+        {
+            _selectedDescriptionFactionId = descriptionChoice.GetItemId((int)index);
+            ShowDescription();
+        };
+        ShowDescription();
     }
 
     private ImageTexture FactionColorIcon(Color color)
@@ -1002,6 +1042,7 @@ public sealed partial class ScenarioEditorScene : Control
             var originalDirectory = _scenarioDirectory;
             var qaDirectory = Path.Combine(Path.GetTempPath(), "scenario-editor-save-" + Guid.NewGuid().ToString("N"));
             var savedEditRoundTrip = false;
+            var factionDescriptionRoundTrip = false;
             try
             {
                 _scenarioDirectory = qaDirectory;
@@ -1021,6 +1062,23 @@ public sealed partial class ScenarioEditorScene : Control
                     && _draft.Description == "수정한 설명\n다음 줄"
                     && ScenarioDraftCatalog.LoadEffective(builtIn, qaDirectory)
                         .Single(source => source.Draft.Id == _draft.Id).Path == editedPath;
+                ShowFactions();
+                var firstFactionId = _draft.Factions[0].Id;
+                var secondFactionId = _draft.Factions[1].Id;
+                var choice = _body.GetChildren().OfType<OptionButton>().Last();
+                var firstDescription = _body.FindChildren("FactionDescriptionEditor", "TextEdit", true, false)
+                    .OfType<TextEdit>().Last(field => !field.IsQueuedForDeletion());
+                NativeTextInputDialog.ApplyResult(firstDescription, "첫 세력\n설명");
+                choice.EmitSignal(OptionButton.SignalName.ItemSelected, choice.GetItemIndex(secondFactionId));
+                var secondDescription = _body.FindChildren("FactionDescriptionEditor", "TextEdit", true, false)
+                    .OfType<TextEdit>().Last(field => !field.IsQueuedForDeletion());
+                NativeTextInputDialog.ApplyResult(secondDescription, "둘째 세력 설명");
+                SaveCurrent();
+                OpenScenario(editedPath);
+                factionDescriptionRoundTrip = _draft.Factions.First(faction => faction.Id == firstFactionId)
+                        .Description == "첫 세력\n설명"
+                    && _draft.Factions.First(faction => faction.Id == secondFactionId)
+                        .Description == "둘째 세력 설명";
             }
             finally
             {
@@ -1140,7 +1198,7 @@ public sealed partial class ScenarioEditorScene : Control
                 _draft = originalDraft;
                 RefreshList();
                 var passed = bundled.Length == 6 && _list.ItemCount >= 6
-                    && savedEditRoundTrip && newScenarioAtBottom && factionColorUi && hiddenFactionUi && cityMapUi && generalSearchUi && generalCityListUi
+                    && savedEditRoundTrip && factionDescriptionRoundTrip && newScenarioAtBottom && factionColorUi && hiddenFactionUi && cityMapUi && generalSearchUi && generalCityListUi
                     && generalCrudPassed && forceTabRemoved
                     && cityForceUi && forceCrudPassed
                     && errors.Count == 0 && mapSwitchPassed && currentMapSelected
