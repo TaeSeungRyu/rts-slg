@@ -2,6 +2,8 @@ namespace SanguoSLG.Core.Tests.Data;
 
 using SanguoSLG.Core.Data;
 using SanguoSLG.Core.Simulation;
+using SanguoSLG.Core.Domain;
+using SanguoSLG.Core.Spatial;
 
 public sealed class SaveSlotStoreTests : IDisposable
 {
@@ -75,6 +77,59 @@ public sealed class SaveSlotStoreTests : IDisposable
         Assert.True(store.Inspect(1).Exists);
         Assert.Equal(31, store.Load(1).Day);
         Assert.False(store.Inspect(2).Exists);
+    }
+
+    [Fact]
+    public void 이어하기는_실제_파일만_최근순으로_보이고_20번_초과_기록도_읽는다()
+    {
+        var store = new SaveSlotStore(_directory);
+        store.Save(2, State(3));
+        Directory.CreateDirectory(_directory);
+        SaveService.Save(State(9), store.PathFor(27));
+        File.SetLastWriteTimeUtc(store.PathFor(2), new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc));
+        File.SetLastWriteTimeUtc(store.PathFor(27), new DateTime(2025, 2, 1, 0, 0, 0, DateTimeKind.Utc));
+
+        Assert.Equal([27, 2], store.InspectSaved().Select(info => info.Slot));
+        Assert.Equal(9, store.Load(27).Day);
+        Assert.Equal(20, store.InspectAll().Count);
+    }
+
+    [Fact]
+    public void 삭제는_선택한_저장_파일만_제거한다()
+    {
+        var store = new SaveSlotStore(_directory);
+        store.Save(1, State(1));
+        store.Save(3, State(3));
+
+        store.Delete(3);
+
+        Assert.Equal([1], store.InspectSaved().Select(info => info.Slot));
+        Assert.Equal(1, store.Load(1).Day);
+    }
+
+    [Fact]
+    public void 카드_메타데이터는_저장된_인물과_거점_장수_병력에서_계산한다()
+    {
+        var faction = new Faction(new FactionId(5), "황건군", new GeneralId(31), 0, "gold");
+        var general = new General(new GeneralId(31), "장각", new Dictionary<TroopClass, AptitudeGrade>(), 60, 80, 70);
+        var city = new City(new CityId(7), "낙양", new HexCoord(0, 0), faction.Id, 0);
+        var state = State(31) with
+        {
+            Factions = [faction], Generals = [general], Cities = [city], HumanFactionId = 5,
+            Postings = [new GeneralPosting(general.Id, faction.Id, city.Id)],
+            GarrisonForces = [new GarrisonForce(city.Id, "swordsman", 1200, 50)],
+            FieldArmies = []
+        };
+        var store = new SaveSlotStore(_directory);
+        store.Save(4, state);
+
+        var card = store.Inspect(4);
+        Assert.Equal("황건군", card.FactionName);
+        Assert.Equal("장각", card.RulerName);
+        Assert.Equal(31, card.RulerId);
+        Assert.Equal(1, card.OwnedSiteCount);
+        Assert.Equal(1, card.OfficerCount);
+        Assert.Equal(1200, card.TotalTroops);
     }
 
     public void Dispose()
