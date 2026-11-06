@@ -237,7 +237,7 @@ public sealed partial class ScenarioStartMenu
         description.AddThemeFontSizeOverride("font_size", 14);
         description.AddThemeColorOverride("font_color", NewGameIvory);
         info.AddChild(description);
-        var summary = new Label { Name = "SelectedScenarioSummary" };
+        var summary = new Label { Name = "SelectedScenarioSummary", AutowrapMode = TextServer.AutowrapMode.Off };
         summary.AddThemeFontOverride("font", NewGameBodyFont());
         summary.AddThemeFontSizeOverride("font_size", 12);
         summary.AddThemeColorOverride("font_color", new Color("cdb578"));
@@ -470,7 +470,7 @@ public sealed partial class ScenarioStartMenu
             CustomMinimumSize = new Vector2(0, 108),
             SizeFlagsHorizontal = SizeFlags.ExpandFill,
             Alignment = HorizontalAlignment.Left,
-            TooltipText = draft.Description,
+            TooltipText = draft.Title,
             ClipContents = true
         };
         ApplyScenarioCardStyle(card, false);
@@ -505,19 +505,20 @@ public sealed partial class ScenarioStartMenu
         text.AddChild(year);
         var displayTitle = draft.Title.StartsWith($"{draft.StartYear}년,", StringComparison.Ordinal)
             ? draft.Title[($"{draft.StartYear}년,").Length..].Trim() : draft.Title;
-        var title = new Label { Text = displayTitle, MouseFilter = MouseFilterEnum.Ignore };
+        var title = new Label { Text = displayTitle, ClipText = true,
+            TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis,
+            MouseFilter = MouseFilterEnum.Ignore };
         title.AddThemeFontOverride("font", NewGameSerif(650));
         title.AddThemeFontSizeOverride("font_size", 16);
         title.AddThemeColorOverride("font_color", NewGameIvory);
         text.AddChild(title);
-        var rawSynopsis = string.IsNullOrWhiteSpace(draft.Description)
-            ? "설명이 등록되지 않았습니다."
-            : draft.Description.Trim();
-        var synopsis = rawSynopsis.Length > 46 ? rawSynopsis[..46] + "…" : rawSynopsis;
+        var rawSynopsis = ScenarioDescription(draft, displayTitle);
+        var synopsis = rawSynopsis.Length > 24 ? rawSynopsis[..24] + "…" : rawSynopsis;
         var description = new Label
         {
             Text = synopsis,
-            AutowrapMode = TextServer.AutowrapMode.WordSmart,
+            ClipText = true,
+            TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis,
             MouseFilter = MouseFilterEnum.Ignore
         };
         description.AddThemeFontOverride("font", NewGameBodyFont());
@@ -623,7 +624,7 @@ public sealed partial class ScenarioStartMenu
             SetNamedLabel("SelectedScenarioDate", $"{draft.StartYear}년 {draft.StartMonth}월");
             SetNamedLabel("SelectedScenarioDescription", ScenarioDescription(draft, displayTitle));
             SetNamedLabel("SelectedScenarioSummary",
-                $"⚑  주요 세력  {draft.Factions.Count(faction => faction.Playable && !faction.Hidden)}\n▥  총 거점  {preset.Sites.Count(site => site.Kind is "city" or "port" or "gate")}");
+                $"⚑  주요 세력  {draft.Factions.Count(faction => faction.Playable && !faction.Hidden)}     ▥  총 거점  {preset.Sites.Count(site => site.Kind is "city" or "port" or "gate")}");
             ResetNewGameFactionDetails();
             if (_newGameError is not null) _newGameError.Text = "";
             _newGameScenarioCards[index].GrabFocus();
