@@ -38,7 +38,12 @@ public sealed partial class ScenarioEditorScene : Control
         _savedDraftSnapshot = SnapshotDraft();
         BuildUi();
         RefreshList();
-        ShowBasics();
+        if (_list.ItemCount > 0)
+        {
+            _list.Select(0);
+            OpenScenario(_list.GetItemMetadata(0).AsString());
+        }
+        else ShowBasics();
         if (OS.GetCmdlineUserArgs().Contains("--scenarioeditorqa")) CallDeferred(nameof(RunQa));
     }
 
@@ -955,8 +960,17 @@ public sealed partial class ScenarioEditorScene : Control
             _draft = ScenarioWallDefaults.Normalize(_draft, map.Preset, _source.Balance);
             var path = Path.Combine(_scenarioDirectory, _draft.Id + ".json");
             ScenarioDraftStore.Save(path, _draft, map.Preset, known);
+            var saved = ScenarioDraftStore.Load(path);
+            if (SnapshotDraft() != System.Text.Json.JsonSerializer.Serialize(saved))
+                throw new InvalidDataException("저장된 내용이 편집 내용과 일치하지 않습니다.");
             _savedDraftSnapshot = SnapshotDraft();
             RefreshList();
+            var effective = ScenarioDraftCatalog.LoadEffective(
+                ProjectSettings.GlobalizePath("res://assets/scenarios"), _scenarioDirectory)
+                .FirstOrDefault(source => source.Draft.Id == _draft.Id);
+            if (effective is null || Path.GetFullPath(effective.Path) != Path.GetFullPath(path)
+                || System.Text.Json.JsonSerializer.Serialize(effective.Draft) != _savedDraftSnapshot)
+                throw new InvalidDataException("시작 화면에서 수정본을 읽지 못했습니다.");
             for (var index = 0; index < _list.ItemCount; index++)
                 if (_list.GetItemMetadata(index).AsString() == path)
                 {
@@ -985,6 +999,30 @@ public sealed partial class ScenarioEditorScene : Control
                 errors.AddRange(scenario.Validate(_archive.Load(scenario.MapId, scenario.MapRevision).Preset, known));
             }
             var originalDraft = _draft;
+            var originalDirectory = _scenarioDirectory;
+            var qaDirectory = Path.Combine(Path.GetTempPath(), "scenario-editor-save-" + Guid.NewGuid().ToString("N"));
+            var savedEditRoundTrip = false;
+            try
+            {
+                _scenarioDirectory = qaDirectory;
+                _draft = ScenarioDraftStore.Load(Path.Combine(builtIn, "historical-184.json"));
+                _draft = ScenarioRootMapBinding.Bind(_draft, _maps[0]);
+                _draft = _draft with { Title = "수정한 기존 시나리오", Description = "수정한 설명\n다음 줄" };
+                SaveCurrent();
+                var editedPath = Path.Combine(qaDirectory, _draft.Id + ".json");
+                OpenScenario(editedPath);
+                savedEditRoundTrip = _draft.Title == "수정한 기존 시나리오"
+                    && _draft.Description == "수정한 설명\n다음 줄"
+                    && ScenarioDraftCatalog.LoadEffective(builtIn, qaDirectory)
+                        .Single(source => source.Draft.Id == _draft.Id).Path == editedPath;
+            }
+            finally
+            {
+                _scenarioDirectory = originalDirectory;
+                _draft = originalDraft;
+                RefreshList();
+                if (Directory.Exists(qaDirectory)) Directory.Delete(qaDirectory, true);
+            }
             var historicalUsesRoot = true;
             foreach (var scenarioPath in bundled)
             {
@@ -1096,7 +1134,7 @@ public sealed partial class ScenarioEditorScene : Control
                 _draft = originalDraft;
                 RefreshList();
                 var passed = bundled.Length == 6 && _list.ItemCount >= 6
-                    && newScenarioAtBottom && factionColorUi && hiddenFactionUi && cityMapUi && generalSearchUi && generalCityListUi
+                    && savedEditRoundTrip && newScenarioAtBottom && factionColorUi && hiddenFactionUi && cityMapUi && generalSearchUi && generalCityListUi
                     && generalCrudPassed && forceTabRemoved
                     && cityForceUi && forceCrudPassed
                     && errors.Count == 0 && mapSwitchPassed && currentMapSelected
