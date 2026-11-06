@@ -27,6 +27,8 @@ public sealed partial class ScenarioStartMenu
     private GameDifficulty _newGameDifficulty = GameDifficulty.Normal;
     private Dictionary<int, string>? _newGameRulerNames;
     private string _newGameScenarioDirectory = "";
+    private CanvasLayer? _newGameConfirmationLayer;
+    private Action? _newGameConfirmationCancel;
 
     private static readonly Color NewGameGold = new("d7ad59");
     private static readonly Color NewGameGoldBright = new("f0cf7c");
@@ -974,6 +976,7 @@ public sealed partial class ScenarioStartMenu
 
     private void StartSelectedNewGame()
     {
+        if (_campaignLoading || _newGameConfirmationLayer is not null) return;
         if (_newGameSelectedScenarioIndex < 0 || _newGameSelectedScenarioIndex >= _newGameScenarios.Count)
         {
             if (_newGameError is not null) _newGameError.Text = "시나리오를 선택하십시오.";
@@ -985,6 +988,15 @@ public sealed partial class ScenarioStartMenu
             return;
         }
         var (selectedPath, selectedDraft) = _newGameScenarios[_newGameSelectedScenarioIndex];
+        var selectedFaction = selectedDraft.Factions.FirstOrDefault(faction =>
+            faction.Id == _newGameSelectedFactionId && faction.Playable && !faction.Hidden);
+        if (selectedFaction is null)
+        {
+            if (_newGameError is not null) _newGameError.Text = "출정할 수 없는 세력입니다.";
+            return;
+        }
+        var selectedFactionId = selectedFaction.Id;
+        var selectedDifficulty = _newGameDifficulty;
         try
         {
             var data = Path.GetFullPath(Path.Combine(ProjectSettings.GlobalizePath("res://"), "..", "data"));
@@ -1010,9 +1022,9 @@ public sealed partial class ScenarioStartMenu
         {
             SelectedPresetPath = null;
             SelectedScenarioPath = selectedPath;
-            SelectedPlayerFactionId = _newGameSelectedFactionId;
+            SelectedPlayerFactionId = selectedFactionId;
             SelectedScenarioTitle = selectedDraft.Title;
-            SelectedDifficulty = _newGameDifficulty;
+            SelectedDifficulty = selectedDifficulty;
             _launchRequested = true;
             CampaignStartedFromMenu = true;
             ChangeToCampaign();
@@ -1021,87 +1033,176 @@ public sealed partial class ScenarioStartMenu
 
     private void ShowStartConfirmation(Action onConfirmed)
     {
+        if (_newGameConfirmationLayer is not null || _newGameSelectedScenarioIndex < 0
+            || _newGameSelectedScenarioIndex >= _newGameScenarios.Count) return;
+        var draft = _newGameScenarios[_newGameSelectedScenarioIndex].Draft;
+        var faction = draft.Factions.FirstOrDefault(entry => entry.Id == _newGameSelectedFactionId
+            && entry.Playable && !entry.Hidden);
+        if (faction is null) return;
+        var rulerName = _newGameRulerNames?.GetValueOrDefault(faction.RulerGeneralId, "미지정") ?? "미지정";
+        var difficultyName = _newGameDifficulty == GameDifficulty.Hard ? "어려움" : "보통";
+        var priorFocus = GetViewport().GuiGetFocusOwner();
         var layer = new CanvasLayer { Name = "NewGameConfirmation", Layer = 40 };
+        _newGameConfirmationLayer = layer;
         AddChild(layer);
-        void Close() => layer.QueueFree();
+        void Close()
+        {
+            if (!ReferenceEquals(_newGameConfirmationLayer, layer)) return;
+            _newGameConfirmationLayer = null;
+            _newGameConfirmationCancel = null;
+            layer.QueueFree();
+            if (priorFocus is not null && GodotObject.IsInstanceValid(priorFocus)
+                && priorFocus.IsVisibleInTree()) priorFocus.GrabFocus();
+        }
+        _newGameConfirmationCancel = Close;
         var backdrop = new ColorRect
         {
-            Color = new Color(0, 0, 0, 0.66f),
+            Color = new Color(0, 0, 0, 0.55f),
             MouseFilter = MouseFilterEnum.Stop
         };
         backdrop.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
-        backdrop.GuiInput += input =>
-        {
-            if (input is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left }) Close();
-        };
         layer.AddChild(backdrop);
         var center = new CenterContainer { MouseFilter = MouseFilterEnum.Ignore };
         center.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
         layer.AddChild(center);
         var panel = new PanelContainer { Name = "NewGameConfirmationPanel", MouseFilter = MouseFilterEnum.Stop };
         panel.AddThemeStyleboxOverride("panel", NewGameFrame(
-            new Color(0.105f, 0.04f, 0.035f, 0.985f), new Color("d1aa5b"), 1, 7, 18));
+            new Color("190e0d"), new Color("a98247"), 2, 8, 24));
         center.AddChild(panel);
-        var content = new VBoxContainer { CustomMinimumSize = new Vector2(620, 0) };
-        content.AddThemeConstantOverride("separation", 10);
+        var content = new VBoxContainer { CustomMinimumSize = new Vector2(510, 0) };
+        content.AddThemeConstantOverride("separation", 8);
         panel.AddChild(content);
-        var title = new Label { Text = "새 게임 시작 확인", HorizontalAlignment = HorizontalAlignment.Center };
+        var title = new Label { Text = "천하에 출정", HorizontalAlignment = HorizontalAlignment.Center };
         title.AddThemeFontOverride("font", NewGameSerif(700));
-        title.AddThemeFontSizeOverride("font_size", 20);
-        title.AddThemeColorOverride("font_color", new Color("e8c879"));
+        title.AddThemeFontSizeOverride("font_size", 27);
+        title.AddThemeColorOverride("font_color", new Color("efd49b"));
         content.AddChild(title);
+        var subtitle = new Label { Text = "出 征 確 認", HorizontalAlignment = HorizontalAlignment.Center };
+        subtitle.AddThemeFontOverride("font", NewGameSerif(500));
+        subtitle.AddThemeFontSizeOverride("font_size", 12);
+        subtitle.AddThemeColorOverride("font_color", new Color("b99a6c"));
+        content.AddChild(subtitle);
         content.AddChild(NewGameRule());
-        var dialogue = new HBoxContainer();
-        dialogue.AddThemeConstantOverride("separation", 18);
-        content.AddChild(dialogue);
-        var texture = GD.Load<Texture2D>("res://assets/portraits/113.png");
+        var information = new HBoxContainer();
+        information.AddThemeConstantOverride("separation", 18);
+        content.AddChild(information);
+        var portraitFrame = new PanelContainer { CustomMinimumSize = new Vector2(130, 180),
+            Modulate = Colors.White, SelfModulate = Colors.White };
+        portraitFrame.AddThemeStyleboxOverride("panel", NewGameFrame(
+            new Color("261714"), new Color("a98247"), 1, 7, 4));
+        information.AddChild(portraitFrame);
+        var portraitPath = $"res://assets/portraits/{faction.RulerGeneralId}.png";
+        var texture = Godot.FileAccess.FileExists(portraitPath)
+            ? GD.Load<Texture2D>(portraitPath) : null;
         if (texture is not null)
-            dialogue.AddChild(new TextureRect
-            {
-                Texture = texture,
-                CustomMinimumSize = new Vector2(155, 210),
-                ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
-                StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered
-            });
-        var speech = new Label
         {
-            Text = "초선: 이 세력과 함께\n새로운 역사를 시작하시겠습니까?",
+            var portrait = new TextureRect
+            {
+                Name = "NewGameConfirmPortrait",
+                Texture = texture,
+                CustomMinimumSize = new Vector2(122, 172),
+                ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
+                StretchMode = TextureRect.StretchModeEnum.KeepAspectCovered
+            };
+            NewGameRulerImage(portrait, 6);
+            portraitFrame.AddChild(portrait);
+        }
+        else portraitFrame.AddChild(new Label { Text = "초상화 없음",
             HorizontalAlignment = HorizontalAlignment.Center,
-            VerticalAlignment = VerticalAlignment.Center,
-            AutowrapMode = TextServer.AutowrapMode.WordSmart,
-            SizeFlagsHorizontal = SizeFlags.ExpandFill
-        };
-        speech.AddThemeFontOverride("font", NewGameSerif(550));
-        speech.AddThemeFontSizeOverride("font_size", 17);
-        speech.AddThemeColorOverride("font_color", new Color("f2d28a"));
-        dialogue.AddChild(speech);
+            VerticalAlignment = VerticalAlignment.Center });
+        var details = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        details.AddThemeConstantOverride("separation", 12);
+        information.AddChild(details);
+        AddConfirmationDetail(details, "시나리오",
+            $"{ScenarioDisplayTitle(draft)} · {draft.StartYear}년 {draft.StartMonth}월");
+        AddConfirmationDetail(details, "출정 세력", $"{faction.Name} · {rulerName}");
+        AddConfirmationDetail(details, "난이도", difficultyName);
         content.AddChild(NewGameRule());
-        var buttons = new HBoxContainer { Alignment = BoxContainer.AlignmentMode.End };
-        buttons.AddThemeConstantOverride("separation", 10);
+        var question = new Label
+        {
+            Text = "이 세력으로 천하 통일의 대업을 시작하시겠습니까?",
+            HorizontalAlignment = HorizontalAlignment.Center,
+            AutowrapMode = TextServer.AutowrapMode.WordSmart
+        };
+        question.AddThemeFontOverride("font", NewGameBodyFont());
+        question.AddThemeFontSizeOverride("font_size", 16);
+        question.AddThemeColorOverride("font_color", new Color("ead6b6"));
+        content.AddChild(question);
+        var buttons = new HBoxContainer { Alignment = BoxContainer.AlignmentMode.Center };
+        buttons.AddThemeConstantOverride("separation", 16);
         content.AddChild(buttons);
         var cancel = NewGameDialogButton("NewGameConfirmCancel", "취소", false);
-        cancel.CustomMinimumSize = new Vector2(120, 38);
         cancel.Pressed += Close;
         buttons.AddChild(cancel);
-        var confirm = NewGameDialogButton("NewGameConfirmAccept", "확인", true);
-        confirm.CustomMinimumSize = new Vector2(120, 38);
-        confirm.Pressed += () => { Close(); onConfirmed(); };
+        var confirm = NewGameDialogButton("NewGameConfirmAccept", "출정하기", true);
+        var confirming = false;
+        confirm.Pressed += () =>
+        {
+            if (confirming || _campaignLoading || !ReferenceEquals(_newGameConfirmationLayer, layer)) return;
+            confirming = true;
+            Close();
+            try { onConfirmed(); }
+            catch (Exception failure)
+            {
+                confirming = false;
+                if (_newGameError is not null) _newGameError.Text = "출정 실패: " + failure.Message;
+                GD.PushError("출정 실패: " + failure);
+            }
+        };
         buttons.AddChild(confirm);
+        cancel.FocusNext = confirm.GetPath();
+        cancel.FocusPrevious = confirm.GetPath();
+        confirm.FocusNext = cancel.GetPath();
+        confirm.FocusPrevious = cancel.GetPath();
+        cancel.GrabFocus();
+    }
+
+    private static void AddConfirmationDetail(Container parent, string heading, string value)
+    {
+        var entry = new VBoxContainer();
+        entry.AddThemeConstantOverride("separation", 3);
+        parent.AddChild(entry);
+        var label = new Label { Text = heading };
+        label.AddThemeFontOverride("font", NewGameBodyFont());
+        label.AddThemeFontSizeOverride("font_size", 13);
+        label.AddThemeColorOverride("font_color", new Color("d9b978"));
+        entry.AddChild(label);
+        var text = new Label { Text = value, AutowrapMode = TextServer.AutowrapMode.WordSmart,
+            SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        text.AddThemeFontOverride("font", NewGameSerif(600));
+        text.AddThemeFontSizeOverride("font_size", 17);
+        text.AddThemeColorOverride("font_color", new Color("f3dfbd"));
+        entry.AddChild(text);
     }
 
     private static Button NewGameDialogButton(string name, string text, bool primary)
     {
-        var button = new Button { Name = name, Text = text };
-        button.AddThemeFontOverride("font", NewGameSerif(primary ? 700 : 550));
-        button.AddThemeFontSizeOverride("font_size", primary ? 17 : 15);
-        button.AddThemeStyleboxOverride("normal", NewGameButtonStyle(
-            primary ? new Color("6d211a") : new Color("231915"), new Color("b58a43"), 1));
-        button.AddThemeStyleboxOverride("hover", NewGameButtonStyle(
-            primary ? new Color("8c3023") : new Color("37231b"), new Color("e0b95f"), 1));
-        button.AddThemeStyleboxOverride("pressed", NewGameButtonStyle(
-            new Color("4d1713"), new Color("f0cc73"), 2));
-        button.AddThemeColorOverride("font_color", NewGameGoldBright);
+        var button = new Button { Name = name, CustomMinimumSize = new Vector2(170, 52),
+            FocusMode = FocusModeEnum.All, MouseDefaultCursorShape = CursorShape.PointingHand };
+        button.AddThemeStyleboxOverride("normal", NewGameDifficultyTexture(primary, "normal", new Vector2(170, 52)));
+        button.AddThemeStyleboxOverride("hover", NewGameDifficultyTexture(primary, "hover", new Vector2(170, 52)));
+        button.AddThemeStyleboxOverride("pressed", NewGameDifficultyTexture(primary, "pressed", new Vector2(170, 52)));
+        button.AddThemeStyleboxOverride("hover_pressed", NewGameDifficultyTexture(primary, "pressed", new Vector2(170, 52)));
+        button.AddThemeStyleboxOverride("focus", NewGameFrame(Colors.Transparent, new Color("f0cf7c"), 1, 5, 0));
+        var caption = new Label { Name = "Caption", Text = text,
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center,
+            MouseFilter = MouseFilterEnum.Ignore };
+        caption.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+        caption.AddThemeFontOverride("font", NewGameSerif(primary ? 700 : 600));
+        caption.AddThemeFontSizeOverride("font_size", primary ? 18 : 16);
+        caption.AddThemeColorOverride("font_color", NewGameGoldBright);
+        button.AddChild(caption);
         return button;
+    }
+
+    public override void _Input(InputEvent @event)
+    {
+        if (_newGameConfirmationLayer is null
+            || @event is not InputEventKey { Pressed: true, Echo: false } key) return;
+        if (key.Keycode == Key.Escape) _newGameConfirmationCancel?.Invoke();
+        if (key.Keycode is not (Key.Tab or Key.Enter or Key.KpEnter or Key.Space))
+            GetViewport().SetInputAsHandled();
     }
 
     private void SelectFirstFactionForQa()

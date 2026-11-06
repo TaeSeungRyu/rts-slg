@@ -142,9 +142,8 @@ public sealed partial class ScenarioStartMenu : Control
             {
                 SelectFirstFactionForQa();
                 _newGameStartButton?.EmitSignal(BaseButton.SignalName.Pressed);
-                var confirm = GetChildren().OfType<CanvasLayer>().LastOrDefault()
-                    ?.FindChildren("*", "Button", true, false).OfType<Button>()
-                    .FirstOrDefault(button => button.Text == "확인");
+                var confirm = _newGameConfirmationLayer?
+                    .FindChild("NewGameConfirmAccept", true, false) as Button;
                 confirm?.EmitSignal(BaseButton.SignalName.Pressed);
             }).CallDeferred();
         if (OS.GetCmdlineUserArgs().Contains("--menuloadqa"))
@@ -188,15 +187,67 @@ public sealed partial class ScenarioStartMenu : Control
             && _hardDifficultyButton?.GetMeta("difficulty_selected").AsBool() == true
             && _normalDifficultyButton?.GetMeta("difficulty_selected").AsBool() == false;
         SetNewGameDifficulty(SanguoSLG.Core.Simulation.GameDifficulty.Normal);
-        ShowStartConfirmation(() => { });
-        var confirmLayer = GetChildren().OfType<CanvasLayer>().LastOrDefault();
+        var originalFactionId = _newGameSelectedFactionId;
+        var originalScenarioIndex = _newGameSelectedScenarioIndex;
+        var confirmationCalls = 0;
+        ShowStartConfirmation(() => confirmationCalls++);
+        var confirmLayer = _newGameConfirmationLayer;
+        var selectedFaction = _newGameScenarios[originalScenarioIndex].Draft.Factions
+            .First(faction => faction.Id == originalFactionId);
+        var expectedPortraitPath = $"res://assets/portraits/{selectedFaction.RulerGeneralId}.png";
         var hasOfficerConfirm = confirmLayer is not null
-            && confirmLayer.FindChildren("*", "TextureRect", true, false).OfType<TextureRect>()
-                .Any(portrait => portrait.Texture is not null)
+            && confirmLayer.FindChild("NewGameConfirmationPanel", true, false) is PanelContainer
+            && confirmLayer.FindChild("NewGameConfirmPortrait", true, false) is TextureRect portrait
+            && portrait.Texture?.ResourcePath == expectedPortraitPath
             && confirmLayer.FindChildren("*", "Label", true, false).OfType<Label>()
-                .Any(label => label.Text.Contains("초선:", StringComparison.Ordinal))
-            && confirmLayer.FindChildren("*", "Button", true, false).OfType<Button>()
-                .Count(button => button.Text is "확인" or "취소") == 2;
+                .Any(label => label.Text.Contains(selectedFaction.Name, StringComparison.Ordinal))
+            && confirmLayer.FindChildren("*", "Label", true, false).OfType<Label>()
+                .Any(label => label.Text.Contains("시나리오", StringComparison.Ordinal))
+            && confirmLayer.FindChild("NewGameConfirmAccept", true, false) is Button;
+        ShowStartConfirmation(() => confirmationCalls++);
+        var noDuplicateConfirmation = ReferenceEquals(confirmLayer, _newGameConfirmationLayer);
+        _Input(new InputEventKey { Keycode = Key.Escape, Pressed = true });
+        var escapeKeepsSelection = _newGameConfirmationLayer is null
+            && _newGameSelectedFactionId == originalFactionId
+            && _newGameSelectedScenarioIndex == originalScenarioIndex
+            && confirmationCalls == 0;
+        var alternateFaction = _newGameScenarios[originalScenarioIndex].Draft.Factions
+            .FirstOrDefault(faction => faction.Playable && !faction.Hidden
+                && faction.Id != originalFactionId);
+        var selectionRefreshesConfirmation = false;
+        if (alternateFaction is not null)
+        {
+            SelectNewGameFaction(alternateFaction.Id);
+            ShowStartConfirmation(() => confirmationCalls++);
+            selectionRefreshesConfirmation = _newGameConfirmationLayer?
+                .FindChildren("*", "Label", true, false).OfType<Label>()
+                .Any(label => label.Text.Contains(alternateFaction.Name, StringComparison.Ordinal)) == true;
+            (_newGameConfirmationLayer?.FindChild("NewGameConfirmCancel", true, false) as Button)?
+                .EmitSignal(BaseButton.SignalName.Pressed);
+        }
+        if (_newGameScenarios.Count > 1)
+        {
+            var alternateScenarioIndex = originalScenarioIndex == 0 ? 1 : 0;
+            SelectNewGameScenario(alternateScenarioIndex);
+            ShowStartConfirmation(() => confirmationCalls++);
+            var alternateTitle = ScenarioDisplayTitle(_newGameScenarios[alternateScenarioIndex].Draft);
+            selectionRefreshesConfirmation &= _newGameConfirmationLayer?
+                .FindChildren("*", "Label", true, false).OfType<Label>()
+                .Any(label => label.Text.Contains(alternateTitle, StringComparison.Ordinal)) == true;
+            (_newGameConfirmationLayer?.FindChild("NewGameConfirmCancel", true, false) as Button)?
+                .EmitSignal(BaseButton.SignalName.Pressed);
+            SelectNewGameScenario(originalScenarioIndex);
+            SelectNewGameFaction(originalFactionId);
+        }
+        SetNewGameDifficulty(SanguoSLG.Core.Simulation.GameDifficulty.Hard);
+        ShowStartConfirmation(() => confirmationCalls++);
+        var updatedDifficulty = _newGameConfirmationLayer?.FindChildren("*", "Label", true, false)
+            .OfType<Label>().Any(label => label.Text == "어려움") == true;
+        var accept = _newGameConfirmationLayer?.FindChild("NewGameConfirmAccept", true, false) as Button;
+        accept?.EmitSignal(BaseButton.SignalName.Pressed);
+        accept?.EmitSignal(BaseButton.SignalName.Pressed);
+        var confirmedOnce = confirmationCalls == 1 && _newGameConfirmationLayer is null;
+        SetNewGameDifficulty(SanguoSLG.Core.Simulation.GameDifficulty.Normal);
         var titleButtons = FindChildren("*", "", true, false).OfType<TitleMenuButton>().ToArray();
         var titleArt = FindChild("TitleIllustration", true, false) as TextureRect;
         var titlePanel = FindChild("TitleMenuPanel", true, false) as TitleOrnatePanel;
@@ -327,7 +378,10 @@ public sealed partial class ScenarioStartMenu : Control
             if (!builtInScenarioIds.Contains(draft.Id)) customSeen = true;
             else if (customSeen) customScenariosAtBottom = false;
         }
-        var passed = titlePresentation && hasOfficerConfirm && initiallySelected && selectedFromMap
+        var passed = titlePresentation && hasOfficerConfirm && noDuplicateConfirmation
+            && escapeKeepsSelection && selectionRefreshesConfirmation
+            && updatedDifficulty && confirmedOnce
+            && initiallySelected && selectedFromMap
             && scenarioReset && hardDifficulty && responsiveBounds && resolutionLayout
             && newGameLayout && noFactionButtonList && scenarioCardsReady && scenarioSelection
             && styledFooter && scenarioInfo && portraitOriginalColor && factionDescriptionSwitch && readableMap && _newGameFactionMap is { HasSelectedSite: true }
