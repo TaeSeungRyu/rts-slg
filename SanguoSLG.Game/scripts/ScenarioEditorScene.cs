@@ -74,6 +74,7 @@ public sealed partial class ScenarioEditorScene : Control
             _nativeUpdate = update;
             _nativeLastText = field.Text;
             _nativeText = NativeNameEdit.Create(field, GetViewport());
+            if (_nativeText is not null) field.ReleaseFocus();
         }).CallDeferred();
     }
 
@@ -932,7 +933,10 @@ public sealed partial class ScenarioEditorScene : Control
         var row = new HBoxContainer(); _body.AddChild(row);
         row.AddChild(new Label { Text = label, CustomMinimumSize = new Vector2(150, 0) });
         var field = new LineEdit { Text = value, SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        field.TextChanged += value => update(value);
+        field.TextChanged += value =>
+        {
+            if (_nativePlaceholder != field) update(value);
+        };
         field.FocusEntered += () => BeginNativeText(field, update);
         row.AddChild(field);
     }
