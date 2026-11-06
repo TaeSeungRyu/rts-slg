@@ -357,7 +357,7 @@ public sealed partial class ScenarioStartMenu
             Alignment = BoxContainer.AlignmentMode.Begin,
             SizeFlagsVertical = SizeFlags.ExpandFill
         };
-        detailColumn.AddThemeConstantOverride("separation", 12);
+        detailColumn.AddThemeConstantOverride("separation", 0);
         details.AddChild(detailColumn);
         _newGameFactionHint = new Label
         {
@@ -376,7 +376,7 @@ public sealed partial class ScenarioStartMenu
             Name = "FactionIdentityRow", Visible = false,
             SizeFlagsHorizontal = SizeFlags.ExpandFill
         };
-        identityRow.AddThemeConstantOverride("separation", 12);
+        identityRow.AddThemeConstantOverride("separation", 13);
         detailColumn.AddChild(identityRow);
         var portraitFrame = new PanelContainer { CustomMinimumSize = new Vector2(150, 210),
             Modulate = Colors.White, SelfModulate = Colors.White };
@@ -393,11 +393,11 @@ public sealed partial class ScenarioStartMenu
         NewGameRulerImage(_newGameRulerPortrait, 8);
         portraitFrame.AddChild(_newGameRulerPortrait);
         var identityText = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        identityText.AddThemeConstantOverride("separation", 9);
+        identityText.AddThemeConstantOverride("separation", 8);
         identityRow.AddChild(identityText);
         _newGameFactionName = new Label { HorizontalAlignment = HorizontalAlignment.Left, ClipText = true };
         _newGameFactionName.AddThemeFontOverride("font", NewGameSerif(700));
-        _newGameFactionName.AddThemeFontSizeOverride("font_size", 21);
+        _newGameFactionName.AddThemeFontSizeOverride("font_size", 22);
         _newGameFactionName.AddThemeColorOverride("font_color", NewGameGoldBright);
         identityText.AddChild(_newGameFactionName);
         _newGameRulerName = new Label { HorizontalAlignment = HorizontalAlignment.Left, ClipText = true };
@@ -405,30 +405,48 @@ public sealed partial class ScenarioStartMenu
         _newGameRulerName.AddThemeFontSizeOverride("font_size", 17);
         _newGameRulerName.AddThemeColorOverride("font_color", NewGameIvory);
         identityText.AddChild(_newGameRulerName);
-        var statistics = new HBoxContainer
+        identityText.AddChild(NewGameRule());
+        var statistics = new VBoxContainer
         {
             Name = "FactionStatistics", Visible = false,
             SizeFlagsHorizontal = SizeFlags.ExpandFill
         };
-        statistics.AddThemeConstantOverride("separation", 8);
-        detailColumn.AddChild(statistics);
+        statistics.AddThemeConstantOverride("separation", 10);
+        identityText.AddChild(statistics);
         _newGameFactionSites = NewGameFactionStat(statistics, "▥", "거점");
         _newGameFactionTroops = NewGameFactionStat(statistics, "▲", "병력");
         _newGameFactionGenerals = NewGameFactionStat(statistics, "♟", "장수");
-        detailColumn.AddChild(NewGameRule());
+        var descriptionGap = new MarginContainer { Name = "FactionDescriptionDivider", Visible = false,
+            CustomMinimumSize = new Vector2(0, 25) };
+        descriptionGap.AddThemeConstantOverride("margin_top", 12);
+        descriptionGap.AddThemeConstantOverride("margin_bottom", 12);
+        descriptionGap.AddChild(NewGameRule());
+        detailColumn.AddChild(descriptionGap);
+        var descriptionTitle = new Label { Text = "세력 소개", Visible = false };
+        descriptionTitle.Name = "FactionDescriptionTitle";
+        descriptionTitle.AddThemeFontOverride("font", NewGameSerif(600));
+        descriptionTitle.AddThemeFontSizeOverride("font_size", 16);
+        descriptionTitle.AddThemeColorOverride("font_color", NewGameGold);
+        detailColumn.AddChild(descriptionTitle);
+        var descriptionPanel = new PanelContainer { Name = "FactionDescriptionPanel", Visible = false,
+            SizeFlagsVertical = SizeFlags.ExpandFill };
+        descriptionPanel.AddThemeStyleboxOverride("panel", NewGameFrame(
+            new Color("261714"), new Color("4d3524"), 1, 6, 12));
+        detailColumn.AddChild(descriptionPanel);
         var descriptionScroll = new ScrollContainer
         {
-            Name = "FactionDescriptionScroll", Visible = false,
-            CustomMinimumSize = new Vector2(0, 86),
+            Name = "FactionDescriptionScroll",
+            CustomMinimumSize = new Vector2(0, 72),
             SizeFlagsVertical = SizeFlags.ExpandFill,
             HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled
         };
-        detailColumn.AddChild(descriptionScroll);
+        descriptionPanel.AddChild(descriptionScroll);
         _newGameFactionDescription = new Label
         {
             Name = "FactionDescription",
             AutowrapMode = TextServer.AutowrapMode.WordSmart,
-            SizeFlagsHorizontal = SizeFlags.ExpandFill
+            SizeFlagsHorizontal = SizeFlags.ExpandFill,
+            Text = "세력 설명이 등록되지 않았습니다."
         };
         _newGameFactionDescription.AddThemeFontOverride("font", NewGameBodyFont());
         _newGameFactionDescription.AddThemeFontSizeOverride("font_size", 14);
@@ -863,7 +881,9 @@ public sealed partial class ScenarioStartMenu
         if (_newGameFactionGenerals is not null) _newGameFactionGenerals.Text = "";
         if (_newGameFactionDescription is not null) _newGameFactionDescription.Visible = false;
         if (FindChild("FactionStatistics", true, false) is Control statistics) statistics.Visible = false;
-        if (FindChild("FactionDescriptionScroll", true, false) is Control descriptionScroll) descriptionScroll.Visible = false;
+        if (FindChild("FactionDescriptionPanel", true, false) is Control descriptionPanel) descriptionPanel.Visible = false;
+        if (FindChild("FactionDescriptionTitle", true, false) is Control descriptionTitle) descriptionTitle.Visible = false;
+        if (FindChild("FactionDescriptionDivider", true, false) is Control descriptionDivider) descriptionDivider.Visible = false;
         if (FindChild("FactionIdentityRow", true, false) is Control identityRow) identityRow.Visible = false;
         if (_newGameStartButton is not null)
         {
@@ -889,7 +909,9 @@ public sealed partial class ScenarioStartMenu
         if (_newGameFactionHint is not null) _newGameFactionHint.Visible = false;
         if (FindChild("FactionIdentityRow", true, false) is Control identityRow) identityRow.Visible = true;
         if (FindChild("FactionStatistics", true, false) is Control statistics) statistics.Visible = true;
-        if (FindChild("FactionDescriptionScroll", true, false) is Control descriptionScroll) descriptionScroll.Visible = true;
+        if (FindChild("FactionDescriptionPanel", true, false) is Control descriptionPanel) descriptionPanel.Visible = true;
+        if (FindChild("FactionDescriptionTitle", true, false) is Control descriptionTitle) descriptionTitle.Visible = true;
+        if (FindChild("FactionDescriptionDivider", true, false) is Control descriptionDivider) descriptionDivider.Visible = true;
         if (_newGameRulerPortrait is not null)
         {
             var portraitPath = $"res://assets/portraits/{faction.RulerGeneralId}.png";
