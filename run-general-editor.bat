@@ -6,5 +6,7 @@ if not exist "%GODOT%" (
 )
 "%GODOT%" --headless --path "%~dp0SanguoSLG.Game" --build-solutions --quit
 if errorlevel 1 exit /b %errorlevel%
+dotnet build "%~dp0tools\ime-native-probe\ImeNativeProbe.csproj" --configuration Release -v:q
+if errorlevel 1 exit /b %errorlevel%
 "%GODOT%" --path "%~dp0SanguoSLG.Game" "%~dp0SanguoSLG.Game\GeneralEditor.tscn"
 

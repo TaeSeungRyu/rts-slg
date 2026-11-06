@@ -137,6 +137,7 @@ public partial class GeneralCreatorScene : Control
         var identity = GeneralWorkspaceStyle.Section(basic, "신상 정보");
         _name = new LineEdit { MaxLength = 20, PlaceholderText = "장수 이름", KeepEditingOnTextSubmit = true };
         AddField(identity, "이름", _name);
+        NativeTextInputDialog.Attach(_name);
         _gender = new OptionButton();
         _gender.AddItem("남성"); _gender.AddItem("여성");
         _gender.ItemSelected += _ =>
@@ -159,6 +160,7 @@ public partial class GeneralCreatorScene : Control
         var introduction = GeneralWorkspaceStyle.Section(basic, "장수 소개");
         _description = new TextEdit { CustomMinimumSize = new Vector2(0, 115) };
         introduction.AddChild(_description);
+        NativeTextInputDialog.Attach(_description);
 
         var portraitSection = GeneralWorkspaceStyle.Section(portraits,
             "초상 얼굴 (기본 얼굴을 고르거나 외부 PNG·JPG·WEBP 파일을 가져오세요.)");

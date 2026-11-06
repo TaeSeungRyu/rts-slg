@@ -516,6 +516,7 @@ public sealed partial class EditMapScene
         var name = new LineEdit { Text = existing?.Name ?? "", PlaceholderText = "관문 이름을 입력하세요",
             CustomMinimumSize = new Vector2(0f, 38f), KeepEditingOnTextSubmit = true };
         content.AddChild(name);
+        NativeTextInputDialog.Attach(name);
         var size = SelectOptions(content, "관문 종류", ["소형 관문 · 내구도 2,000", "중형 관문 · 내구도 3,000"],
             existing?.Size == "medium" ? 1 : 0);
         var direction = SelectOptions(content, "관문 방향", ["동", "남동", "남서", "서", "북서", "북동"],
@@ -664,6 +665,7 @@ public sealed partial class EditMapScene
             CustomMinimumSize = new Vector2(0f, 38f), SizeFlagsHorizontal = SizeFlags.ExpandFill,
             KeepEditingOnTextSubmit = true };
         content.AddChild(name);
+        NativeTextInputDialog.Attach(name);
         var sizes = new[] { "small", "medium", "large" };
         var size = SelectOptions(content, "성 종류", ["소형성", "중형성", "대형성"],
             Math.Max(0, Array.IndexOf(sizes, existing?.Size ?? "small")));
@@ -996,6 +998,7 @@ public sealed partial class EditMapScene
             CustomMinimumSize = new Vector2(0f, 38f), SizeFlagsHorizontal = SizeFlags.ExpandFill,
             KeepEditingOnTextSubmit = true };
         content.AddChild(name);
+        NativeTextInputDialog.Attach(name);
         var sizes = new[] { "small", "medium" };
         var size = SelectOptions(content, "항구 종류", ["소형항", "중형항"],
             Math.Max(0, Array.IndexOf(sizes, existing?.Size ?? "small")));

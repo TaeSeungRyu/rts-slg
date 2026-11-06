@@ -3,6 +3,8 @@ set "GODOT=D:\LOCAL-WORK-STATION\Godot_v4.7.2-official\Godot_v4.7.2-stable_mono_
 set "GODOT_QA=D:\LOCAL-WORK-STATION\Godot_v4.7.2-official\Godot_v4.7.2-stable_mono_win64\Godot_v4.7.2-stable_mono_win64_console.exe"
 "%GODOT_QA%" --headless --path "%~dp0SanguoSLG.Game" --build-solutions --quit
 if errorlevel 1 exit /b %errorlevel%
+dotnet build "%~dp0tools\ime-native-probe\ImeNativeProbe.csproj" --configuration Release -v:q
+if errorlevel 1 exit /b %errorlevel%
 if /i "%~1"=="qa" (
   "%GODOT_QA%" --headless --path "%~dp0SanguoSLG.Game" res://GeneralCreator.tscn -- --generalcreatorqa
   exit /b %errorlevel%

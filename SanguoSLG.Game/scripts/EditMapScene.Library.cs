@@ -133,6 +133,7 @@ public sealed partial class EditMapScene
         var input = new LineEdit { Text = version.Title, MaxLength = 60,
             CustomMinimumSize = new Vector2(360, 36) };
         content.AddChild(input);
+        NativeTextInputDialog.Attach(input);
         var save = new Button { Text = "이름 저장" };
         save.Pressed += () =>
         {

@@ -7,6 +7,8 @@ if not exist "%GODOT%" (
 )
 dotnet build "%~dp0SanguoSLG.Game\SanguoSLG.Game.csproj" -v:q
 if errorlevel 1 exit /b %errorlevel%
+dotnet build "%~dp0tools\ime-native-probe\ImeNativeProbe.csproj" --configuration Release -v:q
+if errorlevel 1 exit /b %errorlevel%
 if /i "%~1"=="qa" (
   "%GODOT_QA%" --headless --path "%~dp0SanguoSLG.Game" res://EditMap.tscn -- --editmapqa
   exit /b %errorlevel%

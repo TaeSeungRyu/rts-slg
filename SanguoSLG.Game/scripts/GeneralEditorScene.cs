@@ -138,6 +138,7 @@ public partial class GeneralEditorScene : Control
         };
         _search.TextChanged += _ => RefreshList();
         toolbar.AddChild(_search);
+        NativeTextInputDialog.Attach(_search);
 
         _regionFilter = new OptionButton { CustomMinimumSize = new Vector2(180, 0) };
         _regionFilter.ItemSelected += _ => RefreshList();

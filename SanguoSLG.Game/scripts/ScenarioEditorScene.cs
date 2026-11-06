@@ -458,6 +458,7 @@ public sealed partial class ScenarioEditorScene : Control
             var name = new LineEdit { Text = faction.Name, CustomMinimumSize = new Vector2(150, 0) };
             name.TextChanged += value => UpdateFaction(faction.Id, f => f with { Name = value });
             row.AddChild(name);
+            NativeTextInputDialog.Attach(name);
             var ruler = new OptionButton { CustomMinimumSize = new Vector2(150, 0) };
             foreach (var general in generals) ruler.AddItem(general.Name, general.Id.Value);
             ruler.Select(Math.Max(0, ruler.GetItemIndex(faction.RulerGeneralId)));
@@ -648,6 +649,7 @@ public sealed partial class ScenarioEditorScene : Control
         _body.AddChild(new Label { Text = "장수 등록 · 다른 거점의 장수도 이곳으로 이동할 수 있습니다." });
         var search = new LineEdit { PlaceholderText = "장수 이름 검색", Text = _generalSearch };
         _body.AddChild(search);
+        NativeTextInputDialog.Attach(search);
         var addRow = new HBoxContainer();
         _body.AddChild(addRow);
         var selection = new OptionButton { CustomMinimumSize = new Vector2(240, 0) };
@@ -719,6 +721,7 @@ public sealed partial class ScenarioEditorScene : Control
         host.AddChild(new HSeparator());
         var search = new LineEdit { PlaceholderText = "장수 검색", Text = _generalSearch };
         host.AddChild(search);
+        NativeTextInputDialog.Attach(search);
         var row = new HBoxContainer();
         host.AddChild(row);
         var selection = new OptionButton { SizeFlagsHorizontal = SizeFlags.ExpandFill };
@@ -891,6 +894,7 @@ public sealed partial class ScenarioEditorScene : Control
             SizeFlagsHorizontal = SizeFlags.ExpandFill };
         field.TextChanged += text => update(text);
         row.AddChild(field);
+        NativeTextInputDialog.Attach(field);
     }
 
     private void AddDescription(string label, string value, Action<string> update)
@@ -913,6 +917,7 @@ public sealed partial class ScenarioEditorScene : Control
         };
         field.TextChanged += () => update(field.Text);
         row.AddChild(field);
+        NativeTextInputDialog.Attach(field);
     }
 
     private void AddNumber(string label, int value, int min, int max, Action<int> update)
