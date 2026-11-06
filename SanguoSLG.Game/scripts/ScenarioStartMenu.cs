@@ -254,6 +254,28 @@ public sealed partial class ScenarioStartMenu : Control
             && FindChild("SelectedScenarioSummary", true, false) is Label scenarioSummary
             && scenarioSummary.Text.Contains("주요 세력", StringComparison.Ordinal)
             && scenarioSummary.Text.Contains("총 거점", StringComparison.Ordinal);
+        using var unmodifiedPortrait = new TextureRect
+        {
+            Texture = _newGameRulerPortrait?.Texture,
+            Modulate = Colors.White,
+            SelfModulate = Colors.White
+        };
+        var portraitAncestorsUntinted = true;
+        for (var ancestor = _newGameRulerPortrait?.GetParent(); ancestor is not null;
+             ancestor = ancestor.GetParent())
+            if (ancestor is CanvasItem canvas
+                && (canvas.Modulate != Colors.White || canvas.SelfModulate != Colors.White))
+                portraitAncestorsUntinted = false;
+        var portraitOriginalColor = _newGameRulerPortrait is
+            { Texture: not null, Modulate: var portraitModulate, SelfModulate: var portraitSelfModulate,
+                Material: ShaderMaterial { Shader: not null } portraitMaterial }
+            && portraitModulate == unmodifiedPortrait.Modulate
+            && portraitSelfModulate == unmodifiedPortrait.SelfModulate
+            && portraitAncestorsUntinted
+            && ReferenceEquals(_newGameRulerPortrait.Texture, unmodifiedPortrait.Texture)
+            && portraitMaterial.Shader.Code.Contains("COLOR.a *=", StringComparison.Ordinal)
+            && !portraitMaterial.Shader.Code.Contains("COLOR.rgb", StringComparison.Ordinal)
+            && !portraitMaterial.Shader.Code.Contains("texture(TEXTURE", StringComparison.Ordinal);
         var readableMap = FindChild("ScenarioMapTooltip", true, false) is PanelContainer
             && _newGameFactionMap is { HasTerrain: true };
         var difficultyButtons = FindChildren("Difficulty*", "Button", true, false).OfType<Button>().ToArray();
@@ -282,7 +304,7 @@ public sealed partial class ScenarioStartMenu : Control
         var passed = titlePresentation && hasOfficerConfirm && initiallySelected && selectedFromMap
             && scenarioReset && hardDifficulty && responsiveBounds && resolutionLayout
             && newGameLayout && noFactionButtonList && scenarioCardsReady && scenarioSelection
-            && styledFooter && scenarioInfo && readableMap && _newGameFactionMap is { HasSelectedSite: true }
+            && styledFooter && scenarioInfo && portraitOriginalColor && readableMap && _newGameFactionMap is { HasSelectedSite: true }
             && _newGameScenarios.Count >= 6 && customScenariosAtBottom
             && _newGameFactionMap is { HasTerrain: true, CityCount: > 0, SelectableFactionCount: > 0 }
             && difficultyButtons.Length == 2

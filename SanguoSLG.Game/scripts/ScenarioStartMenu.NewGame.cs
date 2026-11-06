@@ -90,9 +90,11 @@ public sealed partial class ScenarioStartMenu
     {
         var material = new ShaderMaterial
         {
-            Shader = GD.Load<Shader>("res://assets/ui/new_game/portrait_lift.gdshader")
+            Shader = GD.Load<Shader>("res://assets/ui/new_game/portrait_mask.gdshader")
         };
         material.SetShaderParameter("corner_radius", radius);
+        image.Modulate = Colors.White;
+        image.SelfModulate = Colors.White;
         image.Material = material;
         image.Resized += () => material.SetShaderParameter("rect_size", image.Size);
     }
@@ -376,7 +378,8 @@ public sealed partial class ScenarioStartMenu
         };
         identityRow.AddThemeConstantOverride("separation", 12);
         detailColumn.AddChild(identityRow);
-        var portraitFrame = new PanelContainer { CustomMinimumSize = new Vector2(150, 210) };
+        var portraitFrame = new PanelContainer { CustomMinimumSize = new Vector2(150, 210),
+            Modulate = Colors.White, SelfModulate = Colors.White };
         portraitFrame.AddThemeStyleboxOverride("panel", NewGameFrame(
             new Color("332117"), new Color("b68a45"), 1, 8, 4));
         identityRow.AddChild(portraitFrame);
