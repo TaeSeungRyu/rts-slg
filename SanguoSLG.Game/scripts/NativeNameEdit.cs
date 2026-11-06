@@ -13,6 +13,10 @@ internal sealed class NativeNameEdit : IDisposable
     private const uint WsVisible = 0x10000000;
     private const uint WsTabStop = 0x00010000;
     private const uint EsAutoHScroll = 0x0080;
+    private const uint EsMultiline = 0x0004;
+    private const uint EsAutoVScroll = 0x0040;
+    private const uint EsWantReturn = 0x1000;
+    private const uint WsVScroll = 0x00200000;
     private const uint SwpNoZOrder = 0x0004;
     private const int SwHide = 0;
     private const int SwShow = 5;
@@ -23,21 +27,27 @@ internal sealed class NativeNameEdit : IDisposable
     private const uint EcRightMargin = 0x0002;
     private const uint Background = 0x0014171c; // COLORREF RGB(28, 23, 20)
     private const uint Foreground = 0x00c3f1ff; // COLORREF RGB(255, 241, 195)
-    private readonly LineEdit _placeholder;
+    private readonly Control _placeholder;
+    private readonly bool _multiline;
     private readonly Viewport _viewport;
     private readonly nint _parent;
     private readonly nint _backgroundBrush;
     private readonly nint _font;
+    private readonly nint _imeContext;
+    private readonly nint _previousImeContext;
     private readonly SubclassProcedure _subclassProcedure;
     private nint _handle;
     private Rect _lastBounds;
 
-    private NativeNameEdit(nint handle, nint parent, LineEdit placeholder, Viewport viewport)
+    private NativeNameEdit(nint handle, nint parent, Control placeholder, Viewport viewport, bool multiline)
     {
         _handle = handle;
         _parent = parent;
         _placeholder = placeholder;
         _viewport = viewport;
+        _multiline = multiline;
+        _imeContext = ImmCreateContext();
+        if (_imeContext != 0) _previousImeContext = ImmAssociateContext(_handle, _imeContext);
         _backgroundBrush = CreateSolidBrush(Background);
         _font = CreateFontW(-17, 0, 0, 0, 500, 0, 0, 0, 1, 0, 0, 0, 0, "Malgun Gothic");
         _subclassProcedure = ColorEdit;
@@ -55,7 +65,17 @@ internal sealed class NativeNameEdit : IDisposable
         var handle = CreateWindowExW(0, "EDIT", placeholder.Text,
             WsChild | WsVisible | WsTabStop | EsAutoHScroll,
             0, 0, 1, 1, parent, 0, 0, 0);
-        return handle == 0 ? null : new NativeNameEdit(handle, parent, placeholder, viewport);
+        return handle == 0 ? null : new NativeNameEdit(handle, parent, placeholder, viewport, false);
+    }
+
+    public static NativeNameEdit? Create(TextEdit placeholder, Viewport viewport)
+    {
+        var parent = (nint)DisplayServer.WindowGetNativeHandle(DisplayServer.HandleType.WindowHandle);
+        if (parent == 0) return null;
+        var handle = CreateWindowExW(0, "EDIT", placeholder.Text,
+            WsChild | WsVisible | WsTabStop | WsVScroll | EsMultiline | EsAutoVScroll | EsWantReturn,
+            0, 0, 1, 1, parent, 0, 0, 0);
+        return handle == 0 ? null : new NativeNameEdit(handle, parent, placeholder, viewport, true);
     }
 
     public string Text
@@ -92,7 +112,8 @@ internal sealed class NativeNameEdit : IDisposable
         var scaleY = (float)client.Bottom / viewportSize.Y;
         var rect = _placeholder.GetGlobalRect();
         var fieldHeight = Mathf.RoundToInt(rect.Size.Y * scaleY);
-        var nativeHeight = Mathf.Max(1, Mathf.Min(fieldHeight - 4, 25));
+        var nativeHeight = _multiline ? Mathf.Max(1, fieldHeight - 4)
+            : Mathf.Max(1, Mathf.Min(fieldHeight - 4, 25));
         var bounds = new Rect
         {
             Left = Mathf.RoundToInt(rect.Position.X * scaleX) + 2,
@@ -130,6 +151,11 @@ internal sealed class NativeNameEdit : IDisposable
         // Windows hides the pointer while typing in EDIT. Return keyboard focus
         // before destroying it so the pointer is restored without a mouse move.
         if (GetFocus() == _handle) SetFocus(_parent);
+        if (_imeContext != 0)
+        {
+            ImmAssociateContext(_handle, _previousImeContext);
+            ImmDestroyContext(_imeContext);
+        }
         RemoveWindowSubclass(_parent, _subclassProcedure, (nuint)_handle);
         DestroyWindow(_handle);
         _handle = 0;
@@ -203,4 +229,10 @@ internal sealed class NativeNameEdit : IDisposable
     private static extern bool ShowWindow(nint window, int command);
     [DllImport("user32.dll")]
     private static extern bool DestroyWindow(nint window);
+    [DllImport("imm32.dll")]
+    private static extern nint ImmCreateContext();
+    [DllImport("imm32.dll")]
+    private static extern nint ImmAssociateContext(nint window, nint context);
+    [DllImport("imm32.dll")]
+    private static extern bool ImmDestroyContext(nint context);
 }

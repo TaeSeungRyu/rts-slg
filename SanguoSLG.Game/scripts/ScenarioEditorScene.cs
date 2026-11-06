@@ -16,7 +16,7 @@ public sealed partial class ScenarioEditorScene : Control
     private Button _deleteButton = null!;
     private string _scenarioDirectory = "";
     private NativeNameEdit? _nativeText;
-    private LineEdit? _nativePlaceholder;
+    private Control? _nativePlaceholder;
     private Action<string>? _nativeUpdate;
     private string _nativeLastText = "";
     private int _selectedCityId;
@@ -63,7 +63,7 @@ public sealed partial class ScenarioEditorScene : Control
         _factionColorIcons.Clear();
     }
 
-    private void BeginNativeText(LineEdit field, Action<string> update)
+    private void BeginNativeText(Control field, Action<string> update)
     {
         if (!OperatingSystem.IsWindows() || DisplayServer.GetName() == "headless") return;
         Callable.From(() =>
@@ -72,9 +72,18 @@ public sealed partial class ScenarioEditorScene : Control
             EndNativeText();
             _nativePlaceholder = field;
             _nativeUpdate = update;
-            _nativeLastText = field.Text;
-            _nativeText = NativeNameEdit.Create(field, GetViewport());
-            if (_nativeText is not null) field.ReleaseFocus();
+            _nativeLastText = field switch
+            {
+                LineEdit line => line.Text,
+                TextEdit multiline => multiline.Text,
+                _ => ""
+            };
+            _nativeText = field switch
+            {
+                LineEdit line => NativeNameEdit.Create(line, GetViewport()),
+                TextEdit multiline => NativeNameEdit.Create(multiline, GetViewport()),
+                _ => null
+            };
         }).CallDeferred();
     }
 
@@ -83,8 +92,12 @@ public sealed partial class ScenarioEditorScene : Control
         if (_nativeText is null) return;
         var value = _nativeText.Text;
         _nativeUpdate?.Invoke(value);
-        if (_nativePlaceholder is { } field && GodotObject.IsInstanceValid(field)) field.Text = value;
         _nativeText.Dispose();
+        if (_nativePlaceholder is { } field && GodotObject.IsInstanceValid(field))
+        {
+            if (field is LineEdit line) line.Text = value;
+            else if (field is TextEdit multiline) multiline.Text = value;
+        }
         _nativeText = null;
         _nativePlaceholder = null;
         _nativeUpdate = null;
@@ -959,7 +972,11 @@ public sealed partial class ScenarioEditorScene : Control
             SizeFlagsHorizontal = SizeFlags.ExpandFill,
             WrapMode = TextEdit.LineWrappingMode.Boundary
         };
-        field.TextChanged += () => update(field.Text);
+        field.TextChanged += () =>
+        {
+            if (_nativePlaceholder != field) update(field.Text);
+        };
+        field.FocusEntered += () => BeginNativeText(field, update);
         row.AddChild(field);
     }
 
