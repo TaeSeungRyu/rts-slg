@@ -14,6 +14,7 @@ public sealed partial class ScenarioStartMenu
     private Label? _newGameRulerName;
     private RichTextLabel? _newGameFactionNumbers;
     private Label? _newGameFactionHint;
+    private Label? _newGameFactionDescription;
     private TextureRect? _newGameRulerPortrait;
     private Label? _newGameError;
     private Button? _normalDifficultyButton;
@@ -56,6 +57,45 @@ public sealed partial class ScenarioStartMenu
 
     private static StyleBoxFlat NewGameButtonStyle(Color background, Color border, int width = 1)
         => NewGameFrame(background, border, width, 5, 8);
+
+    private static void NewGameStyleScrollBar(VScrollBar scroll)
+    {
+        scroll.CustomMinimumSize = new Vector2(8, 0);
+        scroll.AddThemeStyleboxOverride("scroll", NewGameFrame(new Color("211712"),
+            new Color("322518"), 1, 4, 0));
+        scroll.AddThemeStyleboxOverride("grabber", NewGameFrame(new Color("9e793c"),
+            new Color("d7ad59"), 1, 4, 0));
+        scroll.AddThemeStyleboxOverride("grabber_highlight", NewGameFrame(new Color("bd954c"),
+            new Color("f0cf7c"), 1, 4, 0));
+        scroll.AddThemeStyleboxOverride("grabber_pressed", NewGameFrame(new Color("78582e"),
+            new Color("d7ad59"), 1, 4, 0));
+    }
+
+    private static void NewGameRoundImage(TextureRect image, float radius)
+    {
+        var material = new ShaderMaterial
+        {
+            Shader = GD.Load<Shader>("res://assets/ui/new_game/rounded_image.gdshader")
+        };
+        material.SetShaderParameter("corner_radius", radius);
+        image.Material = material;
+        image.Resized += () => material.SetShaderParameter("rect_size", image.Size);
+    }
+
+    private static StyleBoxTexture NewGameDifficultyTexture(bool selected, string state)
+    {
+        var kind = selected ? "primary" : "secondary";
+        var style = new StyleBoxTexture
+        {
+            Texture = GD.Load<Texture2D>($"res://assets/ui/new_game/buttons/{kind}_{state}.png"),
+            TextureMarginLeft = selected ? 86 : 76,
+            TextureMarginRight = selected ? 86 : 76,
+            TextureMarginTop = 23,
+            TextureMarginBottom = 23
+        };
+        style.SetContentMarginAll(0);
+        return style;
+    }
 
     private CenterContainer BuildNewGameScreen()
     {
@@ -176,6 +216,7 @@ public sealed partial class ScenarioStartMenu
             SizeFlagsHorizontal = SizeFlags.ExpandFill
         };
         frame.AddChild(scroll);
+        NewGameStyleScrollBar(scroll.GetVScrollBar());
         var cards = new VBoxContainer { Name = "ScenarioCards", SizeFlagsHorizontal = SizeFlags.ExpandFill };
         cards.AddThemeConstantOverride("separation", 7);
         scroll.AddChild(cards);
@@ -214,8 +255,10 @@ public sealed partial class ScenarioStartMenu
             SizeFlagsHorizontal = SizeFlags.ExpandFill
         };
         scenarioTitle.AddThemeFontOverride("font", NewGameSerif(650));
-        scenarioTitle.AddThemeFontSizeOverride("font_size", 17);
+        scenarioTitle.AddThemeFontSizeOverride("font_size", 20);
         scenarioTitle.AddThemeColorOverride("font_color", NewGameGoldBright);
+        scenarioTitle.ClipText = true;
+        scenarioTitle.TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis;
         heading.AddChild(scenarioTitle);
         var scenarioDate = new Label
         {
@@ -226,6 +269,7 @@ public sealed partial class ScenarioStartMenu
         scenarioDate.AddThemeFontSizeOverride("font_size", 14);
         scenarioDate.AddThemeColorOverride("font_color", NewGameMuted);
         heading.AddChild(scenarioDate);
+        info.AddChild(NewGameRule());
         var description = new Label
         {
             Name = "SelectedScenarioDescription",
@@ -239,7 +283,7 @@ public sealed partial class ScenarioStartMenu
         info.AddChild(description);
         var summary = new Label { Name = "SelectedScenarioSummary", AutowrapMode = TextServer.AutowrapMode.Off };
         summary.AddThemeFontOverride("font", NewGameBodyFont());
-        summary.AddThemeFontSizeOverride("font_size", 12);
+        summary.AddThemeFontSizeOverride("font_size", 13);
         summary.AddThemeColorOverride("font_color", new Color("cdb578"));
         info.AddChild(summary);
     }
@@ -271,38 +315,55 @@ public sealed partial class ScenarioStartMenu
         _newGameFactionHint.AddThemeFontSizeOverride("font_size", 16);
         _newGameFactionHint.AddThemeColorOverride("font_color", NewGameMuted);
         detailColumn.AddChild(_newGameFactionHint);
+        var identityRow = new HBoxContainer { Name = "FactionIdentityRow", Visible = false };
+        identityRow.AddThemeConstantOverride("separation", 12);
+        detailColumn.AddChild(identityRow);
         _newGameRulerPortrait = new TextureRect
         {
             Name = "NewGameRulerPortrait",
-            Visible = false,
-            CustomMinimumSize = new Vector2(0, 240),
-            SizeFlagsHorizontal = SizeFlags.ExpandFill,
+            CustomMinimumSize = new Vector2(154, 226),
             ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
-            StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered
+            StretchMode = TextureRect.StretchModeEnum.KeepAspectCovered
         };
-        detailColumn.AddChild(_newGameRulerPortrait);
-        _newGameFactionName = new Label { Visible = false, HorizontalAlignment = HorizontalAlignment.Center };
+        NewGameRoundImage(_newGameRulerPortrait, 8);
+        identityRow.AddChild(_newGameRulerPortrait);
+        var identityText = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        identityText.AddThemeConstantOverride("separation", 8);
+        identityRow.AddChild(identityText);
+        _newGameFactionName = new Label { HorizontalAlignment = HorizontalAlignment.Left, ClipText = true };
         _newGameFactionName.AddThemeFontOverride("font", NewGameSerif(700));
         _newGameFactionName.AddThemeFontSizeOverride("font_size", 21);
         _newGameFactionName.AddThemeColorOverride("font_color", NewGameGoldBright);
-        detailColumn.AddChild(_newGameFactionName);
-        _newGameRulerName = new Label { Visible = false, HorizontalAlignment = HorizontalAlignment.Center };
+        identityText.AddChild(_newGameFactionName);
+        _newGameRulerName = new Label { HorizontalAlignment = HorizontalAlignment.Left, ClipText = true };
         _newGameRulerName.AddThemeFontOverride("font", NewGameSerif(600));
         _newGameRulerName.AddThemeFontSizeOverride("font_size", 17);
         _newGameRulerName.AddThemeColorOverride("font_color", NewGameIvory);
-        detailColumn.AddChild(_newGameRulerName);
+        identityText.AddChild(_newGameRulerName);
         _newGameFactionNumbers = new RichTextLabel
         {
-            Visible = false,
             BbcodeEnabled = true,
             FitContent = true,
-            CustomMinimumSize = new Vector2(0, 84),
+            CustomMinimumSize = new Vector2(0, 112),
             ScrollActive = false
         };
         _newGameFactionNumbers.AddThemeFontOverride("normal_font", NewGameBodyFont());
         _newGameFactionNumbers.AddThemeFontSizeOverride("normal_font_size", 14);
         _newGameFactionNumbers.AddThemeColorOverride("default_color", NewGameIvory);
-        detailColumn.AddChild(_newGameFactionNumbers);
+        identityText.AddChild(_newGameFactionNumbers);
+        detailColumn.AddChild(NewGameRule());
+        _newGameFactionDescription = new Label
+        {
+            Name = "FactionDescription",
+            Visible = false,
+            AutowrapMode = TextServer.AutowrapMode.WordSmart,
+            MaxLinesVisible = 3,
+            CustomMinimumSize = new Vector2(0, 54)
+        };
+        _newGameFactionDescription.AddThemeFontOverride("font", NewGameBodyFont());
+        _newGameFactionDescription.AddThemeFontSizeOverride("font_size", 14);
+        _newGameFactionDescription.AddThemeColorOverride("font_color", NewGameIvory);
+        detailColumn.AddChild(_newGameFactionDescription);
 
         column.AddChild(NewGameRule());
         column.AddChild(NewGameSectionTitle("게임 난이도"));
@@ -336,13 +397,19 @@ public sealed partial class ScenarioStartMenu
         var button = new Button
         {
             Name = name,
-            Text = text,
             ToggleMode = true,
             CustomMinimumSize = new Vector2(0, 42),
             SizeFlagsHorizontal = SizeFlags.ExpandFill
         };
-        button.AddThemeFontOverride("font", NewGameSerif(600));
-        button.AddThemeFontSizeOverride("font_size", 16);
+        var caption = new Label
+        {
+            Name = "DifficultyCaption", Text = text, MouseFilter = MouseFilterEnum.Ignore,
+            HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center
+        };
+        caption.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+        caption.AddThemeFontOverride("font", NewGameSerif(600));
+        caption.AddThemeFontSizeOverride("font_size", 16);
+        button.AddChild(caption);
         button.SetMeta("difficulty_label", text);
         return button;
     }
@@ -473,6 +540,16 @@ public sealed partial class ScenarioStartMenu
             TooltipText = draft.Title,
             ClipContents = true
         };
+        var background = new ColorRect
+        {
+            Name = "ScenarioCardBackground", MouseFilter = MouseFilterEnum.Ignore,
+            Material = new ShaderMaterial { Shader = GD.Load<Shader>("res://assets/ui/new_game/scenario_card.gdshader") }
+        };
+        background.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+        card.AddChild(background);
+        card.Resized += () => ((ShaderMaterial)background.Material).SetShaderParameter("rect_size", card.Size);
+        card.MouseEntered += () => ApplyScenarioCardStyle(card, index == _newGameSelectedScenarioIndex, true);
+        card.MouseExited += () => ApplyScenarioCardStyle(card, index == _newGameSelectedScenarioIndex);
         ApplyScenarioCardStyle(card, false);
         card.Pressed += () => SelectNewGameScenario(index);
         var inset = new MarginContainer { MouseFilter = MouseFilterEnum.Ignore };
@@ -494,6 +571,7 @@ public sealed partial class ScenarioStartMenu
             StretchMode = TextureRect.StretchModeEnum.KeepAspectCovered,
             MouseFilter = MouseFilterEnum.Ignore
         };
+        NewGameRoundImage(thumbnail, 6);
         row.AddChild(thumbnail);
         var text = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill, MouseFilter = MouseFilterEnum.Ignore };
         text.AddThemeConstantOverride("separation", 2);
@@ -544,21 +622,24 @@ public sealed partial class ScenarioStartMenu
         return card;
     }
 
-    private static void ApplyScenarioCardStyle(Button card, bool selected)
+    private static void ApplyScenarioCardStyle(Button card, bool selected, bool hovered = false)
     {
-        var normal = NewGameButtonStyle(selected ? new Color("5b211b") : new Color("1d1715"),
-            selected ? new Color("e8bd65") : new Color("5c4a32"), selected ? 2 : 1);
-        if (selected)
+        var empty = new StyleBoxEmpty();
+        card.AddThemeStyleboxOverride("normal", empty);
+        card.AddThemeStyleboxOverride("hover", empty);
+        card.AddThemeStyleboxOverride("pressed", empty);
+        card.AddThemeStyleboxOverride("focus", empty);
+        if (card.FindChild("ScenarioCardBackground", false, false) is ColorRect
+            { Material: ShaderMaterial material })
         {
-            normal.ShadowColor = new Color(0.94f, 0.68f, 0.25f, 0.25f);
-            normal.ShadowSize = 3;
+            material.SetShaderParameter("upper_color", selected ? new Color("70231b")
+                : hovered ? new Color("35221b") : new Color("211916"));
+            material.SetShaderParameter("lower_color", selected ? new Color("370e0d")
+                : hovered ? new Color("221914") : new Color("151211"));
+            material.SetShaderParameter("border_color", selected ? new Color("f0c56b")
+                : hovered ? new Color("a37d42") : new Color("625038"));
+            material.SetShaderParameter("border_width", selected ? 2f : 1f);
         }
-        card.AddThemeStyleboxOverride("normal", normal);
-        card.AddThemeStyleboxOverride("hover", NewGameButtonStyle(
-            selected ? new Color("6c2820") : new Color("33221d"),
-            selected ? new Color("f0c96f") : new Color("b88c48"), selected ? 2 : 1));
-        card.AddThemeStyleboxOverride("pressed", NewGameButtonStyle(
-            new Color("491914"), new Color("f0ca72"), 2));
         if (card.FindChild("SelectionDiamond", false, false) is Label diamond) diamond.Visible = selected;
     }
 
@@ -621,10 +702,12 @@ public sealed partial class ScenarioStartMenu
             _newGameFactionMap.SetScenario(draft, preset, 0);
             var displayTitle = ScenarioDisplayTitle(draft);
             SetNamedLabel("SelectedScenarioTitle", displayTitle);
+            if (FindChild("SelectedScenarioTitle", true, false) is Label titleLabel)
+                titleLabel.TooltipText = displayTitle;
             SetNamedLabel("SelectedScenarioDate", $"{draft.StartYear}년 {draft.StartMonth}월");
             SetNamedLabel("SelectedScenarioDescription", ScenarioDescription(draft, displayTitle));
             SetNamedLabel("SelectedScenarioSummary",
-                $"⚑  주요 세력  {draft.Factions.Count(faction => faction.Playable && !faction.Hidden)}     ▥  총 거점  {preset.Sites.Count(site => site.Kind is "city" or "port" or "gate")}");
+                $"▦  시작  {draft.StartYear}년 {draft.StartMonth}월     ⚑  주요 세력  {draft.Factions.Count(faction => faction.Playable && !faction.Hidden)}     ▥  총 거점  {preset.Sites.Count(site => site.Kind is "city" or "port" or "gate")}");
             ResetNewGameFactionDetails();
             if (_newGameError is not null) _newGameError.Text = "";
             _newGameScenarioCards[index].GrabFocus();
@@ -670,6 +753,8 @@ public sealed partial class ScenarioStartMenu
         if (_newGameFactionName is not null) _newGameFactionName.Visible = false;
         if (_newGameRulerName is not null) _newGameRulerName.Visible = false;
         if (_newGameFactionNumbers is not null) _newGameFactionNumbers.Visible = false;
+        if (_newGameFactionDescription is not null) _newGameFactionDescription.Visible = false;
+        if (FindChild("FactionIdentityRow", true, false) is Control identityRow) identityRow.Visible = false;
         if (_newGameStartButton is not null)
         {
             SetFooterActionEnabled(_newGameStartButton, false);
@@ -692,6 +777,7 @@ public sealed partial class ScenarioStartMenu
         var rulerName = _newGameRulerNames.GetValueOrDefault(faction.RulerGeneralId, "미지정");
         var cities = draft.Cities.Where(entry => entry.OwnerFactionId == factionId).ToArray();
         if (_newGameFactionHint is not null) _newGameFactionHint.Visible = false;
+        if (FindChild("FactionIdentityRow", true, false) is Control identityRow) identityRow.Visible = true;
         if (_newGameRulerPortrait is not null)
         {
             var portraitPath = $"res://assets/portraits/{faction.RulerGeneralId}.png";
@@ -711,8 +797,13 @@ public sealed partial class ScenarioStartMenu
         }
         if (_newGameFactionNumbers is not null)
         {
-            _newGameFactionNumbers.Text = $"[center][color=#d7ad59]▥[/color]  거점  {cities.Length:N0}\n[color=#d7ad59]▲[/color]  병력  {cities.Sum(city => city.Garrisons.Sum(garrison => garrison.Troops)):N0}\n[color=#d7ad59]♟[/color]  장수  {draft.Generals.Count(entry => entry.FactionId == factionId):N0}[/center]";
+            _newGameFactionNumbers.Text = $"[color=#d7ad59]▥[/color]  거점  {cities.Length:N0}\n[color=#d7ad59]▲[/color]  병력  {cities.Sum(city => city.Garrisons.Sum(garrison => garrison.Troops)):N0}\n[color=#d7ad59]♟[/color]  장수  {draft.Generals.Count(entry => entry.FactionId == factionId):N0}";
             _newGameFactionNumbers.Visible = true;
+        }
+        if (_newGameFactionDescription is not null)
+        {
+            _newGameFactionDescription.Text = "세력 설명이 등록되지 않았습니다.";
+            _newGameFactionDescription.Visible = true;
         }
         if (_newGameStartButton is not null)
         {
@@ -733,19 +824,17 @@ public sealed partial class ScenarioStartMenu
     {
         if (button is null) return;
         button.ButtonPressed = selected;
-        var label = button.GetMeta("difficulty_label", button.Text).AsString();
-        button.Text = selected ? $"◆  {label}" : label;
-        var normal = NewGameButtonStyle(selected ? new Color("63231c") : new Color("211917"),
-            selected ? new Color("edc76f") : new Color("77613d"), selected ? 2 : 1);
-        button.AddThemeStyleboxOverride("normal", normal);
-        button.AddThemeStyleboxOverride("focus", normal);
-        button.AddThemeStyleboxOverride("hover", NewGameButtonStyle(
-            selected ? new Color("63231c") : new Color("211917"), new Color("e0b95f"), selected ? 2 : 1));
-        button.AddThemeStyleboxOverride("pressed", NewGameButtonStyle(
-            selected ? new Color("491713") : new Color("17110f"), new Color("c99d4b"), 2));
-        button.AddThemeColorOverride("font_color", selected ? new Color("f4d58c") : new Color("c9b88f"));
-        button.AddThemeColorOverride("font_hover_color", new Color("f4d58c"));
-        button.AddThemeColorOverride("font_pressed_color", new Color("d7b86f"));
+        button.AddThemeStyleboxOverride("normal", NewGameDifficultyTexture(selected, "normal"));
+        button.AddThemeStyleboxOverride("hover", NewGameDifficultyTexture(selected, "hover"));
+        button.AddThemeStyleboxOverride("pressed", NewGameDifficultyTexture(selected, "pressed"));
+        button.AddThemeStyleboxOverride("hover_pressed", NewGameDifficultyTexture(selected, "pressed"));
+        button.AddThemeStyleboxOverride("focus", new StyleBoxEmpty());
+        if (button.FindChild("DifficultyCaption", false, false) is Label caption)
+        {
+            caption.Text = selected ? $"◆  {button.GetMeta("difficulty_label").AsString()}" :
+                button.GetMeta("difficulty_label").AsString();
+            caption.AddThemeColorOverride("font_color", selected ? NewGameGoldBright : NewGameIvory);
+        }
     }
 
     private void StartSelectedNewGame()
