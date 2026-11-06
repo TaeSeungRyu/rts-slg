@@ -59,23 +59,20 @@ internal sealed class NativeNameEdit : IDisposable
     }
 
     public static NativeNameEdit? Create(LineEdit placeholder, Viewport viewport)
-    {
-        var parent = (nint)DisplayServer.WindowGetNativeHandle(DisplayServer.HandleType.WindowHandle);
-        if (parent == 0) return null;
-        var handle = CreateWindowExW(0, "EDIT", placeholder.Text,
-            WsChild | WsVisible | WsTabStop | EsAutoHScroll,
-            0, 0, 1, 1, parent, 0, 0, 0);
-        return handle == 0 ? null : new NativeNameEdit(handle, parent, placeholder, viewport, false);
-    }
+        => Create(placeholder, placeholder.Text, viewport, false);
 
     public static NativeNameEdit? Create(TextEdit placeholder, Viewport viewport)
+        => Create(placeholder, placeholder.Text, viewport, true);
+
+    public static NativeNameEdit? Create(Control placeholder, string value, Viewport viewport, bool multiline)
     {
         var parent = (nint)DisplayServer.WindowGetNativeHandle(DisplayServer.HandleType.WindowHandle);
         if (parent == 0) return null;
-        var handle = CreateWindowExW(0, "EDIT", placeholder.Text,
-            WsChild | WsVisible | WsTabStop | WsVScroll | EsMultiline | EsAutoVScroll | EsWantReturn,
+        var style = WsChild | WsVisible | WsTabStop | (multiline
+            ? WsVScroll | EsMultiline | EsAutoVScroll | EsWantReturn : EsAutoHScroll);
+        var handle = CreateWindowExW(0, "EDIT", value, style,
             0, 0, 1, 1, parent, 0, 0, 0);
-        return handle == 0 ? null : new NativeNameEdit(handle, parent, placeholder, viewport, true);
+        return handle == 0 ? null : new NativeNameEdit(handle, parent, placeholder, viewport, multiline);
     }
 
     public string Text

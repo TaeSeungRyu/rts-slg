@@ -17,6 +17,7 @@ public sealed partial class ScenarioEditorScene : Control
     private string _scenarioDirectory = "";
     private NativeNameEdit? _nativeText;
     private Control? _nativePlaceholder;
+    private Action<string>? _nativeDisplayUpdate;
     private Action<string>? _nativeUpdate;
     private string _nativeLastText = "";
     private int _selectedCityId;
@@ -87,6 +88,21 @@ public sealed partial class ScenarioEditorScene : Control
         }).CallDeferred();
     }
 
+    private void BeginNativeField(Control field, string value, bool multiline,
+        Action<string> update, Action<string> displayUpdate)
+    {
+        Callable.From(() =>
+        {
+            if (!field.IsInsideTree()) return;
+            EndNativeText();
+            _nativePlaceholder = field;
+            _nativeUpdate = update;
+            _nativeDisplayUpdate = displayUpdate;
+            _nativeLastText = value;
+            _nativeText = NativeNameEdit.Create(field, value, GetViewport(), multiline);
+        }).CallDeferred();
+    }
+
     private void EndNativeText()
     {
         if (_nativeText is null) return;
@@ -98,9 +114,11 @@ public sealed partial class ScenarioEditorScene : Control
             if (field is LineEdit line) line.Text = value;
             else if (field is TextEdit multiline) multiline.Text = value;
         }
+        _nativeDisplayUpdate?.Invoke(value);
         _nativeText = null;
         _nativePlaceholder = null;
         _nativeUpdate = null;
+        _nativeDisplayUpdate = null;
     }
 
     private void LoadMaps()
@@ -945,13 +963,43 @@ public sealed partial class ScenarioEditorScene : Control
     {
         var row = new HBoxContainer(); _body.AddChild(row);
         row.AddChild(new Label { Text = label, CustomMinimumSize = new Vector2(150, 0) });
-        var field = new LineEdit { Text = value, SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        field.TextChanged += value =>
+        if (OperatingSystem.IsWindows() && DisplayServer.GetName() != "headless")
         {
-            if (_nativePlaceholder != field) update(value);
-        };
-        field.FocusEntered += () => BeginNativeText(field, update);
+            row.AddChild(CreateNativeField(value, false, update));
+            return;
+        }
+        var field = new LineEdit { Text = value, SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        field.TextChanged += text => update(text);
         row.AddChild(field);
+    }
+
+    private PanelContainer CreateNativeField(string value, bool multiline, Action<string> update)
+    {
+        var frame = new PanelContainer
+        {
+            Name = multiline ? "ScenarioDescriptionEditor" : "ScenarioTitleEditor",
+            CustomMinimumSize = new Vector2(0, multiline ? 108 : 34),
+            SizeFlagsHorizontal = SizeFlags.ExpandFill,
+            MouseFilter = MouseFilterEnum.Stop
+        };
+        frame.AddThemeStyleboxOverride("panel", Theme.GetStylebox("normal", multiline ? "TextEdit" : "LineEdit"));
+        var display = new Label
+        {
+            Text = value,
+            MouseFilter = MouseFilterEnum.Ignore,
+            VerticalAlignment = multiline ? VerticalAlignment.Top : VerticalAlignment.Center,
+            AutowrapMode = multiline ? TextServer.AutowrapMode.WordSmart : TextServer.AutowrapMode.Off,
+            ClipText = !multiline
+        };
+        frame.AddChild(display);
+        frame.GuiInput += input =>
+        {
+            if (input is not InputEventMouseButton { ButtonIndex: MouseButton.Left, Pressed: true }) return;
+            if (_nativePlaceholder == frame) return;
+            BeginNativeField(frame, display.Text, multiline, update, text => display.Text = text);
+            frame.AcceptEvent();
+        };
+        return frame;
     }
 
     private void AddDescription(string label, string value, Action<string> update)
@@ -964,6 +1012,11 @@ public sealed partial class ScenarioEditorScene : Control
             CustomMinimumSize = new Vector2(150, 0),
             VerticalAlignment = VerticalAlignment.Top
         });
+        if (OperatingSystem.IsWindows() && DisplayServer.GetName() != "headless")
+        {
+            row.AddChild(CreateNativeField(value, true, update));
+            return;
+        }
         var field = new TextEdit
         {
             Name = "ScenarioDescriptionEditor",
@@ -972,11 +1025,7 @@ public sealed partial class ScenarioEditorScene : Control
             SizeFlagsHorizontal = SizeFlags.ExpandFill,
             WrapMode = TextEdit.LineWrappingMode.Boundary
         };
-        field.TextChanged += () =>
-        {
-            if (_nativePlaceholder != field) update(field.Text);
-        };
-        field.FocusEntered += () => BeginNativeText(field, update);
+        field.TextChanged += () => update(field.Text);
         row.AddChild(field);
     }
 
