@@ -30,6 +30,8 @@ public sealed partial class ScenarioStartMenu
     private static readonly Color NewGameGoldBright = new("f0cf7c");
     private static readonly Color NewGameIvory = new("eee3cc");
     private static readonly Color NewGameMuted = new("b6aa94");
+    private static readonly Dictionary<(bool Selected, string State, int Width, int Height), Texture2D>
+        DifficultyTextureCache = new();
     private static readonly HashSet<string> OfficialScenarioIds =
     [
         "historical-184", "historical-190", "historical-194",
@@ -82,16 +84,39 @@ public sealed partial class ScenarioStartMenu
         image.Resized += () => material.SetShaderParameter("rect_size", image.Size);
     }
 
-    private static StyleBoxTexture NewGameDifficultyTexture(bool selected, string state)
+    private static StyleBoxTexture NewGameDifficultyTexture(bool selected, string state, Vector2 size)
     {
+        var width = Mathf.Max(160, Mathf.RoundToInt(size.X));
+        var height = Mathf.Max(52, Mathf.RoundToInt(size.Y));
         var kind = selected ? "primary" : "secondary";
+        var key = (selected, state, width, height);
+        if (!DifficultyTextureCache.TryGetValue(key, out var texture))
+        {
+            var source = GD.Load<Texture2D>($"res://assets/ui/new_game/buttons/{kind}_{state}.png");
+            using var original = source.GetImage();
+            var side = selected ? 108 : 91;
+            var scaledSide = Mathf.RoundToInt(side * height / (float)original.GetHeight());
+            var middleWidth = width - 2 * scaledSide;
+            using var left = original.GetRegion(new Rect2I(0, 0, side, original.GetHeight()));
+            using var middle = original.GetRegion(new Rect2I(side, 0,
+                original.GetWidth() - 2 * side, original.GetHeight()));
+            using var right = original.GetRegion(new Rect2I(original.GetWidth() - side, 0,
+                side, original.GetHeight()));
+            left.Resize(scaledSide, height, Image.Interpolation.Lanczos);
+            middle.Resize(middleWidth, height, Image.Interpolation.Lanczos);
+            right.Resize(scaledSide, height, Image.Interpolation.Lanczos);
+            using var composed = Image.CreateEmpty(width, height, false, Image.Format.Rgba8);
+            composed.BlitRect(left, new Rect2I(0, 0, scaledSide, height), Vector2I.Zero);
+            composed.BlitRect(middle, new Rect2I(0, 0, middleWidth, height),
+                new Vector2I(scaledSide, 0));
+            composed.BlitRect(right, new Rect2I(0, 0, scaledSide, height),
+                new Vector2I(width - scaledSide, 0));
+            texture = ImageTexture.CreateFromImage(composed);
+            DifficultyTextureCache[key] = texture;
+        }
         var style = new StyleBoxTexture
         {
-            Texture = GD.Load<Texture2D>($"res://assets/ui/new_game/buttons/{kind}_{state}.png"),
-            TextureMarginLeft = selected ? 86 : 76,
-            TextureMarginRight = selected ? 86 : 76,
-            TextureMarginTop = 23,
-            TextureMarginBottom = 23
+            Texture = texture
         };
         style.SetContentMarginAll(0);
         return style;
@@ -397,8 +422,8 @@ public sealed partial class ScenarioStartMenu
         var button = new Button
         {
             Name = name,
-            ToggleMode = true,
-            CustomMinimumSize = new Vector2(0, 42),
+            ToggleMode = false,
+            CustomMinimumSize = new Vector2(0, 52),
             SizeFlagsHorizontal = SizeFlags.ExpandFill
         };
         var caption = new Label
@@ -411,6 +436,8 @@ public sealed partial class ScenarioStartMenu
         caption.AddThemeFontSizeOverride("font_size", 16);
         button.AddChild(caption);
         button.SetMeta("difficulty_label", text);
+        button.Resized += () => StyleDifficultyButton(button,
+            button.GetMeta("difficulty_selected", false).AsBool());
         return button;
     }
 
@@ -823,11 +850,11 @@ public sealed partial class ScenarioStartMenu
     private static void StyleDifficultyButton(Button? button, bool selected)
     {
         if (button is null) return;
-        button.ButtonPressed = selected;
-        button.AddThemeStyleboxOverride("normal", NewGameDifficultyTexture(selected, "normal"));
-        button.AddThemeStyleboxOverride("hover", NewGameDifficultyTexture(selected, "hover"));
-        button.AddThemeStyleboxOverride("pressed", NewGameDifficultyTexture(selected, "pressed"));
-        button.AddThemeStyleboxOverride("hover_pressed", NewGameDifficultyTexture(selected, "pressed"));
+        button.SetMeta("difficulty_selected", selected);
+        button.AddThemeStyleboxOverride("normal", NewGameDifficultyTexture(selected, "normal", button.Size));
+        button.AddThemeStyleboxOverride("hover", NewGameDifficultyTexture(selected, "hover", button.Size));
+        button.AddThemeStyleboxOverride("pressed", NewGameDifficultyTexture(selected, "pressed", button.Size));
+        button.AddThemeStyleboxOverride("hover_pressed", NewGameDifficultyTexture(selected, "pressed", button.Size));
         button.AddThemeStyleboxOverride("focus", new StyleBoxEmpty());
         if (button.FindChild("DifficultyCaption", false, false) is Label caption)
         {

@@ -183,8 +183,8 @@ public sealed partial class ScenarioStartMenu : Control
         }
         SetNewGameDifficulty(SanguoSLG.Core.Simulation.GameDifficulty.Hard);
         var hardDifficulty = _newGameDifficulty == SanguoSLG.Core.Simulation.GameDifficulty.Hard
-            && _hardDifficultyButton is { ButtonPressed: true }
-            && _normalDifficultyButton is { ButtonPressed: false };
+            && _hardDifficultyButton?.GetMeta("difficulty_selected").AsBool() == true
+            && _normalDifficultyButton?.GetMeta("difficulty_selected").AsBool() == false;
         SetNewGameDifficulty(SanguoSLG.Core.Simulation.GameDifficulty.Normal);
         ShowStartConfirmation(() => { });
         var confirmLayer = GetChildren().OfType<CanvasLayer>().LastOrDefault();
