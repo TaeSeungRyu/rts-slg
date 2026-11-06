@@ -122,10 +122,21 @@ public partial class NativeTextInputDialog : Node
             GD.PushError($"Windows 텍스트 입력창을 열지 못했습니다: {error}");
         if (text is null || !GodotObject.IsInstanceValid(_field))
             return;
-        if (_field is LineEdit line)
+        ApplyResult(_field, text);
+    }
+
+    public static void ApplyResult(Control field, string text)
+    {
+        if (field is LineEdit line)
+        {
             line.Text = text;
-        else
-            ((TextEdit)_field).Text = text;
+            line.EmitSignal(LineEdit.SignalName.TextChanged, text);
+        }
+        else if (field is TextEdit editor)
+        {
+            editor.Text = text;
+            editor.EmitSignal(TextEdit.SignalName.TextChanged);
+        }
     }
 
     private string? _pendingError;

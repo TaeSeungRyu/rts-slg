@@ -1007,7 +1007,13 @@ public sealed partial class ScenarioEditorScene : Control
                 _scenarioDirectory = qaDirectory;
                 _draft = ScenarioDraftStore.Load(Path.Combine(builtIn, "historical-184.json"));
                 _draft = ScenarioRootMapBinding.Bind(_draft, _maps[0]);
-                _draft = _draft with { Title = "수정한 기존 시나리오", Description = "수정한 설명\n다음 줄" };
+                ShowBasics();
+                var titleField = _body.FindChildren("ScenarioTitleEditor", "LineEdit", true, false)
+                    .OfType<LineEdit>().Last(field => !field.IsQueuedForDeletion());
+                var descriptionField = _body.FindChildren("ScenarioDescriptionEditor", "TextEdit", true, false)
+                    .OfType<TextEdit>().Last(field => !field.IsQueuedForDeletion());
+                NativeTextInputDialog.ApplyResult(titleField, "수정한 기존 시나리오");
+                NativeTextInputDialog.ApplyResult(descriptionField, "수정한 설명\n다음 줄");
                 SaveCurrent();
                 var editedPath = Path.Combine(qaDirectory, _draft.Id + ".json");
                 OpenScenario(editedPath);
