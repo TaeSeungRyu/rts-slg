@@ -343,7 +343,7 @@ public sealed partial class ScenarioEditorScene : Control
         _body.AddChild(new Label { Text = "저장 식별자 · 자동 생성: " + _draft.Id,
             TooltipText = "파일을 구별하는 내부 값입니다. 제목만 바꾸어도 됩니다." });
         AddText("제목", _draft.Title, value => _draft = _draft with { Title = value });
-        AddText("설명", _draft.Description, value => _draft = _draft with { Description = value });
+        AddDescription("설명", _draft.Description, value => _draft = _draft with { Description = value });
         AddNumber("시작 연도", _draft.StartYear, 1, 9999, value => _draft = _draft with { StartYear = value });
         AddNumber("월", _draft.StartMonth, 1, 12, value => _draft = _draft with { StartMonth = value });
         AddNumber("일", _draft.StartDay, 1, 30, value => _draft = _draft with { StartDay = value });
@@ -941,6 +941,28 @@ public sealed partial class ScenarioEditorScene : Control
         row.AddChild(field);
     }
 
+    private void AddDescription(string label, string value, Action<string> update)
+    {
+        var row = new HBoxContainer();
+        _body.AddChild(row);
+        row.AddChild(new Label
+        {
+            Text = label,
+            CustomMinimumSize = new Vector2(150, 0),
+            VerticalAlignment = VerticalAlignment.Top
+        });
+        var field = new TextEdit
+        {
+            Name = "ScenarioDescriptionEditor",
+            Text = value,
+            CustomMinimumSize = new Vector2(0, 108),
+            SizeFlagsHorizontal = SizeFlags.ExpandFill,
+            WrapMode = TextEdit.LineWrappingMode.Boundary
+        };
+        field.TextChanged += () => update(field.Text);
+        row.AddChild(field);
+    }
+
     private void AddNumber(string label, int value, int min, int max, Action<int> update)
     {
         var row = new HBoxContainer(); _body.AddChild(row);
@@ -1098,10 +1120,14 @@ public sealed partial class ScenarioEditorScene : Control
                 _draft = originalDraft;
             }
             ShowBasics();
+            var multilineDescription = _body.FindChildren("ScenarioDescriptionEditor", "TextEdit", true, false)
+                .OfType<TextEdit>().FirstOrDefault(field => !field.IsQueuedForDeletion())
+                is { WrapMode: TextEdit.LineWrappingMode.Boundary };
             var path = Path.Combine(Path.GetTempPath(), "scenario-editor-qa-" + Guid.NewGuid().ToString("N") + ".json");
             try
             {
-                ScenarioDraftStore.Save(path, _draft, map, known);
+                const string descriptionWithLines = "첫 줄 설명\n둘째 줄 설명";
+                ScenarioDraftStore.Save(path, _draft with { Description = descriptionWithLines }, map, known);
                 var restored = ScenarioDraftStore.Load(path);
                 var editedPath = ProjectSettings.GlobalizePath("user://map-presets/east-asia.json");
                 var currentMapSelected = !File.Exists(editedPath)
@@ -1130,6 +1156,7 @@ public sealed partial class ScenarioEditorScene : Control
                     && errors.Count == 0 && mapSwitchPassed && currentMapSelected
                     && historicalUsesRoot && legacyRebased
                     && factionPlacementCompatible
+                    && multilineDescription && restored.Description == descriptionWithLines
                     && restored.MapRevision == _draft.MapRevision
                     && restored.Cities.Count == _draft.Cities.Count;
                 if (!passed) GD.Print($"[scenario-editor-qa-detail] history={historicalUsesRoot} legacy={legacyRebased} switch={mapSwitchPassed} placement={factionPlacementCompatible} root={currentMapSelected} generals={generalCrudPassed} forces={forceCrudPassed} cityUi={cityForceUi} factionUi={factionColorUi && hiddenFactionUi} cityMapUi={cityMapUi} generalUi={generalSearchUi && generalCityListUi} errors={errors.Count}");
