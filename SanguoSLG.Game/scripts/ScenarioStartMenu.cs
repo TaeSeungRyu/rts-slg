@@ -204,6 +204,15 @@ public sealed partial class ScenarioStartMenu : Control
             && confirmLayer.FindChildren("*", "Label", true, false).OfType<Label>()
                 .Any(label => label.Text.Contains("시나리오", StringComparison.Ordinal))
             && confirmLayer.FindChild("NewGameConfirmAccept", true, false) is Button;
+        var cancelButton = confirmLayer?.FindChild("NewGameConfirmCancel", true, false) as Button;
+        var cancelFocusUsesGoldArt = cancelButton is { FocusMode: FocusModeEnum.All }
+            && cancelButton.GetThemeStylebox("focus") is StyleBoxEmpty
+            && cancelButton.GetThemeStylebox("normal") is StyleBoxTexture
+            && cancelButton.GetThemeStylebox("hover") is StyleBoxTexture
+            && cancelButton.GetThemeStylebox("pressed") is StyleBoxTexture
+            && cancelButton.CustomMinimumSize == new Vector2(170, 52)
+            && confirmLayer?.FindChild("NewGameConfirmAccept", true, false) is Button acceptButton
+            && acceptButton.CustomMinimumSize == cancelButton.CustomMinimumSize;
         ShowStartConfirmation(() => confirmationCalls++);
         var noDuplicateConfirmation = ReferenceEquals(confirmLayer, _newGameConfirmationLayer);
         _Input(new InputEventKey { Keycode = Key.Escape, Pressed = true });
@@ -378,7 +387,7 @@ public sealed partial class ScenarioStartMenu : Control
             if (!builtInScenarioIds.Contains(draft.Id)) customSeen = true;
             else if (customSeen) customScenariosAtBottom = false;
         }
-        var passed = titlePresentation && hasOfficerConfirm && noDuplicateConfirmation
+        var passed = titlePresentation && hasOfficerConfirm && cancelFocusUsesGoldArt && noDuplicateConfirmation
             && escapeKeepsSelection && selectionRefreshesConfirmation
             && updatedDifficulty && confirmedOnce
             && initiallySelected && selectedFromMap

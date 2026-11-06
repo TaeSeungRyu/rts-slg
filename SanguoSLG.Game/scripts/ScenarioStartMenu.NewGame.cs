@@ -1183,7 +1183,16 @@ public sealed partial class ScenarioStartMenu
         button.AddThemeStyleboxOverride("hover", NewGameDifficultyTexture(primary, "hover", new Vector2(170, 52)));
         button.AddThemeStyleboxOverride("pressed", NewGameDifficultyTexture(primary, "pressed", new Vector2(170, 52)));
         button.AddThemeStyleboxOverride("hover_pressed", NewGameDifficultyTexture(primary, "pressed", new Vector2(170, 52)));
-        button.AddThemeStyleboxOverride("focus", NewGameFrame(Colors.Transparent, new Color("f0cf7c"), 1, 5, 0));
+        if (primary)
+            button.AddThemeStyleboxOverride("focus", NewGameFrame(Colors.Transparent, new Color("f0cf7c"), 1, 5, 0));
+        else
+        {
+            button.AddThemeStyleboxOverride("focus", new StyleBoxEmpty());
+            button.FocusEntered += () => button.AddThemeStyleboxOverride("normal",
+                NewGameDifficultyTexture(false, "hover", new Vector2(170, 52)));
+            button.FocusExited += () => button.AddThemeStyleboxOverride("normal",
+                NewGameDifficultyTexture(false, "normal", new Vector2(170, 52)));
+        }
         var caption = new Label { Name = "Caption", Text = text,
             HorizontalAlignment = HorizontalAlignment.Center,
             VerticalAlignment = VerticalAlignment.Center,
