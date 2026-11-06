@@ -145,14 +145,20 @@ public static class ScenarioDraftCatalog
     {
         var sources = new List<ScenarioDraftSource>();
         AddDirectory(sources, builtInDirectory, false);
+        var builtInIds = sources.Select(source => source.Draft.Id)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
         AddDirectory(sources, userDirectory, true);
         return sources
             .GroupBy(source => source.Draft.Id, StringComparer.OrdinalIgnoreCase)
             .Select(group => group.OrderByDescending(source => source.IsUser)
                 .ThenByDescending(source => File.GetLastWriteTimeUtc(source.Path)).First())
-            .OrderBy(source => source.Draft.Id.StartsWith("fictional-", StringComparison.Ordinal) ? 9999
-                : source.Draft.StartYear)
-            .ThenBy(source => source.Draft.StartMonth)
+            .OrderBy(source => builtInIds.Contains(source.Draft.Id) ? 0 : 1)
+            .ThenBy(source => builtInIds.Contains(source.Draft.Id)
+                ? source.Draft.Id.StartsWith("fictional-", StringComparison.Ordinal) ? 9999 : source.Draft.StartYear
+                : 9999)
+            .ThenBy(source => builtInIds.Contains(source.Draft.Id) ? source.Draft.StartMonth : 0)
+            .ThenBy(source => builtInIds.Contains(source.Draft.Id)
+                ? DateTime.MinValue : File.GetCreationTimeUtc(source.Path))
             .ThenBy(source => source.Draft.Id, StringComparer.OrdinalIgnoreCase)
             .ToArray();
     }

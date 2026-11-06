@@ -268,11 +268,22 @@ public sealed partial class ScenarioStartMenu : Control
             return size.X <= resolution.X && size.Y <= resolution.Y
                 && size.X / size.Y is > 1.75f and < 1.9f;
         });
+        var builtInScenarioIds = Directory.EnumerateFiles(
+            ProjectSettings.GlobalizePath("res://assets/scenarios"), "*.json")
+            .Select(SanguoSLG.Core.Data.ScenarioDraftStore.Load).Select(draft => draft.Id)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var customSeen = false;
+        var customScenariosAtBottom = true;
+        foreach (var (_, draft) in _newGameScenarios)
+        {
+            if (!builtInScenarioIds.Contains(draft.Id)) customSeen = true;
+            else if (customSeen) customScenariosAtBottom = false;
+        }
         var passed = titlePresentation && hasOfficerConfirm && initiallySelected && selectedFromMap
             && scenarioReset && hardDifficulty && responsiveBounds && resolutionLayout
             && newGameLayout && noFactionButtonList && scenarioCardsReady && scenarioSelection
             && styledFooter && scenarioInfo && readableMap && _newGameFactionMap is { HasSelectedSite: true }
-            && _newGameScenarios.Count >= 6
+            && _newGameScenarios.Count >= 6 && customScenariosAtBottom
             && _newGameFactionMap is { HasTerrain: true, CityCount: > 0, SelectableFactionCount: > 0 }
             && difficultyButtons.Length == 2
             && titleButtons.Count(button => button.FindChild("HitArea", false, false) is TextureButton
