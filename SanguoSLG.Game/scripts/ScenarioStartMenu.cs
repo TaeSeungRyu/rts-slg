@@ -102,6 +102,7 @@ public sealed partial class ScenarioStartMenu : Control
         }
         AddAction(mainActions, "새 게임 시작하기", "swords", () =>
         {
+            LoadNewGameScenarios();
             menuCenter.Visible = false;
             newGameScreen.Visible = true;
         }, true);
@@ -166,8 +167,9 @@ public sealed partial class ScenarioStartMenu : Control
             newGameScreen.Visible = true;
         await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
         await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
-        var initiallyUnselected = _newGameSelectedFactionId == 0
-            && _newGameStartButton is { Disabled: true };
+        var initiallySelected = _newGameSelectedFactionId > 0
+            && _newGameStartButton is { Disabled: false }
+            && _newGameFactionMap?.SelectedFactionId == _newGameSelectedFactionId;
         SelectFirstFactionForQa();
         var selectedFromMap = _newGameSelectedFactionId > 0
             && _newGameStartButton is { Disabled: false }
@@ -176,9 +178,9 @@ public sealed partial class ScenarioStartMenu : Control
         if (_newGameScenarios.Count > 1)
         {
             SelectNewGameScenario(1);
-            scenarioReset = _newGameSelectedFactionId == 0
-                && _newGameStartButton is { Disabled: true }
-                && _newGameFactionMap?.SelectedFactionId == 0;
+            scenarioReset = _newGameSelectedFactionId > 0
+                && _newGameStartButton is { Disabled: false }
+                && _newGameFactionMap?.SelectedFactionId == _newGameSelectedFactionId;
             SelectFirstFactionForQa();
         }
         SetNewGameDifficulty(SanguoSLG.Core.Simulation.GameDifficulty.Hard);
@@ -266,7 +268,7 @@ public sealed partial class ScenarioStartMenu : Control
             return size.X <= resolution.X && size.Y <= resolution.Y
                 && size.X / size.Y is > 1.75f and < 1.9f;
         });
-        var passed = titlePresentation && hasOfficerConfirm && initiallyUnselected && selectedFromMap
+        var passed = titlePresentation && hasOfficerConfirm && initiallySelected && selectedFromMap
             && scenarioReset && hardDifficulty && responsiveBounds && resolutionLayout
             && newGameLayout && noFactionButtonList && scenarioCardsReady && scenarioSelection
             && styledFooter && scenarioInfo && readableMap && _newGameFactionMap is { HasSelectedSite: true }
