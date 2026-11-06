@@ -9935,6 +9935,7 @@ public sealed partial class CampaignMapScene : Node3D
         search.AddThemeStyleboxOverride("normal", Frame(InkSoft, Gold, 1, 5, 6));
         search.AddThemeStyleboxOverride("focus", Frame(InkHover, GoldBright, 1, 5, 6));
         searchRow.AddChild(search);
+        NativeTextInputDialog.Attach(search);
         var resultCount = MakeLabel("", 12, Parchment);
         searchRow.AddChild(resultCount);
         box.AddChild(searchRow);

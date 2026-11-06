@@ -38,6 +38,7 @@ public sealed partial class CampaignMapScene
             MaxLength = 10, CustomMinimumSize = new Vector2(0, 38) };
         search.AddThemeFontOverride("font", _font);
         box.AddChild(search);
+        NativeTextInputDialog.Attach(search);
         var table = new Tree { Name = "GeneralTransferOfficerTable",
             Columns = 6, ColumnTitlesVisible = true, HideRoot = true,
             SelectMode = Tree.SelectModeEnum.Row,

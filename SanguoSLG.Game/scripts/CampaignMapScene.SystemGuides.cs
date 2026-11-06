@@ -241,6 +241,7 @@ public sealed partial class CampaignMapScene
         var search = new LineEdit { Name = "SkillGuideSearch", PlaceholderText = "스킬 이름 검색",
             MaxLength = 30 };
         box.AddChild(search);
+        NativeTextInputDialog.Attach(search);
         var columns = new HBoxContainer { CustomMinimumSize = new Vector2(0, height - 150),
             SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
         columns.AddThemeConstantOverride("separation", 12);
