@@ -138,28 +138,19 @@ public sealed partial class ScenarioEditorScene : Control
         _list.Clear();
         _deleteButton.Disabled = true;
         var builtIn = ProjectSettings.GlobalizePath("res://assets/scenarios");
-        var paths = (Directory.Exists(builtIn) ? Directory.EnumerateFiles(builtIn, "*.json") : [])
-            .Concat(Directory.Exists(_scenarioDirectory) ? Directory.EnumerateFiles(_scenarioDirectory, "*.json") : [])
-            .GroupBy(path => Path.GetFileName(path), StringComparer.OrdinalIgnoreCase)
-            .Select(group => group.FirstOrDefault(path => path.StartsWith(_scenarioDirectory, StringComparison.OrdinalIgnoreCase)) ?? group.First())
-            .OrderBy(path => File.Exists(Path.Combine(builtIn, Path.GetFileName(path))) ? 0 : 1)
-            .ThenBy(path => File.Exists(Path.Combine(builtIn, Path.GetFileName(path)))
-                ? (Path.GetFileName(path).StartsWith("fictional-", StringComparison.Ordinal) ? 9999
-                    : ScenarioDraftStore.Load(path).StartYear) : 0)
-            .ThenBy(path => File.Exists(Path.Combine(builtIn, Path.GetFileName(path)))
-                ? DateTime.MinValue : File.GetCreationTimeUtc(path))
-            .ThenBy(path => path);
-        foreach (var path in paths)
+        var builtInIds = Directory.Exists(builtIn)
+            ? Directory.EnumerateFiles(builtIn, "*.json").Select(ScenarioDraftStore.Load)
+                .Select(draft => draft.Id).ToHashSet(StringComparer.OrdinalIgnoreCase)
+            : [];
+        foreach (var source in ScenarioDraftCatalog.LoadEffective(builtIn, _scenarioDirectory))
         {
             try
             {
-                var draft = ScenarioDraftStore.Load(path);
-                if (draft.Title.Trim() == "새 시나리오") continue;
-                var isBuiltIn = File.Exists(Path.Combine(builtIn, Path.GetFileName(path)));
-                var index = _list.AddItem((isBuiltIn ? "기본 · " : "") + draft.Title);
-                _list.SetItemMetadata(index, path);
+                var isBuiltInScenario = builtInIds.Contains(source.Draft.Id);
+                var index = _list.AddItem((isBuiltInScenario ? "기본 · " : "") + source.Draft.Title);
+                _list.SetItemMetadata(index, source.Path);
             }
-            catch (Exception error) { GD.PushWarning($"시나리오 목록: {path}: {error.Message}"); }
+            catch (Exception error) { GD.PushWarning($"시나리오 목록: {source.Path}: {error.Message}"); }
         }
     }
 

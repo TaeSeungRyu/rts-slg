@@ -135,3 +135,41 @@ public static class ScenarioDraftStore
         }
     }
 }
+
+public sealed record ScenarioDraftSource(string Path, ScenarioDraft Draft, bool IsUser);
+
+public static class ScenarioDraftCatalog
+{
+    public static IReadOnlyList<ScenarioDraftSource> LoadEffective(string builtInDirectory,
+        string userDirectory)
+    {
+        var sources = new List<ScenarioDraftSource>();
+        AddDirectory(sources, builtInDirectory, false);
+        AddDirectory(sources, userDirectory, true);
+        return sources
+            .GroupBy(source => source.Draft.Id, StringComparer.OrdinalIgnoreCase)
+            .Select(group => group.OrderByDescending(source => source.IsUser)
+                .ThenByDescending(source => File.GetLastWriteTimeUtc(source.Path)).First())
+            .OrderBy(source => source.Draft.Id.StartsWith("fictional-", StringComparison.Ordinal) ? 9999
+                : source.Draft.StartYear)
+            .ThenBy(source => source.Draft.StartMonth)
+            .ThenBy(source => source.Draft.Id, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+    }
+
+    private static void AddDirectory(List<ScenarioDraftSource> target, string directory, bool isUser)
+    {
+        if (!Directory.Exists(directory)) return;
+        foreach (var path in Directory.EnumerateFiles(directory, "*.json"))
+        {
+            try
+            {
+                var draft = ScenarioDraftStore.Load(path);
+                if (draft.Title.Trim() != "새 시나리오")
+                    target.Add(new ScenarioDraftSource(path, draft, isUser));
+            }
+            catch (JsonException) { }
+            catch (InvalidDataException) { }
+        }
+    }
+}
