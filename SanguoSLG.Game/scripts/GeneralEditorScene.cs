@@ -351,27 +351,35 @@ public partial class GeneralEditorScene : Control
 
         editor = AddPage("능력·적성");
         var statSection = AddSection(editor, "능력치 및 영입 조건");
-        var statRow = new HBoxContainer();
-        statSection.AddChild(statRow);
-        _mightInput = AddStat(statRow, "무력");
-        _intellectInput = AddStat(statRow, "지력");
-        _politicsInput = AddStat(statRow, "정치");
+        var statGrid = new GridContainer { Name = "GeneralEditorStatGrid", Columns = 3,
+            SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        statGrid.AddThemeConstantOverride("h_separation", 12);
+        statSection.AddChild(statGrid);
+        _mightInput = AddStat(statGrid, "무력");
+        _intellectInput = AddStat(statGrid, "지력");
+        _politicsInput = AddStat(statGrid, "정치");
         var aptitudeSection = AddSection(editor, "병종 적성");
-        var aptitudeGrid = new GridContainer { Columns = 3 };
+        var aptitudeGrid = new GridContainer { Name = "GeneralEditorAptitudeGrid", Columns = 4,
+            SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        aptitudeGrid.AddThemeConstantOverride("h_separation", 12);
+        aptitudeGrid.AddThemeConstantOverride("v_separation", 12);
         aptitudeSection.AddChild(aptitudeGrid);
         foreach (var key in TroopKeys)
         {
-            var row = new HBoxContainer();
-            aptitudeGrid.AddChild(row);
-            row.AddChild(new Label { Text = TroopLabel(key), CustomMinimumSize = new Vector2(54, 0) });
-            var input = new OptionButton { CustomMinimumSize = new Vector2(84, 0) };
+            var field = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill,
+                CustomMinimumSize = new Vector2(0, 64) };
+            field.AddThemeConstantOverride("separation", 6);
+            aptitudeGrid.AddChild(field);
+            field.AddChild(new Label { Text = TroopLabel(key) });
+            var input = new OptionButton { CustomMinimumSize = new Vector2(0, 38),
+                SizeFlagsHorizontal = SizeFlags.ExpandFill };
             foreach (var grade in GradeValues)
             {
                 input.AddItem(grade);
             }
 
             input.ItemSelected += _ => UpdateChangePreview();
-            row.AddChild(input);
+            field.AddChild(input);
             _aptitudeInputs[key] = input;
         }
 
@@ -828,16 +836,20 @@ public partial class GeneralEditorScene : Control
         _previewPolitics.Text = $"정치\n{(int)_politicsInput.Value}";
     }
 
-    private SpinBox AddStat(HBoxContainer parent, string label)
+    private SpinBox AddStat(GridContainer parent, string label)
     {
-        var box = new VBoxContainer { CustomMinimumSize = new Vector2(96, 0) };
-        box.AddChild(new Label { Text = label, HorizontalAlignment = HorizontalAlignment.Center });
+        var box = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill,
+            CustomMinimumSize = new Vector2(0, 64) };
+        box.AddThemeConstantOverride("separation", 6);
+        box.AddChild(new Label { Text = label });
         var spin = new SpinBox
         {
             MinValue = 1,
             MaxValue = 100,
             Step = 1,
             Rounded = true,
+            CustomMinimumSize = new Vector2(0, 38),
+            SizeFlagsHorizontal = SizeFlags.ExpandFill,
         };
         spin.ValueChanged += _ => UpdateChangePreview();
         box.AddChild(spin);
@@ -1244,6 +1256,10 @@ public partial class GeneralEditorScene : Control
             && editPanel.SizeFlagsHorizontal.HasFlag(SizeFlags.ExpandFill)
             && _previewName.Text == _selected?.Name && _previewId.Text.Contains((_selected?.Id ?? 0).ToString())
             && _editorTabs.GetTabCount() == 4;
+        var abilityGridOk = FindChild("GeneralEditorStatGrid", true, false) is GridContainer { Columns: 3 } statGrid
+            && statGrid.GetChildCount() == 3
+            && FindChild("GeneralEditorAptitudeGrid", true, false) is GridContainer { Columns: 4 } aptitudeGrid
+            && aptitudeGrid.GetChildCount() == 8;
         var tabSizingOk = true;
         for (var tab = 0; tab < _editorTabs.GetTabCount(); tab++)
         {
@@ -1271,9 +1287,9 @@ public partial class GeneralEditorScene : Control
             && _regionFilter.GetItemText(1) == RegionName(_regionFilter.GetItemMetadata(1).AsString())
             && _activeInput.ItemCount > 1
             && !_activeInput.GetItemText(1).Contains('(')
-            && threeColumnOk && tabSizingOk && filterPreservesEdit;
+            && threeColumnOk && abilityGridOk && tabSizingOk && filterPreservesEdit;
         var passed = heroOk && regularOk && createdOk && layoutOk && battleDescriptionOk && adminDescriptionOk;
-        GD.Print($"[generaleditorqa] passed={passed} hero={heroOk} regular={regularOk} created={createdOk} layout={layoutOk} columns={threeColumnOk} tabs={tabSizingOk} preserve={filterPreservesEdit} region={_regionFilter.GetItemText(1)} active={_activeInput.GetItemText(1)} range={_recruitPointInput.MinValue}-{_recruitPointInput.MaxValue}");
+        GD.Print($"[generaleditorqa] passed={passed} hero={heroOk} regular={regularOk} created={createdOk} layout={layoutOk} columns={threeColumnOk} abilityGrid={abilityGridOk} tabs={tabSizingOk} preserve={filterPreservesEdit} region={_regionFilter.GetItemText(1)} active={_activeInput.GetItemText(1)} range={_recruitPointInput.MinValue}-{_recruitPointInput.MaxValue}");
         GetTree().Quit(passed ? 0 : 1);
     }
 
