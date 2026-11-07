@@ -12,6 +12,7 @@ public partial class NativeTextInputDialog : Node
 {
     private static int _dialogOpen;
     private Control _field = null!;
+    private string _title = "텍스트 입력";
     private volatile bool _busy;
     private readonly object _pendingLock = new();
     private string? _pendingText;
@@ -27,13 +28,13 @@ public partial class NativeTextInputDialog : Node
         field.GuiInput += dialog.OnInput;
     }
 
-    public static void Attach(TextEdit field)
+    public static void Attach(TextEdit field, string title = "텍스트 입력")
     {
         if (OS.GetName() != "Windows")
             return;
         field.Editable = false;
         field.TooltipText = "클릭하여 텍스트를 입력합니다.";
-        var dialog = new NativeTextInputDialog { _field = field };
+        var dialog = new NativeTextInputDialog { _field = field, _title = title };
         field.AddChild(dialog);
         field.GuiInput += dialog.OnInput;
     }
@@ -50,10 +51,10 @@ public partial class NativeTextInputDialog : Node
         var multiline = _field is TextEdit;
         var root = ProjectSettings.GlobalizePath("res://");
         var project = Path.GetFullPath(Path.Combine(root, "..", "tools", "ime-native-probe", "ImeNativeProbe.csproj"));
-        _ = Task.Run(() => RunDialog(project, current, multiline, System.Environment.ProcessId));
+        _ = Task.Run(() => RunDialog(project, current, multiline, System.Environment.ProcessId, _title));
     }
 
-    private void RunDialog(string project, string current, bool multiline, int parentProcessId)
+    private void RunDialog(string project, string current, bool multiline, int parentProcessId, string title)
     {
         var outputPath = Path.Combine(Path.GetTempPath(), $"sanguo-ime-{Guid.NewGuid():N}.txt");
         try
@@ -80,6 +81,8 @@ public partial class NativeTextInputDialog : Node
             start.ArgumentList.Add(outputPath);
             start.ArgumentList.Add("--parent");
             start.ArgumentList.Add(parentProcessId.ToString());
+            start.ArgumentList.Add("--title");
+            start.ArgumentList.Add(Convert.ToBase64String(Encoding.UTF8.GetBytes(title)));
             using var process = Process.Start(start)
                 ?? throw new InvalidOperationException("Windows 입력 도구를 시작하지 못했습니다.");
             process.WaitForExit();

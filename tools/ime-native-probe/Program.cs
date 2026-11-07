@@ -13,9 +13,13 @@ if (args.Length >= 4 && args[0] == "--edit")
 {
     var multiline = args[1] == "multi";
     var initial = Encoding.UTF8.GetString(Convert.FromBase64String(args[2]));
+    var titleIndex = Array.IndexOf(args, "--title");
+    var dialogTitle = titleIndex >= 0 && titleIndex + 1 < args.Length
+        ? Encoding.UTF8.GetString(Convert.FromBase64String(args[titleIndex + 1]))
+        : "텍스트 입력";
     using var form = new Form
     {
-        Text = "텍스트 입력",
+        Text = dialogTitle,
         StartPosition = FormStartPosition.CenterScreen,
         ClientSize = new Size(660, multiline ? 320 : 175),
         FormBorderStyle = FormBorderStyle.FixedDialog,
@@ -70,7 +74,12 @@ if (args.Length >= 4 && args[0] == "--edit")
     form.HandleCreated += (_, _) => WindowChrome.Apply(form.Handle);
     form.AcceptButton = multiline ? null : confirm;
     form.CancelButton = cancel;
-    form.Shown += (_, _) => { input.Focus(); input.SelectionStart = input.TextLength; };
+    form.Shown += (_, _) =>
+    {
+        WindowChrome.ApplyTextBox(input.Handle);
+        input.Focus();
+        input.SelectionStart = input.TextLength;
+    };
     if (args.Length >= 6 && args[4] == "--parent" && int.TryParse(args[5], out var parentId))
     {
         var lifetime = new System.Windows.Forms.Timer { Interval = 300 };
@@ -118,6 +127,12 @@ internal static class WindowChrome
     [DllImport("dwmapi.dll")]
     private static extern int DwmSetWindowAttribute(IntPtr window, int attribute, ref int value, int size);
 
+    [DllImport("uxtheme.dll", CharSet = CharSet.Unicode)]
+    private static extern int SetWindowTheme(IntPtr window, string? subAppName, string? subIdList);
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr SendMessage(IntPtr window, int message, IntPtr wParam, IntPtr lParam);
+
     public static void Apply(IntPtr window)
     {
         var enabled = 1;
@@ -126,5 +141,13 @@ internal static class WindowChrome
         DwmSetWindowAttribute(window, 20, ref enabled, sizeof(int));
         DwmSetWindowAttribute(window, 35, ref caption, sizeof(int));
         DwmSetWindowAttribute(window, 36, ref text, sizeof(int));
+    }
+
+    public static void ApplyTextBox(IntPtr window)
+    {
+        SetWindowTheme(window, "DarkMode_Explorer", null);
+        const int emSetMargins = 0x00D3;
+        const int ecRightMargin = 0x0002;
+        SendMessage(window, emSetMargins, new IntPtr(ecRightMargin), new IntPtr(10 << 16));
     }
 }

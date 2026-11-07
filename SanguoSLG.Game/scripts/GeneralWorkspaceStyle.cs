@@ -38,6 +38,58 @@ internal static class GeneralWorkspaceStyle
         return theme;
     }
 
+    internal static void StyleOptionButton(OptionButton option, int maximumPopupHeight = 300)
+    {
+        var popup = option.GetPopup();
+        popup.MaxSize = new Vector2I(4096, maximumPopupHeight);
+        popup.AddThemeStyleboxOverride("panel", Box(new Color("211410"), new Color("a47b42"), 1));
+        popup.AddThemeStyleboxOverride("hover", Box(new Color("60331f"), new Color("d4a85d"), 1));
+        popup.AddThemeColorOverride("font_color", new Color("ead3ac"));
+        popup.AddThemeColorOverride("font_hover_color", new Color("ffe1a8"));
+        popup.AddThemeColorOverride("font_disabled_color", new Color("8f7b65"));
+        popup.AddThemeColorOverride("font_accelerator_color", new Color("b78a4a"));
+        popup.AddThemeConstantOverride("v_separation", 6);
+        popup.AddThemeConstantOverride("item_start_padding", 10);
+        popup.AddThemeConstantOverride("item_end_padding", 12);
+
+        popup.Theme ??= new Theme();
+        SetScrollTheme(popup.Theme, "VScrollBar", 7);
+        SetScrollTheme(popup.Theme, "HScrollBar", 7);
+    }
+
+    internal static void StyleScrollContainer(ScrollContainer scroll, int thickness = 7)
+    {
+        StyleScrollBar(scroll.GetVScrollBar(), true, thickness);
+        StyleScrollBar(scroll.GetHScrollBar(), false, thickness);
+    }
+
+    private static void StyleScrollBar(ScrollBar bar, bool vertical, int thickness)
+    {
+        bar.CustomMinimumSize = vertical ? new Vector2(thickness, 0) : new Vector2(0, thickness);
+        bar.AddThemeStyleboxOverride("scroll", ScrollBox("241713"));
+        bar.AddThemeStyleboxOverride("grabber", ScrollBox("8c683b", "765637"));
+        bar.AddThemeStyleboxOverride("grabber_highlight", ScrollBox("c6a05b", "d1a15a"));
+        bar.AddThemeStyleboxOverride("grabber_pressed", ScrollBox("d9b66e", "d1a15a"));
+    }
+
+    private static void SetScrollTheme(Theme theme, string type, int thickness)
+    {
+        theme.SetStylebox("scroll", type, ScrollBox("302019"));
+        theme.SetStylebox("grabber", type, ScrollBox("b78a4a", "a47b42"));
+        theme.SetStylebox("grabber_highlight", type, ScrollBox("d4a85d", "d4a85d"));
+        theme.SetStylebox("grabber_pressed", type, ScrollBox("e2ba75", "e2ba75"));
+        theme.SetConstant("minimum_grab_thickness", type, 24);
+        theme.SetConstant("fixed_size", type, thickness);
+    }
+
+    private static StyleBoxFlat ScrollBox(string background, string border = "00000000")
+    {
+        var style = new StyleBoxFlat { BgColor = new Color(background), BorderColor = new Color(border) };
+        style.SetBorderWidthAll(border == "00000000" ? 0 : 1);
+        style.SetCornerRadiusAll(4);
+        return style;
+    }
+
     internal static void AddBackground(Control scene)
     {
         scene.AddChild(new ColorRect

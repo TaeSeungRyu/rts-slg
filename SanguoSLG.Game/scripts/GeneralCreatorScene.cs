@@ -47,8 +47,8 @@ public partial class GeneralCreatorScene : Control
     private Label _commonGender = null!;
     private Label _commonBirth = null!;
     private Label _commonRegion = null!;
-    private FileDialog _portraitFileDialog = null!;
     private FileDialog _galleryFileDialog = null!;
+    private ScrollContainer _skillDetailScroll = null!;
     private ColorRect _galleryLoading = null!;
     private Label _galleryLoadingLabel = null!;
     private string? _portraitPath;
@@ -60,8 +60,8 @@ public partial class GeneralCreatorScene : Control
     public override void _Ready()
     {
         BuildUi();
-        foreach (var option in new[] { _active, _requiredGeneral }.Concat(_battlePassives).Concat(_adminPassives))
-            option.GetPopup().MaxSize = new Vector2I(4096, 300);
+        foreach (var option in FindChildren("*", "OptionButton", true, false).OfType<OptionButton>())
+            GeneralWorkspaceStyle.StyleOptionButton(option);
         try
         {
             _dataDirectory = FindDataDirectory();
@@ -168,7 +168,7 @@ public partial class GeneralCreatorScene : Control
         {
             var scroll = new ScrollContainer { Name = name, SizeFlagsHorizontal = SizeFlags.ExpandFill,
                 SizeFlagsVertical = SizeFlags.ExpandFill };
-            StyleCreatorScroll(scroll);
+            GeneralWorkspaceStyle.StyleScrollContainer(scroll);
             _tabs.AddChild(scroll);
             var inset = new MarginContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
             inset.AddThemeConstantOverride("margin_right", 10);
@@ -211,7 +211,7 @@ public partial class GeneralCreatorScene : Control
         var introduction = GeneralWorkspaceStyle.Section(basic, "장수 소개");
         _description = new TextEdit { CustomMinimumSize = new Vector2(0, 115) };
         introduction.AddChild(_description);
-        NativeTextInputDialog.Attach(_description);
+        NativeTextInputDialog.Attach(_description, "장수 소개 편집");
         foreach (var input in new Control[] { _name, _gender, _birth, _region, _points, _requiredGeneral, _description })
             StyleCreatorInput(input);
 
@@ -220,17 +220,14 @@ public partial class GeneralCreatorScene : Control
         var portraitActions = new HBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
         portraitActions.AddThemeConstantOverride("separation", 10);
         portraitSection.AddChild(portraitActions);
-        var import = new Button { Text = "외부 이미지 가져오기", SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        import.Pressed += () => _portraitFileDialog.PopupCentered(new Vector2I(850, 620));
+        var import = new Button { Text = "+ 외부 이미지 등록", SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        import.Pressed += () => _galleryFileDialog.PopupCentered(new Vector2I(850, 620));
         portraitActions.AddChild(import);
         var clear = new Button { Text = "사진 비우기", SizeFlagsHorizontal = SizeFlags.ExpandFill };
         clear.Pressed += () => SelectPortrait(null);
         portraitActions.AddChild(clear);
         var gallery = GeneralWorkspaceStyle.Section(portraitSection, "초상 선택");
         gallery.SizeFlagsHorizontal = SizeFlags.ExpandFill;
-        var register = new Button { Text = "+ 외부 이미지 등록하기", CustomMinimumSize = new Vector2(0, 40) };
-        register.Pressed += () => _galleryFileDialog.PopupCentered(new Vector2I(850, 620));
-        gallery.AddChild(register);
         _portraitGrid = new GridContainer { Name = "CreatorPortraitGrid", Columns = 4,
             SizeFlagsHorizontal = SizeFlags.ExpandFill };
         _portraitGrid.AddThemeConstantOverride("h_separation", 10);
@@ -248,11 +245,6 @@ public partial class GeneralCreatorScene : Control
         _portraitNext = new Button { Text = "다음", CustomMinimumSize = new Vector2(80, 34) };
         _portraitNext.Pressed += () => { _portraitPage++; RebuildPortraitGrid(); };
         portraitNavigation.AddChild(_portraitNext);
-        _portraitFileDialog = new FileDialog { Access = FileDialog.AccessEnum.Filesystem,
-            FileMode = FileDialog.FileModeEnum.OpenFile, Title = "장수 초상 가져오기" };
-        _portraitFileDialog.AddFilter("*.png, *.jpg, *.jpeg, *.webp", "이미지 파일");
-        _portraitFileDialog.FileSelected += OnExternalPortraitSelected;
-        AddChild(_portraitFileDialog);
         _galleryFileDialog = new FileDialog { Access = FileDialog.AccessEnum.Filesystem,
             FileMode = FileDialog.FileModeEnum.OpenFiles, Title = "기본 얼굴 여러 장 등록" };
         _galleryFileDialog.AddFilter("*.png, *.jpg, *.jpeg, *.webp", "이미지 파일");
@@ -297,7 +289,6 @@ public partial class GeneralCreatorScene : Control
 
         var skills = Page("스킬");
         var activeSection = GeneralWorkspaceStyle.Section(skills, "전투 액티브");
-        activeSection.AddChild(new Label { Text = "전투 액티브 1개와 전투 패시브 최대 3개를 선택할 수 있습니다." });
         var activeGrid = new GridContainer { Columns = 1, SizeFlagsHorizontal = SizeFlags.ExpandFill };
         activeSection.AddChild(activeGrid);
         _active = new OptionButton(); AddCompactField(activeGrid, "전투 액티브", _active);
@@ -324,13 +315,18 @@ public partial class GeneralCreatorScene : Control
             _adminPassives.Add(option);
         }
         var detailSection = GeneralWorkspaceStyle.Section(skills, "선택 스킬 상세 설명");
-        var detailScroll = new ScrollContainer { Name = "CreatorSkillDetailScroll",
-            CustomMinimumSize = new Vector2(0, 112), SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        StyleCreatorScroll(detailScroll);
-        detailSection.AddChild(detailScroll);
+        _skillDetailScroll = new ScrollContainer { Name = "CreatorSkillDetailScroll",
+            CustomMinimumSize = new Vector2(0, 112), SizeFlagsHorizontal = SizeFlags.ExpandFill,
+            HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled,
+            VerticalScrollMode = ScrollContainer.ScrollMode.Auto };
+        GeneralWorkspaceStyle.StyleScrollContainer(_skillDetailScroll);
+        detailSection.AddChild(_skillDetailScroll);
+        var detailInset = new MarginContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        detailInset.AddThemeConstantOverride("margin_right", 10);
+        _skillDetailScroll.AddChild(detailInset);
         _activeDescription = new Label { AutowrapMode = TextServer.AutowrapMode.WordSmart,
             SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        detailScroll.AddChild(_activeDescription);
+        detailInset.AddChild(_activeDescription);
         ConnectSkillDetail(_active, _activeDetails);
         foreach (var option in _battlePassives) ConnectSkillDetail(option, _battleDetails);
         foreach (var option in _adminPassives) ConnectSkillDetail(option, _adminDetails);
@@ -388,25 +384,6 @@ public partial class GeneralCreatorScene : Control
         input.SizeFlagsHorizontal = SizeFlags.ExpandFill;
         field.AddChild(input);
         grid.AddChild(field);
-    }
-
-    private static void StyleCreatorScroll(ScrollContainer scroll)
-    {
-        static StyleBoxFlat Bar(string background, string border = "00000000")
-        {
-            var style = new StyleBoxFlat { BgColor = new Color(background), BorderColor = new Color(border) };
-            style.SetBorderWidthAll(border == "00000000" ? 0 : 1);
-            style.SetCornerRadiusAll(4);
-            return style;
-        }
-        foreach (var bar in new ScrollBar[] { scroll.GetVScrollBar(), scroll.GetHScrollBar() })
-        {
-            bar.CustomMinimumSize = bar is VScrollBar ? new Vector2(7, 0) : new Vector2(0, 7);
-            bar.AddThemeStyleboxOverride("scroll", Bar("241713"));
-            bar.AddThemeStyleboxOverride("grabber", Bar("8c683b", "765637"));
-            bar.AddThemeStyleboxOverride("grabber_highlight", Bar("c6a05b", "d1a15a"));
-            bar.AddThemeStyleboxOverride("grabber_pressed", Bar("d9b66e", "d1a15a"));
-        }
     }
 
     private static void StyleCreatorInput(Control input)
@@ -521,7 +498,7 @@ public partial class GeneralCreatorScene : Control
         _requiredGeneral.Select(0);
     }
 
-    private static void ShowSkillDescription(Label label, OptionButton option, IReadOnlyDictionary<string, string> details)
+    private void ShowSkillDescription(Label label, OptionButton option, IReadOnlyDictionary<string, string> details)
     {
         var full = details.GetValueOrDefault(SelectedCode(option), "선택한 스킬이 없습니다.");
         var lines = full.Split('\n', StringSplitOptions.RemoveEmptyEntries)
@@ -532,6 +509,7 @@ public partial class GeneralCreatorScene : Control
                 && line != "직접 사용하는 액티브가 아닙니다.");
         label.Text = string.Join('\n', lines);
         label.TooltipText = full;
+        _skillDetailScroll.CallDeferred(ScrollContainer.MethodName.SetVScroll, 0);
     }
 
     private void ConnectSkillDetail(OptionButton option, IReadOnlyDictionary<string, string> details)
@@ -602,14 +580,14 @@ public partial class GeneralCreatorScene : Control
             for (var empty = 0; empty < leftGap; empty++) _portraitGrid.AddChild(PortraitSpacer());
             foreach (var (portrait, tooltip, imported) in pageChoices.Skip(rowStart).Take(count))
             {
-                var image = Image.LoadFromFile(ProjectSettings.GlobalizePath(portrait));
+                var image = LoadPortraitThumbnail(portrait);
                 var cell = PortraitSpacer();
                 _portraitGrid.AddChild(cell);
                 if (image is null || image.IsEmpty()) continue;
-                image.Resize(82, 98);
                 var choice = new Button { Icon = ImageTexture.CreateFromImage(image),
-                    ExpandIcon = true, IconAlignment = HorizontalAlignment.Center,
-                    VerticalIconAlignment = VerticalAlignment.Center, TooltipText = tooltip };
+                    ExpandIcon = false, IconAlignment = HorizontalAlignment.Center,
+                    VerticalIconAlignment = VerticalAlignment.Center, TooltipText = tooltip,
+                    TextureFilter = TextureFilterEnum.Linear };
                 choice.AddThemeStyleboxOverride("normal", PortraitTileStyle(_portraitPath == portrait, false));
                 choice.AddThemeStyleboxOverride("hover", PortraitTileStyle(_portraitPath == portrait, true));
                 choice.AddThemeStyleboxOverride("pressed", PortraitTileStyle(true, true));
@@ -668,6 +646,19 @@ public partial class GeneralCreatorScene : Control
         SizeFlagsHorizontal = SizeFlags.ExpandFill,
         MouseFilter = MouseFilterEnum.Ignore,
     };
+
+    private static Image? LoadPortraitThumbnail(string portrait)
+    {
+        var image = Image.LoadFromFile(ProjectSettings.GlobalizePath(portrait));
+        if (image is null || image.IsEmpty()) return null;
+        const int targetWidth = 82;
+        const int targetHeight = 98;
+        var scale = Math.Min((float)targetWidth / image.GetWidth(), (float)targetHeight / image.GetHeight());
+        var width = Math.Max(1, Mathf.RoundToInt(image.GetWidth() * scale));
+        var height = Math.Max(1, Mathf.RoundToInt(image.GetHeight() * scale));
+        image.Resize(width, height, Image.Interpolation.Lanczos);
+        return image;
+    }
 
     private void ConfirmRemoveGalleryPortrait(string portrait)
     {
@@ -740,18 +731,6 @@ public partial class GeneralCreatorScene : Control
             _commonPortraitPreview.Texture = ImageTexture.CreateFromImage(image);
     }
 
-    private void OnExternalPortraitSelected(string path)
-    {
-        try
-        {
-            var portrait = RegisterGalleryPortrait(path);
-            RebuildPortraitGrid(portrait);
-            SelectPortrait(portrait);
-            _status.Text = "외부 초상을 기본 얼굴 목록에 등록했습니다.";
-        }
-        catch (Exception error) { _status.Text = "초상 등록 실패: " + error.Message; }
-    }
-
     private static string RegisterGalleryPortrait(string path)
     {
         if (!File.Exists(path) || new FileInfo(path).Length > 20 * 1024 * 1024)
@@ -782,6 +761,7 @@ public partial class GeneralCreatorScene : Control
             await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
         }
         RebuildPortraitGrid(firstRegistered);
+        if (firstRegistered is not null) SelectPortrait(firstRegistered);
         _galleryLoading.Visible = false;
         _status.Text = errors.Count == 0 ? $"외부 초상 {added}장을 기본 얼굴 목록에 등록했습니다."
             : $"{added}장 등록 · 실패 {errors.Count}장: {string.Join(" / ", errors.Take(2))}";
