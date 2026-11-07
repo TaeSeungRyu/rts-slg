@@ -76,6 +76,8 @@ public partial class GeneralEditorScene : Control
     private DateTime _heroUnlocksLoadedAt;
     private DateTime _createdGeneralsLoadedAt;
     private bool _suppressSelection;
+    private Control? _editorModalOverlay;
+    private Button? _editorModalCancelButton;
 
     public override void _Ready()
     {
@@ -102,12 +104,7 @@ public partial class GeneralEditorScene : Control
     {
         if (_selected is null) { ScenarioStartMenu.ReturnToStart(GetTree()); return; }
         if (!HasPendingChanges()) { ScenarioStartMenu.ReturnToStart(GetTree()); return; }
-        var dialog = new ConfirmationDialog { Title = "저장하지 않은 장수", DialogText = "변경한 장수를 저장하고 시작 화면으로 돌아갈까요?", OkButtonText = "저장 후 나가기", CancelButtonText = "계속 편집" };
-        dialog.AddButton("변경 버리기", true, "discard");
-        AddChild(dialog);
-        dialog.Confirmed += () => { SaveSelected(); if (System.Text.Json.JsonSerializer.Serialize(CurrentEditedRecord()) == System.Text.Json.JsonSerializer.Serialize(_selected)) ScenarioStartMenu.ReturnToStart(GetTree()); };
-        dialog.CustomAction += action => { if (action == "discard") ScenarioStartMenu.ReturnToStart(GetTree()); };
-        dialog.PopupCentered();
+        ShowUnsavedChangesModal(() => ScenarioStartMenu.ReturnToStart(GetTree()), "저장 후 나가기");
     }
 
     private void BuildUi()
@@ -702,12 +699,12 @@ public partial class GeneralEditorScene : Control
             if (_selected is not null && _selected.Id != id && HasPendingChanges())
             {
                 SelectListItem(_selected.Id);
-                ConfirmDiscardChanges("저장하지 않은 변경", "현재 장수의 변경을 버리고 다른 장수를 선택할까요?", () =>
+                ShowUnsavedChangesModal(() =>
                 {
                     ShowGeneral(general);
                     SelectListItem(id);
                     _status.Text = $"{general.Name} 선택";
-                });
+                }, "저장 후 이동");
             }
             else
             {
@@ -785,7 +782,7 @@ public partial class GeneralEditorScene : Control
     private void RequestReload()
     {
         if (!HasPendingChanges()) { Reload(); return; }
-        ConfirmDiscardChanges("변경사항 재로드", "저장하지 않은 변경을 버리고 데이터를 다시 불러올까요?", Reload);
+        ShowUnsavedChangesModal(Reload, "저장 후 재로드");
     }
 
     private bool HasPendingChanges()
@@ -806,14 +803,104 @@ public partial class GeneralEditorScene : Control
         catch { return true; }
     }
 
-    private void ConfirmDiscardChanges(string title, string message, Action confirmed)
+    public override void _UnhandledKeyInput(InputEvent @event)
     {
-        var dialog = new ConfirmationDialog { Title = title, DialogText = message,
-            OkButtonText = "변경 버리기", CancelButtonText = "계속 편집", Theme = GeneralWorkspaceStyle.Theme() };
-        AddChild(dialog);
-        dialog.Confirmed += () => { confirmed(); dialog.QueueFree(); };
-        dialog.Canceled += dialog.QueueFree;
-        dialog.PopupCentered();
+        if (_editorModalOverlay is null || !IsInstanceValid(_editorModalOverlay) || !@event.IsActionPressed("ui_cancel")) return;
+        CloseEditorModal();
+        GetViewport().SetInputAsHandled();
+    }
+
+    private void ShowUnsavedChangesModal(Action requestedAction, string saveButtonText)
+    {
+        if (_editorModalOverlay is not null && IsInstanceValid(_editorModalOverlay)) return;
+
+        var overlay = new ColorRect
+        {
+            Name = "GeneralEditorModalOverlay",
+            Color = new Color(0, 0, 0, 0.58f),
+            MouseFilter = MouseFilterEnum.Stop,
+            Theme = GeneralWorkspaceStyle.Theme(),
+            ZIndex = 100,
+        };
+        overlay.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+        AddChild(overlay);
+        _editorModalOverlay = overlay;
+
+        var center = new CenterContainer { MouseFilter = MouseFilterEnum.Stop };
+        center.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+        overlay.AddChild(center);
+
+        var panel = new PanelContainer { CustomMinimumSize = new Vector2(620, 270) };
+        var panelStyle = GeneralWorkspaceStyle.SectionBox();
+        panelStyle.BgColor = new Color("190e0d");
+        panelStyle.BorderColor = new Color("b58b49");
+        panelStyle.SetBorderWidthAll(2);
+        panelStyle.SetCornerRadiusAll(10);
+        panel.AddThemeStyleboxOverride("panel", panelStyle);
+        center.AddChild(panel);
+
+        var margin = new MarginContainer();
+        margin.AddThemeConstantOverride("margin_left", 26);
+        margin.AddThemeConstantOverride("margin_right", 26);
+        margin.AddThemeConstantOverride("margin_top", 22);
+        margin.AddThemeConstantOverride("margin_bottom", 22);
+        panel.AddChild(margin);
+        var content = new VBoxContainer();
+        content.AddThemeConstantOverride("separation", 14);
+        margin.AddChild(content);
+
+        var title = new Label { Text = "저장하지 않은 변경", HorizontalAlignment = HorizontalAlignment.Center };
+        title.AddThemeFontSizeOverride("font_size", 24);
+        title.AddThemeColorOverride("font_color", new Color("efd49b"));
+        content.AddChild(title);
+        content.AddChild(new HSeparator());
+        var message = new Label
+        {
+            Text = "현재 장수의 변경 사항이 저장되지 않았습니다.\n변경 사항을 어떻게 처리하시겠습니까?",
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center,
+            AutowrapMode = TextServer.AutowrapMode.WordSmart,
+            CustomMinimumSize = new Vector2(0, 72),
+        };
+        message.AddThemeColorOverride("font_color", new Color("f0d6a8"));
+        content.AddChild(message);
+
+        var buttons = new HBoxContainer { Alignment = BoxContainer.AlignmentMode.Center };
+        buttons.AddThemeConstantOverride("separation", 12);
+        content.AddChild(buttons);
+        var keepEditing = ModalButton("계속 편집", 150);
+        keepEditing.Pressed += CloseEditorModal;
+        buttons.AddChild(keepEditing);
+        _editorModalCancelButton = keepEditing;
+        var discard = ModalButton("변경 버리기", 150);
+        discard.Pressed += () => { CloseEditorModal(); requestedAction(); };
+        buttons.AddChild(discard);
+        var save = ModalButton(saveButtonText, 160, true);
+        save.Pressed += () =>
+        {
+            if (!TrySaveSelected()) return;
+            CloseEditorModal();
+            requestedAction();
+        };
+        buttons.AddChild(save);
+        keepEditing.GrabFocus();
+    }
+
+    private static Button ModalButton(string text, float width, bool primary = false)
+    {
+        var button = new Button { Text = text, CustomMinimumSize = new Vector2(width, 44) };
+        if (!primary) return button;
+        button.AddThemeColorOverride("font_color", new Color("ffe1a8"));
+        button.AddThemeColorOverride("font_hover_color", new Color("fff0c6"));
+        return button;
+    }
+
+    private void CloseEditorModal()
+    {
+        if (_editorModalOverlay is not null && IsInstanceValid(_editorModalOverlay))
+            _editorModalOverlay.QueueFree();
+        _editorModalOverlay = null;
+        _editorModalCancelButton = null;
     }
 
     private void SelectListItem(int generalId)
@@ -949,11 +1036,14 @@ public partial class GeneralEditorScene : Control
     }
 
     private void SaveSelected()
+        => TrySaveSelected();
+
+    private bool TrySaveSelected()
     {
         if (_selected is null)
         {
             _status.Text = "저장할 장수를 선택하세요.";
-            return;
+            return false;
         }
 
         try
@@ -967,20 +1057,20 @@ public partial class GeneralEditorScene : Control
             if (!validation.IsValid)
             {
                 _status.Text = string.Join("\n", validation.Errors.Take(6));
-                return;
+                return false;
             }
 
             if (_createdGenerals.ContainsKey(edited.Id))
             {
                 SaveCreatedGeneral(edited);
-                return;
+                return true;
             }
 
             var path = Path.Combine(_dataDirectory, "generals.json");
             if (File.GetLastWriteTimeUtc(path) != _generalsLoadedAt)
             {
                 _status.Text = "generals.json이 외부에서 변경되었습니다. 재로드 후 다시 저장하세요.";
-                return;
+                return false;
             }
 
             var portraitPath = Path.Combine(_dataDirectory, "general-portraits.json");
@@ -988,7 +1078,7 @@ public partial class GeneralEditorScene : Control
             if (portraitWriteTime != _portraitsLoadedAt)
             {
                 _status.Text = "general-portraits.json이 외부에서 변경되었습니다. 재로드 후 다시 저장하세요.";
-                return;
+                return false;
             }
 
             var heroUnlocksPath = Path.Combine(_dataDirectory, "hero_unlocks.json");
@@ -996,7 +1086,7 @@ public partial class GeneralEditorScene : Control
             if (heroUnlocksWriteTime != _heroUnlocksLoadedAt)
             {
                 _status.Text = "hero_unlocks.json이 외부에서 변경되었습니다. 재로드 후 다시 저장하세요.";
-                return;
+                return false;
             }
 
             BackupDataFiles();
@@ -1026,10 +1116,12 @@ public partial class GeneralEditorScene : Control
             RefreshList();
             ShowGeneral(edited);
             _status.Text = $"{edited.Name} 저장 완료";
+            return true;
         }
         catch (Exception ex)
         {
             _status.Text = $"저장 실패: {ex.Message}";
+            return false;
         }
     }
 
