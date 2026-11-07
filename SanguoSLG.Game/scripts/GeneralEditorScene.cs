@@ -30,8 +30,17 @@ public partial class GeneralEditorScene : Control
     private LineEdit _search = null!;
     private OptionButton _regionFilter = null!;
     private ItemList _list = null!;
-    private Label _summary = null!;
     private Label _status = null!;
+    private TextureRect _commonPortraitPreview = null!;
+    private Label _previewName = null!;
+    private Label _previewId = null!;
+    private Label _previewKind = null!;
+    private Label _previewBirth = null!;
+    private Label _previewRegion = null!;
+    private Label _previewMight = null!;
+    private Label _previewIntellect = null!;
+    private Label _previewPolitics = null!;
+    private TabContainer _editorTabs = null!;
     private SpinBox _mightInput = null!;
     private SpinBox _intellectInput = null!;
     private SpinBox _politicsInput = null!;
@@ -65,12 +74,14 @@ public partial class GeneralEditorScene : Control
     private DateTime _portraitsLoadedAt;
     private DateTime _heroUnlocksLoadedAt;
     private DateTime _createdGeneralsLoadedAt;
+    private bool _suppressSelection;
 
     public override void _Ready()
     {
         BuildUi();
-        foreach (var option in new[] { _activeInput, _passiveSelect, _adminSelect })
-            option.GetPopup().MaxSize = new Vector2I(4096, 300);
+        foreach (var option in FindChildren("*", "OptionButton", true, false).OfType<OptionButton>())
+            GeneralWorkspaceStyle.StyleOptionButton(option);
+        CallDeferred(nameof(StyleRosterScrollBar));
         Reload();
         if (OS.GetCmdlineUserArgs().Contains("--generaleditorqa"))
         {
@@ -82,21 +93,14 @@ public partial class GeneralEditorScene : Control
     {
         if (_portraitPreview is not null) { _portraitPreview.Texture = null; }
         if (_facePreview is not null) { _facePreview.Texture = null; }
+        if (_commonPortraitPreview is not null) { _commonPortraitPreview.Texture = null; }
         ActiveSkillIcons.ClearCache();
     }
 
     private void RequestReturnToStart()
     {
         if (_selected is null) { ScenarioStartMenu.ReturnToStart(GetTree()); return; }
-        var current = CurrentEditedRecord();
-        var portrait = CurrentPortraitRecord(current.Id);
-        var originalPortrait = _portraitsByGeneralId.GetValueOrDefault(current.Id);
-        var changed = System.Text.Json.JsonSerializer.Serialize(current) != System.Text.Json.JsonSerializer.Serialize(_selected)
-            || (int)_recruitPointInput.Value != _heroRecruitPointCosts.GetValueOrDefault(current.Id)
-            || (int)_recruitGoldInput.Value != _heroRecruitGoldCosts.GetValueOrDefault(current.Id)
-            || SelectedRequiredGeneral() != _heroRecruitPrerequisites.GetValueOrDefault(current.Id)
-            || originalPortrait is not null && portrait != originalPortrait;
-        if (!changed) { ScenarioStartMenu.ReturnToStart(GetTree()); return; }
+        if (!HasPendingChanges()) { ScenarioStartMenu.ReturnToStart(GetTree()); return; }
         var dialog = new ConfirmationDialog { Title = "저장하지 않은 장수", DialogText = "변경한 장수를 저장하고 시작 화면으로 돌아갈까요?", OkButtonText = "저장 후 나가기", CancelButtonText = "계속 편집" };
         dialog.AddButton("변경 버리기", true, "discard");
         AddChild(dialog);
@@ -120,7 +124,7 @@ public partial class GeneralEditorScene : Control
         };
         AddChild(root);
 
-        GeneralWorkspaceStyle.Header(root, "장수 에디터", "장수를 골라 능력과 영입 조건을 조정합니다");
+        GeneralWorkspaceStyle.Header(root, "장수 에디터", "기존 장수와 신규 장수의 정보를 편집합니다.");
 
         var toolbar = new HBoxContainer();
         root.AddChild(toolbar);
@@ -139,13 +143,14 @@ public partial class GeneralEditorScene : Control
         _search.TextChanged += _ => RefreshList();
         toolbar.AddChild(_search);
         NativeTextInputDialog.Attach(_search);
+        GeneralWorkspaceStyle.StyleTextInput(_search);
 
         _regionFilter = new OptionButton { CustomMinimumSize = new Vector2(180, 0) };
         _regionFilter.ItemSelected += _ => RefreshList();
         toolbar.AddChild(_regionFilter);
 
         var reload = new Button { Text = "재로드", CustomMinimumSize = new Vector2(110, 0) };
-        reload.Pressed += Reload;
+        reload.Pressed += RequestReload;
         toolbar.AddChild(reload);
 
         var body = new HBoxContainer { SizeFlagsVertical = SizeFlags.ExpandFill };
@@ -153,6 +158,7 @@ public partial class GeneralEditorScene : Control
         root.AddChild(body);
 
         var left = GeneralWorkspaceStyle.Column(body, "장수 목록", 310);
+        left.Name = "GeneralEditorRosterColumn";
         _list = new ItemList
         {
             SizeFlagsVertical = SizeFlags.ExpandFill,
@@ -162,18 +168,67 @@ public partial class GeneralEditorScene : Control
         _list.ItemActivated += OnGeneralSelected;
         left.AddChild(_list);
 
-        var right = GeneralWorkspaceStyle.Column(body, "장수 기록부");
+        var center = GeneralWorkspaceStyle.Column(body, "장수 미리보기", 380);
+        center.Name = "GeneralEditorPreviewColumn";
+        var portraitFrame = new PanelContainer { SizeFlagsHorizontal = SizeFlags.ShrinkCenter };
+        var portraitStyle = GeneralWorkspaceStyle.DescriptionBox();
+        portraitStyle.BorderColor = new Color("d1a15a");
+        portraitStyle.SetContentMarginAll(3);
+        portraitFrame.AddThemeStyleboxOverride("panel", portraitStyle);
+        center.AddChild(portraitFrame);
+        _commonPortraitPreview = new TextureRect { CustomMinimumSize = new Vector2(244, 334),
+            ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
+            StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
+            Modulate = Colors.White, SelfModulate = Colors.White };
+        portraitFrame.AddChild(_commonPortraitPreview);
+        _previewName = new Label { Text = "장수를 선택하세요", HorizontalAlignment = HorizontalAlignment.Center };
+        _previewName.AddThemeFontSizeOverride("font_size", 22);
+        _previewName.AddThemeColorOverride("font_color", new Color("f0d6a8"));
+        center.AddChild(_previewName);
+        _previewId = PreviewLine(center, "ID", "-");
+        _previewKind = PreviewLine(center, "구분", "-");
+        _previewBirth = PreviewLine(center, "출생년도", "-");
+        _previewRegion = PreviewLine(center, "출신", "-");
+        center.AddChild(new HSeparator());
+        var previewStats = new GridContainer { Columns = 3, SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        previewStats.AddThemeConstantOverride("h_separation", 8);
+        center.AddChild(previewStats);
+        _previewMight = PreviewStat(previewStats, "무력");
+        _previewIntellect = PreviewStat(previewStats, "지력");
+        _previewPolitics = PreviewStat(previewStats, "정치");
+
+        var right = GeneralWorkspaceStyle.Column(body, "장수 편집");
+        right.Name = "GeneralEditorEditColumn";
         right.AddThemeConstantOverride("separation", 10);
 
-        var overview = AddSection(right, "장수 기본 내용");
-        _summary = new Label { Text = "장수를 선택하세요.", AutowrapMode = TextServer.AutowrapMode.WordSmart };
-        _summary.AddThemeFontSizeOverride("font_size", 18);
-        overview.AddChild(_summary);
-        overview.AddChild(new HSeparator());
+        var recruitSection = AddSection(right, "영입 조건");
+        var recruitPointBox = new HBoxContainer();
+        recruitPointBox.AddThemeConstantOverride("separation", 10);
+        recruitPointBox.AddChild(new Label { Text = "영입 포인트", CustomMinimumSize = new Vector2(105, 0) });
+        _recruitPointInput = new SpinBox { MinValue = 0, MaxValue = 3000, Step = 1, Rounded = true,
+            SizeFlagsHorizontal = SizeFlags.ExpandFill,
+            TooltipText = "위인 영입에 필요한 포인트입니다. 위인 정의가 있는 장수만 수정할 수 있습니다." };
+        _recruitPointInput.ValueChanged += _ => UpdateChangePreview();
+        recruitPointBox.AddChild(_recruitPointInput);
+        recruitPointBox.AddChild(new Label { Text = "필요한 금", CustomMinimumSize = new Vector2(80, 0) });
+        _recruitGoldInput = new SpinBox { MinValue = 500, MaxValue = 100000, Step = 1, Rounded = true,
+            SizeFlagsHorizontal = SizeFlags.ExpandFill, TooltipText = "영입할 때 이 도시에서 차감되는 금입니다." };
+        _recruitGoldInput.ValueChanged += _ => UpdateChangePreview();
+        recruitPointBox.AddChild(_recruitGoldInput);
+        recruitSection.AddChild(recruitPointBox);
+        var requiredRow = new HBoxContainer();
+        requiredRow.AddThemeConstantOverride("separation", 10);
+        requiredRow.AddChild(new Label { Text = "영입 선행 장수", CustomMinimumSize = new Vector2(105, 0) });
+        _requiredGeneralInput = new OptionButton { SizeFlagsHorizontal = SizeFlags.ExpandFill,
+            TooltipText = "없음은 어느 세력이나 영입할 수 있습니다. 지정하면 해당 장수가 소속된 세력만 영입할 수 있습니다." };
+        _requiredGeneralInput.ItemSelected += _ => UpdateChangePreview();
+        requiredRow.AddChild(_requiredGeneralInput);
+        recruitSection.AddChild(requiredRow);
 
-        var tabs = new TabContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill, SizeFlagsVertical = SizeFlags.ExpandFill };
+        _editorTabs = new TabContainer { Name = "GeneralEditorTabs", SizeFlagsHorizontal = SizeFlags.ExpandFill,
+            SizeFlagsVertical = SizeFlags.ExpandFill };
         right.AddChild(new Control { CustomMinimumSize = new Vector2(0, 5), MouseFilter = MouseFilterEnum.Ignore });
-        right.AddChild(tabs);
+        right.AddChild(_editorTabs);
         _skillDetailDialog = new PopupPanel { MinSize = new Vector2I(640, 300) };
         AddChild(_skillDetailDialog);
         var outerStyle = GeneralWorkspaceStyle.SectionBox();
@@ -226,7 +281,8 @@ public partial class GeneralEditorScene : Control
             var page = new ScrollContainer { Name = name,
                 SizeFlagsHorizontal = SizeFlags.ExpandFill, SizeFlagsVertical = SizeFlags.ExpandFill,
                 HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled };
-            tabs.AddChild(page);
+            GeneralWorkspaceStyle.StyleScrollContainer(page);
+            _editorTabs.AddChild(page);
             var content = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
             content.AddThemeConstantOverride("separation", 8);
             page.AddChild(content);
@@ -300,35 +356,6 @@ public partial class GeneralEditorScene : Control
         _mightInput = AddStat(statRow, "무력");
         _intellectInput = AddStat(statRow, "지력");
         _politicsInput = AddStat(statRow, "정치");
-        var recruitPointBox = new HBoxContainer();
-        recruitPointBox.AddChild(new Label { Text = "영입 포인트", CustomMinimumSize = new Vector2(130, 0) });
-        _recruitPointInput = new SpinBox
-        {
-            MinValue = 0,
-            MaxValue = 3000,
-            Step = 1,
-            Rounded = true,
-            TooltipText = "위인 영입에 필요한 포인트입니다. 위인 정의가 있는 장수만 수정할 수 있습니다.",
-        };
-        _recruitPointInput.ValueChanged += _ => UpdateChangePreview();
-        recruitPointBox.AddChild(_recruitPointInput);
-        recruitPointBox.AddChild(new Label { Text = "필요한 금", CustomMinimumSize = new Vector2(100, 0) });
-        _recruitGoldInput = new SpinBox { MinValue = 500, MaxValue = 100000, Step = 1, Rounded = true,
-            TooltipText = "영입할 때 이 도시에서 차감되는 금입니다." };
-        _recruitGoldInput.ValueChanged += _ => UpdateChangePreview();
-        recruitPointBox.AddChild(_recruitGoldInput);
-        overview.AddChild(recruitPointBox);
-        var requiredRow = new HBoxContainer();
-        requiredRow.AddChild(new Label { Text = "영입 선행 장수", CustomMinimumSize = new Vector2(130, 0) });
-        _requiredGeneralInput = new OptionButton
-        {
-            CustomMinimumSize = new Vector2(280, 0),
-            TooltipText = "없음은 어느 세력이나 영입할 수 있습니다. 지정하면 해당 장수가 소속된 세력만 영입할 수 있습니다.",
-        };
-        _requiredGeneralInput.ItemSelected += _ => UpdateChangePreview();
-        requiredRow.AddChild(_requiredGeneralInput);
-        statSection.AddChild(requiredRow);
-
         var aptitudeSection = AddSection(editor, "병종 적성");
         var aptitudeGrid = new GridContainer { Columns = 3 };
         aptitudeSection.AddChild(aptitudeGrid);
@@ -457,8 +484,27 @@ public partial class GeneralEditorScene : Control
 
     }
 
+    private static Label PreviewLine(VBoxContainer parent, string title, string value)
+    {
+        var label = new Label { Text = $"{title}  ·  {value}", HorizontalAlignment = HorizontalAlignment.Center };
+        label.AddThemeFontSizeOverride("font_size", 15);
+        label.AddThemeColorOverride("font_color", new Color("bda581"));
+        parent.AddChild(label);
+        return label;
+    }
+
+    private static Label PreviewStat(GridContainer parent, string title)
+    {
+        var label = new Label { Text = $"{title}\n-", HorizontalAlignment = HorizontalAlignment.Center };
+        label.AddThemeFontSizeOverride("font_size", 15);
+        label.AddThemeColorOverride("font_color", new Color("f0d6a8"));
+        parent.AddChild(label);
+        return label;
+    }
+
     private void Reload()
     {
+        var selectedId = _selected?.Id;
         try
         {
             _dataDirectory = FindDataDirectory();
@@ -546,7 +592,12 @@ public partial class GeneralEditorScene : Control
             RebuildSkillOptions();
             RebuildRegions();
             RefreshList();
-            if (_selected is null && _list.ItemCount > 0)
+            if (selectedId is { } retainedId && _generalsById.TryGetValue(retainedId, out var retained))
+            {
+                ShowGeneral(retained);
+                SelectListItem(retainedId);
+            }
+            else if (_list.ItemCount > 0)
             {
                 _list.Select(0);
                 OnGeneralSelected(0);
@@ -612,7 +663,6 @@ public partial class GeneralEditorScene : Control
 
         if (_selected is not null)
         {
-            ShowGeneral(_selected);
             for (var index = 0; index < _list.ItemCount; index++)
                 if (_list.GetItemMetadata(index).AsInt32() == _selected.Id)
                 {
@@ -624,6 +674,7 @@ public partial class GeneralEditorScene : Control
 
     private void OnGeneralSelected(long index)
     {
+        if (_suppressSelection) return;
         var item = (int)index;
         if (item < 0 || item >= _list.ItemCount)
         {
@@ -633,8 +684,21 @@ public partial class GeneralEditorScene : Control
         var id = _list.GetItemMetadata(item).AsInt32();
         if (_generalsById.TryGetValue(id, out var general))
         {
-            ShowGeneral(general);
-            _status.Text = $"{general.Name} 선택";
+            if (_selected is not null && _selected.Id != id && HasPendingChanges())
+            {
+                SelectListItem(_selected.Id);
+                ConfirmDiscardChanges("저장하지 않은 변경", "현재 장수의 변경을 버리고 다른 장수를 선택할까요?", () =>
+                {
+                    ShowGeneral(general);
+                    SelectListItem(id);
+                    _status.Text = $"{general.Name} 선택";
+                });
+            }
+            else
+            {
+                ShowGeneral(general);
+                _status.Text = $"{general.Name} 선택";
+            }
         }
         else
         {
@@ -646,23 +710,11 @@ public partial class GeneralEditorScene : Control
     {
         _portraitPathOverride = null;
         _selected = general;
-        var aptitudes = string.Join(" / ", general.Aptitudes.Select(kv => $"{TroopLabel(kv.Key)} {kv.Value}"));
-        var battleActive = string.IsNullOrWhiteSpace(general.BattleActive) ? "없음"
-            : _activeNames.GetValueOrDefault(general.BattleActive, general.BattleActive);
-        var battlePassives = GeneralSkillNames(general.BattlePassives, _passiveNames);
-        var adminPassives = GeneralSkillNames(general.AdminPassives, _adminNames);
         var defaultRecruitCost = HeroRecruitPricing.DefaultFor(general.Aptitudes.Values);
         var recruitPointCost = _heroRecruitPointCosts.GetValueOrDefault(general.Id, defaultRecruitCost.Points);
         var recruitGoldCost = _heroRecruitGoldCosts.GetValueOrDefault(general.Id, defaultRecruitCost.Gold);
         if (recruitGoldCost <= 0) recruitGoldCost = defaultRecruitCost.Gold;
         var requiredGeneral = _heroRecruitPrerequisites.GetValueOrDefault(general.Id);
-        var requiredName = requiredGeneral is { } id ? _generalsById.GetValueOrDefault(id)?.Name ?? $"장수 {id}" : "없음";
-
-        _summary.Text =
-            $"{general.Name} · 장수 {general.Id} · {RegionName(general.Region)} · {general.Birth}년 출생\n" +
-            $"무력 {general.Might}  지력 {general.Intellect}  정치 {general.Politics}  |  영입 {recruitPointCost}점 · {recruitGoldCost}금  선행 {requiredName}\n" +
-            $"액티브 {battleActive}  |  전투 {battlePassives}  |  내정 {adminPassives}";
-        _summary.TooltipText = $"병종 적성: {aptitudes}\n{general.Desc}";
 
         _mightInput.Value = general.Might;
         _intellectInput.Value = general.Intellect;
@@ -706,6 +758,74 @@ public partial class GeneralEditorScene : Control
         UpdatePortraitPreview();
 
         UpdateChangePreview();
+        UpdateCommonPreview();
+    }
+
+    private void StyleRosterScrollBar()
+    {
+        foreach (var bar in _list.FindChildren("*", "VScrollBar", true, false).OfType<VScrollBar>())
+            GeneralWorkspaceStyle.StyleVerticalScrollBar(bar, 8);
+    }
+
+    private void RequestReload()
+    {
+        if (!HasPendingChanges()) { Reload(); return; }
+        ConfirmDiscardChanges("변경사항 재로드", "저장하지 않은 변경을 버리고 데이터를 다시 불러올까요?", Reload);
+    }
+
+    private bool HasPendingChanges()
+    {
+        if (_selected is null) return false;
+        try
+        {
+            var current = CurrentEditedRecord();
+            var pricing = HeroRecruitPricing.DefaultFor(_selected.Aptitudes.Values);
+            var originalPoints = _heroRecruitPointCosts.GetValueOrDefault(current.Id, pricing.Points);
+            var originalGold = _heroRecruitGoldCosts.GetValueOrDefault(current.Id, pricing.Gold);
+            return System.Text.Json.JsonSerializer.Serialize(current) != System.Text.Json.JsonSerializer.Serialize(_selected)
+                || (int)_recruitPointInput.Value != originalPoints
+                || (int)_recruitGoldInput.Value != originalGold
+                || SelectedRequiredGeneral() != _heroRecruitPrerequisites.GetValueOrDefault(current.Id)
+                || CurrentPortraitRecord(current.Id) != PortraitFor(current.Id);
+        }
+        catch { return true; }
+    }
+
+    private void ConfirmDiscardChanges(string title, string message, Action confirmed)
+    {
+        var dialog = new ConfirmationDialog { Title = title, DialogText = message,
+            OkButtonText = "변경 버리기", CancelButtonText = "계속 편집", Theme = GeneralWorkspaceStyle.Theme() };
+        AddChild(dialog);
+        dialog.Confirmed += () => { confirmed(); dialog.QueueFree(); };
+        dialog.Canceled += dialog.QueueFree;
+        dialog.PopupCentered();
+    }
+
+    private void SelectListItem(int generalId)
+    {
+        _suppressSelection = true;
+        _list.DeselectAll();
+        for (var index = 0; index < _list.ItemCount; index++)
+            if (_list.GetItemMetadata(index).AsInt32() == generalId)
+            {
+                _list.Select(index);
+                _list.EnsureCurrentIsVisible();
+                break;
+            }
+        _suppressSelection = false;
+    }
+
+    private void UpdateCommonPreview()
+    {
+        if (_selected is null) return;
+        _previewName.Text = _selected.Name;
+        _previewId.Text = $"ID  ·  {_selected.Id}";
+        _previewKind.Text = $"구분  ·  {(_createdGenerals.ContainsKey(_selected.Id) ? "신규 장수" : "기존 장수")}";
+        _previewBirth.Text = $"출생년도  ·  {_selected.Birth}년";
+        _previewRegion.Text = $"출신  ·  {RegionName(_selected.Region)}";
+        _previewMight.Text = $"무력\n{(int)_mightInput.Value}";
+        _previewIntellect.Text = $"지력\n{(int)_intellectInput.Value}";
+        _previewPolitics.Text = $"정치\n{(int)_politicsInput.Value}";
     }
 
     private SpinBox AddStat(HBoxContainer parent, string label)
@@ -1028,6 +1148,7 @@ public partial class GeneralEditorScene : Control
         {
             _changePreview.Text = $"입력 오류: {ex.Message}";
         }
+        UpdateCommonPreview();
     }
 
     private int? SelectedRequiredGeneral()
@@ -1045,7 +1166,7 @@ public partial class GeneralEditorScene : Control
         }
     }
 
-    private void RunGeneralEditorQa()
+    private async void RunGeneralEditorQa()
     {
         var hero = _generals.FirstOrDefault(g => _heroRecruitPointCosts.ContainsKey(g.Id));
         var regular = _generals.FirstOrDefault(g => !_heroRecruitPointCosts.ContainsKey(g.Id));
@@ -1111,7 +1232,37 @@ public partial class GeneralEditorScene : Control
             && _skillDetailBody.Text.Contains("내정 패시브", StringComparison.Ordinal);
         _skillDetailDialog.Hide();
 
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
         var tabs = FindChildren("*", "TabContainer", true, false).OfType<TabContainer>().Single();
+        var threeColumnOk = FindChild("GeneralEditorRosterColumn", true, false) is VBoxContainer roster
+            && FindChild("GeneralEditorPreviewColumn", true, false) is VBoxContainer preview
+            && FindChild("GeneralEditorEditColumn", true, false) is VBoxContainer edit
+            && roster.GetParent() is PanelContainer { CustomMinimumSize.X: 310 }
+            && preview.GetParent() is PanelContainer { CustomMinimumSize.X: 380 }
+            && edit.GetParent() is PanelContainer editPanel
+            && editPanel.SizeFlagsHorizontal.HasFlag(SizeFlags.ExpandFill)
+            && _previewName.Text == _selected?.Name && _previewId.Text.Contains((_selected?.Id ?? 0).ToString())
+            && _editorTabs.GetTabCount() == 4;
+        var tabSizingOk = true;
+        for (var tab = 0; tab < _editorTabs.GetTabCount(); tab++)
+        {
+            _editorTabs.CurrentTab = tab;
+            await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+            if (_editorTabs.GetChild(tab) is not ScrollContainer scroll || scroll.GetHScrollBar().Visible)
+                tabSizingOk = false;
+        }
+        _editorTabs.CurrentTab = 0;
+        var filterPreservesEdit = true;
+        if (_selected is not null)
+        {
+            var changedMight = Math.Min(100, _mightInput.Value + 1);
+            _mightInput.Value = changedMight;
+            RefreshList();
+            filterPreservesEdit = Math.Abs(_mightInput.Value - changedMight) < 0.001
+                && _previewMight.Text.EndsWith(((int)changedMight).ToString(), StringComparison.Ordinal);
+            ShowGeneral(_selected);
+        }
         var layoutOk = GeneralWorkspaceStyle.EditorFooterLayoutValid(this, _status)
             && tabs.GetChildren().All(child => child is ScrollContainer)
             && _list.GetSelectedItems().Length == 1
@@ -1119,9 +1270,10 @@ public partial class GeneralEditorScene : Control
             && _regionFilter.ItemCount > 1
             && _regionFilter.GetItemText(1) == RegionName(_regionFilter.GetItemMetadata(1).AsString())
             && _activeInput.ItemCount > 1
-            && !_activeInput.GetItemText(1).Contains('(');
+            && !_activeInput.GetItemText(1).Contains('(')
+            && threeColumnOk && tabSizingOk && filterPreservesEdit;
         var passed = heroOk && regularOk && createdOk && layoutOk && battleDescriptionOk && adminDescriptionOk;
-        GD.Print($"[generaleditorqa] passed={passed} hero={heroOk} regular={regularOk} created={createdOk} layout={layoutOk} region={_regionFilter.GetItemText(1)} active={_activeInput.GetItemText(1)} range={_recruitPointInput.MinValue}-{_recruitPointInput.MaxValue}");
+        GD.Print($"[generaleditorqa] passed={passed} hero={heroOk} regular={regularOk} created={createdOk} layout={layoutOk} columns={threeColumnOk} tabs={tabSizingOk} preserve={filterPreservesEdit} region={_regionFilter.GetItemText(1)} active={_activeInput.GetItemText(1)} range={_recruitPointInput.MinValue}-{_recruitPointInput.MaxValue}");
         GetTree().Quit(passed ? 0 : 1);
     }
 
@@ -1452,6 +1604,7 @@ public partial class GeneralEditorScene : Control
         {
             _portraitPreview.Texture = null;
             _facePreview.Texture = null;
+            _commonPortraitPreview.Texture = null;
             _faceLabel.Text = "초상 파일 없음";
             return;
         }
@@ -1472,11 +1625,14 @@ public partial class GeneralEditorScene : Control
         {
             _portraitPreview.Texture = null;
             _facePreview.Texture = null;
+            _commonPortraitPreview.Texture = null;
             _faceLabel.Text = "초상 로드 실패";
             return;
         }
 
-        _portraitPreview.Texture = ImageTexture.CreateFromImage(image);
+        var portraitTexture = ImageTexture.CreateFromImage(image);
+        _portraitPreview.Texture = portraitTexture;
+        _commonPortraitPreview.Texture = portraitTexture;
         _facePreview.Texture = ImageTexture.CreateFromImage(BuildFaceImage(image, portrait));
         _faceLabel.Text = $"X {portrait.FaceCenterX:0.00} / Y {portrait.FaceCenterY:0.00} / 확대 {portrait.FaceZoom:0.00}";
     }

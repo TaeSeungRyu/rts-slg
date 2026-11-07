@@ -28,6 +28,8 @@ internal static class GeneralWorkspaceStyle
         theme.SetStylebox("panel", "ItemList", Box(new Color(0.08f, 0.07f, 0.065f), new Color(gold, 0.55f), 1));
         theme.SetStylebox("selected", "ItemList", Box(new Color(0.39f, 0.20f, 0.10f), gold, 1));
         theme.SetStylebox("selected_focus", "ItemList", Box(new Color(0.46f, 0.23f, 0.11f), gold, 1));
+        theme.SetStylebox("hover", "ItemList", Box(new Color(0.25f, 0.13f, 0.09f), new Color(gold, 0.45f), 1));
+        theme.SetStylebox("hover_selected", "ItemList", Box(new Color(0.48f, 0.24f, 0.11f), gold, 1));
         theme.SetColor("font_color", "ItemList", parchment);
         theme.SetColor("font_selected_color", "ItemList", Color.Color8(255, 241, 195));
         theme.SetStylebox("tab_selected", "TabBar", Box(new Color(0.42f, 0.21f, 0.10f), gold, 2));
@@ -63,6 +65,19 @@ internal static class GeneralWorkspaceStyle
     {
         StyleScrollBar(scroll.GetVScrollBar(), true, thickness);
         StyleScrollBar(scroll.GetHScrollBar(), false, thickness);
+    }
+
+    internal static void StyleVerticalScrollBar(VScrollBar bar, int thickness = 7)
+        => StyleScrollBar(bar, true, thickness);
+
+    internal static void StyleTextInput(Control input)
+    {
+        var normal = Box(new Color("35211b"), new Color("765637"), 1);
+        var focus = Box(new Color("3c241d"), new Color("d1a15a"), 2);
+        input.AddThemeStyleboxOverride("normal", normal);
+        input.AddThemeStyleboxOverride("focus", focus);
+        input.AddThemeColorOverride("font_color", new Color("f0d6a8"));
+        input.AddThemeColorOverride("font_placeholder_color", new Color("8f7b65"));
     }
 
     private static void StyleScrollBar(ScrollBar bar, bool vertical, int thickness)
