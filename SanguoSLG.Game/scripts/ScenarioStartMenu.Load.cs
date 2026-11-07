@@ -9,8 +9,10 @@ public sealed partial class ScenarioStartMenu
     private int? _selectedLoadSlot;
     private readonly Dictionary<int, Button> _loadCards = [];
     private readonly HashSet<int> _corruptLoadSlots = [];
-    private Button? _loadSelectedButton;
-    private Button? _deleteSelectedButton;
+    private TextureButton? _loadSelectedButton;
+    private TextureButton? _deleteSelectedButton;
+    private bool _loadInProgress;
+    private static readonly Dictionary<(string Tier, string State, int Width, int Height), Texture2D> LoadButtonTextures = [];
 
     private static readonly Color LoadGold = new("d4a252");
     private static readonly Color LoadText = new("f1d6a8");
@@ -35,11 +37,67 @@ public sealed partial class ScenarioStartMenu
         return label;
     }
 
+    private static Texture2D LoadButtonTexture(string tier, string state, int width, int height)
+    {
+        var key = (tier, state, width, height);
+        if (LoadButtonTextures.TryGetValue(key, out var cached)) return cached;
+        var source = GD.Load<Texture2D>($"res://assets/ui/new_game/buttons/{tier}_{state}.png");
+        using var image = source.GetImage();
+        var cap = tier == "primary" ? 102 : 82;
+        var targetCap = Mathf.Min(width / 3, Mathf.RoundToInt(cap * height / (float)image.GetHeight()));
+        using var left = Image.CreateEmpty(cap, image.GetHeight(), false, Image.Format.Rgba8);
+        using var middle = Image.CreateEmpty(image.GetWidth() - 2 * cap, image.GetHeight(), false, Image.Format.Rgba8);
+        using var right = Image.CreateEmpty(cap, image.GetHeight(), false, Image.Format.Rgba8);
+        left.BlitRect(image, new Rect2I(0, 0, cap, image.GetHeight()), Vector2I.Zero);
+        middle.BlitRect(image, new Rect2I(cap, 0, image.GetWidth() - 2 * cap, image.GetHeight()), Vector2I.Zero);
+        right.BlitRect(image, new Rect2I(image.GetWidth() - cap, 0, cap, image.GetHeight()), Vector2I.Zero);
+        left.Resize(targetCap, height, Image.Interpolation.Lanczos);
+        middle.Resize(width - 2 * targetCap, height, Image.Interpolation.Lanczos);
+        right.Resize(targetCap, height, Image.Interpolation.Lanczos);
+        using var result = Image.CreateEmpty(width, height, false, Image.Format.Rgba8);
+        result.BlitRect(left, new Rect2I(0, 0, targetCap, height), Vector2I.Zero);
+        result.BlitRect(middle, new Rect2I(0, 0, width - 2 * targetCap, height), new Vector2I(targetCap, 0));
+        result.BlitRect(right, new Rect2I(0, 0, targetCap, height), new Vector2I(width - targetCap, 0));
+        var texture = ImageTexture.CreateFromImage(result);
+        LoadButtonTextures[key] = texture;
+        return texture;
+    }
+
+    private static TextureButton LoadActionButton(string name, string caption, bool primary, int width, int height)
+    {
+        var tier = primary ? "primary" : "secondary";
+        var button = new TextureButton
+        {
+            Name = name,
+            CustomMinimumSize = new Vector2(width, height),
+            TextureNormal = LoadButtonTexture(tier, "normal", width, height),
+            TextureHover = LoadButtonTexture(tier, "hover", width, height),
+            TexturePressed = LoadButtonTexture(tier, "pressed", width, height),
+            TextureDisabled = LoadButtonTexture(tier, "disabled", width, height),
+            IgnoreTextureSize = true,
+            StretchMode = TextureButton.StretchModeEnum.KeepAspectCentered,
+            FocusMode = FocusModeEnum.All,
+            MouseDefaultCursorShape = CursorShape.PointingHand
+        };
+        var focus = new StyleBoxFlat { BgColor = Colors.Transparent, BorderColor = LoadGold };
+        focus.SetBorderWidthAll(1);
+        focus.SetCornerRadiusAll(8);
+        button.AddThemeStyleboxOverride("focus", focus);
+        var text = LoadLabel(caption, primary ? 17 : 15);
+        text.AddThemeFontOverride("font", NewGameSerif(primary ? 700 : 550));
+        text.HorizontalAlignment = HorizontalAlignment.Center;
+        text.VerticalAlignment = VerticalAlignment.Center;
+        text.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+        button.AddChild(text);
+        return button;
+    }
+
     private void OpenLoadSlots(Control menuCenter)
     {
         if (_loadView is not null) return;
         menuCenter.Visible = false;
         _selectedLoadSlot = null;
+        _loadInProgress = false;
         _loadCards.Clear();
         _corruptLoadSlots.Clear();
         var center = new CenterContainer();
@@ -47,8 +105,8 @@ public sealed partial class ScenarioStartMenu
         AddChild(center);
         _loadView = center;
 
-        var panel = new PanelContainer { CustomMinimumSize = new Vector2(1080, 0) };
-        var frame = new StyleBoxFlat { BgColor = new Color("1e1715"), BorderColor = LoadGold };
+        var panel = new PanelContainer { CustomMinimumSize = new Vector2(1080, 390) };
+        var frame = new StyleBoxFlat { BgColor = new Color("1e1715", 0.96f), BorderColor = LoadGold };
         frame.SetBorderWidthAll(2);
         frame.SetCornerRadiusAll(12);
         frame.SetContentMarginAll(20);
@@ -56,21 +114,20 @@ public sealed partial class ScenarioStartMenu
         center.AddChild(panel);
 
         var content = new VBoxContainer();
-        content.AddThemeConstantOverride("separation", 12);
+        content.AddThemeConstantOverride("separation", 8);
         panel.AddChild(content);
-        var header = new HBoxContainer();
-        content.AddChild(header);
-        var title = LoadLabel("저장된 게임 시작하기", 23);
-        title.SizeFlagsHorizontal = SizeFlags.ExpandFill;
-        header.AddChild(title);
-        var close = new Button { Text = "← 메인 메뉴", CustomMinimumSize = new Vector2(140, 36) };
-        close.Pressed += () => { center.QueueFree(); _loadView = null; menuCenter.Visible = true; };
-        header.AddChild(close);
+        var title = LoadLabel("이어하기", 24, NewGameGoldBright);
+        title.AddThemeFontOverride("font", NewGameSerif(700));
+        title.HorizontalAlignment = HorizontalAlignment.Center;
+        content.AddChild(title);
+        var subtitle = LoadLabel("저장된 천하의 기록", 13, LoadMuted);
+        subtitle.HorizontalAlignment = HorizontalAlignment.Center;
+        content.AddChild(subtitle);
         content.AddChild(new HSeparator());
 
         var store = new SaveSlotStore(ProjectSettings.GlobalizePath("user://saves"),
             ProjectSettings.GlobalizePath("user://sanguo-save.json"));
-        var scroll = new ScrollContainer { CustomMinimumSize = new Vector2(1036, 556),
+        var scroll = new ScrollContainer { CustomMinimumSize = new Vector2(1036, 184),
             SizeFlagsHorizontal = SizeFlags.ExpandFill };
         content.AddChild(scroll);
         var grid = new GridContainer { Columns = 2, SizeFlagsHorizontal = SizeFlags.ExpandFill,
@@ -82,9 +139,9 @@ public sealed partial class ScenarioStartMenu
         var pager = new HBoxContainer { Alignment = BoxContainer.AlignmentMode.Center };
         pager.AddThemeConstantOverride("separation", 12);
         content.AddChild(pager);
-        var previous = new Button { Text = "이전", CustomMinimumSize = new Vector2(72, 30) };
-        var pageLabel = LoadLabel("", 13, LoadMuted);
-        var next = new Button { Name = "LoadNextPage", Text = "다음", CustomMinimumSize = new Vector2(72, 30) };
+        var previous = LoadActionButton("LoadPreviousPage", "이전", false, 91, 32);
+        var pageLabel = LoadLabel("", 14, LoadMuted);
+        var next = LoadActionButton("LoadNextPage", "다음", false, 91, 32);
         pager.AddChild(previous);
         pager.AddChild(pageLabel);
         pager.AddChild(next);
@@ -97,6 +154,10 @@ public sealed partial class ScenarioStartMenu
             _loadCards.Clear();
             _corruptLoadSlots.Clear();
             _selectedLoadSlot = null;
+            var visibleCount = Math.Min(10, Math.Max(0, saves.Count - page * 10));
+            var rows = Math.Max(1, (visibleCount + 1) / 2);
+            var listHeight = Math.Min(504, rows * 184 + (rows - 1) * 12);
+            scroll.CustomMinimumSize = new Vector2(1036, listHeight);
             if (saves.Count == 0)
                 grid.AddChild(LoadLabel("저장된 게임이 없습니다.", 17, LoadMuted));
             foreach (var info in saves.Skip(page * 10).Take(10)) grid.AddChild(CreateLoadCard(info));
@@ -104,6 +165,9 @@ public sealed partial class ScenarioStartMenu
             pageLabel.Text = $"{page + 1} / {pages}";
             previous.Disabled = page == 0;
             next.Disabled = page >= pages - 1;
+            pager.Visible = pages > 1;
+            panel.CustomMinimumSize = new Vector2(1080, Mathf.Min(740,
+                Mathf.Max(390, listHeight + (pager.Visible ? 200 : 167))));
             UpdateLoadSelection();
         }
 
@@ -117,29 +181,37 @@ public sealed partial class ScenarioStartMenu
         previous.Pressed += () => { page--; RenderPage(); };
         next.Pressed += () => { page++; RenderPage(); };
 
+        content.AddChild(new HSeparator());
         var actions = new HBoxContainer();
-        actions.AddThemeConstantOverride("separation", 12);
+        actions.AddThemeConstantOverride("separation", 14);
         content.AddChild(actions);
-        var hint = LoadLabel("저장 기록을 선택하세요.", 14, LoadMuted);
-        hint.SizeFlagsHorizontal = SizeFlags.ExpandFill;
-        actions.AddChild(hint);
-        _deleteSelectedButton = new Button { Text = "삭제", Disabled = true,
-            CustomMinimumSize = new Vector2(100, 38) };
+        var back = LoadActionButton("LoadBackButton", "← 메인 메뉴로 돌아가기", false, 270, 50);
+        back.Pressed += () => { center.QueueFree(); _loadView = null; menuCenter.Visible = true; };
+        actions.AddChild(back);
+        actions.AddChild(new Control { SizeFlagsHorizontal = SizeFlags.ExpandFill });
+        _deleteSelectedButton = LoadActionButton("LoadDeleteButton", "기록 삭제", false, 184, 50);
+        _deleteSelectedButton.Disabled = true;
         actions.AddChild(_deleteSelectedButton);
-        _loadSelectedButton = new Button { Text = "불러오기", Disabled = true,
-            CustomMinimumSize = new Vector2(140, 38) };
+        _loadSelectedButton = LoadActionButton("LoadStartButton", "선택한 게임 불러오기 →", true, 305, 50);
+        _loadSelectedButton.Disabled = true;
         actions.AddChild(_loadSelectedButton);
+        var hint = LoadLabel("", 12, LoadMuted);
+        hint.Visible = false;
+        content.AddChild(hint);
         _loadSelectedButton.Pressed += () =>
         {
-            if (_selectedLoadSlot is { } slot) StartSavedGame(store, slot, content);
+            if (_selectedLoadSlot is { } slot && !_loadInProgress) StartSavedGame(store, slot, content);
         };
         _deleteSelectedButton.Pressed += () =>
         {
             if (_selectedLoadSlot is not { } slot) return;
+            var target = saves.FirstOrDefault(info => info.Slot == slot);
+            var targetName = target is null ? $"저장 기록 {slot:00}"
+                : $"저장 기록 {slot:00} · {target.ScenarioTitle ?? "시나리오 미상"} · {target.FactionName ?? "세력 미상"}";
             var confirm = new ConfirmationDialog
             {
                 Title = "저장 기록 삭제",
-                DialogText = $"저장 기록 {slot:00}을 삭제하시겠습니까?",
+                DialogText = $"{targetName}\n이 기록을 삭제하시겠습니까? 되돌릴 수 없습니다.",
                 OkButtonText = "삭제",
                 CancelButtonText = "취소"
             };
@@ -148,6 +220,7 @@ public sealed partial class ScenarioStartMenu
             {
                 try { store.Delete(slot); RefreshCards(); hint.Text = $"저장 기록 {slot:00}을 삭제했습니다."; }
                 catch (Exception error) { hint.Text = $"삭제 실패: {error.Message}"; }
+                hint.Visible = true;
                 confirm.QueueFree();
             };
             confirm.Canceled += confirm.QueueFree;
@@ -277,12 +350,16 @@ public sealed partial class ScenarioStartMenu
             if (mark is not null) mark.Visible = selected;
         }
         if (_loadSelectedButton is not null) _loadSelectedButton.Disabled = _selectedLoadSlot is null
-            || _corruptLoadSlots.Contains(_selectedLoadSlot.Value);
-        if (_deleteSelectedButton is not null) _deleteSelectedButton.Disabled = _selectedLoadSlot is null;
+            || _corruptLoadSlots.Contains(_selectedLoadSlot.Value) || _loadInProgress;
+        if (_deleteSelectedButton is not null) _deleteSelectedButton.Disabled = _selectedLoadSlot is null
+            || _loadInProgress;
     }
 
     private void StartSavedGame(SaveSlotStore store, int slot, VBoxContainer content)
     {
+        if (_loadInProgress) return;
+        _loadInProgress = true;
+        UpdateLoadSelection();
         try
         {
             var loaded = store.Load(slot);
@@ -296,6 +373,8 @@ public sealed partial class ScenarioStartMenu
         }
         catch (Exception error)
         {
+            _loadInProgress = false;
+            UpdateLoadSelection();
             var warning = content.GetChildren().OfType<Label>().FirstOrDefault(label => label.Name == "LoadWarning");
             if (warning is null)
             {
