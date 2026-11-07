@@ -44,7 +44,13 @@ public partial class GeneralCreatorScene : Control
     private Label _portraitPageLabel = null!;
     private int _portraitPage;
     private TextureRect _portraitPreview = null!;
+    private TextureRect _commonPortraitPreview = null!;
     private Label _portraitLabel = null!;
+    private Label _commonName = null!;
+    private Label _commonId = null!;
+    private Label _commonGender = null!;
+    private Label _commonBirth = null!;
+    private Label _commonRegion = null!;
     private FileDialog _portraitFileDialog = null!;
     private FileDialog _galleryFileDialog = null!;
     private ColorRect _galleryLoading = null!;
@@ -83,6 +89,8 @@ public partial class GeneralCreatorScene : Control
     private void BuildUi()
     {
         GeneralWorkspaceStyle.AddBackground(this);
+        AddChild(new ColorRect { Color = new Color("160e0c"), AnchorRight = 1, AnchorBottom = 1,
+            MouseFilter = MouseFilterEnum.Ignore });
         var root = new VBoxContainer { AnchorRight = 1, AnchorBottom = 1,
             OffsetLeft = 18, OffsetTop = 18, OffsetRight = -18, OffsetBottom = -18,
             Theme = GeneralWorkspaceStyle.Theme() };
@@ -102,7 +110,9 @@ public partial class GeneralCreatorScene : Control
         var body = new HBoxContainer { SizeFlagsVertical = SizeFlags.ExpandFill };
         body.AddThemeConstantOverride("separation", 12);
         root.AddChild(body);
-        var left = GeneralWorkspaceStyle.Column(body, "생성한 장수", 310);
+        var left = GeneralWorkspaceStyle.Column(body, "장수 목록", 300);
+        left.Name = "CreatorRosterColumn";
+        left.CustomMinimumSize = new Vector2(300, 0);
         _list = new ItemList { SizeFlagsVertical = SizeFlags.ExpandFill };
         _list.ItemSelected += index => LoadSelected((int)index);
         left.AddChild(_list);
@@ -113,12 +123,48 @@ public partial class GeneralCreatorScene : Control
         delete.Pressed += DeleteSelected;
         left.AddChild(delete);
 
-        var right = GeneralWorkspaceStyle.Column(body, "장수 등록부");
+        var preview = GeneralWorkspaceStyle.Column(body, "장수 미리보기", 380);
+        preview.Name = "CreatorPreviewColumn";
+        preview.CustomMinimumSize = new Vector2(380, 0);
+        var previewFrame = new PanelContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill,
+            SizeFlagsVertical = SizeFlags.ExpandFill };
+        var previewStyle = new StyleBoxFlat { BgColor = new Color("211512"), BorderColor = new Color("765637") };
+        previewStyle.SetBorderWidthAll(1);
+        previewStyle.SetCornerRadiusAll(7);
+        previewStyle.SetContentMarginAll(12);
+        previewFrame.AddThemeStyleboxOverride("panel", previewStyle);
+        preview.AddChild(previewFrame);
+        var previewContent = new VBoxContainer { Alignment = BoxContainer.AlignmentMode.Center };
+        previewContent.AddThemeConstantOverride("separation", 10);
+        previewFrame.AddChild(previewContent);
+        var commonPortraitFrame = new PanelContainer { CustomMinimumSize = new Vector2(250, 340),
+            SizeFlagsHorizontal = SizeFlags.ShrinkCenter };
+        var commonPortraitStyle = new StyleBoxFlat { BgColor = new Color("160e0c"), BorderColor = new Color("d1a15a") };
+        commonPortraitStyle.SetBorderWidthAll(1);
+        commonPortraitStyle.SetCornerRadiusAll(7);
+        commonPortraitStyle.SetContentMarginAll(3);
+        commonPortraitFrame.AddThemeStyleboxOverride("panel", commonPortraitStyle);
+        previewContent.AddChild(commonPortraitFrame);
+        _commonPortraitPreview = new TextureRect { CustomMinimumSize = new Vector2(244, 334),
+            ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
+            StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
+            Modulate = Colors.White, SelfModulate = Colors.White };
+        commonPortraitFrame.AddChild(_commonPortraitPreview);
+        _commonName = new Label { Text = "새 장수", HorizontalAlignment = HorizontalAlignment.Center };
+        _commonName.AddThemeFontSizeOverride("font_size", 22);
+        _commonName.AddThemeColorOverride("font_color", new Color("f0d6a8"));
+        previewContent.AddChild(_commonName);
+        _commonId = PreviewLine(previewContent, "ID", "신규 발급");
+        _commonGender = PreviewLine(previewContent, "성별", "남성");
+        _commonBirth = PreviewLine(previewContent, "출생년도", "170년");
+        _commonRegion = PreviewLine(previewContent, "출신", "미지정");
+
+        var right = GeneralWorkspaceStyle.Column(body, "장수 편집");
+        right.Name = "CreatorEditorColumn";
         right.AddThemeConstantOverride("separation", 10);
-        var overview = GeneralWorkspaceStyle.Section(right, "장수 기본 내용");
         _overview = new Label { Text = "새 장수", AutowrapMode = TextServer.AutowrapMode.WordSmart };
-        _overview.AddThemeFontSizeOverride("font_size", 18);
-        overview.AddChild(_overview);
+        _overview.Visible = false;
+        right.AddChild(_overview);
         _tabs = new TabContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill,
             SizeFlagsVertical = SizeFlags.ExpandFill };
         right.AddChild(_tabs);
@@ -132,11 +178,16 @@ public partial class GeneralCreatorScene : Control
             scroll.AddChild(content);
             return content;
         }
-        var portraits = Page("초상·얼굴");
         var basic = Page("기본 정보");
-        var identity = GeneralWorkspaceStyle.Section(basic, "신상 정보");
+        var portraits = Page("초상·얼굴");
+        var identity = GeneralWorkspaceStyle.Section(basic, "기본 정보");
+        var basicGrid = new GridContainer { Columns = 2, SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        basicGrid.Name = "CreatorBasicGrid";
+        basicGrid.AddThemeConstantOverride("h_separation", 16);
+        basicGrid.AddThemeConstantOverride("v_separation", 18);
+        identity.AddChild(basicGrid);
         _name = new LineEdit { MaxLength = 20, PlaceholderText = "장수 이름", KeepEditingOnTextSubmit = true };
-        AddField(identity, "이름", _name);
+        AddBasicField(basicGrid, "이름", _name);
         NativeTextInputDialog.Attach(_name);
         _gender = new OptionButton();
         _gender.AddItem("남성"); _gender.AddItem("여성");
@@ -146,21 +197,23 @@ public partial class GeneralCreatorScene : Control
                 SelectPortrait(DefaultPortrait());
             RebuildPortraitGrid();
         };
-        AddField(identity, "성별", _gender);
+        AddBasicField(basicGrid, "성별", _gender);
         _birth = Spin(-500, 500, 170);
-        AddField(identity, "출생년도", _birth);
+        AddBasicField(basicGrid, "출생년도", _birth);
         _region = new OptionButton();
-        AddField(identity, "출신", _region);
-        var recruitment = GeneralWorkspaceStyle.Section(basic, "영입 조건");
+        AddBasicField(basicGrid, "출신", _region);
         _points = Spin(0, 3000, 100);
-        AddField(recruitment, "영입 포인트", _points);
+        AddBasicField(basicGrid, "영입 포인트", _points);
         _requiredGeneral = new OptionButton();
-        AddField(recruitment, "영입 선행 장수", _requiredGeneral);
-        recruitment.AddChild(new Label { Text = "선행 장수를 지정하면 해당 장수가 소속된 세력만 영입할 수 있습니다." });
+        AddBasicField(basicGrid, "영입 선행 장수", _requiredGeneral);
+        identity.AddChild(new Label { Text = "선행 장수를 지정하면 해당 장수가 소속된 세력만 영입할 수 있습니다.",
+            Modulate = new Color("bda581") });
         var introduction = GeneralWorkspaceStyle.Section(basic, "장수 소개");
         _description = new TextEdit { CustomMinimumSize = new Vector2(0, 115) };
         introduction.AddChild(_description);
         NativeTextInputDialog.Attach(_description);
+        foreach (var input in new Control[] { _name, _gender, _birth, _region, _points, _requiredGeneral, _description })
+            StyleCreatorInput(input);
 
         var portraitSection = GeneralWorkspaceStyle.Section(portraits,
             "초상 얼굴 (기본 얼굴을 고르거나 외부 PNG·JPG·WEBP 파일을 가져오세요.)");
@@ -276,6 +329,12 @@ public partial class GeneralCreatorScene : Control
             _adminDescriptions.Add(description);
             option.ItemSelected += _ => ShowSkillDescription(description, option, _adminDetails);
         }
+        _tabs.MoveChild(portraits.GetParent(), 3);
+        _tabs.CurrentTab = 0;
+        _name.TextChanged += _ => UpdateCommonPreview();
+        _gender.ItemSelected += _ => UpdateCommonPreview();
+        _birth.ValueChanged += _ => UpdateCommonPreview();
+        _region.ItemSelected += _ => UpdateCommonPreview();
         _status = new Label { AutowrapMode = TextServer.AutowrapMode.Off };
         var footer = GeneralWorkspaceStyle.EditorFooter(root, _status);
         footer.AddChild(new Label { Text = "등록 내용은 다음 새 게임부터 적용됩니다.",
@@ -288,6 +347,61 @@ public partial class GeneralCreatorScene : Control
     private static SpinBox Spin(double min, double max, double value)
         => new() { MinValue = min, MaxValue = max, Value = value, Step = 1, Rounded = true,
             CustomMinimumSize = new Vector2(100, 0) };
+
+    private static Label PreviewLine(VBoxContainer parent, string title, string value)
+    {
+        var label = new Label { Text = $"{title}  ·  {value}", HorizontalAlignment = HorizontalAlignment.Center };
+        label.AddThemeFontSizeOverride("font_size", 15);
+        label.AddThemeColorOverride("font_color", new Color("bda581"));
+        parent.AddChild(label);
+        return label;
+    }
+
+    private static void AddBasicField(GridContainer grid, string label, Control input)
+    {
+        var field = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill,
+            CustomMinimumSize = new Vector2(0, 68) };
+        field.AddThemeConstantOverride("separation", 6);
+        var heading = new Label { Text = label };
+        heading.AddThemeColorOverride("font_color", new Color("bda581"));
+        field.AddChild(heading);
+        input.CustomMinimumSize = new Vector2(0, 40);
+        input.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+        field.AddChild(input);
+        grid.AddChild(field);
+    }
+
+    private static void StyleCreatorInput(Control input)
+    {
+        var normal = new StyleBoxFlat { BgColor = new Color("35211b"), BorderColor = new Color("765637") };
+        normal.SetBorderWidthAll(1);
+        normal.SetCornerRadiusAll(6);
+        normal.SetContentMarginAll(9);
+        var focus = (StyleBoxFlat)normal.Duplicate();
+        focus.BorderColor = new Color("d1a15a");
+        focus.SetBorderWidthAll(2);
+        var targets = input is SpinBox spin ? new Control[] { input, spin.GetLineEdit() } : new[] { input };
+        foreach (var target in targets)
+        {
+            target.AddThemeStyleboxOverride("normal", normal);
+            target.AddThemeStyleboxOverride("read_only", normal);
+            target.AddThemeStyleboxOverride("focus", focus);
+            target.AddThemeColorOverride("font_color", new Color("f0d6a8"));
+            target.AddThemeColorOverride("font_uneditable_color", new Color("f0d6a8"));
+        }
+    }
+
+    private void UpdateCommonPreview()
+    {
+        if (_commonName is null) return;
+        _commonName.Text = string.IsNullOrWhiteSpace(_name.Text) ? "새 장수" : _name.Text;
+        _commonId.Text = $"ID  ·  {(_editingId is { } id ? id.ToString() : "저장 시 신규 발급")}";
+        _commonGender.Text = $"성별  ·  {(_gender.Selected == 1 ? "여성" : "남성")}";
+        _commonBirth.Text = $"출생년도  ·  {(int)_birth.Value}년";
+        var region = _region.Selected >= 0 && _region.Selected < _region.ItemCount
+            ? _region.GetItemText(_region.Selected) : "미지정";
+        _commonRegion.Text = $"출신  ·  {region}";
+    }
 
     private static void AddField(Container parent, string label, Control input)
     {
@@ -584,11 +698,16 @@ public partial class GeneralCreatorScene : Control
     private void ShowPortrait(string? globalPath, string caption)
     {
         _portraitPreview.Texture = null;
+        _commonPortraitPreview.Texture = null;
         _portraitLabel.Text = caption;
         if (globalPath is null || !File.Exists(globalPath)) return;
         var image = Image.LoadFromFile(globalPath);
         if (image is not null && !image.IsEmpty())
-            _portraitPreview.Texture = ImageTexture.CreateFromImage(image);
+        {
+            var texture = ImageTexture.CreateFromImage(image);
+            _portraitPreview.Texture = texture;
+            _commonPortraitPreview.Texture = texture;
+        }
         else
             _portraitLabel.Text = "이미지를 읽을 수 없습니다.";
     }
@@ -667,6 +786,7 @@ public partial class GeneralCreatorScene : Control
         RebuildPortraitGrid();
         _status.Text = "새 장수를 입력하세요. 초상은 나중에 추가할 수 있습니다.";
         _savedFormSnapshot = "";
+        UpdateCommonPreview();
     }
 
     private void LoadSelected(int index)
@@ -701,6 +821,7 @@ public partial class GeneralCreatorScene : Control
         RebuildPortraitGrid();
         _status.Text = $"{general.Name} 편집 중 · ID {general.Id}";
         _savedFormSnapshot = FormSnapshot();
+        UpdateCommonPreview();
     }
 
     private static void SelectCode(OptionButton option, string code)
@@ -775,6 +896,7 @@ public partial class GeneralCreatorScene : Control
             RefreshList();
             PopulateRequiredGenerals(entry.RequiredGeneralId);
             _status.Text = $"{entry.General.Name} 저장 완료 · 다음 새 게임부터 영입 후보로 등장합니다.";
+            UpdateCommonPreview();
         }
         catch (Exception error) { _status.Text = "저장 실패: " + error.Message; }
     }
@@ -828,7 +950,10 @@ public partial class GeneralCreatorScene : Control
         var firstSelected = _created.Count == 0
             || (_editingId == _created[0].General.Id && _list.IsSelected(0));
         NewGeneral();
-        _name.Text = "생성 장수 QA";
+        NativeTextInputDialog.ApplyResult(_name, "생성 장수 QA");
+        NativeTextInputDialog.ApplyResult(_description, "첫째 줄\n둘째 줄");
+        var nativeBindingPassed = _name.Text == "생성 장수 QA" && _commonName.Text == _name.Text
+            && _description.Text == "첫째 줄\n둘째 줄";
         var scenario = new ScenarioLoader().LoadFromDirectory(_dataDirectory);
         var required = scenario.Generals[0].Id.Value;
         SelectRequiredGeneral(required);
@@ -842,9 +967,19 @@ public partial class GeneralCreatorScene : Control
         };
         var applied = CreatedGeneralStore.Apply(scenario,
             CreatedGeneralStore.Load(CreatedGeneralStore.Save([sample, virtualHero])));
-        var passed = firstSelected && GeneralWorkspaceStyle.EditorFooterLayoutValid(this, _status)
+        var tabLayoutPassed = _tabs.GetTabTitle(0) == "기본 정보" && _tabs.GetTabTitle(1) == "능력·적성"
+            && _tabs.GetTabTitle(2) == "스킬" && _tabs.GetTabTitle(3) == "초상·얼굴";
+        var workspaceLayoutPassed = FindChild("CreatorRosterColumn", true, false) is VBoxContainer rosterColumn
+            && FindChild("CreatorPreviewColumn", true, false) is VBoxContainer previewColumn
+            && FindChild("CreatorEditorColumn", true, false) is VBoxContainer editorColumn
+            && FindChild("CreatorBasicGrid", true, false) is GridContainer { Columns: 2 } basicGrid
+            && basicGrid.GetChildCount() == 6
+            && rosterColumn.CustomMinimumSize.X == 300 && previewColumn.CustomMinimumSize.X == 380
+            && editorColumn.SizeFlagsHorizontal.HasFlag(SizeFlags.ExpandFill);
+        var passed = firstSelected && nativeBindingPassed
+            && GeneralWorkspaceStyle.EditorFooterLayoutValid(this, _status)
             && applied.Generals.Count == scenario.Generals.Count + 2
-            && _tabs.GetTabTitle(0) == "초상·얼굴" && _tabs.GetTabTitle(1) == "기본 정보"
+            && tabLayoutPassed && workspaceLayoutPassed
             && applied.HeroUnlockList.Any(hero => hero.General.Value == 10000)
             && scenario.Generals.All(general => general.Id.Value != 10000)
             && sample.RequiredGeneralId == required
@@ -905,7 +1040,7 @@ public partial class GeneralCreatorScene : Control
         var retained = FromForm(framingQaId);
         passed &= retained.FaceCenterX == 0.72 && retained.FaceCenterY == 0.24 && retained.FaceZoom == 2.1;
         _created.RemoveAt(_created.Count - 1);
-        GD.Print($"[generalcreatorqa] passed={passed} original={scenario.Generals.Count} new={applied.Generals.Count}");
+        GD.Print($"[generalcreatorqa] passed={passed} tabs={tabLayoutPassed} workspace={workspaceLayoutPassed} native={nativeBindingPassed} first={firstSelected} original={scenario.Generals.Count} new={applied.Generals.Count}");
         GetTree().Quit(passed ? 0 : 1);
     }
 }
