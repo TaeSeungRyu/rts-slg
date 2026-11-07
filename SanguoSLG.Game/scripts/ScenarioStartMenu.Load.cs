@@ -275,7 +275,7 @@ public sealed partial class ScenarioStartMenu
         var portraitFrame = new PanelContainer { CustomMinimumSize = new Vector2(122, 164),
             Modulate = Colors.White, SelfModulate = Colors.White };
         portraitFrame.AddThemeStyleboxOverride("panel", NewGameFrame(
-            new Color("261714"), new Color("a98247"), 1, 6, 1));
+            new Color("261714"), new Color("b58b49"), 1, 6, 1));
         body.AddChild(portraitFrame);
         const string diaochanPath = "res://assets/portraits/113.png";
         if (Godot.FileAccess.FileExists(diaochanPath))
@@ -294,12 +294,17 @@ public sealed partial class ScenarioStartMenu
         }
         else portraitFrame.AddChild(LoadLabel("안내 초상화 없음", 12, LoadMuted));
         var details = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        details.AddThemeConstantOverride("separation", 8);
+        details.AddThemeConstantOverride("separation", 6);
         body.AddChild(details);
-        var speech = LoadLabel("장군님, 지난 천하의 기록으로 돌아가시겠습니까?", 15, LoadText);
+        var speech = LoadLabel("장군님, 지난 천하의 기록으로 돌아가시겠습니까?", 15,
+            new Color("f3dfbd"));
         speech.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        speech.SizeFlagsHorizontal = SizeFlags.ExpandFill;
         details.AddChild(speech);
-        details.AddChild(NewGameRule());
+        var speechDivider = new MarginContainer();
+        speechDivider.AddThemeConstantOverride("margin_top", 5);
+        speechDivider.AddChild(NewGameRule());
+        details.AddChild(speechDivider);
         AddLoadDetail(details, "시나리오", info.ScenarioTitle ?? "기록 없음");
         AddLoadDetail(details, "세력 · 군주", $"{info.FactionName ?? "기록 없음"} · {info.RulerName ?? "기록 없음"}");
         AddLoadDetail(details, "진행 시점", info.Year is { } year && info.Month is { } month
@@ -332,7 +337,7 @@ public sealed partial class ScenarioStartMenu
     private static void AddLoadDetail(VBoxContainer parent, string name, string value)
     {
         var row = new HBoxContainer();
-        row.AddThemeConstantOverride("separation", 8);
+        row.AddThemeConstantOverride("separation", 14);
         parent.AddChild(row);
         var heading = LoadLabel(name, 12, new Color("d9b978"));
         heading.CustomMinimumSize = new Vector2(85, 0);
