@@ -27,6 +27,7 @@ public partial class GeneralEditorScene : Control
     private readonly Dictionary<string, OptionButton> _aptitudeInputs = new();
     private readonly List<GeneralEditorSkill> _selectedBattlePassives = [];
     private readonly List<GeneralEditorSkill> _selectedAdminPassives = [];
+    private readonly List<ScrollContainer> _skillDescriptionScrolls = [];
     private LineEdit _search = null!;
     private OptionButton _regionFilter = null!;
     private ItemList _list = null!;
@@ -390,11 +391,11 @@ public partial class GeneralEditorScene : Control
         activeSection.AddChild(activeBody);
         var activeLeft = new VBoxContainer
         {
-            CustomMinimumSize = new Vector2(280, 0),
-            SizeFlagsHorizontal = SizeFlags.ExpandFill,
+            CustomMinimumSize = new Vector2(270, 0),
+            SizeFlagsHorizontal = SizeFlags.Fill,
         };
         activeBody.AddChild(activeLeft);
-        _activeInput = new OptionButton();
+        _activeInput = new OptionButton { CustomMinimumSize = new Vector2(0, 38) };
         _activeInput.ItemSelected += _ =>
         {
             UpdateActiveDescription();
@@ -415,16 +416,18 @@ public partial class GeneralEditorScene : Control
         passiveSection.AddChild(passiveBody);
         var passiveLeft = new VBoxContainer
         {
-            CustomMinimumSize = new Vector2(300, 0),
-            SizeFlagsHorizontal = SizeFlags.ExpandFill,
+            CustomMinimumSize = new Vector2(390, 0),
+            SizeFlagsHorizontal = SizeFlags.Fill,
         };
+        passiveLeft.AddThemeConstantOverride("separation", 6);
         passiveBody.AddChild(passiveLeft);
         var passiveAddRow = new HBoxContainer();
         passiveLeft.AddChild(passiveAddRow);
-        _passiveSelect = new OptionButton { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        _passiveSelect = new OptionButton { SizeFlagsHorizontal = SizeFlags.ExpandFill,
+            CustomMinimumSize = new Vector2(0, 38) };
         _passiveSelect.ItemSelected += _ => UpdatePassiveCandidateDescription();
         passiveAddRow.AddChild(_passiveSelect);
-        var addPassive = new Button { Text = "추가", CustomMinimumSize = new Vector2(82, 0) };
+        var addPassive = new Button { Text = "추가", CustomMinimumSize = new Vector2(74, 38) };
         addPassive.Pressed += AddSelectedBattlePassive;
         passiveAddRow.AddChild(addPassive);
         _passiveDescription = new Label
@@ -434,7 +437,8 @@ public partial class GeneralEditorScene : Control
             SizeFlagsHorizontal = SizeFlags.ExpandFill,
         };
         passiveBody.AddChild(DescriptionPanel(_passiveDescription));
-        _passiveList = new VBoxContainer();
+        _passiveList = new VBoxContainer { Name = "GeneralEditorBattlePassiveList" };
+        _passiveList.AddThemeConstantOverride("separation", 5);
         passiveLeft.AddChild(_passiveList);
 
         editor = AddPage("내정 스킬");
@@ -444,16 +448,18 @@ public partial class GeneralEditorScene : Control
         adminSection.AddChild(adminBody);
         var adminLeft = new VBoxContainer
         {
-            CustomMinimumSize = new Vector2(300, 0),
-            SizeFlagsHorizontal = SizeFlags.ExpandFill,
+            CustomMinimumSize = new Vector2(390, 0),
+            SizeFlagsHorizontal = SizeFlags.Fill,
         };
+        adminLeft.AddThemeConstantOverride("separation", 6);
         adminBody.AddChild(adminLeft);
         var adminAddRow = new HBoxContainer();
         adminLeft.AddChild(adminAddRow);
-        _adminSelect = new OptionButton { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        _adminSelect = new OptionButton { SizeFlagsHorizontal = SizeFlags.ExpandFill,
+            CustomMinimumSize = new Vector2(0, 38) };
         _adminSelect.ItemSelected += _ => UpdateAdminCandidateDescription();
         adminAddRow.AddChild(_adminSelect);
-        var addAdmin = new Button { Text = "추가", CustomMinimumSize = new Vector2(82, 0) };
+        var addAdmin = new Button { Text = "추가", CustomMinimumSize = new Vector2(74, 38) };
         addAdmin.Pressed += AddSelectedAdminPassive;
         adminAddRow.AddChild(addAdmin);
         _adminDescription = new Label
@@ -463,7 +469,8 @@ public partial class GeneralEditorScene : Control
             SizeFlagsHorizontal = SizeFlags.ExpandFill,
         };
         adminBody.AddChild(DescriptionPanel(_adminDescription));
-        _adminList = new VBoxContainer();
+        _adminList = new VBoxContainer { Name = "GeneralEditorAdminPassiveList" };
+        _adminList.AddThemeConstantOverride("separation", 5);
         adminLeft.AddChild(_adminList);
 
         _status = new Label { Text = "", AutowrapMode = TextServer.AutowrapMode.Off };
@@ -886,14 +893,29 @@ public partial class GeneralEditorScene : Control
     {
         var panel = new PanelContainer
         {
-            CustomMinimumSize = new Vector2(290, 142),
+            CustomMinimumSize = new Vector2(300, 138),
             SizeFlagsHorizontal = SizeFlags.ExpandFill,
+            SizeFlagsVertical = SizeFlags.Fill,
         };
         panel.AddThemeStyleboxOverride("panel", GeneralWorkspaceStyle.DescriptionBox());
-        var scroll = new ScrollContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill,
-            SizeFlagsVertical = SizeFlags.ExpandFill };
+        var scroll = new ScrollContainer
+        {
+            Name = $"GeneralEditorSkillDescriptionScroll{_skillDescriptionScrolls.Count + 1}",
+            SizeFlagsHorizontal = SizeFlags.ExpandFill,
+            SizeFlagsVertical = SizeFlags.ExpandFill,
+            HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled,
+            VerticalScrollMode = ScrollContainer.ScrollMode.Auto,
+        };
+        GeneralWorkspaceStyle.StyleScrollContainer(scroll, 8);
+        _skillDescriptionScrolls.Add(scroll);
         panel.AddChild(scroll);
-        scroll.AddChild(content);
+        var margin = new MarginContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        margin.AddThemeConstantOverride("margin_left", 10);
+        margin.AddThemeConstantOverride("margin_top", 8);
+        margin.AddThemeConstantOverride("margin_right", 12);
+        margin.AddThemeConstantOverride("margin_bottom", 8);
+        scroll.AddChild(margin);
+        margin.AddChild(content);
         return panel;
     }
 
@@ -1265,9 +1287,16 @@ public partial class GeneralEditorScene : Control
         {
             _editorTabs.CurrentTab = tab;
             await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
-            if (_editorTabs.GetChild(tab) is not ScrollContainer scroll || scroll.GetHScrollBar().Visible)
+            if (_editorTabs.GetChild(tab) is not ScrollContainer scroll || scroll.GetHScrollBar().Visible
+                || (tab is 2 or 3 && scroll.GetVScrollBar().Visible))
                 tabSizingOk = false;
         }
+        var skillLayoutOk = _skillDescriptionScrolls.Count == 3
+            && _skillDescriptionScrolls.All(scroll => scroll.HorizontalScrollMode == ScrollContainer.ScrollMode.Disabled
+                && scroll.VerticalScrollMode == ScrollContainer.ScrollMode.Auto
+                && scroll.GetVScrollBar().CustomMinimumSize.X == 8)
+            && _passiveList.GetThemeConstant("separation") == 5
+            && _adminList.GetThemeConstant("separation") == 5;
         _editorTabs.CurrentTab = 0;
         var filterPreservesEdit = true;
         if (_selected is not null)
@@ -1287,9 +1316,9 @@ public partial class GeneralEditorScene : Control
             && _regionFilter.GetItemText(1) == RegionName(_regionFilter.GetItemMetadata(1).AsString())
             && _activeInput.ItemCount > 1
             && !_activeInput.GetItemText(1).Contains('(')
-            && threeColumnOk && abilityGridOk && tabSizingOk && filterPreservesEdit;
+            && threeColumnOk && abilityGridOk && skillLayoutOk && tabSizingOk && filterPreservesEdit;
         var passed = heroOk && regularOk && createdOk && layoutOk && battleDescriptionOk && adminDescriptionOk;
-        GD.Print($"[generaleditorqa] passed={passed} hero={heroOk} regular={regularOk} created={createdOk} layout={layoutOk} columns={threeColumnOk} abilityGrid={abilityGridOk} tabs={tabSizingOk} preserve={filterPreservesEdit} region={_regionFilter.GetItemText(1)} active={_activeInput.GetItemText(1)} range={_recruitPointInput.MinValue}-{_recruitPointInput.MaxValue}");
+        GD.Print($"[generaleditorqa] passed={passed} hero={heroOk} regular={regularOk} created={createdOk} layout={layoutOk} columns={threeColumnOk} abilityGrid={abilityGridOk} skillLayout={skillLayoutOk} tabs={tabSizingOk} preserve={filterPreservesEdit} region={_regionFilter.GetItemText(1)} active={_activeInput.GetItemText(1)} range={_recruitPointInput.MinValue}-{_recruitPointInput.MaxValue}");
         GetTree().Quit(passed ? 0 : 1);
     }
 
@@ -1434,7 +1463,7 @@ public partial class GeneralEditorScene : Control
 
         foreach (var skill in _selectedBattlePassives.ToList())
         {
-            var row = new HBoxContainer();
+            var row = new HBoxContainer { CustomMinimumSize = new Vector2(0, 36) };
             row.AddThemeConstantOverride("separation", 8);
             _passiveList.AddChild(row);
 
@@ -1455,7 +1484,7 @@ public partial class GeneralEditorScene : Control
                 Step = 1,
                 Rounded = true,
                 Value = skill.Tier,
-                CustomMinimumSize = new Vector2(72, 0),
+                CustomMinimumSize = new Vector2(64, 36),
             };
             tier.ValueChanged += value =>
             {
@@ -1469,7 +1498,7 @@ public partial class GeneralEditorScene : Control
             };
             row.AddChild(tier);
 
-            var desc = new Button { Name = "BattlePassiveDescriptionButton", Text = "설명", CustomMinimumSize = new Vector2(70, 0) };
+            var desc = new Button { Name = "BattlePassiveDescriptionButton", Text = "설명", CustomMinimumSize = new Vector2(62, 36) };
             desc.Pressed += () =>
             {
                 var full = _passiveSkills.TryGetValue(skill.Code, out var def)
@@ -1480,7 +1509,7 @@ public partial class GeneralEditorScene : Control
             };
             row.AddChild(desc);
 
-            var remove = new Button { Text = "제거", CustomMinimumSize = new Vector2(70, 0) };
+            var remove = new Button { Text = "제거", CustomMinimumSize = new Vector2(62, 36) };
             remove.Pressed += () =>
             {
                 _selectedBattlePassives.RemoveAll(s => s.Code == skill.Code);
@@ -1502,7 +1531,7 @@ public partial class GeneralEditorScene : Control
 
         foreach (var skill in _selectedAdminPassives.ToList())
         {
-            var row = new HBoxContainer();
+            var row = new HBoxContainer { CustomMinimumSize = new Vector2(0, 36) };
             row.AddThemeConstantOverride("separation", 8);
             _adminList.AddChild(row);
 
@@ -1523,7 +1552,7 @@ public partial class GeneralEditorScene : Control
                 Step = 1,
                 Rounded = true,
                 Value = skill.Tier,
-                CustomMinimumSize = new Vector2(72, 0),
+                CustomMinimumSize = new Vector2(64, 36),
             };
             tier.ValueChanged += value =>
             {
@@ -1537,7 +1566,7 @@ public partial class GeneralEditorScene : Control
             };
             row.AddChild(tier);
 
-            var desc = new Button { Name = "AdminPassiveDescriptionButton", Text = "설명", CustomMinimumSize = new Vector2(70, 0) };
+            var desc = new Button { Name = "AdminPassiveDescriptionButton", Text = "설명", CustomMinimumSize = new Vector2(62, 36) };
             desc.Pressed += () =>
             {
                 var full = _adminSkills.TryGetValue(skill.Code, out var def)
@@ -1548,7 +1577,7 @@ public partial class GeneralEditorScene : Control
             };
             row.AddChild(desc);
 
-            var remove = new Button { Text = "제거", CustomMinimumSize = new Vector2(70, 0) };
+            var remove = new Button { Text = "제거", CustomMinimumSize = new Vector2(62, 36) };
             remove.Pressed += () =>
             {
                 _selectedAdminPassives.RemoveAll(s => s.Code == skill.Code);

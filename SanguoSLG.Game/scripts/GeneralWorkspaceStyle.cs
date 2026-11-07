@@ -63,6 +63,7 @@ internal static class GeneralWorkspaceStyle
 
     internal static void StyleScrollContainer(ScrollContainer scroll, int thickness = 7)
     {
+        scroll.AddThemeConstantOverride("scrollbar_v_separation", 10);
         StyleScrollBar(scroll.GetVScrollBar(), true, thickness);
         StyleScrollBar(scroll.GetHScrollBar(), false, thickness);
     }
