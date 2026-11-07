@@ -51,10 +51,12 @@ internal static class GeneralWorkspaceStyle
         popup.AddThemeConstantOverride("v_separation", 6);
         popup.AddThemeConstantOverride("item_start_padding", 10);
         popup.AddThemeConstantOverride("item_end_padding", 12);
-
-        popup.Theme ??= new Theme();
-        SetScrollTheme(popup.Theme, "VScrollBar", 7);
-        SetScrollTheme(popup.Theme, "HScrollBar", 7);
+        StylePopupScrollBars(popup);
+        popup.AboutToPopup += async () =>
+        {
+            await option.ToSignal(option.GetTree(), SceneTree.SignalName.ProcessFrame);
+            StylePopupScrollBars(popup);
+        };
     }
 
     internal static void StyleScrollContainer(ScrollContainer scroll, int thickness = 7)
@@ -72,14 +74,19 @@ internal static class GeneralWorkspaceStyle
         bar.AddThemeStyleboxOverride("grabber_pressed", ScrollBox("d9b66e", "d1a15a"));
     }
 
-    private static void SetScrollTheme(Theme theme, string type, int thickness)
+    internal static void StylePopupScrollBars(PopupMenu popup)
     {
-        theme.SetStylebox("scroll", type, ScrollBox("302019"));
-        theme.SetStylebox("grabber", type, ScrollBox("b78a4a", "a47b42"));
-        theme.SetStylebox("grabber_highlight", type, ScrollBox("d4a85d", "d4a85d"));
-        theme.SetStylebox("grabber_pressed", type, ScrollBox("e2ba75", "e2ba75"));
-        theme.SetConstant("minimum_grab_thickness", type, 24);
-        theme.SetConstant("fixed_size", type, thickness);
+        foreach (var scroll in popup.FindChildren("*", "ScrollContainer", true, false).OfType<ScrollContainer>())
+            scroll.AddThemeConstantOverride("scrollbar_v_separation", 8);
+        foreach (var bar in popup.FindChildren("*", "VScrollBar", true, false).OfType<VScrollBar>())
+        {
+            bar.CustomMinimumSize = new Vector2(8, 0);
+            bar.AddThemeStyleboxOverride("scroll", ScrollBox("302019"));
+            bar.AddThemeStyleboxOverride("scroll_focus", ScrollBox("302019", "a47b42"));
+            bar.AddThemeStyleboxOverride("grabber", ScrollBox("b78a4a", "a47b42"));
+            bar.AddThemeStyleboxOverride("grabber_highlight", ScrollBox("d4a85d", "d4a85d"));
+            bar.AddThemeStyleboxOverride("grabber_pressed", ScrollBox("e2ba75", "e2ba75"));
+        }
     }
 
     private static StyleBoxFlat ScrollBox(string background, string border = "00000000")

@@ -1001,10 +1001,32 @@ public partial class GeneralCreatorScene : Control
             if (tab < 3) tabScrollPassed &= !tabScroll.GetVScrollBar().Visible;
         }
         _tabs.CurrentTab = 0;
+        var longPopup = _battlePassives[0].GetPopup();
+        longPopup.PopupCentered(new Vector2I(520, 300));
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        GeneralWorkspaceStyle.StylePopupScrollBars(longPopup);
+        var popupBar = longPopup.FindChildren("*", "VScrollBar", true, false).OfType<VScrollBar>().FirstOrDefault();
+        var popupScrollPassed = popupBar is { Visible: true }
+            && popupBar.Size.X >= 7.5f
+            && popupBar.MaxValue - popupBar.Page > popupBar.MinValue;
+        if (popupBar is not null)
+        {
+            popupBar.Value = popupBar.MaxValue - popupBar.Page;
+            await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+            popupScrollPassed &= popupBar.Value > popupBar.MinValue;
+        }
+        longPopup.Hide();
+        var lastPassiveIndex = _battlePassives[0].ItemCount - 1;
+        _battlePassives[0].Select(lastPassiveIndex);
+        var lastPassiveCode = SelectedCode(_battlePassives[0]);
+        var lastPassiveSaved = FromForm(10004).General.BattlePassives.FirstOrDefault()?.Code == lastPassiveCode;
+        _battlePassives[0].Select(0);
         var passed = firstSelected && nativeBindingPassed
             && GeneralWorkspaceStyle.EditorFooterLayoutValid(this, _status)
             && applied.Generals.Count == scenario.Generals.Count + 2
             && tabLayoutPassed && workspaceLayoutPassed && tabContentPassed && tabScrollPassed
+            && popupScrollPassed && lastPassiveSaved
             && applied.HeroUnlockList.Any(hero => hero.General.Value == 10000)
             && scenario.Generals.All(general => general.Id.Value != 10000)
             && sample.RequiredGeneralId == required
@@ -1067,7 +1089,7 @@ public partial class GeneralCreatorScene : Control
         var retained = FromForm(framingQaId);
         passed &= retained.FaceCenterX == 0.72 && retained.FaceCenterY == 0.24 && retained.FaceZoom == 2.1;
         _created.RemoveAt(_created.Count - 1);
-        GD.Print($"[generalcreatorqa] passed={passed} tabs={tabLayoutPassed} workspace={workspaceLayoutPassed} content={tabContentPassed} scroll={tabScrollPassed} native={nativeBindingPassed} first={firstSelected} original={scenario.Generals.Count} new={applied.Generals.Count}");
+        GD.Print($"[generalcreatorqa] passed={passed} tabs={tabLayoutPassed} workspace={workspaceLayoutPassed} content={tabContentPassed} scroll={tabScrollPassed} popupScroll={popupScrollPassed} popupWidth={popupBar?.Size.X ?? 0} lastPassive={lastPassiveSaved} native={nativeBindingPassed} first={firstSelected} original={scenario.Generals.Count} new={applied.Generals.Count}");
         GetTree().Quit(passed ? 0 : 1);
     }
 }
