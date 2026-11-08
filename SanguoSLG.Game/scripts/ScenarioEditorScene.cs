@@ -293,17 +293,26 @@ public sealed partial class ScenarioEditorScene : Control
     private void ShowBasics()
     {
         ClearBody();
-        _body.AddChild(new Label { Text = "기본 정보" });
-        _body.AddChild(new Label { Text = "저장 식별자 · 자동 생성: " + _draft.Id,
+        var basics = GeneralWorkspaceStyle.Section(_body, "시나리오 기본 정보");
+        basics.AddChild(new Label { Text = "저장 식별자 · 자동 생성: " + _draft.Id,
             TooltipText = "파일을 구별하는 내부 값입니다. 제목만 바꾸어도 됩니다." });
-        AddText("제목", _draft.Title, value => _draft = _draft with { Title = value });
-        AddDescription("설명", _draft.Description, value => _draft = _draft with { Description = value });
-        AddNumber("시작 연도", _draft.StartYear, 1, 9999, value => _draft = _draft with { StartYear = value });
-        AddNumber("월", _draft.StartMonth, 1, 12, value => _draft = _draft with { StartMonth = value });
-        AddNumber("일", _draft.StartDay, 1, 30, value => _draft = _draft with { StartDay = value });
-        _body.AddChild(new HSeparator());
-        _body.AddChild(new Label { Text = "시나리오 지도 · 기본 지도 또는 별도 지도 선택" });
-        var choices = new OptionButton();
+        AddText(basics, "제목", _draft.Title, value => _draft = _draft with { Title = value });
+        AddDescription(basics, "설명", _draft.Description, value => _draft = _draft with { Description = value });
+        var dateRow = new HBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        dateRow.AddThemeConstantOverride("separation", 16);
+        basics.AddChild(dateRow);
+        AddCompactNumber(dateRow, "시작 연도", _draft.StartYear, 1, 9999,
+            value => _draft = _draft with { StartYear = value });
+        AddCompactNumber(dateRow, "월", _draft.StartMonth, 1, 12,
+            value => _draft = _draft with { StartMonth = value });
+        AddCompactNumber(dateRow, "일", _draft.StartDay, 1, 30,
+            value => _draft = _draft with { StartDay = value });
+
+        var mapSection = GeneralWorkspaceStyle.Section(_body, "시나리오 지도 설정");
+        var mapChoiceRow = new HBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        mapChoiceRow.AddChild(new Label { Text = "사용 지도", CustomMinimumSize = new Vector2(110, 0),
+            VerticalAlignment = VerticalAlignment.Center });
+        var choices = new OptionButton { SizeFlagsHorizontal = SizeFlags.ExpandFill };
         var currentIndex = 0;
         for (var i = 0; i < _maps.Count; i++)
         {
@@ -313,26 +322,44 @@ public sealed partial class ScenarioEditorScene : Control
         }
         choices.Select(currentIndex);
         choices.ItemSelected += index => SwitchMap(_maps[(int)index]);
-        _body.AddChild(choices);
+        GeneralWorkspaceStyle.StyleOptionButton(choices, 200);
+        mapChoiceRow.AddChild(choices);
+        mapSection.AddChild(mapChoiceRow);
         var map = CurrentMap();
-        _body.AddChild(new Label { Text = $"현재 지도: {(map.Id == "default-east-asia" ? "기본 지도" : map.Title)}" });
-        if (map.Id == "default-east-asia")
+        var displayName = map.Id == "default-east-asia" ? "기본 지도" : map.Title;
+        var siteCount = map.Preset.Sites.Count(site => site.Kind is "city" or "port" or "gate");
+        var modified = MapModifiedAt(map);
+        mapSection.AddChild(new Label
         {
-            var sourcePath = ProjectSettings.GlobalizePath("user://map-presets/east-asia.json");
-            _body.AddChild(new Label { Text = "지도 원본: " + sourcePath });
-            _body.AddChild(new Label { Text = "마지막 저장: "
-                + File.GetLastWriteTime(sourcePath).ToString("yyyy-MM-dd HH:mm:ss") });
-        }
+            Text = $"지도 이름  {displayName}     크기  {map.Preset.Width} × {map.Preset.Height}     거점  {siteCount}개"
+                + (modified is null ? "" : $"     마지막 수정  {modified:yyyy-MM-dd HH:mm}"),
+            AutowrapMode = TextServer.AutowrapMode.WordSmart,
+        });
+        var preview = new ScenarioSiteMap(map.Preset, _draft.Cities, _draft.Factions, 0, _ => { })
+        {
+            CustomMinimumSize = new Vector2(540, 250),
+            MouseFilter = MouseFilterEnum.Ignore,
+            TooltipText = "선택한 지도의 읽기 전용 미리보기",
+        };
+        mapSection.AddChild(preview);
         var latestDefault = _maps.FirstOrDefault(candidate => candidate.Id == "default-east-asia");
         if (latestDefault is not null && (latestDefault.Id != map.Id || latestDefault.Revision != map.Revision))
         {
             var useEdited = new Button { Text = "현재 편집 중인 기본 지도 적용" };
             useEdited.Pressed += () => SwitchMap(latestDefault);
-            _body.AddChild(useEdited);
+            mapSection.AddChild(useEdited);
         }
         var missing = _draft.Generals.Where(g => g.SiteId is { } id && !map.Preset.Sites.Any(site => site.Id == id))
             .Select(g => g.GeneralId).ToArray();
-        _body.AddChild(new Label { Text = missing.Length == 0 ? "미배치 오류 없음" : "삭제된 거점의 장수: " + string.Join(", ", missing) });
+        mapSection.AddChild(new Label { Text = missing.Length == 0 ? "미배치 오류 없음" : "삭제된 거점의 장수: " + string.Join(", ", missing) });
+    }
+
+    private DateTime? MapModifiedAt(ScenarioMapVersion map)
+    {
+        var path = map.Id == "default-east-asia"
+            ? ProjectSettings.GlobalizePath("user://map-presets/east-asia.json")
+            : Path.Combine(ProjectSettings.GlobalizePath("user://map-presets/custom"), map.Id + ".json");
+        return File.Exists(path) ? File.GetLastWriteTime(path) : null;
     }
 
     private void SwitchMap(ScenarioMapVersion next)
@@ -923,8 +950,11 @@ public sealed partial class ScenarioEditorScene : Control
         => _draft = _draft with { Generals = _draft.Generals.Select(general => general.GeneralId == generalId ? update(general) : general).ToArray() };
 
     private void AddText(string label, string value, Action<string> update)
+        => AddText(_body, label, value, update);
+
+    private static void AddText(VBoxContainer parent, string label, string value, Action<string> update)
     {
-        var row = new HBoxContainer(); _body.AddChild(row);
+        var row = new HBoxContainer(); parent.AddChild(row);
         row.AddChild(new Label { Text = label, CustomMinimumSize = new Vector2(150, 0) });
         var field = new LineEdit { Name = "ScenarioTitleEditor", Text = value,
             SizeFlagsHorizontal = SizeFlags.ExpandFill };
@@ -934,9 +964,12 @@ public sealed partial class ScenarioEditorScene : Control
     }
 
     private void AddDescription(string label, string value, Action<string> update)
+        => AddDescription(_body, label, value, update);
+
+    private static void AddDescription(VBoxContainer parent, string label, string value, Action<string> update)
     {
         var row = new HBoxContainer();
-        _body.AddChild(row);
+        parent.AddChild(row);
         row.AddChild(new Label
         {
             Text = label,
