@@ -52,6 +52,7 @@ public sealed partial class ScenarioEditorScene : Control
     {
         foreach (var icon in _factionColorIcons.Values) icon.Dispose();
         _factionColorIcons.Clear();
+        _generalPortraitIcons.Clear();
     }
 
     private void LoadMaps()
@@ -1211,6 +1212,7 @@ public sealed partial class ScenarioEditorScene : Control
             var forceTabRemoved = FindChildren("*", "Button", true, false).OfType<Button>()
                 .All(button => button.Text != "병력·선박");
             var ownedCity = _draft.Cities.FirstOrDefault(city => city.OwnerFactionId > 0);
+            var generalPlacementModalPassed = ownedCity is not null && RunGeneralPlacementQa(ownedCity);
             var cityForceUi = false;
             var forceCrudPassed = false;
             if (ownedCity is not null)
@@ -1261,7 +1263,7 @@ public sealed partial class ScenarioEditorScene : Control
                 RefreshList();
                 var passed = bundled.Length == 6 && _list.ItemCount >= 6
                     && savedEditRoundTrip && factionDescriptionRoundTrip && newScenarioAtBottom && factionColorUi && hiddenFactionUi && cityMapUi && generalSearchUi && generalCityListUi
-                    && generalCrudPassed && forceTabRemoved
+                    && generalCrudPassed && generalPlacementModalPassed && forceTabRemoved
                     && cityForceUi && forceCrudPassed
                     && errors.Count == 0 && mapSwitchPassed && currentMapSelected
                     && historicalUsesRoot && legacyRebased
@@ -1269,7 +1271,7 @@ public sealed partial class ScenarioEditorScene : Control
                     && multilineDescription && restored.Description == descriptionWithLines
                     && restored.MapRevision == _draft.MapRevision
                     && restored.Cities.Count == _draft.Cities.Count;
-                if (!passed) GD.Print($"[scenario-editor-qa-detail] history={historicalUsesRoot} legacy={legacyRebased} switch={mapSwitchPassed} placement={factionPlacementCompatible} root={currentMapSelected} generals={generalCrudPassed} forces={forceCrudPassed} cityUi={cityForceUi} factionUi={factionColorUi && hiddenFactionUi} cityMapUi={cityMapUi} generalUi={generalSearchUi && generalCityListUi} errors={errors.Count}");
+                if (!passed) GD.Print($"[scenario-editor-qa-detail] history={historicalUsesRoot} legacy={legacyRebased} switch={mapSwitchPassed} placement={factionPlacementCompatible} root={currentMapSelected} generals={generalCrudPassed} generalModal={generalPlacementModalPassed} forces={forceCrudPassed} cityUi={cityForceUi} factionUi={factionColorUi && hiddenFactionUi} cityMapUi={cityMapUi} generalUi={generalSearchUi && generalCityListUi} errors={errors.Count}");
                 GD.Print($"[scenario-editor-qa] passed={passed} maps={_maps.Count} cities={_draft.Cities.Count} errors={errors.Count}");
                 GetTree().Quit(passed ? 0 : 1);
             }

@@ -8,6 +8,7 @@ public sealed partial class ScenarioEditorScene
 {
     private Control? _generalPlacementOverlay;
     private readonly HashSet<int> _generalPlacementSelection = [];
+    private readonly Dictionary<string, Texture2D> _generalPortraitIcons = [];
 
     private Control GeneralPortrait(General? general, int size)
     {
@@ -36,21 +37,30 @@ public sealed partial class ScenarioEditorScene
         };
     }
 
-    private static Texture2D? LoadGeneralPortrait(General general)
+    private Texture2D? LoadGeneralPortrait(General general)
     {
         var candidate = !string.IsNullOrWhiteSpace(general.PortraitPath)
             ? general.PortraitPath!.Replace('\\', '/')
             : $"res://assets/portraits/{general.Id.Value}.png";
+        var thumbnail = $"res://assets/portraits/thumbnails/{general.Id.Value}.png";
+        if (File.Exists(ProjectSettings.GlobalizePath(thumbnail))) candidate = thumbnail;
         if (candidate.StartsWith("SanguoSLG.Game/", StringComparison.OrdinalIgnoreCase))
             candidate = "res://" + candidate["SanguoSLG.Game/".Length..];
+        string physicalPath;
         if (candidate.StartsWith("res://", StringComparison.OrdinalIgnoreCase)
             || candidate.StartsWith("user://", StringComparison.OrdinalIgnoreCase))
-            return Godot.FileAccess.FileExists(candidate) ? GD.Load<Texture2D>(candidate) : null;
-        if (!Path.IsPathRooted(candidate))
-            candidate = Path.GetFullPath(Path.Combine(ProjectSettings.GlobalizePath("res://"), "..", candidate));
-        if (!File.Exists(candidate)) return null;
-        using var image = Image.LoadFromFile(candidate);
-        return image.IsEmpty() ? null : ImageTexture.CreateFromImage(image);
+            physicalPath = ProjectSettings.GlobalizePath(candidate);
+        else physicalPath = Path.IsPathRooted(candidate) ? candidate
+            : Path.GetFullPath(Path.Combine(ProjectSettings.GlobalizePath("res://"), "..", candidate));
+        if (!File.Exists(physicalPath)) return null;
+        if (_generalPortraitIcons.TryGetValue(physicalPath, out var cached)) return cached;
+        using var image = Image.LoadFromFile(physicalPath);
+        if (image.IsEmpty()) return null;
+        if (image.GetWidth() > 96)
+            image.Resize(96, Math.Max(1, (int)Math.Round(image.GetHeight() * 96d / image.GetWidth())), Image.Interpolation.Lanczos);
+        var texture = ImageTexture.CreateFromImage(image);
+        _generalPortraitIcons[physicalPath] = texture;
+        return texture;
     }
 
     private void OpenGeneralPlacementDialog(ScenarioCityEntry city)
@@ -256,6 +266,20 @@ public sealed partial class ScenarioEditorScene
             feedback.Text = "배치할 장수를 1명 이상 선택하세요.";
             return;
         }
+        if (!TryApplyGeneralPlacement(city, out var placed, out var error))
+        {
+            feedback.Text = error;
+            return;
+        }
+        CloseGeneralPlacementDialog();
+        ShowCities();
+        _message.Text = $"장수 {placed}명을 선택한 거점에 배치했습니다.";
+    }
+
+    private bool TryApplyGeneralPlacement(ScenarioCityEntry city, out int placed, out string error)
+    {
+        placed = 0;
+        error = "";
         var valid = new List<int>();
         foreach (var id in _generalPlacementSelection)
         {
@@ -265,9 +289,9 @@ public sealed partial class ScenarioEditorScene
         }
         if (valid.Count != _generalPlacementSelection.Count)
         {
-            feedback.Text = "배치 상태가 변경된 장수가 있어 다시 확인해 주세요.";
             _generalPlacementSelection.IntersectWith(valid);
-            return;
+            error = "배치 상태가 변경된 장수가 있어 다시 확인해 주세요.";
+            return false;
         }
         foreach (var id in valid)
         {
@@ -276,9 +300,65 @@ public sealed partial class ScenarioEditorScene
             else _draft = _draft with { Generals = [.. _draft.Generals,
                 new ScenarioGeneralEntry(id, city.OwnerFactionId, city.SiteId)] };
         }
-        CloseGeneralPlacementDialog();
-        ShowCities();
-        _message.Text = $"장수 {valid.Count}명을 선택한 거점에 배치했습니다.";
+        placed = valid.Count;
+        return true;
+    }
+
+    private bool RunGeneralPlacementQa(ScenarioCityEntry city)
+    {
+        var original = _draft;
+        try
+        {
+            _selectedCityId = city.SiteId;
+            ShowCities();
+            var open = _body.FindChildren("*", "Button", true, false).OfType<Button>()
+                .FirstOrDefault(button => button.Text == "+ 장수 배치");
+            OpenGeneralPlacementDialog(city);
+            var tree = _generalPlacementOverlay?.FindChildren("*", "Tree", true, false).OfType<Tree>().FirstOrDefault();
+            var filters = _generalPlacementOverlay?.FindChildren("*", "OptionButton", true, false).OfType<OptionButton>().ToArray() ?? [];
+            var uiPassed = open is not null && tree is { Columns: 7 } && filters.Length >= 3;
+            CloseGeneralPlacementDialog();
+
+            var candidates = _source.Generals.Where(general => _draft.Generals.All(entry => entry.GeneralId != general.Id.Value))
+                .Take(2).Select(general => general.Id.Value).ToArray();
+            if (candidates.Length < 2) return false;
+            _generalPlacementSelection.UnionWith(candidates);
+            var applied = TryApplyGeneralPlacement(city, out var placed, out _)
+                && placed == 2 && candidates.All(id => _draft.Generals.Any(entry => entry.GeneralId == id
+                    && entry.FactionId == city.OwnerFactionId && entry.SiteId == city.SiteId));
+            UpdateGeneral(candidates[0], entry => entry with { SiteId = null });
+            var releasePreserved = _draft.Generals.Any(entry => entry.GeneralId == candidates[0]
+                && entry.FactionId == city.OwnerFactionId && entry.SiteId is null);
+
+            var duplicate = _draft.Generals.FirstOrDefault(entry => entry.SiteId is not null
+                && entry.SiteId != city.SiteId);
+            var duplicateBlocked = true;
+            if (duplicate is not null)
+            {
+                var snapshot = SnapshotDraft();
+                _generalPlacementSelection.Clear();
+                _generalPlacementSelection.Add(duplicate.GeneralId);
+                duplicateBlocked = !TryApplyGeneralPlacement(city, out _, out _)
+                    && SnapshotDraft() == snapshot;
+            }
+
+            var searchTree = BuildGeneralPlacementTree();
+            AddChild(searchTree);
+            var searched = _source.Generals[0];
+            PopulateGeneralPlacementTree(searchTree, city, searched.Id.Value.ToString(), 0, 0, 0);
+            var searchPassed = searchTree.GetRoot()?.GetChildCount() > 0;
+            RemoveChild(searchTree);
+            searchTree.QueueFree();
+            var passed = uiPassed && applied && releasePreserved && duplicateBlocked && searchPassed;
+            if (!passed) GD.Print($"[scenario-general-placement-qa] ui={uiPassed} applied={applied} release={releasePreserved} duplicate={duplicateBlocked} search={searchPassed} source={_source.Generals.Count}");
+            return passed;
+        }
+        finally
+        {
+            CloseGeneralPlacementDialog();
+            _generalPlacementSelection.Clear();
+            _draft = original;
+        }
     }
 
     private void CloseGeneralPlacementDialog()
