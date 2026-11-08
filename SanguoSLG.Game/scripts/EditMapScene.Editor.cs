@@ -135,7 +135,9 @@ public sealed partial class EditMapScene
             ShowEditorPalette(selected, _editorPalette?.Position ?? new Vector2(20, 130));
     }
 
-    private void SaveDraft()
+    private void SaveDraft() => TrySaveDraft();
+
+    private bool TrySaveDraft(bool showSuccess = true)
     {
         var path = PresetPath();
         try
@@ -166,40 +168,33 @@ public sealed partial class EditMapScene
             _draftChanged = false;
             if (_saveDraftButton is not null) _saveDraftButton.Text = "맵 저장";
             GD.Print($"[editmap-save] path={path} bytes={new FileInfo(path).Length}");
-            ShowSaveResult("맵 저장 완료", "수정한 지도를 저장했습니다. 다음 새 게임부터 적용됩니다.");
+            if (showSuccess)
+                ShowSaveResult("맵 저장 완료", "수정한 지도를 저장했습니다. 다음 새 게임부터 적용됩니다.");
+            return true;
         }
         catch (Exception error)
         {
             GD.PushError($"[editmap-save] path={path} error={error}");
             ShowSaveResult("맵 저장 실패", "지도를 저장하지 못했습니다. 자세한 오류는 로그를 확인해 주세요.");
+            return false;
         }
     }
 
     private void ConfirmSaveDraft()
     {
-        var dialog = new ConfirmationDialog
-        {
-            Title = "맵 저장",
-            DialogText = "현재 수정한 지도를 저장하시겠습니까?\n새 게임을 시작할 때 적용됩니다.",
-            OkButtonText = "저장",
-            CancelButtonText = "취소",
-        };
-        AddChild(dialog);
-        dialog.Confirmed += SaveDraft;
-        dialog.CloseRequested += dialog.QueueFree;
-        dialog.Confirmed += dialog.QueueFree;
-        dialog.Canceled += dialog.QueueFree;
-        dialog.PopupCentered();
+        ShowMapConfirmation("지도 저장",
+            "현재 수정한 지도를 저장하시겠습니까?\n저장한 내용은 새 게임의 지도에 적용됩니다.",
+            [("취소", false, CloseMapConfirmation), ("저장", true, () =>
+            {
+                CloseMapConfirmation();
+                TrySaveDraft();
+            })]);
     }
 
     private void ShowSaveResult(string title, string message)
     {
         if (_tileInfo is not null) _tileInfo.Text = $"{title}: {message}";
-        var dialog = new AcceptDialog { Title = title, DialogText = message, OkButtonText = "확인" };
-        AddChild(dialog);
-        dialog.Confirmed += dialog.QueueFree;
-        dialog.CloseRequested += dialog.QueueFree;
-        dialog.PopupCentered();
+        ShowMapConfirmation(title, message, [("확인", true, CloseMapConfirmation)]);
     }
 
     private IReadOnlyList<string> ProtectedScenarioNames()
@@ -222,24 +217,14 @@ public sealed partial class EditMapScene
     private void RequestReturnToStart()
     {
         if (!_draftChanged) { ScenarioStartMenu.ReturnToStart(GetTree()); return; }
-        var dialog = new ConfirmationDialog { Title = "저장하지 않은 지도", DialogText = "변경한 지도를 저장하고 시작 화면으로 돌아갈까요?", OkButtonText = "저장 후 나가기", CancelButtonText = "계속 편집" };
-        dialog.AddButton("변경 버리기", true, "discard");
-        AddChild(dialog);
-        dialog.Confirmed += () => { SaveDraft(); if (!_draftChanged) ScenarioStartMenu.ReturnToStart(GetTree()); };
-        dialog.CustomAction += action => { if (action == "discard") ScenarioStartMenu.ReturnToStart(GetTree()); };
-        dialog.PopupCentered();
+        ShowUnsavedMapConfirmation(() => ScenarioStartMenu.ReturnToStart(GetTree()));
     }
 
     private void RequestReturnToMapLibrary()
     {
         if (!_mapSelectionMade) return;
         if (!_draftChanged) { ShowMapLibrary(); return; }
-        var dialog = new ConfirmationDialog { Title = "저장하지 않은 지도", DialogText = "변경한 지도를 저장하고 목록으로 돌아갈까요?", OkButtonText = "저장 후 목록", CancelButtonText = "계속 편집" };
-        dialog.AddButton("변경 버리기", true, "discard");
-        AddChild(dialog);
-        dialog.Confirmed += () => { SaveDraft(); if (!_draftChanged) ShowMapLibrary(); };
-        dialog.CustomAction += action => { if (action == "discard") { _draftChanged = false; ShowMapLibrary(); } };
-        dialog.PopupCentered();
+        ShowUnsavedMapConfirmation(ShowMapLibrary);
     }
 
     private void AddSaveDraftButton(HBoxContainer bar)
