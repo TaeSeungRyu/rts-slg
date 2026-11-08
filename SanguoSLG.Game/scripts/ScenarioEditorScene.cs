@@ -12,6 +12,7 @@ public sealed partial class ScenarioEditorScene : Control
     private string _savedDraftSnapshot = "";
     private ItemList _list = null!;
     private VBoxContainer _body = null!;
+    private ScrollContainer _bodyScroll = null!;
     private Label _message = null!;
     private Button _deleteButton = null!;
     private string _scenarioDirectory = "";
@@ -121,10 +122,12 @@ public sealed partial class ScenarioEditorScene : Control
         AddTab(tabs, "기본 정보·지도", ShowBasics);
         AddTab(tabs, "세력", ShowFactions);
         AddTab(tabs, "세력·거점", ShowCities);
-        var scroll = new ScrollContainer { SizeFlagsVertical = SizeFlags.ExpandFill };
-        right.AddChild(scroll);
+        _bodyScroll = new ScrollContainer { SizeFlagsVertical = SizeFlags.ExpandFill };
+        GeneralWorkspaceStyle.StyleScrollContainer(_bodyScroll);
+        right.AddChild(_bodyScroll);
         _body = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        scroll.AddChild(_body);
+        _body.AddThemeConstantOverride("separation", 8);
+        _bodyScroll.AddChild(_body);
         _message = new Label { AutowrapMode = TextServer.AutowrapMode.WordSmart };
         var footer = GeneralWorkspaceStyle.Footer(vertical);
         footer.AddChild(new Label { Text = "시나리오를 검증한 뒤 저장하세요.",
@@ -338,7 +341,9 @@ public sealed partial class ScenarioEditorScene : Control
         });
         var preview = new ScenarioSiteMap(map.Preset, _draft.Cities, _draft.Factions, 0, _ => { })
         {
-            CustomMinimumSize = new Vector2(540, 250),
+            Name = "ScenarioMapPreview",
+            CustomMinimumSize = new Vector2(540, 220),
+            SizeFlagsVertical = SizeFlags.ExpandFill,
             MouseFilter = MouseFilterEnum.Ignore,
             TooltipText = "선택한 지도의 읽기 전용 미리보기",
         };
@@ -987,7 +992,8 @@ public sealed partial class ScenarioEditorScene : Control
         var row = new HBoxContainer(); parent.AddChild(row);
         row.AddChild(new Label { Text = label, CustomMinimumSize = new Vector2(150, 0) });
         var field = new LineEdit { Name = "ScenarioTitleEditor", Text = value,
-            SizeFlagsHorizontal = SizeFlags.ExpandFill };
+            SizeFlagsHorizontal = SizeFlags.ExpandFill, CustomMinimumSize = new Vector2(0, 38) };
+        StyleScenarioInput(field);
         field.TextChanged += text => update(text);
         row.AddChild(field);
         NativeTextInputDialog.Attach(field);
@@ -1010,13 +1016,30 @@ public sealed partial class ScenarioEditorScene : Control
         {
             Name = "ScenarioDescriptionEditor",
             Text = value,
-            CustomMinimumSize = new Vector2(0, 108),
+            CustomMinimumSize = new Vector2(0, 76),
             SizeFlagsHorizontal = SizeFlags.ExpandFill,
             WrapMode = TextEdit.LineWrappingMode.Boundary
         };
+        StyleScenarioInput(field);
         field.TextChanged += () => update(field.Text);
         row.AddChild(field);
         NativeTextInputDialog.Attach(field);
+    }
+
+    private static void StyleScenarioInput(Control input)
+    {
+        GeneralWorkspaceStyle.StyleTextInput(input);
+        var normal = new StyleBoxFlat
+        {
+            BgColor = new Color("35211b"), BorderColor = new Color("765637"),
+            BorderWidthLeft = 1, BorderWidthTop = 1, BorderWidthRight = 1, BorderWidthBottom = 1,
+            ContentMarginLeft = 10, ContentMarginRight = 10, ContentMarginTop = 7, ContentMarginBottom = 7,
+        };
+        var hover = (StyleBoxFlat)normal.Duplicate();
+        hover.BorderColor = new Color("b78a4a");
+        input.AddThemeStyleboxOverride("normal", normal);
+        input.MouseEntered += () => input.AddThemeStyleboxOverride("normal", hover);
+        input.MouseExited += () => input.AddThemeStyleboxOverride("normal", normal);
     }
 
     private void AddNumber(string label, int value, int min, int max, Action<int> update)
