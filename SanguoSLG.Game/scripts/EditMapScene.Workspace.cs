@@ -296,7 +296,7 @@ public sealed partial class EditMapScene
         _tileInfo.Text = tool switch
         {
             MapEditorTool.Paint => $"지형 그리기 · {Terrain[_paintCode].Name} · 좌클릭 드래그: 변경 · 가운데 드래그/WASD: 이동",
-            MapEditorTool.Facility => "시설물 · 타일을 클릭하여 기존 성·항구·관문·유적·생산시설 명령을 엽니다.",
+            MapEditorTool.Facility => "시설물 · 좌클릭: 선택 · 드래그: 이동 · 우클릭: 기존 시설물 명령",
             _ => "선택 · 타일을 클릭하여 좌표와 편집 명령을 확인합니다.",
         };
     }
@@ -329,7 +329,7 @@ public sealed partial class EditMapScene
     private static string ToolInstruction(MapEditorTool tool) => tool switch
     {
         MapEditorTool.Paint => "좌클릭 드래그: 지형 변경",
-        MapEditorTool.Facility => "좌클릭: 시설물 명령",
+        MapEditorTool.Facility => "좌클릭: 선택 · 드래그: 시설물 이동",
         _ => "좌클릭: 타일 선택",
     };
 

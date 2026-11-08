@@ -625,6 +625,25 @@ public sealed partial class EditMapScene : Control
         UndoDraft();
         valid &= _rows[vacant.Y][vacant.X] == paintOriginal
             && _rows[cityTile.Y][cityTile.X] == cityOriginal;
+        var qaPort = _sites.FirstOrDefault(site => site.Kind == "port");
+        if (qaPort is not null)
+        {
+            var validPortMove = Enumerable.Range(0, _height)
+                .SelectMany(row => Enumerable.Range(0, _width)
+                    .Select(column => qaPort with { Column = column, Row = row }))
+                .FirstOrDefault(candidate => (candidate.Column != qaPort.Column || candidate.Row != qaPort.Row)
+                    && ValidateSiteMove(qaPort, candidate, out _));
+            valid &= validPortMove is not null && validPortMove.Id == qaPort.Id
+                && validPortMove.Direction == qaPort.Direction;
+            var invalidInlandMove = Enumerable.Range(0, _height)
+                .SelectMany(row => Enumerable.Range(0, _width)
+                    .Select(column => qaPort with { Column = column, Row = row }))
+                .FirstOrDefault(candidate => CanPlace(candidate) && !PortFacesWater(candidate));
+            valid &= invalidInlandMove is not null
+                && !ValidateSiteMove(qaPort, invalidInlandMove, out var portMoveReason)
+                && portMoveReason.Contains("입구 방향");
+        }
+        else valid = false;
         var portDraft = Enumerable.Range(0, _height)
             .SelectMany(row => Enumerable.Range(0, _width).SelectMany(column =>
                 Enumerable.Range(0, 6).Select(direction =>

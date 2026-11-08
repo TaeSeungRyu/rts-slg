@@ -355,6 +355,13 @@ public sealed partial class EditMapScene
     {
         if (input is InputEventMouseButton button)
         {
+            if (_activeTool == MapEditorTool.Facility && button.ButtonIndex == MouseButton.Left
+                && !button.Pressed && _sitePointerCandidate is not null)
+            {
+                FinishSitePointer(button.Position);
+                AcceptEvent();
+                return;
+            }
             if (_paintMode && button.ButtonIndex == MouseButton.Left && !button.Pressed)
             {
                 EndPaintStroke();
@@ -363,6 +370,14 @@ public sealed partial class EditMapScene
             }
             if (!MapViewportContains(button.Position)) return;
             var mapPosition = ToMapViewportPosition(button.Position);
+            if (_activeTool == MapEditorTool.Facility && button.ButtonIndex == MouseButton.Left
+                && button.Pressed && TileAtMapPosition(mapPosition) is { } facilityTile
+                && SiteAt(facilityTile) is { } facility)
+            {
+                BeginSitePointer(facility, facilityTile, mapPosition);
+                AcceptEvent();
+                return;
+            }
             if (_paintMode && button.ButtonIndex == MouseButton.Left)
             {
                 BeginPaintStroke(button.Position);
@@ -397,6 +412,12 @@ public sealed partial class EditMapScene
         else if (input is InputEventMouseMotion paintMotion && _painting)
         {
             PaintSegment(paintMotion.Position);
+            AcceptEvent();
+        }
+        else if (input is InputEventMouseMotion siteMotion && _sitePointerCandidate is not null
+                 && (siteMotion.ButtonMask & MouseButtonMask.Left) != 0)
+        {
+            UpdateSitePointer(siteMotion.Position);
             AcceptEvent();
         }
         else if (input is InputEventMouseMotion motion && _panningMap)
