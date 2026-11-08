@@ -468,105 +468,21 @@ public sealed partial class ScenarioEditorScene : Control
     {
         ClearBody();
         var generals = _source.Generals.OrderBy(g => g.Name).ToArray();
-        _body.AddChild(new Label { Text = "세력 이름, 군주, 세력 색, 시작 가능 여부와 숨은세력 출현 설정" });
-        var scroll = new ScrollContainer { CustomMinimumSize = new Vector2(0, Mathf.Min(650, 52 + _draft.Factions.Count * 42)) };
-        _body.AddChild(scroll);
-        var table = new GridContainer { Columns = 9, SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        scroll.AddChild(table);
-        foreach (var heading in new[] { "세력", "이름", "군주", "색상", "시작 가능", "숨은세력", "출현 연도", "우선 출현 거점", "관리" })
-            table.AddChild(new Label { Text = heading });
-        foreach (var faction in _draft.Factions)
-        {
-            var row = table;
-            row.AddChild(new Label { Text = $"세력 {faction.Id}", CustomMinimumSize = new Vector2(90, 0) });
-            var name = new LineEdit { Text = faction.Name, CustomMinimumSize = new Vector2(150, 0) };
-            name.TextChanged += value => UpdateFaction(faction.Id, f => f with { Name = value });
-            row.AddChild(name);
-            NativeTextInputDialog.Attach(name);
-            var ruler = new OptionButton { CustomMinimumSize = new Vector2(150, 0) };
-            foreach (var general in generals) ruler.AddItem(general.Name, general.Id.Value);
-            ruler.Select(Math.Max(0, ruler.GetItemIndex(faction.RulerGeneralId)));
-            ruler.ItemSelected += index =>
-            {
-                var generalId = ruler.GetItemId((int)index);
-                UpdateFaction(faction.Id, f => f with { RulerGeneralId = generalId });
-                if (faction.Hidden) EnsureHiddenRuler(faction.Id, generalId);
-            };
-            row.AddChild(ruler);
-            var color = new OptionButton { CustomMinimumSize = new Vector2(105, 32), TooltipText = "60가지 세력 색 중 선택" };
-            var currentColor = new Color(faction.Color);
-            var selectedColor = Array.FindIndex(FactionPalette, candidate => candidate.IsEqualApprox(currentColor));
-            if (selectedColor < 0) color.AddIconItem(FactionColorIcon(currentColor), "현재 색", -1);
-            for (var paletteIndex = 0; paletteIndex < FactionPalette.Length; paletteIndex++)
-                color.AddIconItem(FactionColorIcon(FactionPalette[paletteIndex]), $"색상 {paletteIndex + 1:00}", paletteIndex);
-            color.Select(selectedColor < 0 ? 0 : selectedColor);
-            color.ItemSelected += index =>
-            {
-                var paletteIndex = color.GetItemId((int)index);
-                if (paletteIndex >= 0)
-                    UpdateFaction(faction.Id, current => current with { Color = "#" + FactionPalette[paletteIndex].ToHtml(false) });
-            };
-            row.AddChild(color);
-            var playable = new CheckBox { ButtonPressed = faction.Playable,
-                Disabled = faction.Hidden };
-            playable.Toggled += value => UpdateFaction(faction.Id, f => f with { Playable = value });
-            var playableCell = new HBoxContainer();
-            playableCell.AddChild(playable);
-            playableCell.AddChild(new Label { Text = "시작 가능", MouseFilter = MouseFilterEnum.Ignore });
-            row.AddChild(playableCell);
-            var hidden = new CheckBox { ButtonPressed = faction.Hidden };
-            hidden.Toggled += value =>
-            {
-                var sites = CurrentMap().Preset.Sites.Where(site => site.Kind is "city" or "port" or "gate").ToArray();
-                UpdateFaction(faction.Id, current => current with
-                {
-                    Hidden = value, Playable = value ? false : current.Playable,
-                    ArrivalYear = value && current.ArrivalYear == 0 ? _draft.StartYear + 1 : current.ArrivalYear,
-                    ArrivalSiteId = value && current.ArrivalSiteId == 0 ? sites[0].Id : current.ArrivalSiteId,
-                });
-                if (value)
-                {
-                    _draft = _draft with
-                    {
-                        Cities = _draft.Cities.Select(city => city.OwnerFactionId == faction.Id
-                            ? city with { OwnerFactionId = 0, Garrisons = [], Ships = [] } : city).ToArray(),
-                        Generals = _draft.Generals.Select(general => general.FactionId == faction.Id
-                            ? general with { SiteId = null } : general).ToArray(),
-                    };
-                    EnsureHiddenRuler(faction.Id, faction.RulerGeneralId);
-                }
-                ShowFactions();
-            };
-            var hiddenCell = new HBoxContainer();
-            hiddenCell.AddChild(hidden);
-            hiddenCell.AddChild(new Label { Text = "숨은세력", MouseFilter = MouseFilterEnum.Ignore });
-            row.AddChild(hiddenCell);
-            var year = new SpinBox { MinValue = _draft.StartYear, MaxValue = 9999,
-                Value = Math.Max(_draft.StartYear, faction.ArrivalYear), CustomMinimumSize = new Vector2(100, 0), Editable = faction.Hidden };
-            year.ValueChanged += value => UpdateFaction(faction.Id, f => f with { ArrivalYear = (int)value });
-            row.AddChild(year);
-            var target = new OptionButton { CustomMinimumSize = new Vector2(180, 0), Disabled = !faction.Hidden };
-            foreach (var site in CurrentMap().Preset.Sites.Where(site => site.Kind is "city" or "port" or "gate"))
-                target.AddItem(site.Name, site.Id);
-            target.Select(Math.Max(0, target.GetItemIndex(faction.ArrivalSiteId)));
-            target.ItemSelected += index => UpdateFaction(faction.Id,
-                f => f with { ArrivalSiteId = target.GetItemId((int)index) });
-            row.AddChild(target);
-            var remove = new Button { Text = "삭제" };
-            remove.Pressed += () =>
-            {
-                _draft = _draft with
-                {
-                    Factions = _draft.Factions.Where(f => f.Id != faction.Id).ToArray(),
-                    Cities = _draft.Cities.Select(c => c.OwnerFactionId == faction.Id
-                        ? c with { OwnerFactionId = 0, Garrisons = [], Ships = [] } : c).ToArray(),
-                    Generals = _draft.Generals.Where(g => g.FactionId != faction.Id).ToArray(),
-                };
-                ShowFactions();
-            };
-            row.AddChild(remove);
-        }
-        var add = new Button { Text = "세력 추가" };
+        if (_draft.Factions.All(faction => faction.Id != _selectedDescriptionFactionId))
+            _selectedDescriptionFactionId = _draft.Factions.FirstOrDefault()?.Id ?? 0;
+
+        var columns = new HBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill,
+            SizeFlagsVertical = SizeFlags.ExpandFill };
+        columns.AddThemeConstantOverride("separation", 14);
+        _body.AddChild(columns);
+        var listPanel = new VBoxContainer { CustomMinimumSize = new Vector2(285, 520),
+            SizeFlagsVertical = SizeFlags.ExpandFill };
+        columns.AddChild(listPanel);
+        var listHeader = new HBoxContainer();
+        listPanel.AddChild(listHeader);
+        listHeader.AddChild(new Label { Text = "세력 목록", SizeFlagsHorizontal = SizeFlags.ExpandFill,
+            VerticalAlignment = VerticalAlignment.Center });
+        var add = new Button { Text = "+ 세력 추가" };
         add.Pressed += () =>
         {
             var id = _draft.Factions.Select(f => f.Id).DefaultIfEmpty().Max() + 1;
@@ -575,48 +491,179 @@ public sealed partial class ScenarioEditorScene : Control
                 ?? generals[0].Id.Value;
             _draft = _draft with { Factions = [.. _draft.Factions,
                 new ScenarioFactionEntry(id, "새 세력", rulerId, "#c9ad72")] };
+            _selectedDescriptionFactionId = id;
             ShowFactions();
         };
-        _body.AddChild(add);
-        if (_draft.Factions.Count == 0) return;
-        if (_draft.Factions.All(faction => faction.Id != _selectedDescriptionFactionId))
-            _selectedDescriptionFactionId = _draft.Factions[0].Id;
-        _body.AddChild(new HSeparator());
-        _body.AddChild(new Label { Text = "세력 설명" });
-        var descriptionChoice = new OptionButton { CustomMinimumSize = new Vector2(220, 32) };
-        foreach (var faction in _draft.Factions)
-            descriptionChoice.AddItem(faction.Name, faction.Id);
-        descriptionChoice.Select(descriptionChoice.GetItemIndex(_selectedDescriptionFactionId));
-        _body.AddChild(descriptionChoice);
-        var descriptionHost = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        _body.AddChild(descriptionHost);
-        void ShowDescription()
+        listHeader.AddChild(add);
+        var factionScroll = new ScrollContainer { SizeFlagsVertical = SizeFlags.ExpandFill };
+        GeneralWorkspaceStyle.StyleScrollContainer(factionScroll);
+        listPanel.AddChild(factionScroll);
+        var factionList = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        factionScroll.AddChild(factionList);
+        foreach (var entry in _draft.Factions)
         {
-            foreach (var child in descriptionHost.GetChildren())
+            var rulerName = generals.FirstOrDefault(general => general.Id.Value == entry.RulerGeneralId)?.Name ?? "군주 미지정";
+            var status = entry.Hidden ? $"{Math.Max(_draft.StartYear, entry.ArrivalYear)}년 등장"
+                : entry.Playable ? "시작 가능" : "시작 불가";
+            var item = new Button
             {
-                descriptionHost.RemoveChild(child);
-                child.QueueFree();
-            }
-            var factionId = _selectedDescriptionFactionId;
-            var description = _draft.Factions.First(faction => faction.Id == factionId).Description;
-            var field = new TextEdit
-            {
-                Name = "FactionDescriptionEditor", Text = description,
-                CustomMinimumSize = new Vector2(0, 120),
-                SizeFlagsHorizontal = SizeFlags.ExpandFill,
-                WrapMode = TextEdit.LineWrappingMode.Boundary
+                Text = $"{entry.Name}\n{rulerName} · {status}",
+                Alignment = HorizontalAlignment.Left,
+                CustomMinimumSize = new Vector2(0, 58),
+                ToggleMode = true,
+                ButtonPressed = entry.Id == _selectedDescriptionFactionId,
             };
-            field.TextChanged += () => UpdateFaction(factionId,
-                faction => faction with { Description = field.Text });
-            descriptionHost.AddChild(field);
-            NativeTextInputDialog.Attach(field);
+            item.Pressed += () => { _selectedDescriptionFactionId = entry.Id; ShowFactions(); };
+            factionList.AddChild(item);
         }
-        descriptionChoice.ItemSelected += index =>
+        if (_draft.Factions.Count == 0)
         {
-            _selectedDescriptionFactionId = descriptionChoice.GetItemId((int)index);
-            ShowDescription();
+            factionList.AddChild(new Label { Text = "등록된 세력이 없습니다.\n세력을 추가하여 시작하세요.",
+                HorizontalAlignment = HorizontalAlignment.Center });
+            return;
+        }
+
+        var faction = _draft.Factions.First(entry => entry.Id == _selectedDescriptionFactionId);
+        var detailHost = new VBoxContainer();
+        var details = GeneralWorkspaceStyle.Section(detailHost, "선택한 세력 상세 편집");
+        var detailPanel = details.GetParent<PanelContainer>();
+        detailHost.RemoveChild(detailPanel);
+        detailPanel.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+        detailPanel.SizeFlagsVertical = SizeFlags.ExpandFill;
+        columns.AddChild(detailPanel);
+
+        var nameRow = AddFactionField(details, "세력 이름");
+        var name = new LineEdit { Text = faction.Name, SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        name.TextChanged += value => UpdateFaction(faction.Id, current => current with { Name = value });
+        nameRow.AddChild(name);
+        NativeTextInputDialog.Attach(name);
+
+        var rulerRow = AddFactionField(details, "군주");
+        var ruler = new OptionButton { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        foreach (var general in generals) ruler.AddItem(general.Name, general.Id.Value);
+        ruler.Select(Math.Max(0, ruler.GetItemIndex(faction.RulerGeneralId)));
+        ruler.ItemSelected += index =>
+        {
+            var generalId = ruler.GetItemId((int)index);
+            UpdateFaction(faction.Id, current => current with { RulerGeneralId = generalId });
+            if (faction.Hidden) EnsureHiddenRuler(faction.Id, generalId);
         };
-        ShowDescription();
+        GeneralWorkspaceStyle.StyleOptionButton(ruler, 200);
+        rulerRow.AddChild(ruler);
+
+        var colorRow = AddFactionField(details, "세력 색상");
+        var color = new OptionButton { SizeFlagsHorizontal = SizeFlags.ExpandFill, TooltipText = "60가지 세력 색 중 선택" };
+        var currentColor = new Color(faction.Color);
+        var selectedColor = Array.FindIndex(FactionPalette, candidate => candidate.IsEqualApprox(currentColor));
+        if (selectedColor < 0) color.AddIconItem(FactionColorIcon(currentColor), "현재 색", -1);
+        for (var paletteIndex = 0; paletteIndex < FactionPalette.Length; paletteIndex++)
+            color.AddIconItem(FactionColorIcon(FactionPalette[paletteIndex]), $"색상 {paletteIndex + 1:00}", paletteIndex);
+        color.Select(selectedColor < 0 ? 0 : selectedColor);
+        color.ItemSelected += index =>
+        {
+            var paletteIndex = color.GetItemId((int)index);
+            if (paletteIndex >= 0) UpdateFaction(faction.Id,
+                current => current with { Color = "#" + FactionPalette[paletteIndex].ToHtml(false) });
+        };
+        GeneralWorkspaceStyle.StyleOptionButton(color, 200);
+        colorRow.AddChild(color);
+
+        var playable = new CheckBox { Text = "새 게임에서 선택 가능한 세력", ButtonPressed = faction.Playable,
+            Disabled = faction.Hidden };
+        playable.Toggled += value => UpdateFaction(faction.Id, current => current with { Playable = value });
+        details.AddChild(playable);
+
+        var arrivalRow = AddFactionField(details, "등장 방식");
+        var arrivalMode = new OptionButton { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        arrivalMode.AddItem("시작부터 등장", 0);
+        arrivalMode.AddItem("지정 연도에 등장", 1);
+        arrivalMode.Select(faction.Hidden ? 1 : 0);
+        arrivalRow.AddChild(arrivalMode);
+        var year = new SpinBox { MinValue = _draft.StartYear, MaxValue = 9999,
+            Value = Math.Max(_draft.StartYear, faction.ArrivalYear), CustomMinimumSize = new Vector2(120, 0),
+            Editable = faction.Hidden };
+        year.ValueChanged += value => UpdateFaction(faction.Id, current => current with { ArrivalYear = (int)value });
+        arrivalRow.AddChild(year);
+        arrivalMode.ItemSelected += index => SetFactionHidden(faction, (int)index == 1);
+
+        var targetRow = AddFactionField(details, "우선 출현 거점");
+        var target = new OptionButton { SizeFlagsHorizontal = SizeFlags.ExpandFill, Disabled = !faction.Hidden };
+        foreach (var site in CurrentMap().Preset.Sites.Where(site => site.Kind is "city" or "port" or "gate"))
+            target.AddItem(site.Name, site.Id);
+        target.Select(Math.Max(0, target.GetItemIndex(faction.ArrivalSiteId)));
+        target.ItemSelected += index => UpdateFaction(faction.Id,
+            current => current with { ArrivalSiteId = target.GetItemId((int)index) });
+        GeneralWorkspaceStyle.StyleOptionButton(target, 200);
+        targetRow.AddChild(target);
+
+        details.AddChild(new Label { Text = "세력 설명" });
+        var description = new TextEdit { Name = "FactionDescriptionEditor", Text = faction.Description,
+            CustomMinimumSize = new Vector2(0, 125), SizeFlagsHorizontal = SizeFlags.ExpandFill,
+            WrapMode = TextEdit.LineWrappingMode.Boundary };
+        description.TextChanged += () => UpdateFaction(faction.Id,
+            current => current with { Description = description.Text });
+        details.AddChild(description);
+        NativeTextInputDialog.Attach(description);
+
+        var remove = new Button { Text = "선택한 세력 삭제" };
+        remove.Pressed += () => ConfirmDeleteFaction(faction);
+        details.AddChild(remove);
+    }
+
+    private static HBoxContainer AddFactionField(VBoxContainer parent, string label)
+    {
+        var row = new HBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        row.AddThemeConstantOverride("separation", 10);
+        row.AddChild(new Label { Text = label, CustomMinimumSize = new Vector2(125, 0),
+            VerticalAlignment = VerticalAlignment.Center });
+        parent.AddChild(row);
+        return row;
+    }
+
+    private void SetFactionHidden(ScenarioFactionEntry faction, bool hidden)
+    {
+        var sites = CurrentMap().Preset.Sites.Where(site => site.Kind is "city" or "port" or "gate").ToArray();
+        UpdateFaction(faction.Id, current => current with
+        {
+            Hidden = hidden,
+            Playable = hidden ? false : current.Playable,
+            ArrivalYear = hidden && current.ArrivalYear == 0 ? _draft.StartYear + 1 : current.ArrivalYear,
+            ArrivalSiteId = hidden && current.ArrivalSiteId == 0 && sites.Length > 0 ? sites[0].Id : current.ArrivalSiteId,
+        });
+        if (hidden)
+        {
+            _draft = _draft with
+            {
+                Cities = _draft.Cities.Select(city => city.OwnerFactionId == faction.Id
+                    ? city with { OwnerFactionId = 0, Garrisons = [], Ships = [] } : city).ToArray(),
+                Generals = _draft.Generals.Select(general => general.FactionId == faction.Id
+                    ? general with { SiteId = null } : general).ToArray(),
+            };
+            EnsureHiddenRuler(faction.Id, faction.RulerGeneralId);
+        }
+        ShowFactions();
+    }
+
+    private void ConfirmDeleteFaction(ScenarioFactionEntry faction)
+    {
+        var dialog = new ConfirmationDialog { Title = "세력 삭제", DialogText = $"'{faction.Name}' 세력을 삭제합니까?\n거점 소유권과 소속 장수 배치도 함께 해제됩니다.",
+            OkButtonText = "삭제", CancelButtonText = "취소" };
+        dialog.Confirmed += () =>
+        {
+            _draft = _draft with
+            {
+                Factions = _draft.Factions.Where(entry => entry.Id != faction.Id).ToArray(),
+                Cities = _draft.Cities.Select(city => city.OwnerFactionId == faction.Id
+                    ? city with { OwnerFactionId = 0, Garrisons = [], Ships = [] } : city).ToArray(),
+                Generals = _draft.Generals.Where(general => general.FactionId != faction.Id).ToArray(),
+            };
+            _selectedDescriptionFactionId = _draft.Factions.FirstOrDefault()?.Id ?? 0;
+            ShowFactions();
+        };
+        dialog.Canceled += dialog.QueueFree;
+        dialog.Confirmed += dialog.QueueFree;
+        AddChild(dialog);
+        dialog.PopupCentered(new Vector2I(520, 220));
     }
 
     private ImageTexture FactionColorIcon(Color color)
@@ -1098,11 +1145,11 @@ public sealed partial class ScenarioEditorScene : Control
                 ShowFactions();
                 var firstFactionId = _draft.Factions[0].Id;
                 var secondFactionId = _draft.Factions[1].Id;
-                var choice = _body.GetChildren().OfType<OptionButton>().Last();
                 var firstDescription = _body.FindChildren("FactionDescriptionEditor", "TextEdit", true, false)
                     .OfType<TextEdit>().Last(field => !field.IsQueuedForDeletion());
                 NativeTextInputDialog.ApplyResult(firstDescription, "첫 세력\n설명");
-                choice.EmitSignal(OptionButton.SignalName.ItemSelected, choice.GetItemIndex(secondFactionId));
+                _selectedDescriptionFactionId = secondFactionId;
+                ShowFactions();
                 var secondDescription = _body.FindChildren("FactionDescriptionEditor", "TextEdit", true, false)
                     .OfType<TextEdit>().Last(field => !field.IsQueuedForDeletion());
                 NativeTextInputDialog.ApplyResult(secondDescription, "둘째 세력 설명");
@@ -1152,9 +1199,9 @@ public sealed partial class ScenarioEditorScene : Control
             ShowFactions();
             var factionColorUi = _body.FindChildren("*", "OptionButton", true, false).OfType<OptionButton>()
                 .Any(choice => choice.ItemCount == 60 || choice.ItemCount == 61);
-            var hiddenFactionUi = _body.FindChildren("*", "HBoxContainer", true, false)
-                .OfType<HBoxContainer>().Any(cell => cell.GetChildren().OfType<CheckBox>().Any()
-                    && cell.GetChildren().OfType<Label>().Any(label => label.Text == "숨은세력"));
+            var hiddenFactionUi = _body.FindChildren("*", "OptionButton", true, false)
+                .OfType<OptionButton>().Any(choice => choice.ItemCount == 2
+                    && choice.GetItemText(1) == "지정 연도에 등장");
             ShowCities();
             var cityMapUi = _body.GetChildren().OfType<ScenarioSiteMap>().Any();
             ShowGenerals();
