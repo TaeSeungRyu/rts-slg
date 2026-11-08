@@ -793,72 +793,54 @@ public sealed partial class ScenarioEditorScene : Control
 
     private void ShowGeneralsForCity(VBoxContainer host, ScenarioCityEntry city)
     {
-        host.AddThemeConstantOverride("separation", 3);
+        host.AddThemeConstantOverride("separation", 6);
         var posted = _draft.Generals.Where(general => general.SiteId == city.SiteId).ToArray();
-        host.AddChild(new Label { Text = $"장수 배치 · {CurrentMap().Preset.Sites.First(site => site.Id == city.SiteId).Name}  ({posted.Length}명)" });
+        var siteName = CurrentMap().Preset.Sites.First(site => site.Id == city.SiteId).Name;
+        var header = new HBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        header.AddChild(new Label { Text = $"장수 배치 · {siteName}  ({posted.Length}명)",
+            SizeFlagsHorizontal = SizeFlags.ExpandFill, VerticalAlignment = VerticalAlignment.Center });
+        var assign = new Button { Text = "+ 장수 배치", Disabled = city.OwnerFactionId == 0 };
+        assign.Pressed += () => OpenGeneralPlacementDialog(city);
+        header.AddChild(assign);
+        host.AddChild(header);
         if (city.OwnerFactionId == 0)
         {
             host.AddChild(new Label { Text = "세력을 지정하면 장수를 배치할 수 있습니다." });
             return;
         }
-        var names = _source.Generals.ToDictionary(general => general.Id.Value, general => general.Name);
-        var rosterScroll = new ScrollContainer { CustomMinimumSize = new Vector2(0, 155),
+        var generals = _source.Generals.ToDictionary(general => general.Id.Value);
+        var rosterScroll = new ScrollContainer { CustomMinimumSize = new Vector2(0, 220),
             SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        GeneralWorkspaceStyle.StyleScrollContainer(rosterScroll);
         host.AddChild(rosterScroll);
-        var roster = new GridContainer { Columns = 4, SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        var roster = new GridContainer { Columns = 7, SizeFlagsHorizontal = SizeFlags.ExpandFill };
         roster.AddThemeConstantOverride("h_separation", 8);
-        roster.AddThemeConstantOverride("v_separation", 2);
+        roster.AddThemeConstantOverride("v_separation", 5);
         rosterScroll.AddChild(roster);
+        foreach (var heading in new[] { "초상", "이름", "무력", "지력", "정치", "역할", "관리" })
+            roster.AddChild(new Label { Text = heading });
         foreach (var general in posted)
         {
-            var name = new Label { Text = names.GetValueOrDefault(general.GeneralId, general.GeneralId.ToString()),
-                SizeFlagsHorizontal = SizeFlags.ExpandFill };
-            name.AddThemeFontSizeOverride("font_size", 13);
-            roster.AddChild(name);
-            var remove = new Button { Text = "제거", CustomMinimumSize = new Vector2(46, 24) };
+            var data = generals.GetValueOrDefault(general.GeneralId);
+            roster.AddChild(GeneralPortrait(data, 42));
+            roster.AddChild(new Label { Text = data?.Name ?? general.GeneralId.ToString(),
+                SizeFlagsHorizontal = SizeFlags.ExpandFill, VerticalAlignment = VerticalAlignment.Center });
+            roster.AddChild(new Label { Text = data?.Might.ToString() ?? "-", VerticalAlignment = VerticalAlignment.Center });
+            roster.AddChild(new Label { Text = data?.Intellect.ToString() ?? "-", VerticalAlignment = VerticalAlignment.Center });
+            roster.AddChild(new Label { Text = data?.Politics.ToString() ?? "-", VerticalAlignment = VerticalAlignment.Center });
+            var ruler = _draft.Factions.FirstOrDefault(faction => faction.RulerGeneralId == general.GeneralId);
+            roster.AddChild(new Label { Text = ruler is null ? "장수" : "군주",
+                VerticalAlignment = VerticalAlignment.Center });
+            var remove = new Button { Text = "배치 해제", CustomMinimumSize = new Vector2(82, 30) };
             remove.Pressed += () =>
             {
-                _draft = _draft with { Generals = _draft.Generals.Where(value => value.GeneralId != general.GeneralId).ToArray() };
+                UpdateGeneral(general.GeneralId, value => value with { SiteId = null });
                 ShowCities();
             };
             roster.AddChild(remove);
         }
-        if (posted.Length % 2 != 0)
-        {
-            roster.AddChild(new Control());
-            roster.AddChild(new Control());
-        }
-        host.AddChild(new HSeparator());
-        var search = new LineEdit { PlaceholderText = "장수 검색", Text = _generalSearch };
-        host.AddChild(search);
-        NativeTextInputDialog.Attach(search);
-        var row = new HBoxContainer();
-        host.AddChild(row);
-        var selection = new OptionButton { SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        row.AddChild(selection);
-        void Fill(string query)
-        {
-            selection.Clear();
-            foreach (var general in _source.Generals.Where(general => general.Name.Contains(query, StringComparison.OrdinalIgnoreCase)
-                && _draft.Generals.All(current => current.GeneralId != general.Id.Value || current.SiteId != city.SiteId))
-                .OrderBy(general => general.Name))
-                selection.AddItem(general.Name, general.Id.Value);
-            if (selection.ItemCount > 0) selection.Select(0);
-        }
-        Fill(_generalSearch);
-        search.TextChanged += value => { _generalSearch = value; Fill(value); };
-        var add = new Button { Text = "장수 등록" };
-        add.Pressed += () =>
-        {
-            if (selection.ItemCount == 0) return;
-            var id = selection.GetSelectedId();
-            if (_draft.Generals.Any(general => general.GeneralId == id))
-                UpdateGeneral(id, general => general with { FactionId = city.OwnerFactionId, SiteId = city.SiteId });
-            else _draft = _draft with { Generals = [.. _draft.Generals,
-                new ScenarioGeneralEntry(id, city.OwnerFactionId, city.SiteId)] };
-            ShowCities();
-        };
-        row.AddChild(add);
+        if (posted.Length == 0) roster.AddChild(new Label { Text = "배치된 장수가 없습니다.",
+            CustomMinimumSize = new Vector2(0, 42) });
     }
 
     private void SpreadGeneralsAcrossOwnedSites()
