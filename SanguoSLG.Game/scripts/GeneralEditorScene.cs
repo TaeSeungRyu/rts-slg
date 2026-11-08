@@ -729,8 +729,7 @@ public partial class GeneralEditorScene : Control
         _selected = general;
         var defaultRecruitCost = HeroRecruitPricing.DefaultFor(general.Aptitudes.Values);
         var recruitPointCost = _heroRecruitPointCosts.GetValueOrDefault(general.Id, defaultRecruitCost.Points);
-        var recruitGoldCost = _heroRecruitGoldCosts.GetValueOrDefault(general.Id, defaultRecruitCost.Gold);
-        if (recruitGoldCost <= 0) recruitGoldCost = defaultRecruitCost.Gold;
+        var recruitGoldCost = RecruitGoldForEditing(general);
         var requiredGeneral = _heroRecruitPrerequisites.GetValueOrDefault(general.Id);
 
         _mightInput.Value = general.Might;
@@ -808,14 +807,34 @@ public partial class GeneralEditorScene : Control
             var current = CurrentEditedRecord();
             var pricing = HeroRecruitPricing.DefaultFor(_selected.Aptitudes.Values);
             var originalPoints = _heroRecruitPointCosts.GetValueOrDefault(current.Id, pricing.Points);
-            var originalGold = _heroRecruitGoldCosts.GetValueOrDefault(current.Id, pricing.Gold);
-            return System.Text.Json.JsonSerializer.Serialize(current) != System.Text.Json.JsonSerializer.Serialize(_selected)
+            var originalGold = RecruitGoldForEditing(_selected);
+            return !EditableValuesEqual(current, _selected)
                 || (int)_recruitPointInput.Value != originalPoints
                 || (int)_recruitGoldInput.Value != originalGold
                 || SelectedRequiredGeneral() != _heroRecruitPrerequisites.GetValueOrDefault(current.Id)
                 || CurrentPortraitRecord(current.Id) != PortraitFor(current.Id);
         }
         catch { return true; }
+    }
+
+    private static bool EditableValuesEqual(GeneralEditorRecord current, GeneralEditorRecord original)
+        => current.Id == original.Id
+            && current.Might == original.Might
+            && current.Intellect == original.Intellect
+            && current.Politics == original.Politics
+            && string.Equals(current.BattleActive, original.BattleActive, StringComparison.Ordinal)
+            && TroopKeys.All(key => string.Equals(
+                current.Aptitudes.GetValueOrDefault(key, "F"),
+                original.Aptitudes.GetValueOrDefault(key, "F"),
+                StringComparison.Ordinal))
+            && current.BattlePassives.SequenceEqual(original.BattlePassives)
+            && current.AdminPassives.SequenceEqual(original.AdminPassives);
+
+    private int RecruitGoldForEditing(GeneralEditorRecord general)
+    {
+        var defaultGold = HeroRecruitPricing.DefaultFor(general.Aptitudes.Values).Gold;
+        var storedGold = _heroRecruitGoldCosts.GetValueOrDefault(general.Id, defaultGold);
+        return storedGold > 0 ? storedGold : defaultGold;
     }
 
     public override void _UnhandledKeyInput(InputEvent @event)
@@ -1265,8 +1284,7 @@ public partial class GeneralEditorScene : Control
             if (_heroRecruitPointCosts.TryGetValue(_selected.Id, out var recruitPointCost))
             {
                 AddChange(changes, "요구 영입 포인트", recruitPointCost, (int)_recruitPointInput.Value);
-                AddChange(changes, "필요한 금", _heroRecruitGoldCosts.GetValueOrDefault(_selected.Id,
-                    HeroRecruitPricing.DefaultFor(_selected.Aptitudes.Values).Gold), (int)_recruitGoldInput.Value);
+                AddChange(changes, "필요한 금", RecruitGoldForEditing(_selected), (int)_recruitGoldInput.Value);
                 AddChange(changes, "영입 선행 장수", _heroRecruitPrerequisites.GetValueOrDefault(_selected.Id), SelectedRequiredGeneral());
             }
             foreach (var key in TroopKeys)
@@ -1339,7 +1357,7 @@ public partial class GeneralEditorScene : Control
             var record = regular with { Id = 10000, Name = "창작 장수 QA" };
             _createdGenerals[record.Id] = new CreatedGeneralRecord(record, "female", 275);
             _heroRecruitPointCosts[record.Id] = 275;
-            _heroRecruitGoldCosts[record.Id] = 700;
+            _heroRecruitGoldCosts[record.Id] = 0;
             _heroRecruitPrerequisites[record.Id] = null;
             _generals.Add(record);
             _generalsById[record.Id] = record;
@@ -1349,7 +1367,8 @@ public partial class GeneralEditorScene : Control
                 if (_list.GetItemMetadata(item).AsInt32() == record.Id) { _list.Select(item); break; }
             createdOk = Enumerable.Range(0, _list.ItemCount).Any(index => _list.GetItemText(index).Contains("창작 장수 QA"))
                 && _recruitPointInput.Editable && (int)_recruitPointInput.Value == 275
-                && (int)_recruitGoldInput.Value == 700
+                && (int)_recruitGoldInput.Value == HeroRecruitPricing.DefaultFor(record.Aptitudes.Values).Gold
+                && !HasPendingChanges()
                 && _faceX.Editable && _faceY.Editable && _faceZoom.Editable;
             _faceX.Value = 0.72;
             _faceY.Value = 0.24;
