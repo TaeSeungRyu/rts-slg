@@ -28,6 +28,11 @@ public partial class GeneralEditorScene : Control
     private readonly List<GeneralEditorSkill> _selectedBattlePassives = [];
     private readonly List<GeneralEditorSkill> _selectedAdminPassives = [];
     private readonly List<ScrollContainer> _skillDescriptionScrolls = [];
+    private ScrollContainer _activeDescriptionScroll = null!;
+    private ScrollContainer _passiveDescriptionScroll = null!;
+    private ScrollContainer _adminDescriptionScroll = null!;
+    private string? _displayedBattlePassiveCode;
+    private string? _displayedAdminPassiveCode;
     private LineEdit _search = null!;
     private OptionButton _regionFilter = null!;
     private ItemList _list = null!;
@@ -405,7 +410,7 @@ public partial class GeneralEditorScene : Control
             AutowrapMode = TextServer.AutowrapMode.WordSmart,
             SizeFlagsHorizontal = SizeFlags.ExpandFill,
         };
-        activeBody.AddChild(DescriptionPanel(_activeDescription));
+        activeBody.AddChild(DescriptionPanel(_activeDescription, out _activeDescriptionScroll));
 
         var passiveSection = AddSection(editor, "전투 패시브");
         var passiveBody = new HBoxContainer();
@@ -433,7 +438,7 @@ public partial class GeneralEditorScene : Control
             AutowrapMode = TextServer.AutowrapMode.WordSmart,
             SizeFlagsHorizontal = SizeFlags.ExpandFill,
         };
-        passiveBody.AddChild(DescriptionPanel(_passiveDescription));
+        passiveBody.AddChild(DescriptionPanel(_passiveDescription, out _passiveDescriptionScroll));
         _passiveList = new VBoxContainer { Name = "GeneralEditorBattlePassiveList" };
         _passiveList.AddThemeConstantOverride("separation", 5);
         passiveLeft.AddChild(_passiveList);
@@ -465,7 +470,7 @@ public partial class GeneralEditorScene : Control
             AutowrapMode = TextServer.AutowrapMode.WordSmart,
             SizeFlagsHorizontal = SizeFlags.ExpandFill,
         };
-        adminBody.AddChild(DescriptionPanel(_adminDescription));
+        adminBody.AddChild(DescriptionPanel(_adminDescription, out _adminDescriptionScroll));
         _adminList = new VBoxContainer { Name = "GeneralEditorAdminPassiveList" };
         _adminList.AddThemeConstantOverride("separation", 5);
         adminLeft.AddChild(_adminList);
@@ -755,10 +760,20 @@ public partial class GeneralEditorScene : Control
         _selectedBattlePassives.Clear();
         _selectedBattlePassives.AddRange(general.BattlePassives.Select(s => new GeneralEditorSkill(s.Code, s.Tier)));
         RefreshBattlePassiveList();
+        _displayedBattlePassiveCode = null;
+        SetDescription(_passiveDescription, _passiveDescriptionScroll,
+            _selectedBattlePassives.Count == 0
+                ? "등록된 전투 패시브가 없습니다."
+                : "스킬을 선택하면 상세 설명이 표시됩니다.");
 
         _selectedAdminPassives.Clear();
         _selectedAdminPassives.AddRange(general.AdminPassives.Select(s => new GeneralEditorSkill(s.Code, s.Tier)));
         RefreshAdminPassiveList();
+        _displayedAdminPassiveCode = null;
+        SetDescription(_adminDescription, _adminDescriptionScroll,
+            _selectedAdminPassives.Count == 0
+                ? "등록된 내정 패시브가 없습니다."
+                : "스킬을 선택하면 상세 설명이 표시됩니다.");
 
         var portrait = PortraitFor(general.Id);
         _faceX.Value = portrait.FaceCenterX;
@@ -976,7 +991,7 @@ public partial class GeneralEditorScene : Control
     private VBoxContainer AddSection(VBoxContainer parent, string title)
         => GeneralWorkspaceStyle.Section(parent, title);
 
-    private PanelContainer DescriptionPanel(Control content)
+    private PanelContainer DescriptionPanel(Control content, out ScrollContainer descriptionScroll)
     {
         var panel = new PanelContainer
         {
@@ -995,6 +1010,7 @@ public partial class GeneralEditorScene : Control
         };
         GeneralWorkspaceStyle.StyleScrollContainer(scroll, 8);
         _skillDescriptionScrolls.Add(scroll);
+        descriptionScroll = scroll;
         panel.AddChild(scroll);
         var margin = new MarginContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
         margin.AddThemeConstantOverride("margin_left", 10);
@@ -1358,6 +1374,34 @@ public partial class GeneralEditorScene : Control
             && _skillDetailBody.Text.Contains("내정 패시브", StringComparison.Ordinal);
         _skillDetailDialog.Hide();
 
+        var scrollResetOk = false;
+        var emptySkillGuidanceOk = false;
+        if (regular is not null)
+        {
+            ShowGeneral(regular);
+            _activeDescriptionScroll.ScrollVertical = 80;
+            UpdateActiveDescription();
+            _passiveDescriptionScroll.ScrollVertical = 80;
+            UpdatePassiveCandidateDescription();
+            _adminDescriptionScroll.ScrollVertical = 80;
+            UpdateAdminCandidateDescription();
+            await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+            scrollResetOk = _activeDescriptionScroll.ScrollVertical == 0
+                && _passiveDescriptionScroll.ScrollVertical == 0
+                && _adminDescriptionScroll.ScrollVertical == 0;
+            var emptySkills = regular with
+            {
+                BattleActive = null,
+                BattlePassives = [],
+                AdminPassives = [],
+            };
+            ShowGeneral(emptySkills);
+            emptySkillGuidanceOk = _activeDescription.Text == "스킬을 선택하면 상세 설명이 표시됩니다."
+                && _passiveDescription.Text == "등록된 전투 패시브가 없습니다."
+                && _adminDescription.Text == "등록된 내정 패시브가 없습니다.";
+            ShowGeneral(regular);
+        }
+
         await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
         await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
         var tabs = FindChildren("*", "TabContainer", true, false).OfType<TabContainer>().Single();
@@ -1409,8 +1453,9 @@ public partial class GeneralEditorScene : Control
             && _activeInput.ItemCount > 1
             && !_activeInput.GetItemText(1).Contains('(')
             && threeColumnOk && abilityGridOk && skillLayoutOk && tabSizingOk && filterPreservesEdit;
-        var passed = heroOk && regularOk && createdOk && layoutOk && battleDescriptionOk && adminDescriptionOk;
-        GD.Print($"[generaleditorqa] passed={passed} hero={heroOk} regular={regularOk} created={createdOk} layout={layoutOk} columns={threeColumnOk} abilityGrid={abilityGridOk} skillLayout={skillLayoutOk} tabs={tabSizingOk} preserve={filterPreservesEdit} region={_regionFilter.GetItemText(1)} active={_activeInput.GetItemText(1)} range={_recruitPointInput.MinValue}-{_recruitPointInput.MaxValue}");
+        var passed = heroOk && regularOk && createdOk && layoutOk && battleDescriptionOk && adminDescriptionOk
+            && scrollResetOk && emptySkillGuidanceOk;
+        GD.Print($"[generaleditorqa] passed={passed} hero={heroOk} regular={regularOk} created={createdOk} layout={layoutOk} columns={threeColumnOk} abilityGrid={abilityGridOk} skillLayout={skillLayoutOk} scrollReset={scrollResetOk} emptyGuidance={emptySkillGuidanceOk} tabs={tabSizingOk} preserve={filterPreservesEdit} region={_regionFilter.GetItemText(1)} active={_activeInput.GetItemText(1)} range={_recruitPointInput.MinValue}-{_recruitPointInput.MaxValue}");
         GetTree().Quit(passed ? 0 : 1);
     }
 
@@ -1443,29 +1488,32 @@ public partial class GeneralEditorScene : Control
         var code = SelectedMetadata(_activeInput);
         if (code is null)
         {
-            _activeDescription.Text = "전투 액티브 없음";
+            SetDescription(_activeDescription, _activeDescriptionScroll,
+                "스킬을 선택하면 상세 설명이 표시됩니다.");
             return;
         }
 
         var full = _activeSkills.TryGetValue(code, out var skill)
             ? SkillDescriptions.Active(skill) : "등록되지 않은 액티브입니다.";
-        _activeDescription.Text = full;
-        _activeDescription.TooltipText = full;
+        SetDescription(_activeDescription, _activeDescriptionScroll, full);
     }
 
     private void UpdatePassiveCandidateDescription()
     {
         if (_passiveSelect.ItemCount == 0)
         {
-            _passiveDescription.Text = "선택 가능한 전투 패시브가 없습니다.";
+            SetDescription(_passiveDescription, _passiveDescriptionScroll,
+                _selectedBattlePassives.Count == 0
+                    ? "등록된 전투 패시브가 없습니다."
+                    : "스킬을 선택하면 상세 설명이 표시됩니다.");
             return;
         }
 
+        _displayedBattlePassiveCode = null;
         var code = SelectedMetadata(_passiveSelect);
         var full = code is not null && _passiveSkills.TryGetValue(code, out var skill)
-            ? SkillDescriptions.Passive(skill, 1) : "전투 패시브를 선택하면 효과가 표시됩니다.";
-        _passiveDescription.Text = full;
-        _passiveDescription.TooltipText = full;
+            ? SkillDescriptions.Passive(skill, 1) : "스킬을 선택하면 상세 설명이 표시됩니다.";
+        SetDescription(_passiveDescription, _passiveDescriptionScroll, full);
     }
 
     private void AddSelectedBattlePassive()
@@ -1503,15 +1551,18 @@ public partial class GeneralEditorScene : Control
     {
         if (_adminSelect.ItemCount == 0)
         {
-            _adminDescription.Text = "선택 가능한 내정 패시브가 없습니다.";
+            SetDescription(_adminDescription, _adminDescriptionScroll,
+                _selectedAdminPassives.Count == 0
+                    ? "등록된 내정 패시브가 없습니다."
+                    : "스킬을 선택하면 상세 설명이 표시됩니다.");
             return;
         }
 
+        _displayedAdminPassiveCode = null;
         var code = SelectedMetadata(_adminSelect);
         var full = code is not null && _adminSkills.TryGetValue(code, out var skill)
-            ? SkillDescriptions.Admin(skill, 1) : "내정 패시브를 선택하면 효과가 표시됩니다.";
-        _adminDescription.Text = full;
-        _adminDescription.TooltipText = full;
+            ? SkillDescriptions.Admin(skill, 1) : "스킬을 선택하면 상세 설명이 표시됩니다.";
+        SetDescription(_adminDescription, _adminDescriptionScroll, full);
     }
 
     private void AddSelectedAdminPassive()
@@ -1583,8 +1634,12 @@ public partial class GeneralEditorScene : Control
                 var idx = _selectedBattlePassives.FindIndex(s => s.Code == skill.Code);
                 if (idx >= 0)
                 {
-                    _selectedBattlePassives[idx] = skill with { Tier = (int)value };
+                    var changed = skill with { Tier = (int)value };
+                    _selectedBattlePassives[idx] = changed;
                     RefreshBattlePassiveList();
+                    if (_displayedBattlePassiveCode == skill.Code && _passiveSkills.TryGetValue(skill.Code, out var passive))
+                        SetDescription(_passiveDescription, _passiveDescriptionScroll,
+                            SkillDescriptions.Passive(passive, changed.Tier));
                     UpdateChangePreview();
                 }
             };
@@ -1595,8 +1650,8 @@ public partial class GeneralEditorScene : Control
             {
                 var full = _passiveSkills.TryGetValue(skill.Code, out var def)
                     ? SkillDescriptions.Passive(def, skill.Tier) : "등록되지 않은 전투 패시브입니다.";
-                _passiveDescription.Text = full;
-                _passiveDescription.TooltipText = full;
+                _displayedBattlePassiveCode = skill.Code;
+                SetDescription(_passiveDescription, _passiveDescriptionScroll, full);
                 ShowSkillDetail(name, full);
             };
             row.AddChild(desc);
@@ -1606,6 +1661,14 @@ public partial class GeneralEditorScene : Control
             {
                 _selectedBattlePassives.RemoveAll(s => s.Code == skill.Code);
                 RefreshBattlePassiveList();
+                if (_displayedBattlePassiveCode == skill.Code)
+                {
+                    _displayedBattlePassiveCode = null;
+                    SetDescription(_passiveDescription, _passiveDescriptionScroll,
+                        _selectedBattlePassives.Count == 0
+                            ? "등록된 전투 패시브가 없습니다."
+                            : "스킬을 선택하면 상세 설명이 표시됩니다.");
+                }
                 UpdateChangePreview();
             };
             row.AddChild(remove);
@@ -1651,8 +1714,12 @@ public partial class GeneralEditorScene : Control
                 var idx = _selectedAdminPassives.FindIndex(s => s.Code == skill.Code);
                 if (idx >= 0)
                 {
-                    _selectedAdminPassives[idx] = skill with { Tier = (int)value };
+                    var changed = skill with { Tier = (int)value };
+                    _selectedAdminPassives[idx] = changed;
                     RefreshAdminPassiveList();
+                    if (_displayedAdminPassiveCode == skill.Code && _adminSkills.TryGetValue(skill.Code, out var admin))
+                        SetDescription(_adminDescription, _adminDescriptionScroll,
+                            SkillDescriptions.Admin(admin, changed.Tier));
                     UpdateChangePreview();
                 }
             };
@@ -1663,8 +1730,8 @@ public partial class GeneralEditorScene : Control
             {
                 var full = _adminSkills.TryGetValue(skill.Code, out var def)
                     ? SkillDescriptions.Admin(def, skill.Tier) : "등록되지 않은 내정 패시브입니다.";
-                _adminDescription.Text = full;
-                _adminDescription.TooltipText = full;
+                _displayedAdminPassiveCode = skill.Code;
+                SetDescription(_adminDescription, _adminDescriptionScroll, full);
                 ShowSkillDetail(name, full);
             };
             row.AddChild(desc);
@@ -1674,6 +1741,14 @@ public partial class GeneralEditorScene : Control
             {
                 _selectedAdminPassives.RemoveAll(s => s.Code == skill.Code);
                 RefreshAdminPassiveList();
+                if (_displayedAdminPassiveCode == skill.Code)
+                {
+                    _displayedAdminPassiveCode = null;
+                    SetDescription(_adminDescription, _adminDescriptionScroll,
+                        _selectedAdminPassives.Count == 0
+                            ? "등록된 내정 패시브가 없습니다."
+                            : "스킬을 선택하면 상세 설명이 표시됩니다.");
+                }
                 UpdateChangePreview();
             };
             row.AddChild(remove);
@@ -1686,6 +1761,21 @@ public partial class GeneralEditorScene : Control
         {
             child.QueueFree();
         }
+    }
+
+    private static void SetDescription(Label label, ScrollContainer scroll, string text)
+    {
+        label.Text = text;
+        label.TooltipText = text;
+        var guidance = text is "등록된 전투 패시브가 없습니다."
+            or "등록된 내정 패시브가 없습니다."
+            or "스킬을 선택하면 상세 설명이 표시됩니다.";
+        label.AddThemeColorOverride("font_color", new Color(guidance ? "bda581" : "f0d6a8"));
+        scroll.ScrollVertical = 0;
+        Callable.From(() =>
+        {
+            if (IsInstanceValid(scroll)) scroll.ScrollVertical = 0;
+        }).CallDeferred();
     }
 
     private string RegionName(string code)
