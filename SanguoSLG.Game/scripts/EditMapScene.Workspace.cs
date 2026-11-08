@@ -326,6 +326,13 @@ public sealed partial class EditMapScene
         _ => "선택",
     };
 
+    private static string ToolInstruction(MapEditorTool tool) => tool switch
+    {
+        MapEditorTool.Paint => "좌클릭 드래그: 지형 변경",
+        MapEditorTool.Facility => "좌클릭: 시설물 명령",
+        _ => "좌클릭: 타일 선택",
+    };
+
     private static StyleBoxFlat WorkspaceBarStyle()
     {
         var style = GeneralWorkspaceStyle.SectionBox();

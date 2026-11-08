@@ -221,7 +221,8 @@ public sealed partial class EditMapScene
 
     private void RefreshVisibleTerrain()
     {
-        var aspect = Mathf.Max(0.5f, Size.X / Mathf.Max(1f, Size.Y));
+        var viewportSize = _mapViewportContainer?.Size ?? Size;
+        var aspect = Mathf.Max(0.5f, viewportSize.X / Mathf.Max(1f, viewportSize.Y));
         var spanX = Mathf.CeilToInt(_viewSize * aspect / (3f * _mapView.HexWorldSize)) + 5;
         var spanY = Mathf.CeilToInt(_viewSize * 0.75f / _mapView.HexWorldSize) + 5;
         var required = new HashSet<Vector2I>();
@@ -354,10 +355,17 @@ public sealed partial class EditMapScene
     {
         if (input is InputEventMouseButton button)
         {
+            if (_paintMode && button.ButtonIndex == MouseButton.Left && !button.Pressed)
+            {
+                EndPaintStroke();
+                AcceptEvent();
+                return;
+            }
+            if (!MapViewportContains(button.Position)) return;
+            var mapPosition = ToMapViewportPosition(button.Position);
             if (_paintMode && button.ButtonIndex == MouseButton.Left)
             {
-                if (button.Pressed) BeginPaintStroke(button.Position);
-                else EndPaintStroke();
+                BeginPaintStroke(button.Position);
                 AcceptEvent();
                 return;
             }
@@ -366,21 +374,22 @@ public sealed partial class EditMapScene
                 _viewSize = Mathf.Clamp(_viewSize * (button.ButtonIndex == MouseButton.WheelUp ? 0.83f : 1.2f), 7f, 85f);
                 PositionCamera();
                 RefreshVisibleTerrain();
+                RefreshWorkspaceInformation();
                 AcceptEvent();
             }
             else if (button.ButtonIndex is MouseButton.Left or MouseButton.Middle)
             {
                 if (button.Pressed)
                 {
-                    _pointerDown = button.Position;
-                    _dragLast = button.Position;
+                    _pointerDown = mapPosition;
+                    _dragLast = mapPosition;
                     _panningMap = true;
                 }
                 else
                 {
                     _panningMap = false;
-                    if (button.ButtonIndex == MouseButton.Left && button.Position.DistanceTo(_pointerDown) < 5f)
-                        Select3DTile(button.Position);
+                    if (button.ButtonIndex == MouseButton.Left && mapPosition.DistanceTo(_pointerDown) < 5f)
+                        Select3DTile(mapPosition, button.Position);
                 }
                 AcceptEvent();
             }
@@ -392,21 +401,52 @@ public sealed partial class EditMapScene
         }
         else if (input is InputEventMouseMotion motion && _panningMap)
         {
-            PanMap(_dragLast, motion.Position);
-            _dragLast = motion.Position;
+            var mapPosition = ToMapViewportPosition(motion.Position);
+            PanMap(_dragLast, mapPosition);
+            _dragLast = mapPosition;
             AcceptEvent();
         }
+        else if (input is InputEventMouseMotion hoverMotion && MapViewportContains(hoverMotion.Position))
+            UpdateMapHover(ToMapViewportPosition(hoverMotion.Position));
     }
 
-    private void Select3DTile(Vector2 screen)
+    private Vector2 ToMapViewportPosition(Vector2 scenePosition)
+    {
+        var canvasPosition = GetGlobalTransformWithCanvas() * scenePosition;
+        return _mapViewportContainer.GetGlobalTransformWithCanvas().AffineInverse() * canvasPosition;
+    }
+
+    private bool MapViewportContains(Vector2 scenePosition)
+    {
+        var canvasPosition = GetGlobalTransformWithCanvas() * scenePosition;
+        return _mapViewportContainer.GetGlobalRect().HasPoint(canvasPosition);
+    }
+
+    private Vector2I? TileAtMapPosition(Vector2 screen)
     {
         var origin = _mapCamera.ProjectRayOrigin(screen);
         var direction = _mapCamera.ProjectRayNormal(screen);
-        if (Mathf.Abs(direction.Y) < 0.001f) return;
+        if (Mathf.Abs(direction.Y) < 0.001f) return null;
         var world = origin + direction * ((_mapView.TileTopY - origin.Y) / direction.Y);
         var tile = Offset(_mapView.WorldToHex(world));
-        if (tile.X < 0 || tile.X >= _width || tile.Y < 0 || tile.Y >= _height) return;
-        ShowEditorPalette(tile, screen);
+        return tile.X < 0 || tile.X >= _width || tile.Y < 0 || tile.Y >= _height ? null : tile;
+    }
+
+    private void Select3DTile(Vector2 screen, Vector2? palettePosition = null)
+    {
+        if (TileAtMapPosition(screen) is not { } tile) return;
+        ShowEditorPalette(tile, palettePosition ?? screen);
+    }
+
+    private void UpdateMapHover(Vector2 screen)
+    {
+        if (TileAtMapPosition(screen) is not { } tile)
+        {
+            _tileInfo.Text = $"{ToolName(_activeTool)} · 가운데 드래그/WASD: 이동 · 휠: 확대/축소";
+            return;
+        }
+        _tileInfo.Text = $"좌표 {tile.X}, {tile.Y}  |  {Terrain[_rows[tile.Y][tile.X]].Name}  |  "
+            + $"{ToolName(_activeTool)}  |  {ToolInstruction(_activeTool)}";
     }
 
     private void ShowSelectedTile(Vector2I tile)

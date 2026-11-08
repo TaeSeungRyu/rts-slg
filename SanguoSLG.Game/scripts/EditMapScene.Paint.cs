@@ -59,12 +59,8 @@ public sealed partial class EditMapScene
     {
         if (_mapViewport is not null)
         {
-            var origin = _mapCamera.ProjectRayOrigin(screen);
-            var ray = _mapCamera.ProjectRayNormal(screen);
-            if (Mathf.Abs(ray.Y) < 0.001f) return null;
-            var world = origin + ray * ((_mapView.TileTopY - origin.Y) / ray.Y);
-            var tile = Offset(_mapView.WorldToHex(world));
-            return Inside(tile) ? tile : null;
+            if (!MapViewportContains(screen)) return null;
+            return TileAtMapPosition(ToMapViewportPosition(screen));
         }
         var point = (screen - _pan) / _scale;
         var column = Mathf.RoundToInt(point.X / StepX);

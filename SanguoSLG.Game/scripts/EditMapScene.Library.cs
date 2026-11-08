@@ -174,6 +174,7 @@ public sealed partial class EditMapScene
         RestoreDraft(preset);
         _draftChanged = false;
         if (_saveDraftButton is not null) _saveDraftButton.Text = "맵 저장";
+        RefreshWorkspaceInformation();
         CloseMapLibrary();
         CallDeferred(nameof(FitMap));
     }

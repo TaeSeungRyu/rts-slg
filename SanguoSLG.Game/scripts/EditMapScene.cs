@@ -472,12 +472,14 @@ public sealed partial class EditMapScene : Control
             && _rows.Any(row => row.Contains('R')) && _rows.Any(row => row.Contains('D'))
             && _rows.Any(row => row.Contains('F')) && _rows.Any(row => row.Contains('H'))
             && _west >= 97.72 && _east <= 133
-            && _terrainButtons.Count == Terrain.Count + 1 && _terrainButtons[0].ButtonPressed
-            && FindChild("TerrainFilterPadding", true, false) is MarginContainer filterPaddingQa
-            && filterPaddingQa.GetThemeConstant("margin_bottom") >= 10
-            && FindChild("TerrainPaintPanel", true, false) is PanelContainer paintPanel
-            && paintPanel.FindChild("TerrainPaintToggle", true, false) is Button
-            && paintPanel.FindChild("TerrainPaintKind", true, false) is OptionButton
+            && _terrainButtons.Count == Terrain.Count && _terrainPaletteButtons.Count == Terrain.Count
+            && _terrainPaletteButtons[_paintCode].ButtonPressed
+            && FindChild("MapEditorHeader", true, false) is PanelContainer
+            && FindChild("MapEditorSidebar", true, false) is PanelContainer
+            && FindChild("TerrainPalette", true, false) is GridContainer paletteQa
+            && paletteQa.Columns == 2
+            && FindChild("MapWorkspaceBar", true, false) is PanelContainer
+            && FindChild("MapWorkspaceStatus", true, false) is PanelContainer
             && _landRoutes.Count >= 10 && _landRoutes.All(route => route.Length >= 2
                 && route.All(tile => tile.X >= 0 && tile.X < _width && tile.Y >= 0 && tile.Y < _height
                     && "PFMDRB".Contains(_rows[tile.Y][tile.X])))
@@ -493,7 +495,7 @@ public sealed partial class EditMapScene : Control
             && libraryButtons.Contains("새 지도 추가 · 기본 지도에서 시작");
         CloseMapLibrary();
         _terrainButtons.First(button => button.Text == "산1").EmitSignal(Button.SignalName.Pressed);
-        valid &= _terrainFilter == 'M';
+        valid &= _paintCode == 'M' && _terrainPaletteButtons['M'].ButtonPressed;
         valid &= new[] { "숲1", "숲2", "숲3", "산1", "산2", "산3", "험산1", "험산2", "험산3" }
             .All(name => _terrainButtons.Any(button => button.Text == name));
         valid &= new[] { 'F', 'f', 'g', 'M', 'm', 'n', 'H', 'h', 'j' }
