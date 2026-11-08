@@ -19,6 +19,7 @@ public sealed partial class ScenarioEditorScene : Control
     private int _selectedCityId;
     private int _selectedGeneralCityId;
     private int _selectedDescriptionFactionId;
+    private string _factionSearch = "";
     private string _generalSearch = "";
     private static readonly Color[] FactionPalette = Enumerable.Range(0, 60)
         .Select(index => Color.FromHsv((index % 12) / 12f, 0.48f + (index / 12) * 0.105f,
@@ -501,33 +502,62 @@ public sealed partial class ScenarioEditorScene : Control
             ShowFactions();
         };
         listHeader.AddChild(add);
+        var factionSearch = new LineEdit
+        {
+            Name = "FactionSearchEditor",
+            Text = _factionSearch,
+            PlaceholderText = "세력 이름 검색",
+            CustomMinimumSize = new Vector2(0, 36),
+            SizeFlagsHorizontal = SizeFlags.ExpandFill,
+        };
+        StyleScenarioInput(factionSearch);
+        NativeTextInputDialog.Attach(factionSearch);
+        listPanel.AddChild(factionSearch);
         var factionScroll = new ScrollContainer { SizeFlagsVertical = SizeFlags.ExpandFill };
         GeneralWorkspaceStyle.StyleScrollContainer(factionScroll);
         listPanel.AddChild(factionScroll);
         var factionList = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        factionScroll.AddChild(factionList);
-        foreach (var entry in _draft.Factions)
+        factionList.AddThemeConstantOverride("separation", 6);
+        var factionListMargin = new MarginContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        factionListMargin.AddThemeConstantOverride("margin_right", 12);
+        factionListMargin.AddThemeConstantOverride("margin_bottom", 4);
+        factionListMargin.AddChild(factionList);
+        factionScroll.AddChild(factionListMargin);
+        void FillFactionList()
         {
-            var rulerName = generals.FirstOrDefault(general => general.Id.Value == entry.RulerGeneralId)?.Name ?? "군주 미지정";
-            var status = entry.Hidden ? $"{Math.Max(_draft.StartYear, entry.ArrivalYear)}년 등장"
-                : entry.Playable ? "시작 가능" : "시작 불가";
-            var item = new Button
+            foreach (var child in factionList.GetChildren())
             {
-                Text = $"{entry.Name}\n{rulerName} · {status}",
-                Alignment = HorizontalAlignment.Left,
-                CustomMinimumSize = new Vector2(0, 58),
-                ToggleMode = true,
-                ButtonPressed = entry.Id == _selectedDescriptionFactionId,
-            };
-            item.Pressed += () => { _selectedDescriptionFactionId = entry.Id; ShowFactions(); };
-            factionList.AddChild(item);
+                factionList.RemoveChild(child);
+                child.QueueFree();
+            }
+            var visibleFactions = _draft.Factions.Where(entry => string.IsNullOrWhiteSpace(_factionSearch)
+                || entry.Name.Contains(_factionSearch, StringComparison.OrdinalIgnoreCase)).ToArray();
+            foreach (var entry in visibleFactions)
+            {
+                var rulerName = generals.FirstOrDefault(general => general.Id.Value == entry.RulerGeneralId)?.Name ?? "군주 미지정";
+                var status = entry.Hidden ? $"{Math.Max(_draft.StartYear, entry.ArrivalYear)}년 등장"
+                    : entry.Playable ? "시작 가능" : "시작 불가";
+                var item = new Button
+                {
+                    Text = $"{entry.Name}\n{rulerName} · {status}",
+                    Alignment = HorizontalAlignment.Left,
+                    CustomMinimumSize = new Vector2(0, 58),
+                    ToggleMode = true,
+                    ButtonPressed = entry.Id == _selectedDescriptionFactionId,
+                };
+                item.Pressed += () => { _selectedDescriptionFactionId = entry.Id; ShowFactions(); };
+                factionList.AddChild(item);
+            }
+            if (visibleFactions.Length == 0)
+                factionList.AddChild(new Label { Text = _draft.Factions.Count == 0
+                        ? "등록된 세력이 없습니다.\n세력을 추가하여 시작하세요."
+                        : "검색 결과가 없습니다.",
+                    HorizontalAlignment = HorizontalAlignment.Center, CustomMinimumSize = new Vector2(0, 52) });
         }
+        factionSearch.TextChanged += value => { _factionSearch = value; FillFactionList(); };
+        FillFactionList();
         if (_draft.Factions.Count == 0)
-        {
-            factionList.AddChild(new Label { Text = "등록된 세력이 없습니다.\n세력을 추가하여 시작하세요.",
-                HorizontalAlignment = HorizontalAlignment.Center });
             return;
-        }
 
         var faction = _draft.Factions.First(entry => entry.Id == _selectedDescriptionFactionId);
         var detailHost = new VBoxContainer();
@@ -1208,6 +1238,16 @@ public sealed partial class ScenarioEditorScene : Control
             var hiddenFactionUi = _body.FindChildren("*", "OptionButton", true, false)
                 .OfType<OptionButton>().Any(choice => choice.ItemCount == 2
                     && choice.GetItemText(1) == "지정 연도에 등장");
+            var factionSearchField = _body.FindChildren("FactionSearchEditor", "LineEdit", true, false)
+                .OfType<LineEdit>().FirstOrDefault();
+            var factionSearchSnapshot = SnapshotDraft();
+            if (factionSearchField is not null)
+                NativeTextInputDialog.ApplyResult(factionSearchField, "존재하지않는세력검색어");
+            var factionSearchUi = factionSearchField is not null
+                && SnapshotDraft() == factionSearchSnapshot
+                && _body.FindChildren("*", "Label", true, false).OfType<Label>()
+                    .Any(label => label.Text == "검색 결과가 없습니다.");
+            if (factionSearchField is not null) NativeTextInputDialog.ApplyResult(factionSearchField, "");
             ShowCities();
             var cityMapUi = _body.GetChildren().OfType<ScenarioSiteMap>().Any();
             ShowGenerals();
@@ -1285,7 +1325,7 @@ public sealed partial class ScenarioEditorScene : Control
                 _draft = originalDraft;
                 RefreshList();
                 var passed = bundled.Length == 6 && _list.ItemCount >= 6
-                    && savedEditRoundTrip && factionDescriptionRoundTrip && newScenarioAtBottom && factionColorUi && hiddenFactionUi && cityMapUi && generalSearchUi && generalCityListUi
+                    && savedEditRoundTrip && factionDescriptionRoundTrip && newScenarioAtBottom && factionColorUi && hiddenFactionUi && factionSearchUi && cityMapUi && generalSearchUi && generalCityListUi
                     && generalCrudPassed && generalPlacementModalPassed && forceTabRemoved
                     && cityForceUi && forceCrudPassed
                     && errors.Count == 0 && mapSwitchPassed && currentMapSelected
@@ -1294,7 +1334,7 @@ public sealed partial class ScenarioEditorScene : Control
                     && multilineDescription && restored.Description == descriptionWithLines
                     && restored.MapRevision == _draft.MapRevision
                     && restored.Cities.Count == _draft.Cities.Count;
-                if (!passed) GD.Print($"[scenario-editor-qa-detail] history={historicalUsesRoot} legacy={legacyRebased} switch={mapSwitchPassed} placement={factionPlacementCompatible} root={currentMapSelected} generals={generalCrudPassed} generalModal={generalPlacementModalPassed} forces={forceCrudPassed} cityUi={cityForceUi} factionUi={factionColorUi && hiddenFactionUi} cityMapUi={cityMapUi} generalUi={generalSearchUi && generalCityListUi} errors={errors.Count}");
+                if (!passed) GD.Print($"[scenario-editor-qa-detail] history={historicalUsesRoot} legacy={legacyRebased} switch={mapSwitchPassed} placement={factionPlacementCompatible} root={currentMapSelected} generals={generalCrudPassed} generalModal={generalPlacementModalPassed} forces={forceCrudPassed} cityUi={cityForceUi} factionUi={factionColorUi && hiddenFactionUi} factionSearch={factionSearchUi} cityMapUi={cityMapUi} generalUi={generalSearchUi && generalCityListUi} errors={errors.Count}");
                 GD.Print($"[scenario-editor-qa] passed={passed} maps={_maps.Count} cities={_draft.Cities.Count} errors={errors.Count}");
                 GetTree().Quit(passed ? 0 : 1);
             }
