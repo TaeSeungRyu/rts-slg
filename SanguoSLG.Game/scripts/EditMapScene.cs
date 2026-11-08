@@ -110,7 +110,7 @@ public sealed partial class EditMapScene : Control
         SetAnchorsPreset(LayoutPreset.FullRect);
         MouseFilter = MouseFilterEnum.Stop;
         Build3DView();
-        BuildInterface();
+        BuildWorkspaceInterface();
         CallDeferred(nameof(FitMap));
         if (OS.GetCmdlineUserArgs().Contains("--editmapqa")) CallDeferred(nameof(RunQa));
         else CallDeferred(nameof(ShowMapLibrary));

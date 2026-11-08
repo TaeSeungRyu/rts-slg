@@ -6,6 +6,7 @@ namespace SanguoSLG.Game;
 public sealed partial class EditMapScene
 {
     private SubViewport? _mapViewport;
+    private SubViewportContainer _mapViewportContainer = null!;
     private Camera3D _mapCamera = null!;
     private MapView3D _mapView = null!;
     private Node3D _visibleTerrain = null!;
@@ -78,21 +79,21 @@ public sealed partial class EditMapScene
 
     private void Build3DView()
     {
-        var container = new SubViewportContainer
+        _mapViewportContainer = new SubViewportContainer
         {
             Name = "MapPreview3D",
             Stretch = true,
             MouseFilter = MouseFilterEnum.Ignore,
         };
-        container.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
-        AddChild(container);
+        _mapViewportContainer.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+        AddChild(_mapViewportContainer);
         _mapViewport = new SubViewport
         {
             Size = new Vector2I(1280, 720),
             RenderTargetUpdateMode = SubViewport.UpdateMode.Always,
             TransparentBg = false,
         };
-        container.AddChild(_mapViewport);
+        _mapViewportContainer.AddChild(_mapViewport);
 
         var world = new Node3D();
         _mapViewport.AddChild(world);
