@@ -1,6 +1,7 @@
 using Godot;
 using SanguoSLG.Core.Data;
 using SanguoSLG.Core.Domain;
+using System.Diagnostics;
 
 namespace SanguoSLG.Game;
 
@@ -59,12 +60,15 @@ public sealed partial class ScenarioEditorScene
         if (image.GetWidth() > 96)
             image.Resize(96, Math.Max(1, (int)Math.Round(image.GetHeight() * 96d / image.GetWidth())), Image.Interpolation.Lanczos);
         var texture = ImageTexture.CreateFromImage(image);
+        if (_generalPortraitIcons.Count >= 160)
+            _generalPortraitIcons.Remove(_generalPortraitIcons.Keys.First());
         _generalPortraitIcons[physicalPath] = texture;
         return texture;
     }
 
     private void OpenGeneralPlacementDialog(ScenarioCityEntry city)
     {
+        var modalTimer = Stopwatch.StartNew();
         CloseGeneralPlacementDialog();
         _generalPlacementSelection.Clear();
         var map = CurrentMap().Preset;
@@ -135,18 +139,64 @@ public sealed partial class ScenarioEditorScene
         body.AddChild(empty);
         var selectionLabel = new Label { Text = "선택 0명", SizeFlagsHorizontal = SizeFlags.ExpandFill,
             VerticalAlignment = VerticalAlignment.Center };
+        var resultLabel = new Label { Text = "검색 결과 0명", SizeFlagsHorizontal = SizeFlags.ExpandFill,
+            VerticalAlignment = VerticalAlignment.Center };
+        var pageLabel = new Label { Text = "1 / 1", VerticalAlignment = VerticalAlignment.Center };
+        var pageButtons = new HBoxContainer();
+        pageButtons.AddThemeConstantOverride("separation", 4);
+        var pageSizeChoice = new OptionButton { CustomMinimumSize = new Vector2(100, 34) };
+        pageSizeChoice.AddItem("20명", 20);
+        pageSizeChoice.AddItem("50명", 50);
+        GeneralWorkspaceStyle.StyleOptionButton(pageSizeChoice, 120);
+        var currentPage = 0;
+        var pageSize = 20;
+        var pageCount = 1;
 
-        void RefreshRows()
+        void RefreshRows(bool resetPage = false)
         {
-            PopulateGeneralPlacementTree(tree, city, search.Text, factionFilter.GetSelectedId(),
-                stateFilter.GetSelectedId(), sort.GetSelectedId());
+            if (resetPage) currentPage = 0;
+            var metrics = PopulateGeneralPlacementTree(tree, city, search.Text, factionFilter.GetSelectedId(),
+                stateFilter.GetSelectedId(), sort.GetSelectedId(), currentPage, pageSize);
+            pageCount = Math.Max(1, (int)Math.Ceiling(metrics.Total / (double)pageSize));
+            currentPage = Math.Clamp(currentPage, 0, pageCount - 1);
+            if (metrics.Total > 0 && tree.GetRoot()?.GetChildCount() == 0)
+                metrics = PopulateGeneralPlacementTree(tree, city, search.Text, factionFilter.GetSelectedId(),
+                    stateFilter.GetSelectedId(), sort.GetSelectedId(), currentPage, pageSize);
             empty.Visible = tree.GetRoot()?.GetChildCount() == 0;
             selectionLabel.Text = $"선택 {_generalPlacementSelection.Count}명";
+            resultLabel.Text = $"검색 결과 {metrics.Total:N0}명";
+            pageLabel.Text = $"{currentPage + 1} / {pageCount}";
+            foreach (var child in pageButtons.GetChildren())
+            {
+                pageButtons.RemoveChild(child);
+                child.QueueFree();
+            }
+            void AddPageButton(string text, int target, bool disabled = false)
+            {
+                var button = new Button { Text = text, Disabled = disabled, CustomMinimumSize = new Vector2(42, 30) };
+                button.Pressed += () => { currentPage = Math.Clamp(target, 0, pageCount - 1); RefreshRows(); };
+                pageButtons.AddChild(button);
+            }
+            AddPageButton("처음", 0, currentPage == 0);
+            AddPageButton("이전", currentPage - 1, currentPage == 0);
+            var firstPage = Math.Max(0, Math.Min(currentPage - 2, pageCount - 5));
+            for (var page = firstPage; page < Math.Min(pageCount, firstPage + 5); page++)
+            {
+                var target = page;
+                var button = new Button { Text = (page + 1).ToString(), ToggleMode = true,
+                    ButtonPressed = page == currentPage, CustomMinimumSize = new Vector2(32, 30) };
+                button.Pressed += () => { currentPage = target; RefreshRows(); };
+                pageButtons.AddChild(button);
+            }
+            AddPageButton("다음", currentPage + 1, currentPage >= pageCount - 1);
+            AddPageButton("마지막", pageCount - 1, currentPage >= pageCount - 1);
+            GD.Print($"[scenario-general-placement-render] total={metrics.Total} page={currentPage + 1}/{pageCount} data={metrics.DataMs:F1}ms filter={metrics.FilterMs:F1}ms rows={metrics.RowMs:F1}ms portraits={metrics.PortraitMs:F1}ms");
         }
-        search.TextChanged += _ => RefreshRows();
-        factionFilter.ItemSelected += _ => RefreshRows();
-        stateFilter.ItemSelected += _ => RefreshRows();
-        sort.ItemSelected += _ => RefreshRows();
+        search.TextChanged += _ => RefreshRows(true);
+        factionFilter.ItemSelected += _ => RefreshRows(true);
+        stateFilter.ItemSelected += _ => RefreshRows(true);
+        sort.ItemSelected += _ => RefreshRows(true);
+        pageSizeChoice.ItemSelected += _ => { pageSize = pageSizeChoice.GetSelectedId(); RefreshRows(true); };
         tree.ItemEdited += () =>
         {
             var item = tree.GetEdited();
@@ -156,9 +206,14 @@ public sealed partial class ScenarioEditorScene
             else _generalPlacementSelection.Remove(id);
             selectionLabel.Text = $"선택 {_generalPlacementSelection.Count}명";
         };
-        RefreshRows();
-
         body.AddChild(new HSeparator());
+        var paging = new HBoxContainer();
+        paging.AddThemeConstantOverride("separation", 8);
+        body.AddChild(paging);
+        paging.AddChild(resultLabel);
+        paging.AddChild(pageSizeChoice);
+        paging.AddChild(pageButtons);
+        paging.AddChild(pageLabel);
         var footer = new HBoxContainer();
         footer.AddThemeConstantOverride("separation", 10);
         body.AddChild(footer);
@@ -172,6 +227,8 @@ public sealed partial class ScenarioEditorScene
         var confirm = new Button { Text = "선택한 장수 배치", CustomMinimumSize = new Vector2(180, 38) };
         confirm.Pressed += () => ConfirmGeneralPlacement(city, selectionLabel);
         footer.AddChild(confirm);
+        RefreshRows();
+        GD.Print($"[scenario-general-placement-open] generals={_source.Generals.Count} elapsed={modalTimer.Elapsed.TotalMilliseconds:F1}ms cachedPortraits={_generalPortraitIcons.Count}");
         close.GrabFocus();
     }
 
@@ -206,14 +263,20 @@ public sealed partial class ScenarioEditorScene
         return tree;
     }
 
-    private void PopulateGeneralPlacementTree(Tree tree, ScenarioCityEntry city, string query,
-        int factionFilter, int stateFilter, int sort)
+    private readonly record struct PlacementRenderMetrics(int Total, double DataMs, double FilterMs,
+        double RowMs, double PortraitMs);
+
+    private PlacementRenderMetrics PopulateGeneralPlacementTree(Tree tree, ScenarioCityEntry city, string query,
+        int factionFilter, int stateFilter, int sort, int page = 0, int pageSize = 20)
     {
+        var timer = Stopwatch.StartNew();
         tree.Clear();
         var root = tree.CreateItem();
         var map = CurrentMap().Preset;
         var factionNames = _draft.Factions.ToDictionary(entry => entry.Id, entry => entry.Name);
         var postings = _draft.Generals.ToDictionary(entry => entry.GeneralId);
+        var dataMs = timer.Elapsed.TotalMilliseconds;
+        timer.Restart();
         IEnumerable<General> result = _source.Generals.Where(general =>
             (string.IsNullOrWhiteSpace(query) || general.Name.Contains(query, StringComparison.OrdinalIgnoreCase)
                 || general.Id.Value.ToString().Contains(query, StringComparison.OrdinalIgnoreCase)));
@@ -234,7 +297,11 @@ public sealed partial class ScenarioEditorScene
             4 => result.OrderByDescending(general => general.Politics).ThenBy(general => general.Name),
             _ => result.OrderBy(general => general.Id.Value),
         };
-        foreach (var general in result)
+        var filtered = result.ToArray();
+        var filterMs = timer.Elapsed.TotalMilliseconds;
+        timer.Restart();
+        double portraitMs = 0;
+        foreach (var general in filtered.Skip(Math.Max(0, page) * pageSize).Take(pageSize))
         {
             postings.TryGetValue(general.Id.Value, out var posting);
             var eligible = posting is null || posting.SiteId is null && posting.FactionId == city.OwnerFactionId;
@@ -247,7 +314,9 @@ public sealed partial class ScenarioEditorScene
             row.SetEditable(0, eligible);
             row.SetChecked(0, eligible && _generalPlacementSelection.Contains(general.Id.Value));
             row.SetText(1, $"{general.Name}  #{general.Id.Value}");
+            var portraitTimer = Stopwatch.StartNew();
             var portrait = LoadGeneralPortrait(general);
+            portraitMs += portraitTimer.Elapsed.TotalMilliseconds;
             if (portrait is not null) { row.SetIcon(1, portrait); row.SetIconMaxWidth(1, 38); }
             row.SetText(2, posting is null ? "미소속" : factionNames.GetValueOrDefault(posting.FactionId, "알 수 없음"));
             row.SetText(3, general.Might.ToString());
@@ -257,6 +326,8 @@ public sealed partial class ScenarioEditorScene
             if (!eligible)
                 for (var column = 0; column < tree.Columns; column++) row.SetCustomColor(column, new Color("8c8175"));
         }
+        return new PlacementRenderMetrics(filtered.Length, dataMs, filterMs,
+            Math.Max(0, timer.Elapsed.TotalMilliseconds - portraitMs), portraitMs);
     }
 
     private void ConfirmGeneralPlacement(ScenarioCityEntry city, Label feedback)
