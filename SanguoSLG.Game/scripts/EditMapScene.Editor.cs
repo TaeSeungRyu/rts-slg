@@ -557,6 +557,8 @@ public sealed partial class EditMapScene
 
     private VBoxContainer OpenEditorModal(string title)
     {
+        CancelSiteDrag();
+        ClearSiteHover();
         CloseEditorModal();
         var backdrop = new ColorRect
         {

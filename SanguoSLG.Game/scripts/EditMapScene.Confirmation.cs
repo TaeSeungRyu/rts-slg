@@ -31,6 +31,8 @@ public sealed partial class EditMapScene
         IReadOnlyList<(string Text, bool Primary, Action Action)> actions)
     {
         if (_mapConfirmation is not null) return;
+        CancelSiteDrag();
+        ClearSiteHover();
         var overlay = new ColorRect
         {
             Name = "MapConfirmationOverlay",

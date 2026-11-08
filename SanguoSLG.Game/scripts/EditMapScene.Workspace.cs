@@ -283,6 +283,8 @@ public sealed partial class EditMapScene
     private void SetEditorTool(MapEditorTool tool)
     {
         if (_painting) EndPaintStroke();
+        CancelSiteDrag();
+        ClearSiteHover();
         _activeTool = tool;
         _paintMode = tool == MapEditorTool.Paint;
         foreach (var (kind, button) in _toolButtons) button.ButtonPressed = kind == tool;

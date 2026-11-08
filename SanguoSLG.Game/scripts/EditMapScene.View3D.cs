@@ -86,6 +86,7 @@ public sealed partial class EditMapScene
             MouseFilter = MouseFilterEnum.Ignore,
         };
         _mapViewportContainer.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+        _mapViewportContainer.MouseExited += ClearSiteHover;
         AddChild(_mapViewportContainer);
         _mapViewport = new SubViewport
         {
@@ -461,13 +462,16 @@ public sealed partial class EditMapScene
 
     private void UpdateMapHover(Vector2 screen)
     {
+        UpdateSiteHover(screen);
         if (TileAtMapPosition(screen) is not { } tile)
         {
             _tileInfo.Text = $"{ToolName(_activeTool)} · 가운데 드래그/WASD: 이동 · 휠: 확대/축소";
             return;
         }
-        _tileInfo.Text = $"좌표 {tile.X}, {tile.Y}  |  {Terrain[_rows[tile.Y][tile.X]].Name}  |  "
-            + $"{ToolName(_activeTool)}  |  {ToolInstruction(_activeTool)}";
+        var site = SiteAt(tile);
+        _tileInfo.Text = $"좌표 {tile.X}, {tile.Y}  |  {Terrain[_rows[tile.Y][tile.X]].Name}"
+            + (site is null ? "" : $"  |  {site.Name}")
+            + $"  |  {ToolName(_activeTool)}  |  {ToolInstruction(_activeTool)}";
     }
 
     private void ShowSelectedTile(Vector2I tile)

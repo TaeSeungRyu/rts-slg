@@ -14,14 +14,47 @@ public sealed partial class EditMapScene
     private bool _siteDragDestinationValid;
     private string _siteDragReason = "";
     private Node3D? _siteDragPreview;
+    private MapEditorSite? _hoveredMovableSite;
+    private Node3D? _siteHoverPreview;
+
+    private static bool SupportsSiteMove(MapEditorSite site)
+        => site.Kind is "city" or "port" or "gate" or "ruin" or "facility" or "landmark";
+
+    private void UpdateSiteHover(Vector2 mapPosition)
+    {
+        if (_activeTool != MapEditorTool.Facility || _siteDragging || _editorModal is not null
+            || _mapConfirmation is not null)
+        {
+            ClearSiteHover();
+            return;
+        }
+        var site = TileAtMapPosition(mapPosition) is { } tile ? SiteAt(tile) : null;
+        if (site is null || !SupportsSiteMove(site))
+        {
+            ClearSiteHover();
+            return;
+        }
+        if (_hoveredMovableSite?.Id == site.Id)
+        {
+            SetMapCursor(DisplayServer.CursorShape.Move);
+            return;
+        }
+        ClearSiteHover();
+        _hoveredMovableSite = site;
+        _siteHoverPreview = BuildFootprintOverlay(site, new Color(0.94f, 0.76f, 0.30f, 0.30f),
+            "SiteHoverPreview", 0.64f, 0.10f);
+        SetMapCursor(DisplayServer.CursorShape.Move);
+    }
 
     private void BeginSitePointer(MapEditorSite site, Vector2I clickedTile, Vector2 mapPosition)
     {
         CancelSiteDrag();
+        ClearSiteHover();
         _sitePointerCandidate = site;
         _sitePointerTile = clickedTile;
         _sitePointerDown = mapPosition;
         _siteDragging = false;
+        SetMapCursor(DisplayServer.CursorShape.Move);
         _tileInfo.Text = $"{site.Name} 선택 · 드래그하면 시설물을 이동합니다.";
     }
 
@@ -34,6 +67,7 @@ public sealed partial class EditMapScene
             _siteDragDestination = null;
             _siteDragDestinationValid = false;
             _siteDragReason = "지도 범위를 벗어났습니다.";
+            SetMapCursor(DisplayServer.CursorShape.Forbidden);
             _tileInfo.Text = $"이동 불가 · {_siteDragReason}";
             return;
         }
@@ -51,6 +85,8 @@ public sealed partial class EditMapScene
         _siteDragDestinationValid = ValidateSiteMove(site, candidate, out _siteDragReason);
         _siteDragDestination = candidate;
         ShowSiteDragPreview(candidate, _siteDragDestinationValid);
+        SetMapCursor(_siteDragDestinationValid
+            ? DisplayServer.CursorShape.Move : DisplayServer.CursorShape.Forbidden);
         _tileInfo.Text = _siteDragDestinationValid
             ? $"이동 가능 · {site.Name} → 좌표 {anchor.X}, {anchor.Y} · 놓아서 확정"
             : $"이동 불가 · {_siteDragReason}";
@@ -95,7 +131,7 @@ public sealed partial class EditMapScene
 
     private bool ValidateSiteMove(MapEditorSite original, MapEditorSite candidate, out string reason)
     {
-        if (!new[] { "city", "port", "gate", "ruin", "facility", "landmark" }.Contains(original.Kind))
+        if (!SupportsSiteMove(original))
         {
             reason = "이 시설물 유형은 안전한 이동 규칙이 없습니다.";
             return false;
@@ -144,17 +180,22 @@ public sealed partial class EditMapScene
     private void ShowSiteDragPreview(MapEditorSite candidate, bool valid)
     {
         ClearSiteDragPreview();
-        _siteDragPreview = new Node3D { Name = "SiteDragPreview" };
-        _visibleTerrain.AddChild(_siteDragPreview);
         var color = valid ? new Color(0.93f, 0.75f, 0.28f, 0.72f) : new Color(0.92f, 0.20f, 0.14f, 0.76f);
-        foreach (var cell in Footprint(candidate).Where(Inside))
+        _siteDragPreview = BuildFootprintOverlay(candidate, color, "SiteDragPreview", 0.58f, 0.12f);
+    }
+
+    private Node3D BuildFootprintOverlay(MapEditorSite site, Color color, string name, float radius, float height)
+    {
+        var overlay = new Node3D { Name = name };
+        _visibleTerrain.AddChild(overlay);
+        foreach (var cell in Footprint(site).Where(Inside))
         {
             var marker = new MeshInstance3D
             {
                 Mesh = new CylinderMesh
                 {
-                    TopRadius = 0.58f,
-                    BottomRadius = 0.58f,
+                    TopRadius = radius,
+                    BottomRadius = radius,
                     Height = 0.018f,
                     RadialSegments = 6,
                 },
@@ -165,10 +206,11 @@ public sealed partial class EditMapScene
                     ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded,
                     NoDepthTest = true,
                 },
-                Position = _mapView.HexToWorld(Axial(cell)) + new Vector3(0f, _mapView.TileTopY + 0.12f, 0f),
+                Position = _mapView.HexToWorld(Axial(cell)) + new Vector3(0f, _mapView.TileTopY + height, 0f),
             };
-            _siteDragPreview.AddChild(marker);
+            overlay.AddChild(marker);
         }
+        return overlay;
     }
 
     private void ClearSiteDragPreview()
@@ -185,6 +227,20 @@ public sealed partial class EditMapScene
         _siteDragDestination = null;
         _siteDragDestinationValid = false;
         _siteDragReason = "";
+        SetMapCursor(DisplayServer.CursorShape.Arrow);
+    }
+
+    private void ClearSiteHover()
+    {
+        _siteHoverPreview?.QueueFree();
+        _siteHoverPreview = null;
+        _hoveredMovableSite = null;
+        if (!_siteDragging) SetMapCursor(DisplayServer.CursorShape.Arrow);
+    }
+
+    private static void SetMapCursor(DisplayServer.CursorShape shape)
+    {
+        if (DisplayServer.CursorGetShape() != shape) DisplayServer.CursorSetShape(shape);
     }
 
     public override void _Input(InputEvent input)

@@ -642,6 +642,15 @@ public sealed partial class EditMapScene : Control
             valid &= invalidInlandMove is not null
                 && !ValidateSiteMove(qaPort, invalidInlandMove, out var portMoveReason)
                 && portMoveReason.Contains("입구 방향");
+            SetEditorTool(MapEditorTool.Facility);
+            _viewCenter = new Vector2I(qaPort.Column, qaPort.Row);
+            _cameraTarget = _mapView.HexToWorld(Axial(_viewCenter));
+            PositionCamera();
+            RefreshVisibleTerrain();
+            UpdateSiteHover(_mapCamera.UnprojectPosition(_mapView.HexToWorld(Axial(_viewCenter))));
+            valid &= _hoveredMovableSite?.Id == qaPort.Id && _siteHoverPreview is not null;
+            SetEditorTool(MapEditorTool.Select);
+            valid &= _hoveredMovableSite is null && _siteHoverPreview is null;
         }
         else valid = false;
         var portDraft = Enumerable.Range(0, _height)
