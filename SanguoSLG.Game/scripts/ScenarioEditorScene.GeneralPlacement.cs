@@ -132,12 +132,17 @@ public sealed partial class ScenarioEditorScene
         GeneralWorkspaceStyle.StyleOptionButton(sort, 220);
         filters.AddChild(sort);
 
-        var tree = BuildGeneralPlacementTree();
+        Label? selectionLabel = null;
+        var tree = BuildGeneralPlacementTree(() =>
+        {
+            if (selectionLabel is not null)
+                selectionLabel.Text = $"선택 {_generalPlacementSelection.Count}명";
+        });
         body.AddChild(tree);
         var empty = new Label { Visible = false, Text = "조건에 맞는 장수가 없습니다.",
             HorizontalAlignment = HorizontalAlignment.Center };
         body.AddChild(empty);
-        var selectionLabel = new Label { Text = "선택 0명", SizeFlagsHorizontal = SizeFlags.ExpandFill,
+        selectionLabel = new Label { Text = "선택 0명", SizeFlagsHorizontal = SizeFlags.ExpandFill,
             VerticalAlignment = VerticalAlignment.Center };
         var resultLabel = new Label { Text = "검색 결과 0명", SizeFlagsHorizontal = SizeFlags.ExpandFill,
             VerticalAlignment = VerticalAlignment.Center };
@@ -233,7 +238,7 @@ public sealed partial class ScenarioEditorScene
         close.GrabFocus();
     }
 
-    private static Tree BuildGeneralPlacementTree()
+    private Tree BuildGeneralPlacementTree(Action? selectionChanged = null)
     {
         var tree = new Tree
         {
@@ -277,7 +282,11 @@ public sealed partial class ScenarioEditorScene
             var row = tree.GetItemAtPosition(click.Position);
             if (row is null || !row.IsEditable(0) || tree.GetColumnAtPosition(click.Position) == 0) return;
             row.SetChecked(0, !row.IsChecked(0));
-            tree.EmitSignal(Tree.SignalName.ItemEdited);
+            var id = row.GetMetadata(0).AsInt32();
+            if (row.IsChecked(0)) _generalPlacementSelection.Add(id);
+            else _generalPlacementSelection.Remove(id);
+            ApplyGeneralPlacementRowState(row, true);
+            selectionChanged?.Invoke();
             tree.AcceptEvent();
         };
         tree.MouseExited += () =>

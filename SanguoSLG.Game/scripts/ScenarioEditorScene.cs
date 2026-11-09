@@ -451,20 +451,30 @@ public sealed partial class ScenarioEditorScene : Control
             ShowCities();
         };
         cityDetails.AddChild(owner);
-        var resources = new HBoxContainer();
+        var resources = new HBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        resources.AddThemeConstantOverride("separation", 10);
         cityDetails.AddChild(resources);
-        AddCompactNumber(resources, "금", city.Gold, 0, 10000000, value => UpdateCity(city.SiteId, c => c with { Gold = value }));
-        AddCompactNumber(resources, "군량", city.Provisions, 0, 10000000, value => UpdateCity(city.SiteId, c => c with { Provisions = value }));
-        resources.AddChild(new Label { Text = "성벽" });
-        resources.AddChild(new LineEdit
+        AddMetricNumber(resources, "금", city.Gold, 0, 10000000,
+            value => UpdateCity(city.SiteId, c => c with { Gold = value }));
+        AddMetricNumber(resources, "군량", city.Provisions, 0, 10000000,
+            value => UpdateCity(city.SiteId, c => c with { Provisions = value }));
+        var wallMetric = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        wallMetric.AddThemeConstantOverride("separation", 4);
+        wallMetric.AddChild(new Label { Text = "성벽" });
+        var wallField = new LineEdit
         {
             Name = "ScenarioWallReadOnly",
             Text = ScenarioWallDefaults.ForSite(site, _source.Balance).ToString("N0"),
             Editable = false,
-            CustomMinimumSize = new Vector2(100, 0),
+            CustomMinimumSize = new Vector2(0, 38),
+            SizeFlagsHorizontal = SizeFlags.ExpandFill,
             TooltipText = "거점 크기에 따라 시작 성벽이 자동으로 설정됩니다.",
-        });
-        AddCompactNumber(resources, "치안", city.Security, 0, 100, value => UpdateCity(city.SiteId, c => c with { Security = value }));
+        };
+        StyleScenarioInput(wallField);
+        wallMetric.AddChild(wallField);
+        resources.AddChild(wallMetric);
+        AddMetricNumber(resources, "치안", city.Security, 0, 100,
+            value => UpdateCity(city.SiteId, c => c with { Security = value }));
         if (city.OwnerFactionId > 0)
         {
             cityDetails.AddChild(new HSeparator());
@@ -485,8 +495,9 @@ public sealed partial class ScenarioEditorScene : Control
             SizeFlagsVertical = SizeFlags.ExpandFill };
         columns.AddThemeConstantOverride("separation", 14);
         _body.AddChild(columns);
-        var listPanel = new VBoxContainer { CustomMinimumSize = new Vector2(285, 520),
+        var listPanel = new VBoxContainer { CustomMinimumSize = new Vector2(285, 0),
             SizeFlagsVertical = SizeFlags.ExpandFill };
+        listPanel.AddThemeConstantOverride("separation", 10);
         columns.AddChild(listPanel);
         var listHeader = new HBoxContainer();
         listPanel.AddChild(listHeader);
@@ -544,7 +555,7 @@ public sealed partial class ScenarioEditorScene : Control
                 {
                     Text = $"{entry.Name}\n{rulerName} · {status}",
                     Alignment = HorizontalAlignment.Left,
-                    CustomMinimumSize = new Vector2(0, 58),
+                    CustomMinimumSize = new Vector2(0, 60),
                     ToggleMode = true,
                     ButtonPressed = entry.Id == _selectedDescriptionFactionId,
                 };
@@ -572,13 +583,16 @@ public sealed partial class ScenarioEditorScene : Control
         columns.AddChild(detailPanel);
 
         var nameRow = AddFactionField(details, "세력 이름");
-        var name = new LineEdit { Text = faction.Name, SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        var name = new LineEdit { Text = faction.Name, SizeFlagsHorizontal = SizeFlags.ExpandFill,
+            CustomMinimumSize = new Vector2(0, 38) };
+        StyleScenarioInput(name);
         name.TextChanged += value => UpdateFaction(faction.Id, current => current with { Name = value });
         nameRow.AddChild(name);
         NativeTextInputDialog.Attach(name);
 
         var rulerRow = AddFactionField(details, "군주");
-        var ruler = new OptionButton { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        var ruler = new OptionButton { SizeFlagsHorizontal = SizeFlags.ExpandFill,
+            CustomMinimumSize = new Vector2(0, 38) };
         foreach (var general in generals) ruler.AddItem(general.Name, general.Id.Value);
         ruler.Select(Math.Max(0, ruler.GetItemIndex(faction.RulerGeneralId)));
         ruler.ItemSelected += index =>
@@ -591,7 +605,8 @@ public sealed partial class ScenarioEditorScene : Control
         rulerRow.AddChild(ruler);
 
         var colorRow = AddFactionField(details, "세력 색상");
-        var color = new OptionButton { SizeFlagsHorizontal = SizeFlags.ExpandFill, TooltipText = "60가지 세력 색 중 선택" };
+        var color = new OptionButton { SizeFlagsHorizontal = SizeFlags.ExpandFill,
+            CustomMinimumSize = new Vector2(0, 38), TooltipText = "60가지 세력 색 중 선택" };
         var currentColor = new Color(faction.Color);
         var selectedColor = Array.FindIndex(FactionPalette, candidate => candidate.IsEqualApprox(currentColor));
         if (selectedColor < 0) color.AddIconItem(FactionColorIcon(currentColor), "현재 색", -1);
@@ -608,7 +623,8 @@ public sealed partial class ScenarioEditorScene : Control
         colorRow.AddChild(color);
 
         var arrivalRow = AddFactionField(details, "등장 방식");
-        var arrivalMode = new OptionButton { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        var arrivalMode = new OptionButton { SizeFlagsHorizontal = SizeFlags.ExpandFill,
+            CustomMinimumSize = new Vector2(0, 38) };
         arrivalMode.AddItem("시작부터 등장", 0);
         arrivalMode.AddItem("지정 연도에 등장", 1);
         arrivalMode.Select(faction.Hidden ? 1 : 0);
@@ -637,19 +653,22 @@ public sealed partial class ScenarioEditorScene : Control
         var description = new TextEdit { Name = "FactionDescriptionEditor", Text = faction.Description,
             CustomMinimumSize = new Vector2(0, 125), SizeFlagsHorizontal = SizeFlags.ExpandFill,
             WrapMode = TextEdit.LineWrappingMode.Boundary };
+        StyleScenarioInput(description);
         description.TextChanged += () => UpdateFaction(faction.Id,
             current => current with { Description = description.Text });
         details.AddChild(description);
         NativeTextInputDialog.Attach(description);
 
-        var remove = new Button { Text = "선택한 세력 삭제" };
+        details.AddChild(new HSeparator());
+        var remove = new Button { Text = "선택한 세력 삭제", CustomMinimumSize = new Vector2(0, 38) };
         remove.Pressed += () => ConfirmDeleteFaction(faction);
         details.AddChild(remove);
     }
 
     private static HBoxContainer AddFactionField(VBoxContainer parent, string label)
     {
-        var row = new HBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        var row = new HBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill,
+            CustomMinimumSize = new Vector2(0, 42) };
         row.AddThemeConstantOverride("separation", 10);
         row.AddChild(new Label { Text = label, CustomMinimumSize = new Vector2(125, 0),
             VerticalAlignment = VerticalAlignment.Center });
@@ -1080,6 +1099,19 @@ public sealed partial class ScenarioEditorScene : Control
         var field = new SpinBox { MinValue = min, MaxValue = max, Value = value, CustomMinimumSize = new Vector2(100, 0) };
         field.ValueChanged += number => update((int)number);
         row.AddChild(field);
+    }
+
+    private static void AddMetricNumber(Container row, string label, int value, int min, int max,
+        Action<int> update)
+    {
+        var metric = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        metric.AddThemeConstantOverride("separation", 4);
+        metric.AddChild(new Label { Text = label });
+        var field = new SpinBox { MinValue = min, MaxValue = max, Value = value,
+            CustomMinimumSize = new Vector2(0, 38), SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        field.ValueChanged += number => update((int)number);
+        metric.AddChild(field);
+        row.AddChild(metric);
     }
 
     private string SnapshotDraft() => System.Text.Json.JsonSerializer.Serialize(_draft);
