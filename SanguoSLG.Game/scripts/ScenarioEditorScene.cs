@@ -357,12 +357,6 @@ public sealed partial class ScenarioEditorScene : Control
         columns.AddChild(rightHost);
         var mapSection = GeneralWorkspaceStyle.Section(rightHost, "지도 미리보기");
         mapSection.GetParent<PanelContainer>().SizeFlagsVertical = SizeFlags.ExpandFill;
-        mapSection.AddChild(new Label
-        {
-            Text = $"{displayName}  ·  {map.Preset.Width} × {map.Preset.Height}  ·  거점 {siteCount}개"
-                + (modified is null ? "" : $"  ·  수정 {modified:yyyy-MM-dd HH:mm}"),
-            TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis,
-        });
         var preview = new ScenarioSiteMap(map.Preset, _draft.Cities, _draft.Factions, 0, _ => { })
         {
             Name = "ScenarioMapPreview",
@@ -372,6 +366,9 @@ public sealed partial class ScenarioEditorScene : Control
             MouseFilter = MouseFilterEnum.Ignore,
             TooltipText = "선택한 지도의 읽기 전용 미리보기",
         };
+        AddMapToolbar(mapSection,
+            $"{displayName}  ·  {map.Preset.Width} × {map.Preset.Height}  ·  거점 {siteCount}개"
+                + (modified is null ? "" : $"  ·  수정 {modified:yyyy-MM-dd HH:mm}"), preview);
         mapSection.AddChild(GeneralWorkspaceStyle.MapFrame(preview));
         var missing = _draft.Generals.Where(g => g.SiteId is { } id && !map.Preset.Sites.Any(site => site.Id == id))
             .Select(g => g.GeneralId).ToArray();
@@ -447,13 +444,13 @@ public sealed partial class ScenarioEditorScene : Control
         columns.AddChild(mapHost);
         var mapSection = GeneralWorkspaceStyle.Section(mapHost, "거점 선택 지도");
         mapSection.GetParent<PanelContainer>().SizeFlagsVertical = SizeFlags.ExpandFill;
-        mapSection.AddChild(new Label { Text = "지도에서 거점을 선택하세요. 색은 시작 소유 세력을 나타냅니다." });
         var cityMap = new ScenarioSiteMap(map, _draft.Cities, _draft.Factions,
             _selectedCityId, id => { _selectedCityId = id; ShowCities(); })
         {
             CustomMinimumSize = new Vector2(520, 470),
             SizeFlagsVertical = SizeFlags.ExpandFill,
         };
+        AddMapToolbar(mapSection, "지도에서 거점을 선택하세요. 가운데 버튼 드래그로 이동할 수 있습니다.", cityMap);
         mapSection.AddChild(GeneralWorkspaceStyle.MapFrame(cityMap));
 
         var editHost = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill,
@@ -1171,6 +1168,26 @@ public sealed partial class ScenarioEditorScene : Control
         field.ValueChanged += number => update((int)number);
         metric.AddChild(field);
         row.AddChild(metric);
+    }
+
+    private static void AddMapToolbar(Container parent, string text, ScenarioSiteMap map)
+    {
+        var toolbar = new HBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        toolbar.AddThemeConstantOverride("separation", 6);
+        var info = new Label { Text = text, SizeFlagsHorizontal = SizeFlags.ExpandFill,
+            VerticalAlignment = VerticalAlignment.Center,
+            TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis };
+        toolbar.AddChild(info);
+        var zoomOut = new Button { Text = "−", TooltipText = "축소", CustomMinimumSize = new Vector2(34, 30) };
+        zoomOut.Pressed += map.ZoomOut;
+        toolbar.AddChild(zoomOut);
+        var zoomIn = new Button { Text = "+", TooltipText = "확대", CustomMinimumSize = new Vector2(34, 30) };
+        zoomIn.Pressed += map.ZoomIn;
+        toolbar.AddChild(zoomIn);
+        var reset = new Button { Text = "전체 보기", CustomMinimumSize = new Vector2(82, 30) };
+        reset.Pressed += map.ResetView;
+        toolbar.AddChild(reset);
+        parent.AddChild(toolbar);
     }
 
     private string SnapshotDraft() => System.Text.Json.JsonSerializer.Serialize(_draft);

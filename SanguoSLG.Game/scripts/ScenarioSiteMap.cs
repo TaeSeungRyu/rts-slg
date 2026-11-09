@@ -10,6 +10,10 @@ public sealed partial class ScenarioSiteMap : Control
     private readonly IReadOnlyDictionary<int, Color> _factions;
     private readonly Action<int> _selected;
     private readonly int _selectedId;
+    private float _zoom = 1f;
+    private Vector2 _pan;
+    private bool _panning;
+    private Vector2 _lastPointer;
 
     public ScenarioSiteMap(ScenarioMapPreset map, IReadOnlyList<ScenarioCityEntry> cities,
         IReadOnlyList<ScenarioFactionEntry> factions, int selectedId, Action<int> selected)
@@ -23,9 +27,10 @@ public sealed partial class ScenarioSiteMap : Control
         CustomMinimumSize = new Vector2(540, 230);
         SizeFlagsHorizontal = SizeFlags.ExpandFill;
         MouseFilter = MouseFilterEnum.Stop;
+        ClipContents = true;
     }
 
-    private Rect2 MapRect()
+    private Rect2 BaseMapRect()
     {
         var mapRatio = _map.Width / (float)_map.Height;
         var viewRatio = Size.X / Math.Max(1f, Size.Y);
@@ -33,6 +38,36 @@ public sealed partial class ScenarioSiteMap : Control
             ? new Vector2(Size.Y * mapRatio, Size.Y)
             : new Vector2(Size.X, Size.X / mapRatio);
         return new Rect2((Size - mapSize) / 2f, mapSize);
+    }
+
+    private Rect2 MapRect()
+    {
+        var baseRect = BaseMapRect();
+        var size = baseRect.Size * _zoom;
+        return new Rect2(baseRect.GetCenter() - size / 2f + _pan, size);
+    }
+
+    public void ZoomIn() => SetZoom(_zoom * 1.2f, Size / 2f);
+    public void ZoomOut() => SetZoom(_zoom / 1.2f, Size / 2f);
+    public void ResetView()
+    {
+        _zoom = 1f;
+        _pan = Vector2.Zero;
+        QueueRedraw();
+    }
+
+    private void SetZoom(float value, Vector2 focus)
+    {
+        var oldRect = MapRect();
+        var normalized = new Vector2(
+            (focus.X - oldRect.Position.X) / Math.Max(1f, oldRect.Size.X),
+            (focus.Y - oldRect.Position.Y) / Math.Max(1f, oldRect.Size.Y));
+        _zoom = Math.Clamp(value, 1f, 3f);
+        var baseRect = BaseMapRect();
+        var newSize = baseRect.Size * _zoom;
+        var desiredPosition = focus - normalized * newSize;
+        _pan = desiredPosition - (baseRect.GetCenter() - newSize / 2f);
+        QueueRedraw();
     }
 
     private Vector2 Point(MapEditorSite site)
@@ -86,8 +121,31 @@ public sealed partial class ScenarioSiteMap : Control
 
     public override void _GuiInput(InputEvent @event)
     {
+        if (@event is InputEventMouseButton wheel && wheel.Pressed
+            && wheel.ButtonIndex is MouseButton.WheelUp or MouseButton.WheelDown)
+        {
+            SetZoom(wheel.ButtonIndex == MouseButton.WheelUp ? _zoom * 1.2f : _zoom / 1.2f,
+                wheel.Position);
+            AcceptEvent();
+            return;
+        }
+        if (@event is InputEventMouseButton panButton && panButton.ButtonIndex == MouseButton.Middle)
+        {
+            _panning = panButton.Pressed;
+            _lastPointer = panButton.Position;
+            AcceptEvent();
+            return;
+        }
         if (@event is InputEventMouseMotion motion)
         {
+            if (_panning)
+            {
+                _pan += motion.Position - _lastPointer;
+                _lastPointer = motion.Position;
+                QueueRedraw();
+                AcceptEvent();
+                return;
+            }
             var nearest = _map.Sites.Where(site => _cities.ContainsKey(site.Id))
                 .OrderBy(site => Point(site).DistanceTo(motion.Position)).FirstOrDefault();
             TooltipText = nearest is not null && Point(nearest).DistanceTo(motion.Position) < 14f
