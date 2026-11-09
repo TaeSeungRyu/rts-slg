@@ -299,7 +299,16 @@ public sealed partial class ScenarioEditorScene : Control
     private void ShowBasics()
     {
         ClearBody();
-        var basics = GeneralWorkspaceStyle.Section(_body, "시나리오 기본 정보");
+        var columns = new HBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill,
+            SizeFlagsVertical = SizeFlags.ExpandFill };
+        columns.AddThemeConstantOverride("separation", 14);
+        _body.AddChild(columns);
+
+        var leftHost = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill,
+            SizeFlagsVertical = SizeFlags.ExpandFill, SizeFlagsStretchRatio = 0.45f };
+        columns.AddChild(leftHost);
+        var basics = GeneralWorkspaceStyle.Section(leftHost, "시나리오 기본 정보");
+        basics.GetParent<PanelContainer>().SizeFlagsVertical = SizeFlags.ExpandFill;
         basics.AddChild(new Label { Text = "저장 식별자 · 자동 생성: " + _draft.Id,
             TooltipText = "파일을 구별하는 내부 값입니다. 제목만 바꾸어도 됩니다." });
         AddText(basics, "제목", _draft.Title, value => _draft = _draft with { Title = value });
@@ -314,11 +323,9 @@ public sealed partial class ScenarioEditorScene : Control
         AddCompactNumber(dateRow, "일", _draft.StartDay, 1, 30,
             value => _draft = _draft with { StartDay = value });
 
-        var mapSection = GeneralWorkspaceStyle.Section(_body, "시나리오 지도 설정");
-        mapSection.GetParent<PanelContainer>().SizeFlagsVertical = SizeFlags.ExpandFill;
+        basics.AddChild(new HSeparator());
+        basics.AddChild(new Label { Text = "사용 지도" });
         var mapChoiceRow = new HBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        mapChoiceRow.AddChild(new Label { Text = "사용 지도", CustomMinimumSize = new Vector2(110, 0),
-            VerticalAlignment = VerticalAlignment.Center });
         var choices = new OptionButton { SizeFlagsHorizontal = SizeFlags.ExpandFill };
         var currentIndex = 0;
         for (var i = 0; i < _maps.Count; i++)
@@ -331,36 +338,49 @@ public sealed partial class ScenarioEditorScene : Control
         choices.ItemSelected += index => SwitchMap(_maps[(int)index]);
         GeneralWorkspaceStyle.StyleOptionButton(choices, 200);
         mapChoiceRow.AddChild(choices);
-        mapSection.AddChild(mapChoiceRow);
+        basics.AddChild(mapChoiceRow);
+
         var map = CurrentMap();
         var displayName = map.Id == "default-east-asia" ? "기본 지도" : map.Title;
         var siteCount = map.Preset.Sites.Count(site => site.Kind is "city" or "port" or "gate");
         var modified = MapModifiedAt(map);
-        mapSection.AddChild(new Label
-        {
-            Text = $"지도 이름  {displayName}     크기  {map.Preset.Width} × {map.Preset.Height}     거점  {siteCount}개"
-                + (modified is null ? "" : $"     마지막 수정  {modified:yyyy-MM-dd HH:mm}"),
-            AutowrapMode = TextServer.AutowrapMode.WordSmart,
-        });
-        var preview = new ScenarioSiteMap(map.Preset, _draft.Cities, _draft.Factions, 0, _ => { })
-        {
-            Name = "ScenarioMapPreview",
-            CustomMinimumSize = new Vector2(540, 170),
-            SizeFlagsVertical = SizeFlags.ExpandFill,
-            MouseFilter = MouseFilterEnum.Ignore,
-            TooltipText = "선택한 지도의 읽기 전용 미리보기",
-        };
-        mapSection.AddChild(GeneralWorkspaceStyle.MapFrame(preview));
         var latestDefault = _maps.FirstOrDefault(candidate => candidate.Id == "default-east-asia");
         if (latestDefault is not null && (latestDefault.Id != map.Id || latestDefault.Revision != map.Revision))
         {
             var useEdited = new Button { Text = "현재 편집 중인 기본 지도 적용" };
             useEdited.Pressed += () => SwitchMap(latestDefault);
-            mapSection.AddChild(useEdited);
+            basics.AddChild(useEdited);
         }
+
+        var rightHost = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill,
+            SizeFlagsVertical = SizeFlags.ExpandFill, SizeFlagsStretchRatio = 0.55f };
+        columns.AddChild(rightHost);
+        var mapSection = GeneralWorkspaceStyle.Section(rightHost, "지도 미리보기");
+        mapSection.GetParent<PanelContainer>().SizeFlagsVertical = SizeFlags.ExpandFill;
+        mapSection.AddChild(new Label
+        {
+            Text = $"{displayName}  ·  {map.Preset.Width} × {map.Preset.Height}  ·  거점 {siteCount}개"
+                + (modified is null ? "" : $"  ·  수정 {modified:yyyy-MM-dd HH:mm}"),
+            TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis,
+        });
+        var preview = new ScenarioSiteMap(map.Preset, _draft.Cities, _draft.Factions, 0, _ => { })
+        {
+            Name = "ScenarioMapPreview",
+            CustomMinimumSize = new Vector2(420, 330),
+            SizeFlagsHorizontal = SizeFlags.ExpandFill,
+            SizeFlagsVertical = SizeFlags.ExpandFill,
+            MouseFilter = MouseFilterEnum.Ignore,
+            TooltipText = "선택한 지도의 읽기 전용 미리보기",
+        };
+        mapSection.AddChild(GeneralWorkspaceStyle.MapFrame(preview));
         var missing = _draft.Generals.Where(g => g.SiteId is { } id && !map.Preset.Sites.Any(site => site.Id == id))
             .Select(g => g.GeneralId).ToArray();
-        mapSection.AddChild(new Label { Text = missing.Length == 0 ? "미배치 오류 없음" : "삭제된 거점의 장수: " + string.Join(", ", missing) });
+        var mapStatus = new Label { Text = missing.Length == 0 ? "미배치 오류 없음"
+            : "삭제된 거점의 장수: " + string.Join(", ", missing),
+            TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis };
+        mapStatus.AddThemeColorOverride("font_color", missing.Length == 0
+            ? new Color("bda581") : new Color("e3a16b"));
+        mapSection.AddChild(mapStatus);
     }
 
     private DateTime? MapModifiedAt(ScenarioMapVersion map)
