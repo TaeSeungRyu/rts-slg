@@ -967,18 +967,15 @@ public sealed partial class ScenarioEditorScene : Control
     {
         var data = Path.GetFullPath(Path.Combine(ProjectSettings.GlobalizePath("res://"), "..", "data"));
         var catalog = new TroopCatalogLoader().LoadFromDirectory(data);
-        var table = new GridContainer { Columns = 3, SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        var table = CreateForceTable("병종", "주둔 병력");
         parent.AddChild(table);
-        table.AddChild(new Label { Text = "병종" });
-        table.AddChild(new Label { Text = "주둔 병력" });
-        table.AddChild(new Label { Text = "관리" });
         foreach (var troop in catalog.Where(troop => troop.Class != SanguoSLG.Core.Domain.TroopClass.Naval
             && selected.Garrisons.Any(force => force.TroopCode == troop.Code)))
         {
-            table.AddChild(new Label { Text = troop.Name, CustomMinimumSize = new Vector2(190, 0) });
             var code = troop.Code;
             var field = new LineEdit { Text = selected.Garrisons.FirstOrDefault(force => force.TroopCode == code)?.Troops.ToString() ?? "0",
-                PlaceholderText = "0", CustomMinimumSize = new Vector2(125, 0), MaxLength = 8 };
+                PlaceholderText = "0", CustomMinimumSize = new Vector2(125, 36), MaxLength = 8 };
+            StyleScenarioInput(field);
             field.TextChanged += value =>
             {
                 if (!int.TryParse(value, out var count) || count < 0) return;
@@ -987,15 +984,14 @@ public sealed partial class ScenarioEditorScene : Control
                     .Append(new ScenarioGarrisonEntry(code, count))
                     .Where(force => force.Troops > 0).ToArray() });
             };
-            table.AddChild(field);
-            var remove = new Button { Text = "제거" };
+            var remove = new Button { Text = "제거", CustomMinimumSize = new Vector2(72, 36) };
             remove.Pressed += () =>
             {
                 UpdateCity(selected.SiteId, city => city with { Garrisons = city.Garrisons
                     .Where(force => force.TroopCode != code).ToArray() });
                 refresh();
             };
-            table.AddChild(remove);
+            AddForceTableRow(table, troop.Name, field, remove);
         }
         var availableTroops = catalog.Where(troop => troop.Class != SanguoSLG.Core.Domain.TroopClass.Naval
             && selected.Garrisons.All(force => force.TroopCode != troop.Code)).ToArray();
@@ -1019,18 +1015,15 @@ public sealed partial class ScenarioEditorScene : Control
         if (site.Kind != "port") return;
         parent.AddChild(new HSeparator());
         parent.AddChild(new Label { Text = "보유 선박" });
-        var ships = new GridContainer { Columns = 3 };
+        var ships = CreateForceTable("선박", "보유 수량");
         parent.AddChild(ships);
-        ships.AddChild(new Label { Text = "선박" });
-        ships.AddChild(new Label { Text = "보유 수량" });
-        ships.AddChild(new Label { Text = "관리" });
         foreach (var troop in catalog.Where(troop => troop.Class == SanguoSLG.Core.Domain.TroopClass.Naval
             && selected.Ships.Any(ship => ship.ShipCode == troop.Code)))
         {
-            ships.AddChild(new Label { Text = troop.Name, CustomMinimumSize = new Vector2(190, 0) });
             var code = troop.Code;
             var field = new LineEdit { Text = selected.Ships.FirstOrDefault(ship => ship.ShipCode == code)?.Count.ToString() ?? "0",
-                PlaceholderText = "0", CustomMinimumSize = new Vector2(125, 0), MaxLength = 5 };
+                PlaceholderText = "0", CustomMinimumSize = new Vector2(125, 36), MaxLength = 5 };
+            StyleScenarioInput(field);
             field.TextChanged += value =>
             {
                 if (!int.TryParse(value, out var count) || count < 0) return;
@@ -1039,15 +1032,14 @@ public sealed partial class ScenarioEditorScene : Control
                     .Append(new ScenarioShipEntry(code, count))
                     .Where(ship => ship.Count > 0).ToArray() });
             };
-            ships.AddChild(field);
-            var remove = new Button { Text = "제거" };
+            var remove = new Button { Text = "제거", CustomMinimumSize = new Vector2(72, 36) };
             remove.Pressed += () =>
             {
                 UpdateCity(selected.SiteId, city => city with { Ships = city.Ships
                     .Where(ship => ship.ShipCode != code).ToArray() });
                 refresh();
             };
-            ships.AddChild(remove);
+            AddForceTableRow(ships, troop.Name, field, remove);
         }
         var availableShips = catalog.Where(troop => troop.Class == SanguoSLG.Core.Domain.TroopClass.Naval
             && selected.Ships.All(ship => ship.ShipCode != troop.Code)).ToArray();
@@ -1066,6 +1058,60 @@ public sealed partial class ScenarioEditorScene : Control
         };
         addShipRow.AddChild(addShip);
         parent.AddChild(addShipRow);
+    }
+
+    private static VBoxContainer CreateForceTable(string nameTitle, string countTitle)
+    {
+        var table = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        table.AddThemeConstantOverride("separation", 4);
+        var header = new HBoxContainer { CustomMinimumSize = new Vector2(0, 30) };
+        header.AddThemeConstantOverride("separation", 8);
+        var name = new Label { Text = nameTitle, SizeFlagsHorizontal = SizeFlags.ExpandFill,
+            VerticalAlignment = VerticalAlignment.Center };
+        name.AddThemeColorOverride("font_color", new Color("d8bd8a"));
+        header.AddChild(name);
+        var count = new Label { Text = countTitle, CustomMinimumSize = new Vector2(125, 0),
+            HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
+        count.AddThemeColorOverride("font_color", new Color("d8bd8a"));
+        header.AddChild(count);
+        var manage = new Label { Text = "관리", CustomMinimumSize = new Vector2(72, 0),
+            HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
+        manage.AddThemeColorOverride("font_color", new Color("d8bd8a"));
+        header.AddChild(manage);
+        table.AddChild(header);
+        table.AddChild(new HSeparator());
+        return table;
+    }
+
+    private static void AddForceTableRow(VBoxContainer table, string name, Control count, Button manage)
+    {
+        var panel = new PanelContainer { CustomMinimumSize = new Vector2(0, 44),
+            SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        var normal = ForceRowStyle("1b1210", "4d3524");
+        var hover = ForceRowStyle("2b1b16", "8c683b");
+        panel.AddThemeStyleboxOverride("panel", normal);
+        panel.MouseEntered += () => panel.AddThemeStyleboxOverride("panel", hover);
+        panel.MouseExited += () => panel.AddThemeStyleboxOverride("panel", normal);
+        table.AddChild(panel);
+        var row = new HBoxContainer();
+        row.AddThemeConstantOverride("separation", 8);
+        panel.AddChild(row);
+        row.AddChild(new Label { Text = name, SizeFlagsHorizontal = SizeFlags.ExpandFill,
+            VerticalAlignment = VerticalAlignment.Center, TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis });
+        row.AddChild(count);
+        row.AddChild(manage);
+    }
+
+    private static StyleBoxFlat ForceRowStyle(string background, string border)
+    {
+        var style = new StyleBoxFlat { BgColor = new Color(background), BorderColor = new Color(border) };
+        style.SetBorderWidthAll(1);
+        style.SetCornerRadiusAll(4);
+        style.SetContentMargin(Side.Left, 8);
+        style.SetContentMargin(Side.Right, 6);
+        style.SetContentMargin(Side.Top, 4);
+        style.SetContentMargin(Side.Bottom, 4);
+        return style;
     }
 
     private void UpdateCity(int siteId, Func<ScenarioCityEntry, ScenarioCityEntry> update)
