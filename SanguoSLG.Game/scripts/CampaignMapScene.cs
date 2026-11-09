@@ -86,6 +86,7 @@ public sealed partial class CampaignMapScene : Node3D
     private Label _status = null!;
     private Label _hudRuler = null!;
     private Label _hudDate = null!;
+    private Label _hudCityCount = null!;
     private TextureRect _hudFace = null!;
     private PanelContainer _hudFacePanel = null!;
     private PanelContainer _hudPanel = null!;
@@ -802,6 +803,7 @@ public sealed partial class CampaignMapScene : Node3D
         if (args.Contains("--maptestrenewalcampaignqa")) CallDeferred(nameof(RunDeployTargetQa));
         if (args.Contains("--maptestcommanderportraitqa")) CallDeferred(nameof(RunCommanderPortraitQa));
         if (args.Contains("--maptestgrowthportraitqa")) CallDeferred(nameof(RunGrowthPortraitQa));
+        if (args.Contains("--maptesthudqa")) CallDeferred(nameof(RunGameHudQa));
         if (args.Contains("--maptestexplorationpresentationqa")) CallDeferred(nameof(RunExplorationPresentationQa));
         if (args.Contains("--maptestexplorationmodalqa")) CallDeferred(nameof(RunExplorationModalQa));
         if (args.Contains("--maptestexplorationcardqa")) CallDeferred(nameof(RunExplorationCardQa));
@@ -17592,18 +17594,18 @@ public sealed partial class CampaignMapScene : Node3D
             label.Visible = false;
         }
 
-        // 좌상단 HUD: 현재 날짜, 군주명, 점령 도시 수만 표시한다.
         var ruler = _state.Factions.FirstOrDefault(f => f.Id == Player) is { } pf
             ? _state.Generals.FirstOrDefault(g => g.Id == pf.Ruler)
             : null;
         var rulerName = ruler?.Name ?? "미지정";
         var myCities = _state.CityCount(Player);
-        _hudRuler.Text = $"{_state.Year}년 {_state.Month}월 {_state.DayOfMonth}일\n군주 {rulerName}\n점령 도시 {myCities}";
+        _hudDate.Text = $"{_state.Year}년 {_state.Month}월 {_state.DayOfMonth}일";
+        _hudRuler.Text = rulerName;
+        _hudCityCount.Text = $"점령 도시  {myCities}";
         RefreshCityQuickList();
         RefreshSortieQuickList();
         _hudFace.Texture = ruler is not null ? CircularPortraitFor(ruler.Id) : null;
         _hudFacePanel.Visible = _hudFace.Texture is not null;
-        _hudDate.Text = "";
 
         var myGenerals = _state.GeneralsOf(Player).Count();
         var myGold = _state.Cities.Where(c => c.Owner == Player).Sum(c => c.Gold);
@@ -18764,8 +18766,9 @@ public sealed partial class CampaignMapScene : Node3D
         var panel = new PanelContainer();
         panel.SetAnchorsPreset(Control.LayoutPreset.TopLeft);
         panel.Position = new Vector2(10, 10);
-        panel.CustomMinimumSize = new Vector2(390, 0);
-        panel.AddThemeStyleboxOverride("panel", Frame(new Color(0.035f, 0.028f, 0.024f, 0.88f), new Color(Gold, 0.42f), 1, 14, 8));
+        panel.Name = "RulerHudPanel";
+        panel.CustomMinimumSize = new Vector2(430, 0);
+        panel.AddThemeStyleboxOverride("panel", GameUiSkin.Panel("ruler_hud", 28, 12, 7));
         layer.AddChild(panel);
         _hudPanel = panel;
 
@@ -18773,17 +18776,17 @@ public sealed partial class CampaignMapScene : Node3D
         box.AddThemeConstantOverride("separation", 0);
         panel.AddChild(box);
 
-        // 상단: 참고 이미지처럼 큰 원형 군주 초상 + 우측 정보판 + 원형 시스템 버튼으로 구성한다.
         var top = new HBoxContainer();
-        top.AddThemeConstantOverride("separation", 8);
+        top.AddThemeConstantOverride("separation", 10);
         box.AddChild(top);
 
         _hudFacePanel = new PanelContainer
         {
+            Name = "RulerHudPortraitFrame",
             CustomMinimumSize = new Vector2(82, 82),
             ClipContents = true,
         };
-        _hudFacePanel.AddThemeStyleboxOverride("panel", Frame(new Color(0.09f, 0.055f, 0.032f), GoldBright, 3, 41, 5));
+        _hudFacePanel.AddThemeStyleboxOverride("panel", GameUiSkin.PortraitFrame("ruler_portrait", 24, 5));
         top.AddChild(_hudFacePanel);
         var faceInset = new MarginContainer
         {
@@ -18805,25 +18808,39 @@ public sealed partial class CampaignMapScene : Node3D
         };
         faceInset.AddChild(_hudFace);
 
-        _hudRuler = MakeLabel("", 14, GoldBright);
-        _hudRuler.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
-        _hudRuler.VerticalAlignment = VerticalAlignment.Center;
-        _hudRuler.HorizontalAlignment = HorizontalAlignment.Left;
-        _hudRuler.CustomMinimumSize = new Vector2(230, 76);
-        _hudRuler.AutowrapMode = TextServer.AutowrapMode.Off;
-        _hudRuler.AddThemeStyleboxOverride("normal", Frame(new Color(0.07f, 0.048f, 0.036f, 0.96f), new Color(Gold, 0.62f), 1, 12, 12));
-        top.AddChild(_hudRuler);
-        _hudDate = MakeLabel("", 13, Parchment);
-        _hudDate.Visible = false;
-        box.AddChild(_hudDate);
+        var identity = new VBoxContainer
+        {
+            Name = "RulerHudIdentity",
+            CustomMinimumSize = new Vector2(210, 76),
+            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+            SizeFlagsVertical = Control.SizeFlags.ShrinkCenter,
+        };
+        identity.AddThemeConstantOverride("separation", 2);
+        top.AddChild(identity);
+        _hudDate = MakeLabel("", 13, new Color(GameUiSkin.Ivory, 0.76f));
+        _hudDate.Name = "RulerHudDate";
+        identity.AddChild(_hudDate);
+        identity.AddChild(new HSeparator());
+        _hudRuler = MakeLabel("", 19, GameUiSkin.GoldBright);
+        _hudRuler.Name = "RulerHudName";
+        _hudRuler.TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis;
+        identity.AddChild(_hudRuler);
+        _hudCityCount = MakeLabel("", 13, GameUiSkin.Ivory);
+        _hudCityCount.Name = "RulerHudCityCount";
+        identity.AddChild(_hudCityCount);
 
         var tray = MakeButton("☰");
+        tray.Name = "RulerHudSystemButton";
         tray.AddThemeFontSizeOverride("font_size", 18);
         tray.CustomMinimumSize = new Vector2(42, 42);
         tray.SizeFlagsVertical = Control.SizeFlags.ShrinkCenter;
-        tray.AddThemeStyleboxOverride("normal", Frame(new Color(0.13f, 0.08f, 0.035f), GoldBright, 2, 21, 0));
-        tray.AddThemeStyleboxOverride("hover", Frame(new Color(GoldBright, 0.95f), GoldBright, 2, 21, 0));
-        tray.AddThemeStyleboxOverride("pressed", Frame(AccentFill, GoldBright, 2, 21, 0));
+        GameUiSkin.ApplyButton(tray, "hud_round");
+        if (GameUiSkin.Icon("system") is { } systemIcon)
+        {
+            tray.Text = "";
+            tray.Icon = systemIcon;
+            tray.ExpandIcon = true;
+        }
         tray.TooltipText = "시스템";
         tray.Pressed += OpenSystemPalette;
         top.AddChild(tray);
@@ -18833,8 +18850,6 @@ public sealed partial class CampaignMapScene : Node3D
         BuildCityQuickList(layer);
         BuildSortieQuickList(layer);
 
-        // 좌상단 캐릭터 HUD에는 추가 텍스트를 붙이지 않는다.
-        // _status/_log는 기존 코드의 상태 전달용 라벨로만 유지하고 화면 레이아웃에는 추가하지 않는다.
         _status = MakeLabel("", 13, Gold);
         _status.Visible = false;
         _status.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
