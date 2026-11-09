@@ -12,7 +12,6 @@ public sealed partial class ScenarioEditorScene : Control
     private string _savedDraftSnapshot = "";
     private ItemList _list = null!;
     private VBoxContainer _body = null!;
-    private ScrollContainer _bodyScroll = null!;
     private Label _message = null!;
     private Button _deleteButton = null!;
     private string _scenarioDirectory = "";
@@ -123,13 +122,10 @@ public sealed partial class ScenarioEditorScene : Control
         AddTab(tabs, "기본 정보·지도", ShowBasics);
         AddTab(tabs, "세력", ShowFactions);
         AddTab(tabs, "세력·거점", ShowCities);
-        _bodyScroll = new ScrollContainer { SizeFlagsVertical = SizeFlags.ExpandFill };
-        GeneralWorkspaceStyle.StyleScrollContainer(_bodyScroll);
-        right.AddChild(_bodyScroll);
         _body = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill,
             SizeFlagsVertical = SizeFlags.ExpandFill };
         _body.AddThemeConstantOverride("separation", 8);
-        _bodyScroll.AddChild(_body);
+        right.AddChild(_body);
         _message = new Label { AutowrapMode = TextServer.AutowrapMode.WordSmart };
         var footer = GeneralWorkspaceStyle.Footer(vertical);
         footer.AddChild(new Label { Text = "시나리오를 검증한 뒤 저장하세요.",
