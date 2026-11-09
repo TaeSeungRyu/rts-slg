@@ -40,17 +40,17 @@ public sealed record ScenarioDraft(int Version, string Id, string Title, string 
                 || !knownGenerals.Contains(f.RulerGeneralId))
             || factionIds.Count != Factions.Count)
             errors.Add("세력 ID, 군주 또는 이름이 올바르지 않습니다.");
-        if (!Factions.Any(faction => faction.Playable))
+        if (!Factions.Any(faction => !faction.Hidden))
             errors.Add("시작 가능한 세력이 적어도 하나 필요합니다.");
         foreach (var faction in Factions.Where(f => f.Hidden))
         {
-            if (faction.Playable || faction.ArrivalYear < StartYear
-                || !siteById.ContainsKey(faction.ArrivalSiteId)
-                || Cities.Any(city => city.OwnerFactionId == faction.Id)
-                || Generals.Any(general => general.FactionId == faction.Id && general.SiteId is not null)
-                || !Generals.Any(general => general.FactionId == faction.Id
+            if (faction.ArrivalYear <= StartYear)
+                errors.Add($"{faction.Name}: 세력 등장 연도는 시나리오 시작 연도보다 이후여야 합니다.");
+            if (!siteById.ContainsKey(faction.ArrivalSiteId))
+                errors.Add($"{faction.Name}: 등장 거점이 설정되지 않았거나 유효하지 않습니다.");
+            if (!Generals.Any(general => general.FactionId == faction.Id
                     && general.GeneralId == faction.RulerGeneralId))
-                errors.Add($"{faction.Name}: 숨은세력은 시작할 수 없으며, 출현 연도·거점·군주를 지정하고 시작 배치를 비워야 합니다.");
+                errors.Add($"{faction.Name}: {faction.ArrivalYear}년 등장 예정이지만 군주가 지정되지 않았습니다.");
         }
         if (Cities.Count != siteById.Count || cityById.Count != Cities.Count
             || cityById.Keys.Any(id => !siteById.ContainsKey(id))
@@ -83,7 +83,7 @@ public sealed record ScenarioDraft(int Version, string Id, string Title, string 
             else if (city.OwnerFactionId != general.FactionId)
                 errors.Add($"장수 {general.GeneralId}: 소속 세력과 주둔 거점이 다릅니다.");
         }
-        foreach (var faction in Factions.Where(f => f.Playable))
+        foreach (var faction in Factions.Where(f => !f.Hidden))
         {
             if (!Generals.Any(g => g.GeneralId == faction.RulerGeneralId
                     && g.FactionId == faction.Id && g.SiteId is not null)

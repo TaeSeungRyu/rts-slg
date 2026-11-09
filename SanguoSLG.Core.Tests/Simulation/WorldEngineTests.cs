@@ -17,7 +17,10 @@ public class WorldEngineTests
             [new City(new CityId(1), "목표", new HexCoord(0, 0), owner.Id, 1000),
                 new City(new CityId(2), "대체", new HexCoord(2, 0), new FactionId(0), 0)],
             [V2Officer(1), V2Officer(2)],
-            HiddenFactionArrivals: [new HiddenFactionArrival(hidden, 191, new CityId(1), [new GeneralId(2)])]);
+            HiddenFactionArrivals: [new HiddenFactionArrival(hidden, 191, new CityId(1), [new GeneralId(2)],
+                [new HiddenFactionCitySetup(new CityId(1), 4321, 23456, 77,
+                    [new GarrisonForce(new CityId(1), "archer", 7000, 60)], [])],
+                [new GeneralPosting(new GeneralId(2), hidden.Id, new CityId(1))])]);
         var restored = SanguoSLG.Core.Data.SaveService.Deserialize(
             SanguoSLG.Core.Data.SaveService.Serialize(state));
         var engine = new WorldEngine(V2OnlyBalance);
@@ -25,7 +28,11 @@ public class WorldEngineTests
         Assert.Single(before.Factions);
         var after = engine.AdvanceDays(before, 1);
         Assert.Equal(191, after.Year);
+        Assert.Equal(owner.Id, after.Cities.Single(city => city.Id.Value == 1).Owner);
         Assert.Equal(hidden.Id, after.Cities.Single(city => city.Id.Value == 2).Owner);
+        Assert.Equal(4321, after.Cities.Single(city => city.Id.Value == 2).Gold);
+        Assert.Equal(7000, after.Garrisons.Single(force => force.City.Value == 2).Troops);
+        Assert.Equal("archer", after.Garrisons.Single(force => force.City.Value == 2).TroopCode);
         Assert.Equal(new CityId(2), after.Assignments.Single(posting => posting.General.Value == 2).Location);
         Assert.Empty(after.HiddenFactionArrivals!);
     }

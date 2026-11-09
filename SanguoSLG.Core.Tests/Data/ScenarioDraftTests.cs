@@ -181,7 +181,7 @@ public sealed class ScenarioDraftTests
             Generals = [.. Draft().Generals, new ScenarioGeneralEntry(2, 2, null)],
         };
         Assert.Empty(draft.Validate(Map(), Generals));
-        Assert.NotEmpty((draft with { Factions = [.. Draft().Factions, hidden with { Playable = true }] })
+        Assert.Empty((draft with { Factions = [.. Draft().Factions, hidden with { Playable = true }] })
             .Validate(Map(), Generals));
         var state = new GameState(361, 190,
             [new Faction(new FactionId(1), "위", new GeneralId(1), 0, "#3366aa")],

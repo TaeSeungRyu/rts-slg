@@ -12,6 +12,7 @@ public static class HiddenFactionArrivalService
         var factions = state.Factions.ToList();
         var postings = state.Assignments.ToList();
         var garrisons = state.Garrisons.ToList();
+        var ships = state.PortShips.ToList();
         var pending = new List<HiddenFactionArrival>();
         foreach (var arrival in arrivals.OrderBy(entry => entry.Year).ThenBy(entry => entry.Faction.Id.Value))
         {
@@ -26,39 +27,56 @@ public static class HiddenFactionArrivalService
                 pending.Add(arrival);
                 continue;
             }
-            // 지정 거점이 점령되었다면 8칸 안의 중립 거점을 먼저 찾는다.
-            // 없을 때는 가까운 다른 거점에서 봉기하며, 고립된 거점이라면 지정 거점에서 봉기한다.
-            var nearby = cities.Where(city => city.Id != preferred.Id
-                    && city.Position.Distance(preferred.Position) <= 8)
+            // 지정 거점이 점령되었다면 가까운 중립 거점만 사용한다. 기존 소유권은 빼앗지 않는다.
+            var neutral = cities.Where(city => city.Id != preferred.Id && city.Owner.Value == 0)
                 .OrderBy(city => city.Position.Distance(preferred.Position))
                 .ThenBy(city => city.Id.Value).ToArray();
             var destination = preferred.Owner.Value == 0 ? preferred
-                : nearby.FirstOrDefault(city => city.Owner.Value == 0)
-                    ?? nearby.FirstOrDefault() ?? preferred;
-            var formerOwner = destination.Owner;
-            if (formerOwner.Value != 0)
+                : neutral.FirstOrDefault();
+            if (destination is null)
             {
-                var refuge = cities.Where(city => city.Id != destination.Id && city.Owner == formerOwner)
-                    .OrderBy(city => city.Position.Distance(destination.Position))
-                    .ThenBy(city => city.Id.Value).FirstOrDefault();
-                postings = postings.Select(posting => posting.Location == destination.Id
-                    && posting.Faction == formerOwner
-                    ? posting with { Location = refuge?.Id } : posting).ToList();
+                pending.Add(arrival);
+                continue;
             }
-            cities[cities.FindIndex(city => city.Id == destination.Id)] = destination with
+            var configured = arrival.CitySetups ?? [];
+            var preferredSetup = configured.FirstOrDefault(setup => setup.City == arrival.PreferredCity);
+            var activated = new HashSet<CityId> { destination.Id };
+            Restore(destination, preferredSetup);
+            foreach (var setup in configured.Where(setup => setup.City != arrival.PreferredCity))
             {
-                Owner = arrival.Faction.Id,
-                Gold = Math.Max(3000, destination.Gold),
-                Provisions = Math.Max(12000, destination.Provisions),
-                Security = Math.Max(70, destination.Security),
-            };
-            garrisons.RemoveAll(force => force.City == destination.Id);
-            garrisons.Add(new GarrisonForce(destination.Id, "swordsman", 10000, 50));
-            factions.Add(arrival.Faction);
-            postings.AddRange(arrival.Generals.Select(general => new GeneralPosting(general,
-                arrival.Faction.Id, destination.Id)));
+                var city = cities.FirstOrDefault(candidate => candidate.Id == setup.City);
+                if (city is null || city.Owner.Value != 0) continue;
+                activated.Add(city.Id);
+                Restore(city, setup);
+            }
+            if (preferredSetup is null)
+                garrisons.Add(new GarrisonForce(destination.Id, "swordsman", 10000, 50));
+            if (factions.All(faction => faction.Id != arrival.Faction.Id)) factions.Add(arrival.Faction);
+            var plannedPostings = arrival.GeneralPostings ?? arrival.Generals.Select(general =>
+                new GeneralPosting(general, arrival.Faction.Id, null)).ToArray();
+            postings.RemoveAll(posting => posting.Faction == arrival.Faction.Id);
+            postings.AddRange(plannedPostings.Select(posting => posting with
+            {
+                Location = posting.Location is { } location && activated.Contains(location)
+                    ? location : destination.Id,
+            }));
+
+            void Restore(City city, HiddenFactionCitySetup? setup)
+            {
+                cities[cities.FindIndex(candidate => candidate.Id == city.Id)] = city with
+                {
+                    Owner = arrival.Faction.Id,
+                    Gold = setup?.Gold ?? Math.Max(3000, city.Gold),
+                    Provisions = setup?.Provisions ?? Math.Max(12000, city.Provisions),
+                    Security = setup?.Security ?? Math.Max(70, city.Security),
+                };
+                garrisons.RemoveAll(force => force.City == city.Id);
+                if (setup is not null) garrisons.AddRange(setup.Garrisons.Select(force => force with { City = city.Id }));
+                ships.RemoveAll(ship => ship.City == city.Id);
+                if (setup is not null) ships.AddRange(setup.Ships.Select(ship => ship with { City = city.Id }));
+            }
         }
         return state with { Factions = factions, Cities = cities, Postings = postings, GarrisonForces = garrisons,
-            HiddenFactionArrivals = pending };
+            PortShipStocks = ships, HiddenFactionArrivals = pending };
     }
 }

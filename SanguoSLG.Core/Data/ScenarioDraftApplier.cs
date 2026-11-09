@@ -14,6 +14,7 @@ public static class ScenarioDraftApplier
         var siteSetup = map.Sites.Where(site => site.Kind is "city" or "port" or "gate")
             .ToDictionary(site => site.Id);
         var generalPolitics = source.Generals.ToDictionary(general => general.Id.Value, general => general.Politics);
+        var scheduledFactionIds = draft.Factions.Where(entry => entry.Hidden).Select(entry => entry.Id).ToHashSet();
         var governors = draft.Generals.Where(general => general.SiteId is not null)
             .GroupBy(general => general.SiteId!.Value)
             .ToDictionary(group => group.Key, group => group
@@ -28,11 +29,13 @@ public static class ScenarioDraftApplier
                 var setup = citySetup[city.Id.Value];
                 return city with
                 {
-                    Owner = new FactionId(setup.OwnerFactionId), Gold = setup.Gold,
-                    Provisions = setup.Provisions,
+                    Owner = new FactionId(scheduledFactionIds.Contains(setup.OwnerFactionId) ? 0 : setup.OwnerFactionId),
+                    Gold = scheduledFactionIds.Contains(setup.OwnerFactionId) ? 0 : setup.Gold,
+                    Provisions = scheduledFactionIds.Contains(setup.OwnerFactionId) ? 0 : setup.Provisions,
                     Wall = ScenarioWallDefaults.ForSite(siteSetup[city.Id.Value], source.Balance),
                     Security = setup.Security,
-                    Governor = setup.OwnerFactionId > 0 && governors.TryGetValue(city.Id.Value, out var governor)
+                    Governor = setup.OwnerFactionId > 0 && !scheduledFactionIds.Contains(setup.OwnerFactionId)
+                        && governors.TryGetValue(city.Id.Value, out var governor)
                         ? new GeneralId(governor) : null,
                     Strategist = null,
                 };
@@ -40,16 +43,27 @@ public static class ScenarioDraftApplier
             Postings = draft.Generals.Where(entry => !draft.Factions.Any(faction => faction.Id == entry.FactionId
                     && faction.Hidden)).Select(entry => new GeneralPosting(new GeneralId(entry.GeneralId),
                 new FactionId(entry.FactionId), entry.SiteId is { } id ? new CityId(id) : null)).ToArray(),
-            InitialGarrisons = draft.Cities.SelectMany(city => city.Garrisons.Select(force =>
+            InitialGarrisons = draft.Cities.Where(city => !scheduledFactionIds.Contains(city.OwnerFactionId))
+                .SelectMany(city => city.Garrisons.Select(force =>
                 new GarrisonForce(new CityId(city.SiteId), force.TroopCode, force.Troops, 50))).ToArray(),
-            InitialShips = draft.Cities.SelectMany(city => city.Ships.Select(ship =>
+            InitialShips = draft.Cities.Where(city => !scheduledFactionIds.Contains(city.OwnerFactionId))
+                .SelectMany(city => city.Ships.Select(ship =>
                 new PortShipStock(new CityId(city.SiteId), ship.ShipCode, ship.Count))).ToArray(),
             HiddenFactionArrivals = draft.Factions.Where(entry => entry.Hidden)
                 .Select(entry => new HiddenFactionArrival(new Faction(new FactionId(entry.Id),
                     entry.Name, new GeneralId(entry.RulerGeneralId), 0, entry.Color),
                     entry.ArrivalYear, new CityId(entry.ArrivalSiteId), draft.Generals
                         .Where(general => general.FactionId == entry.Id)
-                        .Select(general => new GeneralId(general.GeneralId)).ToArray())).ToArray(),
+                        .Select(general => new GeneralId(general.GeneralId)).ToArray(),
+                    draft.Cities.Where(city => city.OwnerFactionId == entry.Id).Select(city =>
+                        new HiddenFactionCitySetup(new CityId(city.SiteId), city.Gold, city.Provisions,
+                            city.Security, city.Garrisons.Select(force => new GarrisonForce(
+                                new CityId(city.SiteId), force.TroopCode, force.Troops, 50)).ToArray(),
+                            city.Ships.Select(ship => new PortShipStock(new CityId(city.SiteId),
+                                ship.ShipCode, ship.Count)).ToArray())).ToArray(),
+                    draft.Generals.Where(general => general.FactionId == entry.Id).Select(general =>
+                        new GeneralPosting(new GeneralId(general.GeneralId), new FactionId(entry.Id),
+                            general.SiteId is { } siteId ? new CityId(siteId) : null)).ToArray())).ToArray(),
         };
     }
 
