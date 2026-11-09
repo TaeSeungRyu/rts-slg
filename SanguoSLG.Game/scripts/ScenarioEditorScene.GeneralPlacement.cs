@@ -492,6 +492,12 @@ public sealed partial class ScenarioEditorScene
 
     public override void _UnhandledKeyInput(InputEvent @event)
     {
+        if (_scenarioModal is not null && @event is InputEventKey { Pressed: true, Echo: false, Keycode: Key.Escape })
+        {
+            CloseScenarioModal();
+            GetViewport().SetInputAsHandled();
+            return;
+        }
         if (_generalPlacementOverlay is not null && @event is InputEventKey { Pressed: true, Keycode: Key.Escape })
         {
             CloseGeneralPlacementDialog();
