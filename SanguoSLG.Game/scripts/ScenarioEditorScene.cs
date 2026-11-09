@@ -535,8 +535,8 @@ public sealed partial class ScenarioEditorScene : Control
             foreach (var entry in visibleFactions)
             {
                 var rulerName = generals.FirstOrDefault(general => general.Id.Value == entry.RulerGeneralId)?.Name ?? "군주 미지정";
-                var status = entry.Hidden ? $"{Math.Max(_draft.StartYear, entry.ArrivalYear)}년 등장"
-                    : entry.Playable ? "시작 가능" : "시작 불가";
+                var status = entry.Hidden ? $"{Math.Max(_draft.StartYear + 1, entry.ArrivalYear)}년 등장"
+                    : "시작 등장";
                 var item = new Button
                 {
                     Text = $"{entry.Name}\n{rulerName} · {status}",
@@ -582,7 +582,7 @@ public sealed partial class ScenarioEditorScene : Control
         {
             var generalId = ruler.GetItemId((int)index);
             UpdateFaction(faction.Id, current => current with { RulerGeneralId = generalId });
-            if (faction.Hidden) EnsureHiddenRuler(faction.Id, generalId);
+            if (faction.Hidden) EnsureScheduledRuler(faction.Id, generalId);
         };
         GeneralWorkspaceStyle.StyleOptionButton(ruler, 200);
         rulerRow.AddChild(ruler);
@@ -604,26 +604,24 @@ public sealed partial class ScenarioEditorScene : Control
         GeneralWorkspaceStyle.StyleOptionButton(color, 200);
         colorRow.AddChild(color);
 
-        var playable = new CheckBox { Text = "새 게임에서 선택 가능한 세력", ButtonPressed = faction.Playable,
-            Disabled = faction.Hidden };
-        playable.Toggled += value => UpdateFaction(faction.Id, current => current with { Playable = value });
-        details.AddChild(playable);
-
         var arrivalRow = AddFactionField(details, "등장 방식");
         var arrivalMode = new OptionButton { SizeFlagsHorizontal = SizeFlags.ExpandFill };
         arrivalMode.AddItem("시작부터 등장", 0);
         arrivalMode.AddItem("지정 연도에 등장", 1);
         arrivalMode.Select(faction.Hidden ? 1 : 0);
         arrivalRow.AddChild(arrivalMode);
-        var year = new SpinBox { MinValue = _draft.StartYear, MaxValue = 9999,
-            Value = Math.Max(_draft.StartYear, faction.ArrivalYear), CustomMinimumSize = new Vector2(120, 0),
-            Editable = faction.Hidden };
+        var yearRow = AddFactionField(details, "세력 등장 연도");
+        yearRow.Visible = faction.Hidden;
+        var year = new SpinBox { MinValue = _draft.StartYear + 1, MaxValue = 9999,
+            Value = Math.Max(_draft.StartYear + 1, faction.ArrivalYear),
+            SizeFlagsHorizontal = SizeFlags.ExpandFill };
         year.ValueChanged += value => UpdateFaction(faction.Id, current => current with { ArrivalYear = (int)value });
-        arrivalRow.AddChild(year);
+        yearRow.AddChild(year);
         arrivalMode.ItemSelected += index => SetFactionHidden(faction, (int)index == 1);
 
         var targetRow = AddFactionField(details, "우선 출현 거점");
-        var target = new OptionButton { SizeFlagsHorizontal = SizeFlags.ExpandFill, Disabled = !faction.Hidden };
+        targetRow.Visible = faction.Hidden;
+        var target = new OptionButton { SizeFlagsHorizontal = SizeFlags.ExpandFill };
         foreach (var site in CurrentMap().Preset.Sites.Where(site => site.Kind is "city" or "port" or "gate"))
             target.AddItem(site.Name, site.Id);
         target.Select(Math.Max(0, target.GetItemIndex(faction.ArrivalSiteId)));
@@ -662,21 +660,11 @@ public sealed partial class ScenarioEditorScene : Control
         UpdateFaction(faction.Id, current => current with
         {
             Hidden = hidden,
-            Playable = hidden ? false : current.Playable,
+            Playable = !hidden,
             ArrivalYear = hidden && current.ArrivalYear == 0 ? _draft.StartYear + 1 : current.ArrivalYear,
             ArrivalSiteId = hidden && current.ArrivalSiteId == 0 && sites.Length > 0 ? sites[0].Id : current.ArrivalSiteId,
         });
-        if (hidden)
-        {
-            _draft = _draft with
-            {
-                Cities = _draft.Cities.Select(city => city.OwnerFactionId == faction.Id
-                    ? city with { OwnerFactionId = 0, Garrisons = [], Ships = [] } : city).ToArray(),
-                Generals = _draft.Generals.Select(general => general.FactionId == faction.Id
-                    ? general with { SiteId = null } : general).ToArray(),
-            };
-            EnsureHiddenRuler(faction.Id, faction.RulerGeneralId);
-        }
+        if (hidden) EnsureScheduledRuler(faction.Id, faction.RulerGeneralId);
         ShowFactions();
     }
 
@@ -713,10 +701,12 @@ public sealed partial class ScenarioEditorScene : Control
         return icon;
     }
 
-    private void EnsureHiddenRuler(int factionId, int rulerId)
+    private void EnsureScheduledRuler(int factionId, int rulerId)
     {
+        var existing = _draft.Generals.FirstOrDefault(general => general.GeneralId == rulerId);
         var generals = _draft.Generals.Where(general => general.GeneralId != rulerId).ToList();
-        generals.Add(new ScenarioGeneralEntry(rulerId, factionId, null));
+        generals.Add(new ScenarioGeneralEntry(rulerId, factionId,
+            existing?.FactionId == factionId ? existing.SiteId : null));
         _draft = _draft with { Generals = generals };
     }
 
@@ -1237,7 +1227,26 @@ public sealed partial class ScenarioEditorScene : Control
                 .Any(choice => choice.ItemCount == 60 || choice.ItemCount == 61);
             var hiddenFactionUi = _body.FindChildren("*", "OptionButton", true, false)
                 .OfType<OptionButton>().Any(choice => choice.ItemCount == 2
-                    && choice.GetItemText(1) == "지정 연도에 등장");
+                    && choice.GetItemText(1) == "지정 연도에 등장")
+                && _body.FindChildren("*", "CheckBox", true, false).OfType<CheckBox>()
+                    .All(check => check.Text != "새 게임에서 선택 가능한 세력");
+            var scheduledModePreservesSetup = false;
+            var activeFaction = _draft.Factions.FirstOrDefault(faction => !faction.Hidden);
+            if (activeFaction is not null)
+            {
+                var ownedBefore = _draft.Cities.Where(city => city.OwnerFactionId == activeFaction.Id).ToArray();
+                var postingsBefore = _draft.Generals.Where(general => general.FactionId == activeFaction.Id).ToArray();
+                SetFactionHidden(activeFaction, true);
+                var scheduled = _draft.Factions.First(faction => faction.Id == activeFaction.Id);
+                scheduledModePreservesSetup = scheduled.Hidden && !scheduled.Playable
+                    && scheduled.ArrivalYear > _draft.StartYear
+                    && ownedBefore.SequenceEqual(_draft.Cities.Where(city => city.OwnerFactionId == activeFaction.Id))
+                    && postingsBefore.OrderBy(general => general.GeneralId).SequenceEqual(_draft.Generals
+                        .Where(general => general.FactionId == activeFaction.Id)
+                        .OrderBy(general => general.GeneralId));
+                _draft = originalDraft;
+                ShowFactions();
+            }
             var factionSearchField = _body.FindChildren("FactionSearchEditor", "LineEdit", true, false)
                 .OfType<LineEdit>().FirstOrDefault();
             var factionSearchSnapshot = SnapshotDraft();
@@ -1325,7 +1334,9 @@ public sealed partial class ScenarioEditorScene : Control
                 _draft = originalDraft;
                 RefreshList();
                 var passed = bundled.Length == 6 && _list.ItemCount >= 6
-                    && savedEditRoundTrip && factionDescriptionRoundTrip && newScenarioAtBottom && factionColorUi && hiddenFactionUi && factionSearchUi && cityMapUi && generalSearchUi && generalCityListUi
+                    && savedEditRoundTrip && factionDescriptionRoundTrip && newScenarioAtBottom && factionColorUi
+                    && hiddenFactionUi && scheduledModePreservesSetup && factionSearchUi
+                    && cityMapUi && generalSearchUi && generalCityListUi
                     && generalCrudPassed && generalPlacementModalPassed && forceTabRemoved
                     && cityForceUi && forceCrudPassed
                     && errors.Count == 0 && mapSwitchPassed && currentMapSelected
@@ -1334,7 +1345,7 @@ public sealed partial class ScenarioEditorScene : Control
                     && multilineDescription && restored.Description == descriptionWithLines
                     && restored.MapRevision == _draft.MapRevision
                     && restored.Cities.Count == _draft.Cities.Count;
-                if (!passed) GD.Print($"[scenario-editor-qa-detail] history={historicalUsesRoot} legacy={legacyRebased} switch={mapSwitchPassed} placement={factionPlacementCompatible} root={currentMapSelected} generals={generalCrudPassed} generalModal={generalPlacementModalPassed} forces={forceCrudPassed} cityUi={cityForceUi} factionUi={factionColorUi && hiddenFactionUi} factionSearch={factionSearchUi} cityMapUi={cityMapUi} generalUi={generalSearchUi && generalCityListUi} errors={errors.Count}");
+                if (!passed) GD.Print($"[scenario-editor-qa-detail] history={historicalUsesRoot} legacy={legacyRebased} switch={mapSwitchPassed} placement={factionPlacementCompatible} root={currentMapSelected} generals={generalCrudPassed} generalModal={generalPlacementModalPassed} forces={forceCrudPassed} cityUi={cityForceUi} factionUi={factionColorUi && hiddenFactionUi} scheduled={scheduledModePreservesSetup} factionSearch={factionSearchUi} cityMapUi={cityMapUi} generalUi={generalSearchUi && generalCityListUi} errors={errors.Count}");
                 GD.Print($"[scenario-editor-qa] passed={passed} maps={_maps.Count} cities={_draft.Cities.Count} errors={errors.Count}");
                 GetTree().Quit(passed ? 0 : 1);
             }

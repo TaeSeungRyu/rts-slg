@@ -92,7 +92,7 @@ public partial class ScenarioFactionMap : Control
                 || site.Kind is not ("city" or "port" or "gate")) continue;
             var knownFaction = factions.TryGetValue(city.OwnerFactionId, out var faction);
             var color = knownFaction ? new Color(faction!.Color) : new Color("b7ad91");
-            var selectable = knownFaction && faction!.Playable && !faction.Hidden;
+            var selectable = knownFaction && !faction!.Hidden;
             _cities.Add(new MapSite(new Vector2I(site.Column, site.Row), city.OwnerFactionId,
                 color, site.Name, knownFaction ? faction!.Name : "중립", selectable));
         }

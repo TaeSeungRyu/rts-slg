@@ -221,7 +221,7 @@ public sealed partial class ScenarioStartMenu : Control
             && _newGameSelectedScenarioIndex == originalScenarioIndex
             && confirmationCalls == 0;
         var alternateFaction = _newGameScenarios[originalScenarioIndex].Draft.Factions
-            .FirstOrDefault(faction => faction.Playable && !faction.Hidden
+            .FirstOrDefault(faction => !faction.Hidden
                 && faction.Id != originalFactionId);
         var selectionRefreshesConfirmation = false;
         if (alternateFaction is not null)
@@ -341,7 +341,7 @@ public sealed partial class ScenarioStartMenu : Control
         {
             var scenarioIndex = _newGameSelectedScenarioIndex;
             var original = _newGameScenarios[scenarioIndex];
-            var playableFactions = original.Draft.Factions.Where(faction => faction.Playable && !faction.Hidden)
+            var playableFactions = original.Draft.Factions.Where(faction => !faction.Hidden)
                 .Take(2).ToArray();
             if (playableFactions.Length == 2)
             {

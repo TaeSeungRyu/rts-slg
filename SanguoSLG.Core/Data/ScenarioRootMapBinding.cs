@@ -67,7 +67,7 @@ public static class ScenarioRootMapBinding
         {
             if (!faction.Hidden || sites.ContainsKey(faction.ArrivalSiteId)) return faction;
             if (!oldSites.TryGetValue(faction.ArrivalSiteId, out var old))
-                throw new InvalidDataException($"숨은세력 {faction.Name}의 이전 출현 거점을 찾을 수 없습니다.");
+                throw new InvalidDataException($"지정 연도 등장 세력 {faction.Name}의 이전 등장 거점을 찾을 수 없습니다.");
             var target = sites.Values.OrderBy(site => Math.Abs(site.Column - old.Column)
                 + Math.Abs(site.Row - old.Row)).ThenBy(site => site.Id).First();
             return faction with { ArrivalSiteId = target.Id };

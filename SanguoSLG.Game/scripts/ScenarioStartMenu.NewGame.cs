@@ -831,9 +831,9 @@ public sealed partial class ScenarioStartMenu
             SetNamedLabel("SelectedScenarioDate", $"{draft.StartYear}년 {draft.StartMonth}월");
             SetNamedLabel("SelectedScenarioDescription", ScenarioDescription(draft, displayTitle));
             SetNamedLabel("SelectedScenarioSummary",
-                $"⚑  주요 세력  {draft.Factions.Count(faction => faction.Playable && !faction.Hidden)}      ▥  총 거점  {preset.Sites.Count(site => site.Kind is "city" or "port" or "gate")}");
+                $"⚑  주요 세력  {draft.Factions.Count(faction => !faction.Hidden)}      ▥  총 거점  {preset.Sites.Count(site => site.Kind is "city" or "port" or "gate")}");
             ResetNewGameFactionDetails();
-            var firstFaction = draft.Factions.FirstOrDefault(faction => faction.Playable && !faction.Hidden);
+            var firstFaction = draft.Factions.FirstOrDefault(faction => !faction.Hidden);
             if (firstFaction is not null) SelectNewGameFaction(firstFaction.Id);
             if (_newGameError is not null) _newGameError.Text = "";
             _newGameScenarioCards[index].GrabFocus();
@@ -899,7 +899,7 @@ public sealed partial class ScenarioStartMenu
         if (_newGameSelectedScenarioIndex < 0 || _newGameSelectedScenarioIndex >= _newGameScenarios.Count) return;
         var draft = _newGameScenarios[_newGameSelectedScenarioIndex].Draft;
         var faction = draft.Factions.FirstOrDefault(entry => entry.Id == factionId
-            && entry.Playable && !entry.Hidden);
+            && !entry.Hidden);
         if (faction is null) return;
         _newGameSelectedFactionId = factionId;
         _newGameFactionMap?.SelectFaction(factionId);
@@ -989,7 +989,7 @@ public sealed partial class ScenarioStartMenu
         }
         var (selectedPath, selectedDraft) = _newGameScenarios[_newGameSelectedScenarioIndex];
         var selectedFaction = selectedDraft.Factions.FirstOrDefault(faction =>
-            faction.Id == _newGameSelectedFactionId && faction.Playable && !faction.Hidden);
+            faction.Id == _newGameSelectedFactionId && !faction.Hidden);
         if (selectedFaction is null)
         {
             if (_newGameError is not null) _newGameError.Text = "출정할 수 없는 세력입니다.";
@@ -1037,7 +1037,7 @@ public sealed partial class ScenarioStartMenu
             || _newGameSelectedScenarioIndex >= _newGameScenarios.Count) return;
         var draft = _newGameScenarios[_newGameSelectedScenarioIndex].Draft;
         var faction = draft.Factions.FirstOrDefault(entry => entry.Id == _newGameSelectedFactionId
-            && entry.Playable && !entry.Hidden);
+            && !entry.Hidden);
         if (faction is null) return;
         var rulerName = _newGameRulerNames?.GetValueOrDefault(faction.RulerGeneralId, "미지정") ?? "미지정";
         var difficultyName = _newGameDifficulty == GameDifficulty.Hard ? "어려움" : "보통";
