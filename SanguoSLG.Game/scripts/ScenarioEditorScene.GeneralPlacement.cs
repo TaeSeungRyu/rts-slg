@@ -204,6 +204,7 @@ public sealed partial class ScenarioEditorScene
             var id = item.GetMetadata(0).AsInt32();
             if (item.IsChecked(0)) _generalPlacementSelection.Add(id);
             else _generalPlacementSelection.Remove(id);
+            ApplyGeneralPlacementRowState(item, false);
             selectionLabel.Text = $"선택 {_generalPlacementSelection.Count}명";
         };
         body.AddChild(new HSeparator());
@@ -255,6 +256,35 @@ public sealed partial class ScenarioEditorScene
             tree.SetColumnCustomMinimumWidth(column, 52);
         }
         tree.SetColumnExpand(6, true); tree.SetColumnExpandRatio(6, 2);
+        var transparent = new StyleBoxEmpty();
+        tree.AddThemeStyleboxOverride("hovered", transparent);
+        tree.AddThemeStyleboxOverride("selected", transparent);
+        tree.AddThemeStyleboxOverride("selected_focus", transparent);
+        TreeItem? hovered = null;
+        tree.GuiInput += input =>
+        {
+            if (input is InputEventMouseMotion motion)
+            {
+                var next = tree.GetItemAtPosition(motion.Position);
+                if (ReferenceEquals(next, hovered)) return;
+                if (hovered is not null) ApplyGeneralPlacementRowState(hovered, false);
+                hovered = next;
+                if (hovered is not null) ApplyGeneralPlacementRowState(hovered, true);
+                return;
+            }
+            if (input is not InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left } click)
+                return;
+            var row = tree.GetItemAtPosition(click.Position);
+            if (row is null || !row.IsEditable(0) || tree.GetColumnAtPosition(click.Position) == 0) return;
+            row.SetChecked(0, !row.IsChecked(0));
+            tree.EmitSignal(Tree.SignalName.ItemEdited);
+            tree.AcceptEvent();
+        };
+        tree.MouseExited += () =>
+        {
+            if (hovered is not null) ApplyGeneralPlacementRowState(hovered, false);
+            hovered = null;
+        };
         tree.Ready += () =>
         {
             foreach (var bar in tree.FindChildren("*", "VScrollBar", true, false).OfType<VScrollBar>())
@@ -325,9 +355,20 @@ public sealed partial class ScenarioEditorScene
             row.SetText(6, status);
             if (!eligible)
                 for (var column = 0; column < tree.Columns; column++) row.SetCustomColor(column, new Color("8c8175"));
+            ApplyGeneralPlacementRowState(row, false);
         }
         return new PlacementRenderMetrics(filtered.Length, dataMs, filterMs,
             Math.Max(0, timer.Elapsed.TotalMilliseconds - portraitMs), portraitMs);
+    }
+
+    private static void ApplyGeneralPlacementRowState(TreeItem row, bool hovered)
+    {
+        var selected = row.IsChecked(0);
+        var color = selected
+            ? hovered ? new Color("705634") : new Color("503d27")
+            : hovered ? new Color("4a4033") : Colors.Transparent;
+        for (var column = 0; column < 7; column++)
+            row.SetCustomBgColor(column, color);
     }
 
     private void ConfirmGeneralPlacement(ScenarioCityEntry city, Label feedback)
