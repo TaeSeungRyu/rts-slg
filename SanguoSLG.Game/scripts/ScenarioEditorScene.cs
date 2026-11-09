@@ -177,15 +177,12 @@ public sealed partial class ScenarioEditorScene : Control
         var path = _list.GetItemMetadata(selected[0]).AsString();
         UpdateDeleteButton(path);
         if (_deleteButton.Disabled) return;
-        var dialog = new ConfirmationDialog
-        {
-            Title = "시나리오 삭제",
-            DialogText = $"{ScenarioDraftStore.Load(path).Title} 시나리오를 삭제하시겠습니까?\n지도와 저장된 게임은 유지됩니다.",
-            OkButtonText = "삭제",
-        };
-        AddChild(dialog);
-        dialog.Confirmed += () =>
-        {
+        var title = ScenarioDraftStore.Load(path).Title;
+        ShowScenarioModal("시나리오 삭제", $"'{title}' 시나리오를 삭제하시겠습니까?",
+            "지도와 저장된 게임은 유지되지만, 삭제한 시나리오 기록은 복구할 수 없습니다.",
+        [
+            new("삭제", ScenarioModalTone.Danger, () =>
+            {
             try
             {
                 ScenarioDraftStore.DeleteUserScenario(path, _scenarioDirectory,
@@ -195,12 +192,12 @@ public sealed partial class ScenarioEditorScene : Control
                 _savedDraftSnapshot = SnapshotDraft();
                 ShowBasics();
                 _message.Text = "시나리오를 삭제했습니다.";
+                return true;
             }
-            catch (Exception error) { _message.Text = "삭제 불가: " + error.Message; }
-        };
-        dialog.Confirmed += dialog.QueueFree;
-        dialog.Canceled += dialog.QueueFree;
-        dialog.PopupCentered();
+            catch (Exception error) { _message.Text = "삭제 불가: " + error.Message; return false; }
+            }),
+            new("취소", ScenarioModalTone.Normal, () => true, true),
+        ]);
     }
 
     private void OpenScenario(string path)
@@ -744,10 +741,11 @@ public sealed partial class ScenarioEditorScene : Control
 
     private void ConfirmDeleteFaction(ScenarioFactionEntry faction)
     {
-        var dialog = new ConfirmationDialog { Title = "세력 삭제", DialogText = $"'{faction.Name}' 세력을 삭제합니까?\n거점 소유권과 소속 장수 배치도 함께 해제됩니다.",
-            OkButtonText = "삭제", CancelButtonText = "취소" };
-        dialog.Confirmed += () =>
-        {
+        ShowScenarioModal("세력 삭제", $"'{faction.Name}' 세력을 삭제하시겠습니까?",
+            "거점 소유권과 소속 장수 배치도 함께 해제되며 복구할 수 없습니다.",
+        [
+            new("삭제", ScenarioModalTone.Danger, () =>
+            {
             _draft = _draft with
             {
                 Factions = _draft.Factions.Where(entry => entry.Id != faction.Id).ToArray(),
@@ -757,11 +755,10 @@ public sealed partial class ScenarioEditorScene : Control
             };
             _selectedDescriptionFactionId = _draft.Factions.FirstOrDefault()?.Id ?? 0;
             ShowFactions();
-        };
-        dialog.Canceled += dialog.QueueFree;
-        dialog.Confirmed += dialog.QueueFree;
-        AddChild(dialog);
-        dialog.PopupCentered(new Vector2I(520, 220));
+            return true;
+            }),
+            new("취소", ScenarioModalTone.Normal, () => true, true),
+        ]);
     }
 
     private ImageTexture FactionColorIcon(Color color)
@@ -1196,12 +1193,20 @@ public sealed partial class ScenarioEditorScene : Control
             else GetTree().Quit();
         }
         if (SnapshotDraft() == _savedDraftSnapshot) { Leave(); return; }
-        var dialog = new ConfirmationDialog { Title = "저장하지 않은 시나리오", DialogText = "변경한 시나리오를 저장하고 시작 화면으로 돌아갈까요?", OkButtonText = "저장 후 나가기", CancelButtonText = "계속 편집" };
-        dialog.AddButton("변경 버리기", true, "discard");
-        AddChild(dialog);
-        dialog.Confirmed += () => { SaveCurrent(); if (SnapshotDraft() == _savedDraftSnapshot) Leave(); };
-        dialog.CustomAction += action => { if (action == "discard") Leave(); };
-        dialog.PopupCentered();
+        ShowScenarioModal("저장하지 않은 변경사항",
+            "시나리오에 저장되지 않은 변경사항이 있습니다.",
+            "변경사항을 버리면 복구할 수 없습니다.",
+        [
+            new("저장 후 나가기", ScenarioModalTone.Primary, () =>
+            {
+                SaveCurrent();
+                if (SnapshotDraft() != _savedDraftSnapshot) return false;
+                Leave();
+                return true;
+            }),
+            new("계속 편집", ScenarioModalTone.Normal, () => true, true),
+            new("변경 버리기", ScenarioModalTone.Danger, () => { Leave(); return true; }),
+        ]);
     }
 
     private void SaveCurrent()
