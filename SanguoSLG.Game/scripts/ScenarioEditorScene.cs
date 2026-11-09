@@ -126,7 +126,8 @@ public sealed partial class ScenarioEditorScene : Control
         _bodyScroll = new ScrollContainer { SizeFlagsVertical = SizeFlags.ExpandFill };
         GeneralWorkspaceStyle.StyleScrollContainer(_bodyScroll);
         right.AddChild(_bodyScroll);
-        _body = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        _body = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill,
+            SizeFlagsVertical = SizeFlags.ExpandFill };
         _body.AddThemeConstantOverride("separation", 8);
         _bodyScroll.AddChild(_body);
         _message = new Label { AutowrapMode = TextServer.AutowrapMode.WordSmart };
@@ -314,6 +315,7 @@ public sealed partial class ScenarioEditorScene : Control
             value => _draft = _draft with { StartDay = value });
 
         var mapSection = GeneralWorkspaceStyle.Section(_body, "시나리오 지도 설정");
+        mapSection.GetParent<PanelContainer>().SizeFlagsVertical = SizeFlags.ExpandFill;
         var mapChoiceRow = new HBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
         mapChoiceRow.AddChild(new Label { Text = "사용 지도", CustomMinimumSize = new Vector2(110, 0),
             VerticalAlignment = VerticalAlignment.Center });
@@ -343,12 +345,12 @@ public sealed partial class ScenarioEditorScene : Control
         var preview = new ScenarioSiteMap(map.Preset, _draft.Cities, _draft.Factions, 0, _ => { })
         {
             Name = "ScenarioMapPreview",
-            CustomMinimumSize = new Vector2(540, 220),
+            CustomMinimumSize = new Vector2(540, 170),
             SizeFlagsVertical = SizeFlags.ExpandFill,
             MouseFilter = MouseFilterEnum.Ignore,
             TooltipText = "선택한 지도의 읽기 전용 미리보기",
         };
-        mapSection.AddChild(preview);
+        mapSection.AddChild(GeneralWorkspaceStyle.MapFrame(preview));
         var latestDefault = _maps.FirstOrDefault(candidate => candidate.Id == "default-east-asia");
         if (latestDefault is not null && (latestDefault.Id != map.Id || latestDefault.Revision != map.Revision))
         {
@@ -415,8 +417,9 @@ public sealed partial class ScenarioEditorScene : Control
         _body.AddChild(new Label { Text = "지도에서 거점을 선택하세요. 색은 시작 소유 세력을 나타냅니다." });
         if (!_draft.Cities.Any(city => city.SiteId == _selectedCityId))
             _selectedCityId = _draft.Cities.FirstOrDefault()?.SiteId ?? 0;
-        _body.AddChild(new ScenarioSiteMap(map, _draft.Cities, _draft.Factions,
-            _selectedCityId, id => { _selectedCityId = id; ShowCities(); }));
+        var cityMap = new ScenarioSiteMap(map, _draft.Cities, _draft.Factions,
+            _selectedCityId, id => { _selectedCityId = id; ShowCities(); });
+        _body.AddChild(GeneralWorkspaceStyle.MapFrame(cityMap));
         var city = _draft.Cities.FirstOrDefault(city => city.SiteId == _selectedCityId);
         var site = map.Sites.FirstOrDefault(site => site.Id == _selectedCityId);
         if (city is null || site is null) return;
@@ -1258,7 +1261,9 @@ public sealed partial class ScenarioEditorScene : Control
                     .Any(label => label.Text == "검색 결과가 없습니다.");
             if (factionSearchField is not null) NativeTextInputDialog.ApplyResult(factionSearchField, "");
             ShowCities();
-            var cityMapUi = _body.GetChildren().OfType<ScenarioSiteMap>().Any();
+            var cityMapUi = _body.FindChildren("*", "Control", true, false)
+                .OfType<ScenarioSiteMap>().Any()
+                && _body.FindChild("ScenarioMapFrame", true, false) is PanelContainer;
             ShowGenerals();
             var generalSearchUi = _body.GetChildren().OfType<LineEdit>()
                 .Any(field => field.PlaceholderText == "장수 이름 검색");

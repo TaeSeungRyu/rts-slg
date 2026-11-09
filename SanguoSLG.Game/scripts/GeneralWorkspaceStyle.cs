@@ -282,4 +282,30 @@ internal static class GeneralWorkspaceStyle
             ContentMarginRight = 10,
             ContentMarginBottom = 8,
         };
+
+    internal static PanelContainer MapFrame(Control map)
+    {
+        var frame = new PanelContainer
+        {
+            Name = "ScenarioMapFrame",
+            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+            SizeFlagsVertical = Control.SizeFlags.ExpandFill,
+        };
+        var style = new StyleBoxFlat
+        {
+            BgColor = new Color("120d0b"),
+            BorderColor = new Color("9b7845"),
+            BorderWidthLeft = 1,
+            BorderWidthTop = 1,
+            BorderWidthRight = 1,
+            BorderWidthBottom = 1,
+            ContentMarginLeft = 5,
+            ContentMarginTop = 5,
+            ContentMarginRight = 5,
+            ContentMarginBottom = 5,
+        };
+        frame.AddThemeStyleboxOverride("panel", style);
+        frame.AddChild(map);
+        return frame;
+    }
 }

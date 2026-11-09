@@ -25,13 +25,28 @@ public sealed partial class ScenarioSiteMap : Control
         MouseFilter = MouseFilterEnum.Stop;
     }
 
+    private Rect2 MapRect()
+    {
+        var mapRatio = _map.Width / (float)_map.Height;
+        var viewRatio = Size.X / Math.Max(1f, Size.Y);
+        var mapSize = viewRatio > mapRatio
+            ? new Vector2(Size.Y * mapRatio, Size.Y)
+            : new Vector2(Size.X, Size.X / mapRatio);
+        return new Rect2((Size - mapSize) / 2f, mapSize);
+    }
+
     private Vector2 Point(MapEditorSite site)
-        => new((site.Column + 0.5f) / _map.Width * Size.X,
-            (site.Row + 0.5f) / _map.Height * Size.Y);
+    {
+        var rect = MapRect();
+        return rect.Position + new Vector2((site.Column + 0.5f) / _map.Width * rect.Size.X,
+            (site.Row + 0.5f) / _map.Height * rect.Size.Y);
+    }
 
     public override void _Draw()
     {
-        DrawRect(new Rect2(Vector2.Zero, Size), new Color("172d30"));
+        DrawRect(new Rect2(Vector2.Zero, Size), new Color("100c0a"));
+        var rect = MapRect();
+        DrawRect(rect, new Color("172d30"));
         var stepX = Math.Max(1, _map.Width / 90);
         var stepY = Math.Max(1, _map.Height / 60);
         for (var row = 0; row < _map.Height; row += stepY)
@@ -45,18 +60,27 @@ public sealed partial class ScenarioSiteMap : Control
                     'D' or 'Q' => new Color("b9a575"),
                     _ => new Color("80a182"),
                 };
-                DrawRect(new Rect2(new Vector2(column * Size.X / _map.Width,
-                    row * Size.Y / _map.Height),
-                    new Vector2(stepX * Size.X / _map.Width + 1,
-                        stepY * Size.Y / _map.Height + 1)), color);
+                DrawRect(new Rect2(rect.Position + new Vector2(column * rect.Size.X / _map.Width,
+                    row * rect.Size.Y / _map.Height),
+                    new Vector2(stepX * rect.Size.X / _map.Width + 1,
+                        stepY * rect.Size.Y / _map.Height + 1)), color);
             }
         foreach (var site in _map.Sites.Where(site => _cities.ContainsKey(site.Id)))
         {
             var city = _cities[site.Id];
             var color = _factions.GetValueOrDefault(city.OwnerFactionId, new Color("eeeecc"));
             var point = Point(site);
-            DrawCircle(point, site.Id == _selectedId ? 8f : 4.5f, new Color("182523"));
-            DrawCircle(point, site.Id == _selectedId ? 6f : 3.5f, color);
+            if (site.Id == _selectedId)
+            {
+                DrawCircle(point, 10f, new Color("d6ac62"));
+                DrawCircle(point, 8f, new Color("182523"));
+                DrawCircle(point, 5.5f, color);
+            }
+            else
+            {
+                DrawCircle(point, 4.5f, new Color("182523"));
+                DrawCircle(point, 3.5f, color);
+            }
         }
     }
 
