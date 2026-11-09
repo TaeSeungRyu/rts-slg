@@ -434,25 +434,60 @@ public sealed partial class ScenarioEditorScene : Control
     {
         ClearBody();
         var map = CurrentMap().Preset;
-        _body.AddChild(new Label { Text = "지도에서 거점을 선택하세요. 색은 시작 소유 세력을 나타냅니다." });
         if (!_draft.Cities.Any(city => city.SiteId == _selectedCityId))
             _selectedCityId = _draft.Cities.FirstOrDefault()?.SiteId ?? 0;
+
+        var columns = new HBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill,
+            SizeFlagsVertical = SizeFlags.ExpandFill };
+        columns.AddThemeConstantOverride("separation", 14);
+        _body.AddChild(columns);
+
+        var mapHost = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill,
+            SizeFlagsVertical = SizeFlags.ExpandFill, SizeFlagsStretchRatio = 0.55f };
+        columns.AddChild(mapHost);
+        var mapSection = GeneralWorkspaceStyle.Section(mapHost, "거점 선택 지도");
+        mapSection.GetParent<PanelContainer>().SizeFlagsVertical = SizeFlags.ExpandFill;
+        mapSection.AddChild(new Label { Text = "지도에서 거점을 선택하세요. 색은 시작 소유 세력을 나타냅니다." });
         var cityMap = new ScenarioSiteMap(map, _draft.Cities, _draft.Factions,
-            _selectedCityId, id => { _selectedCityId = id; ShowCities(); });
-        _body.AddChild(GeneralWorkspaceStyle.MapFrame(cityMap));
+            _selectedCityId, id => { _selectedCityId = id; ShowCities(); })
+        {
+            CustomMinimumSize = new Vector2(520, 470),
+            SizeFlagsVertical = SizeFlags.ExpandFill,
+        };
+        mapSection.AddChild(GeneralWorkspaceStyle.MapFrame(cityMap));
+
+        var editHost = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill,
+            SizeFlagsVertical = SizeFlags.ExpandFill, SizeFlagsStretchRatio = 0.45f };
+        columns.AddChild(editHost);
+        var editSection = GeneralWorkspaceStyle.Section(editHost, "선택한 거점 상세 편집");
+        editSection.GetParent<PanelContainer>().SizeFlagsVertical = SizeFlags.ExpandFill;
+        var detailScroll = new ScrollContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill,
+            SizeFlagsVertical = SizeFlags.ExpandFill };
+        GeneralWorkspaceStyle.StyleScrollContainer(detailScroll);
+        editSection.AddChild(detailScroll);
+        var details = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        details.AddThemeConstantOverride("separation", 8);
+        var detailMargin = new MarginContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        detailMargin.AddThemeConstantOverride("margin_right", 12);
+        detailMargin.AddThemeConstantOverride("margin_bottom", 4);
+        detailMargin.AddChild(details);
+        detailScroll.AddChild(detailMargin);
+
         var city = _draft.Cities.FirstOrDefault(city => city.SiteId == _selectedCityId);
         var site = map.Sites.FirstOrDefault(site => site.Id == _selectedCityId);
-        if (city is null || site is null) return;
-        _body.AddChild(new HSeparator());
-        var details = new HBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        details.AddThemeConstantOverride("separation", 16);
-        _body.AddChild(details);
-        var cityDetails = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        details.AddChild(cityDetails);
-        var generalDetails = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        details.AddChild(generalDetails);
-        cityDetails.AddChild(new Label { Text = $"{site.Name} · {(site.Kind == "port" ? "항구" : site.Kind == "gate" ? "관문" : "성")}" });
-        var owner = new OptionButton();
+        if (city is null || site is null)
+        {
+            details.AddChild(new Label { Text = "편집할 거점을 지도에서 선택하세요." });
+            return;
+        }
+        var siteTitle = new Label { Text = $"{site.Name} · {(site.Kind == "port" ? "항구" : site.Kind == "gate" ? "관문" : "성")}" };
+        siteTitle.AddThemeFontSizeOverride("font_size", 18);
+        siteTitle.AddThemeColorOverride("font_color", new Color("f1c878"));
+        details.AddChild(siteTitle);
+        details.AddChild(new HSeparator());
+        details.AddChild(new Label { Text = "거점 기본 정보" });
+        var owner = new OptionButton { SizeFlagsHorizontal = SizeFlags.ExpandFill,
+            CustomMinimumSize = new Vector2(0, 38) };
         owner.AddItem("중립", 0);
         foreach (var faction in _draft.Factions) owner.AddItem(faction.Name, faction.Id);
         owner.Select(Math.Max(0, owner.GetItemIndex(city.OwnerFactionId)));
@@ -470,10 +505,13 @@ public sealed partial class ScenarioEditorScene : Control
                     ? general with { SiteId = null } : general).ToArray() };
             ShowCities();
         };
-        cityDetails.AddChild(owner);
-        var resources = new HBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        resources.AddThemeConstantOverride("separation", 10);
-        cityDetails.AddChild(resources);
+        GeneralWorkspaceStyle.StyleOptionButton(owner, 220);
+        details.AddChild(owner);
+        details.AddChild(new Label { Text = "거점 자원" });
+        var resources = new GridContainer { Columns = 2, SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        resources.AddThemeConstantOverride("h_separation", 10);
+        resources.AddThemeConstantOverride("v_separation", 8);
+        details.AddChild(resources);
         AddMetricNumber(resources, "금", city.Gold, 0, 10000000,
             value => UpdateCity(city.SiteId, c => c with { Gold = value }));
         AddMetricNumber(resources, "군량", city.Provisions, 0, 10000000,
@@ -497,11 +535,12 @@ public sealed partial class ScenarioEditorScene : Control
             value => UpdateCity(city.SiteId, c => c with { Security = value }));
         if (city.OwnerFactionId > 0)
         {
-            cityDetails.AddChild(new HSeparator());
-            cityDetails.AddChild(new Label { Text = "주둔 병력·선박" });
-            AddForceEditor(city, site, ShowCities, cityDetails);
+            details.AddChild(new HSeparator());
+            details.AddChild(new Label { Text = "주둔 병력·선박" });
+            AddForceEditor(city, site, ShowCities, details);
         }
-        ShowGeneralsForCity(generalDetails, city);
+        details.AddChild(new HSeparator());
+        ShowGeneralsForCity(details, city);
     }
 
     private void ShowFactions()
