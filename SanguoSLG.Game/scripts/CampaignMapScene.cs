@@ -99,8 +99,11 @@ public sealed partial class CampaignMapScene : Node3D
     private int? _cityQuickSelectedCity;
     private PanelContainer _sortieQuickPanel = null!;
     private bool _sortieQuickMoved;
+    private Button _sortieQuickToggle = null!;
+    private Label _sortieQuickArrow = null!;
     private VBoxContainer _sortieQuickList = null!;
     private string _sortieQuickListKey = "";
+    private int? _sortieQuickSelectedUnit;
     private PanelContainer _reportPanel = null!;   // 좌하단 보고(삼국지11 오마주 결과창)
     private ScrollContainer _reportScroll = null!; // 보고 내용 스크롤(이전 내용 열람)
     private VBoxContainer _reportBox = null!;
@@ -19127,9 +19130,10 @@ public sealed partial class CampaignMapScene : Node3D
         _sortieQuickPanel = new PanelContainer
         {
             Position = new Vector2(12f, 160f),
-            CustomMinimumSize = new Vector2(340f, 0f),
+            CustomMinimumSize = new Vector2(360f, 0f),
+            Name = "SortieQuickPanel",
         };
-        _sortieQuickPanel.AddThemeStyleboxOverride("panel", Frame(new Color(Ink, 0.94f), Gold, 2, 8, 9));
+        _sortieQuickPanel.AddThemeStyleboxOverride("panel", GameUiSkin.QuickListPanel());
         layer.AddChild(_sortieQuickPanel);
 
         var content = new VBoxContainer();
@@ -19138,29 +19142,43 @@ public sealed partial class CampaignMapScene : Node3D
         var header = new HBoxContainer();
         content.AddChild(header);
         AddQuickListDragHandle(header, _sortieQuickPanel, () => _sortieQuickMoved = true);
-        var toggle = MakeButton("▸ 출전 장수 목록");
+        var toggle = MakeButton("출전 장수 목록 (0)");
+        toggle.Name = "SortieQuickToggle";
+        toggle.Icon = GameUiSkin.ListTexture("general_icon", "res://assets/icons/icon_sword.png");
+        toggle.ExpandIcon = true;
+        toggle.AddThemeConstantOverride("icon_max_width", 27);
         toggle.Alignment = HorizontalAlignment.Left;
         toggle.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+        toggle.CustomMinimumSize = new Vector2(0, 40);
+        GameUiSkin.ApplyQuickListHeader(toggle);
         header.AddChild(toggle);
+        _sortieQuickToggle = toggle;
+        _sortieQuickArrow = MakeLabel("›", 22, GameUiSkin.GoldBright);
+        _sortieQuickArrow.CustomMinimumSize = new Vector2(24, 40);
+        _sortieQuickArrow.HorizontalAlignment = HorizontalAlignment.Center;
+        _sortieQuickArrow.VerticalAlignment = VerticalAlignment.Center;
+        _sortieQuickArrow.MouseFilter = Control.MouseFilterEnum.Ignore;
+        header.AddChild(_sortieQuickArrow);
         var rule = GoldRule();
         rule.Visible = false;
         content.AddChild(rule);
 
         var scroll = new ScrollContainer
         {
-            CustomMinimumSize = new Vector2(318f, 150f),
+            CustomMinimumSize = new Vector2(338f, 180f),
             SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
             SizeFlagsVertical = Control.SizeFlags.ExpandFill,
             HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled,
             VerticalScrollMode = ScrollContainer.ScrollMode.Auto,
             Visible = false,
         };
+        GameUiSkin.ApplyQuickListScroll(scroll);
         content.AddChild(scroll);
         toggle.Pressed += () =>
         {
             scroll.Visible = !scroll.Visible;
             rule.Visible = scroll.Visible;
-            toggle.Text = scroll.Visible ? "▾ 출전 장수 목록" : "▸ 출전 장수 목록";
+            _sortieQuickArrow.Text = scroll.Visible ? "⌄" : "›";
             _sortieQuickPanel.ResetSize();
         };
         var inset = new MarginContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
@@ -19175,7 +19193,9 @@ public sealed partial class CampaignMapScene : Node3D
     {
         var units = _state.Armies.Where(unit => unit.Field.Owner == Player && unit.VanguardId is not null)
             .OrderBy(unit => unit.Id.Value).ToArray();
-        var key = string.Join("|", units.Select(unit => $"{unit.Id.Value}:{unit.VanguardId}:{unit.AdjutantId}"));
+        _sortieQuickToggle.Text = $"출전 장수 목록 ({units.Length})";
+        var key = string.Join("|", units.Select(unit =>
+            $"{unit.Id.Value}:{unit.VanguardId}:{unit.AdjutantId}:{unit.Pool.Active}:{unit.IsWaitingDeployment}"));
         if (key == _sortieQuickListKey) return;
         _sortieQuickListKey = key;
         foreach (var child in _sortieQuickList.GetChildren())
@@ -19183,16 +19203,63 @@ public sealed partial class CampaignMapScene : Node3D
             _sortieQuickList.RemoveChild(child);
             child.QueueFree();
         }
+        var group = new ButtonGroup { AllowUnpress = false };
         foreach (var unit in units)
         {
             var unitId = unit.Id;
             var vanguard = OfficerName(unit.VanguardId) ?? "장수";
             var adjutant = OfficerName(unit.AdjutantId);
-            var button = MakeButton(adjutant is null ? vanguard : $"{vanguard} · {adjutant}");
-            button.Alignment = HorizontalAlignment.Left;
+            var button = MakeButton("");
+            button.Name = $"SortieQuickRow_{unit.Id.Value}";
             button.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+            button.CustomMinimumSize = new Vector2(0, 54);
+            button.ToggleMode = true;
+            button.ButtonGroup = group;
+            button.ButtonPressed = _sortieQuickSelectedUnit == unit.Id.Value;
+            GameUiSkin.ApplyQuickListRow(button);
+
+            var rowInset = new MarginContainer { MouseFilter = Control.MouseFilterEnum.Ignore };
+            rowInset.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
+            rowInset.AddThemeConstantOverride("margin_left", 8);
+            rowInset.AddThemeConstantOverride("margin_top", 5);
+            rowInset.AddThemeConstantOverride("margin_right", 8);
+            rowInset.AddThemeConstantOverride("margin_bottom", 5);
+            button.AddChild(rowInset);
+            var row = new HBoxContainer { MouseFilter = Control.MouseFilterEnum.Ignore };
+            row.AddThemeConstantOverride("separation", 9);
+            rowInset.AddChild(row);
+            var portrait = new TextureRect
+            {
+                Texture = unit.VanguardId is { } generalId ? CircularPortraitFor(generalId) : null,
+                CustomMinimumSize = new Vector2(38, 38),
+                ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
+                StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
+                MouseFilter = Control.MouseFilterEnum.Ignore,
+            };
+            row.AddChild(portrait);
+            var names = new VBoxContainer
+            {
+                SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+                MouseFilter = Control.MouseFilterEnum.Ignore,
+            };
+            names.AddThemeConstantOverride("separation", 0);
+            row.AddChild(names);
+            var nameLabel = MakeLabel(vanguard, 14, GameUiSkin.Ivory);
+            nameLabel.MouseFilter = Control.MouseFilterEnum.Ignore;
+            names.AddChild(nameLabel);
+            var secondary = MakeLabel(adjutant is null ? "선봉" : $"부장 {adjutant}", 11,
+                new Color(GameUiSkin.Ivory, 0.65f));
+            secondary.MouseFilter = Control.MouseFilterEnum.Ignore;
+            names.AddChild(secondary);
+            var status = MakeLabel(unit.IsWaitingDeployment ? "출전 대기" : $"병력 {unit.Pool.Active:N0}",
+                12, GameUiSkin.GoldBright);
+            status.VerticalAlignment = VerticalAlignment.Center;
+            status.HorizontalAlignment = HorizontalAlignment.Right;
+            status.MouseFilter = Control.MouseFilterEnum.Ignore;
+            row.AddChild(status);
             button.Pressed += () =>
             {
+                _sortieQuickSelectedUnit = unit.Id.Value;
                 var current = _state.Armies.FirstOrDefault(army => army.Id == unitId);
                 if (current is null) return;
                 HidePanels();
@@ -19228,6 +19295,23 @@ public sealed partial class CampaignMapScene : Node3D
 
     private async void RunQuickListCollapseQa()
     {
+        // The opt-in stress fixture deliberately creates anonymous units. Give two of them
+        // real officers only inside this QA so the portrait/status row is exercised as well.
+        if (_state.Armies.All(unit => unit.Field.Owner != Player || unit.VanguardId is null)
+            && _state.Generals.Count >= 2)
+        {
+            var assigned = 0;
+            _state = _state with
+            {
+                FieldArmies = _state.Armies.Select(unit =>
+                {
+                    if (unit.Field.Owner != Player || assigned >= 2) return unit;
+                    return unit with { VanguardId = _state.Generals[assigned++].Id };
+                }).ToList(),
+            };
+            _sortieQuickListKey = "";
+            RefreshSortieQuickList();
+        }
         var cityToggle = _cityQuickPanel.FindChildren("*", "Button", true, false).OfType<Button>().First();
         var sortieToggle = _sortieQuickPanel.FindChildren("*", "Button", true, false).OfType<Button>().First();
         await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
@@ -19259,11 +19343,23 @@ public sealed partial class CampaignMapScene : Node3D
                 && row.GetThemeStylebox("normal") is StyleBox
                 && row.GetThemeStylebox("hover") is StyleBox
                 && row.GetThemeStylebox("pressed") is StyleBox);
+        var playerSorties = _state.Armies.Count(unit => unit.Field.Owner == Player && unit.VanguardId is not null);
+        var sortieRows = _sortieQuickList.FindChildren("SortieQuickRow_*", "Button", true, false)
+            .OfType<Button>().ToArray();
+        var sortieVisuals = _sortieQuickToggle.Text == $"출전 장수 목록 ({playerSorties})"
+            && _sortieQuickToggle.Icon is not null
+            && sortieRows.Length == playerSorties
+            && sortieRows.All(row => row.FindChildren("*", "TextureRect", true, false)
+                    .OfType<TextureRect>().Any(portrait => portrait.Texture is not null)
+                && row.GetThemeStylebox("normal") is StyleBox
+                && row.GetThemeStylebox("hover") is StyleBox
+                && row.GetThemeStylebox("pressed") is StyleBox);
         var passed = expanded && _cityQuickPanel.Size.Y <= cityClosed + 2f
-            && _sortieQuickPanel.Size.Y <= sortieClosed + 2f && cityDrags && sortieDrags && cityVisuals;
+            && _sortieQuickPanel.Size.Y <= sortieClosed + 2f && cityDrags && sortieDrags
+            && cityVisuals && sortieVisuals;
         GD.Print($"[newmap-quicklist-qa] passed={passed} city={cityClosed:F1}/{_cityQuickPanel.Size.Y:F1} "
             + $"sortie={sortieClosed:F1}/{_sortieQuickPanel.Size.Y:F1} drag={cityDrags}/{sortieDrags} "
-            + $"cityVisuals={cityVisuals}");
+            + $"cityVisuals={cityVisuals} sortieVisuals={sortieVisuals}");
         GetTree().Quit(passed ? 0 : 1);
     }
 
