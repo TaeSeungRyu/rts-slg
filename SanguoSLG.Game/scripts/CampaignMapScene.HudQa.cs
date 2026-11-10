@@ -37,6 +37,20 @@ public sealed partial class CampaignMapScene
             + $"date='{_hudDate.Text}' ruler='{_hudRuler.Text}' cities='{_hudCityCount.Text}' "
             + $"portrait={_hudFace.Texture is not null} portraitFrame={portraitDecoration?.Texture is not null} "
             + $"buttons={buttons.Length}");
+        var shotArgument = OS.GetCmdlineUserArgs()
+            .FirstOrDefault(argument => argument.StartsWith("--maptesthudshot=", StringComparison.Ordinal));
+        if (shotArgument is not null)
+        {
+            await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+            await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+            var tag = shotArgument["--maptesthudshot=".Length..];
+            var projectDirectory = new System.IO.DirectoryInfo(ProjectSettings.GlobalizePath("res://"));
+            var outputPath = System.IO.Path.Combine(projectDirectory.Parent?.FullName ?? projectDirectory.FullName,
+                $"shot_hud_{tag}.png");
+            var saveResult = GetViewport().GetTexture().GetImage().SavePng(outputPath);
+            passed &= saveResult == Error.Ok;
+            GD.Print($"[game-hud-shot] result={saveResult} path={outputPath}");
+        }
         GetTree().Quit(passed ? 0 : 1);
     }
 }
