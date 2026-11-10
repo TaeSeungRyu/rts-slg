@@ -48,7 +48,7 @@ internal static class GameUiSkin
         return null;
     }
 
-    internal static void ApplyButton(Button button, string assetName, bool accent = false)
+    internal static void ApplyButton(Button button, string assetName, bool accent = false, int textureSlice = 18)
     {
         var states = new[] { "normal", "hover", "pressed", "disabled" };
         var textures = states.Select(state =>
@@ -59,7 +59,7 @@ internal static class GameUiSkin
         if (textures.All(texture => texture is not null))
         {
             for (var index = 0; index < states.Length; index++)
-                button.AddThemeStyleboxOverride(states[index], TextureBox(textures[index]!, 18, 8));
+                button.AddThemeStyleboxOverride(states[index], TextureBox(textures[index]!, textureSlice, 8));
         }
         else
         {
@@ -78,6 +78,17 @@ internal static class GameUiSkin
         button.AddThemeColorOverride("font_hover_color", new Color("fff0c6"));
         button.AddThemeColorOverride("font_pressed_color", GoldBright);
         button.AddThemeColorOverride("font_disabled_color", new Color(Ivory, 0.45f));
+    }
+
+    internal static void ApplyIconButton(Button button, string buttonAssetName, string iconAssetName)
+    {
+        ApplyButton(button, buttonAssetName, textureSlice: 0);
+        if (Icon(iconAssetName) is not { } icon) return;
+        button.Text = "";
+        button.Icon = icon;
+        button.ExpandIcon = true;
+        button.AddThemeConstantOverride("icon_max_width", 23);
+        button.IconAlignment = HorizontalAlignment.Center;
     }
 
     internal static Texture2D? Icon(string assetName)

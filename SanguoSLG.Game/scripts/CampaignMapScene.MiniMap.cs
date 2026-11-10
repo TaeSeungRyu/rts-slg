@@ -14,12 +14,15 @@ public sealed partial class CampaignMapScene
     {
         var button = MakeButton("");
         button.Name = "RulerHudMapButton";
-        button.Icon = GameUiSkin.Icon("map") ?? GD.Load<Texture2D>("res://assets/icons/icon_map.svg");
-        button.ExpandIcon = true;
         button.CustomMinimumSize = new Vector2(42, 42);
         button.TooltipText = "지도 보기";
         button.SizeFlagsVertical = Control.SizeFlags.ShrinkCenter;
-        GameUiSkin.ApplyButton(button, "hud_round");
+        GameUiSkin.ApplyIconButton(button, "hud_round", "map");
+        if (button.Icon is null)
+        {
+            button.Icon = GD.Load<Texture2D>("res://assets/icons/icon_map.svg");
+            button.ExpandIcon = true;
+        }
         top.AddChild(button);
 
         var layer = new CanvasLayer { Layer = 16 };

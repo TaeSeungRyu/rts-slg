@@ -26,10 +26,12 @@ public sealed partial class CampaignMapScene
             && _hudRuler.Text == (ruler?.Name ?? "미지정")
             && _hudCityCount.Text == expectedCities
             && buttons.Length == 2
-            && buttons.All(button => button.GetThemeStylebox("normal") is StyleBox
-                && button.GetThemeStylebox("hover") is StyleBox
-                && button.GetThemeStylebox("pressed") is StyleBox
-                && button.GetThemeStylebox("disabled") is StyleBox)
+            && buttons.All(button => button.Icon is not null
+                && button.IconAlignment == HorizontalAlignment.Center
+                && button.GetThemeStylebox("normal") is StyleBoxTexture
+                && button.GetThemeStylebox("hover") is StyleBoxTexture
+                && button.GetThemeStylebox("pressed") is StyleBoxTexture
+                && button.GetThemeStylebox("disabled") is StyleBoxTexture)
             && fits;
         GD.Print($"[game-hud-qa] passed={passed} viewport={viewport} panel={_hudPanel.Size} "
             + $"date='{_hudDate.Text}' ruler='{_hudRuler.Text}' cities='{_hudCityCount.Text}' "
