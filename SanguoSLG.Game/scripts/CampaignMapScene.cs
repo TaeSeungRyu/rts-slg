@@ -941,8 +941,13 @@ public sealed partial class CampaignMapScene : Node3D
         await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
         await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
         await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
-        var passed = _reportBox.GetChildCount() == ReportBoxMax;
-        GD.Print($"[map-report-qa] passed={passed} rows={_reportBox.GetChildCount()}");
+        var sample = _reportBox.GetChildren().OfType<Label>().LastOrDefault();
+        var reportStyle = _reportPanel.GetThemeStylebox("panel") as StyleBoxFlat;
+        var readability = _reportBox.GetThemeConstant("separation") == 3
+            && sample?.GetThemeConstant("line_spacing") == 3
+            && reportStyle?.BgColor.A >= 0.97f;
+        var passed = _reportBox.GetChildCount() == ReportBoxMax && readability;
+        GD.Print($"[map-report-qa] passed={passed} rows={_reportBox.GetChildCount()} readability={readability}");
         GetTree().Quit(passed ? 0 : 1);
     }
 
@@ -18843,22 +18848,27 @@ public sealed partial class CampaignMapScene : Node3D
         var identity = new VBoxContainer
         {
             Name = "RulerHudIdentity",
-            CustomMinimumSize = new Vector2(210, 80),
+            CustomMinimumSize = new Vector2(210, 82),
             SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
             SizeFlagsVertical = Control.SizeFlags.ShrinkCenter,
         };
-        identity.AddThemeConstantOverride("separation", 1);
+        identity.AddThemeConstantOverride("separation", 2);
         top.AddChild(identity);
-        identity.AddChild(new Control { CustomMinimumSize = new Vector2(0, 7) });
         _hudRuler = MakeLabel("", 19, GameUiSkin.GoldBright);
         _hudRuler.Name = "RulerHudName";
+        _hudRuler.CustomMinimumSize = new Vector2(0, 24);
+        _hudRuler.VerticalAlignment = VerticalAlignment.Center;
         _hudRuler.TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis;
         identity.AddChild(_hudRuler);
         _hudCityCount = MakeLabel("", 13, GameUiSkin.Ivory);
         _hudCityCount.Name = "RulerHudCityCount";
+        _hudCityCount.CustomMinimumSize = new Vector2(0, 19);
+        _hudCityCount.VerticalAlignment = VerticalAlignment.Center;
         identity.AddChild(_hudCityCount);
         _hudDate = MakeLabel("", 12, new Color(GameUiSkin.Ivory, 0.72f));
         _hudDate.Name = "RulerHudDate";
+        _hudDate.CustomMinimumSize = new Vector2(0, 18);
+        _hudDate.VerticalAlignment = VerticalAlignment.Center;
         identity.AddChild(_hudDate);
 
         var tray = MakeButton("☰");
@@ -19045,6 +19055,7 @@ public sealed partial class CampaignMapScene : Node3D
         content.AddThemeConstantOverride("separation", 2);
         panel.AddChild(content);
         var header = new HBoxContainer();
+        header.AddThemeConstantOverride("separation", 4);
         content.AddChild(header);
         AddQuickListDragHandle(header, panel, () => _cityQuickMoved = true);
         var toggle = MakeButton("도시 목록 (0)");
@@ -19151,6 +19162,7 @@ public sealed partial class CampaignMapScene : Node3D
         content.AddThemeConstantOverride("separation", 2);
         _sortieQuickPanel.AddChild(content);
         var header = new HBoxContainer();
+        header.AddThemeConstantOverride("separation", 4);
         content.AddChild(header);
         AddQuickListDragHandle(header, _sortieQuickPanel, () => _sortieQuickMoved = true);
         var toggle = MakeButton("출전 장수 목록 (0)");
@@ -19252,6 +19264,7 @@ public sealed partial class CampaignMapScene : Node3D
             row.AddChild(portrait);
             var names = new VBoxContainer
             {
+                CustomMinimumSize = new Vector2(128, 0),
                 SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
                 MouseFilter = Control.MouseFilterEnum.Ignore,
             };
@@ -19259,17 +19272,29 @@ public sealed partial class CampaignMapScene : Node3D
             row.AddChild(names);
             var nameLabel = MakeLabel(vanguard, 14, GameUiSkin.Ivory);
             nameLabel.MouseFilter = Control.MouseFilterEnum.Ignore;
+            nameLabel.TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis;
             names.AddChild(nameLabel);
             var secondary = MakeLabel(adjutant is null ? "선봉" : $"부장 {adjutant}", 11,
                 new Color(GameUiSkin.Ivory, 0.65f));
             secondary.MouseFilter = Control.MouseFilterEnum.Ignore;
+            secondary.TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis;
             names.AddChild(secondary);
-            var status = MakeLabel(unit.IsWaitingDeployment ? "출전 대기" : $"병력 {unit.Pool.Active:N0}",
-                12, GameUiSkin.GoldBright);
-            status.VerticalAlignment = VerticalAlignment.Center;
+            var metrics = new VBoxContainer
+            {
+                CustomMinimumSize = new Vector2(84, 0),
+                MouseFilter = Control.MouseFilterEnum.Ignore,
+            };
+            metrics.AddThemeConstantOverride("separation", 0);
+            row.AddChild(metrics);
+            var status = MakeLabel(unit.IsWaitingDeployment ? "출전 대기" : "출전 중",
+                11, new Color(GameUiSkin.Ivory, 0.72f));
             status.HorizontalAlignment = HorizontalAlignment.Right;
             status.MouseFilter = Control.MouseFilterEnum.Ignore;
-            row.AddChild(status);
+            metrics.AddChild(status);
+            var troops = MakeLabel($"병력 {unit.Pool.Active:N0}", 12, GameUiSkin.GoldBright);
+            troops.HorizontalAlignment = HorizontalAlignment.Right;
+            troops.MouseFilter = Control.MouseFilterEnum.Ignore;
+            metrics.AddChild(troops);
             button.Pressed += () =>
             {
                 _sortieQuickSelectedUnit = unit.Id.Value;
@@ -19299,9 +19324,9 @@ public sealed partial class CampaignMapScene : Node3D
 
     private void AddQuickListDragHandle(HBoxContainer header, PanelContainer panel, Action moved)
     {
-        var grip = MakeLabel("⠿", 20, GoldBright);
+        var grip = MakeLabel("⠿", 17, GoldBright);
         grip.TooltipText = "잡아서 목록 이동";
-        grip.CustomMinimumSize = new Vector2(30, 30);
+        grip.CustomMinimumSize = new Vector2(28, 40);
         grip.HorizontalAlignment = HorizontalAlignment.Center;
         grip.VerticalAlignment = VerticalAlignment.Center;
         grip.MouseFilter = Control.MouseFilterEnum.Stop;
@@ -19366,6 +19391,10 @@ public sealed partial class CampaignMapScene : Node3D
                 QuickListHeight(sortieCount, 54f))
             && _cityQuickScroll.GetVScrollBar().Visible
             && !_sortieQuickScroll.GetVScrollBar().Visible;
+        var expandedCityRows = _cityQuickList.FindChildren("CityQuickRow_*", "Button", true, false)
+            .OfType<Button>().ToArray();
+        if (expandedCityRows.Length > 0) expandedCityRows[0].ButtonPressed = true;
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
         var shotArgument = OS.GetCmdlineUserArgs()
             .FirstOrDefault(argument => argument.StartsWith("--quicklistshot=", StringComparison.Ordinal));
         var shotSaved = true;
@@ -19398,7 +19427,9 @@ public sealed partial class CampaignMapScene : Node3D
             && cityRows.All(row => row.Icon is not null
                 && row.GetThemeStylebox("normal") is StyleBox
                 && row.GetThemeStylebox("hover") is StyleBox
-                && row.GetThemeStylebox("pressed") is StyleBox);
+                && row.GetThemeStylebox("pressed") is StyleBox
+                && row.GetThemeStylebox("hover_pressed") is StyleBox)
+            && (cityRows.Length == 0 || cityRows[0].ButtonPressed);
         var playerSorties = sortieCount;
         var sortieRows = _sortieQuickList.FindChildren("SortieQuickRow_*", "Button", true, false)
             .OfType<Button>().ToArray();
@@ -19409,13 +19440,21 @@ public sealed partial class CampaignMapScene : Node3D
                     .OfType<TextureRect>().Any(portrait => portrait.Texture is not null)
                 && row.GetThemeStylebox("normal") is StyleBox
                 && row.GetThemeStylebox("hover") is StyleBox
-                && row.GetThemeStylebox("pressed") is StyleBox);
+                && row.GetThemeStylebox("pressed") is StyleBox
+                && row.FindChildren("*", "VBoxContainer", true, false).OfType<VBoxContainer>()
+                    .Any(box => box.CustomMinimumSize.X >= 84f
+                        && box.FindChildren("*", "Label", true, false).OfType<Label>()
+                            .Any(label => label.Text.StartsWith("병력 ", StringComparison.Ordinal))));
+        var headerDecorations = cityGrip?.CustomMinimumSize == new Vector2(28, 40)
+            && sortieGrip?.CustomMinimumSize == new Vector2(28, 40);
         var passed = expanded && _cityQuickPanel.Size.Y <= cityClosed + 2f
             && _sortieQuickPanel.Size.Y <= sortieClosed + 2f && cityDrags && sortieDrags
-            && cityVisuals && sortieVisuals && aligned && avoidsReport && adaptiveHeights && shotSaved;
+            && cityVisuals && sortieVisuals && headerDecorations
+            && aligned && avoidsReport && adaptiveHeights && shotSaved;
         GD.Print($"[newmap-quicklist-qa] passed={passed} city={cityClosed:F1}/{_cityQuickPanel.Size.Y:F1} "
             + $"sortie={sortieClosed:F1}/{_sortieQuickPanel.Size.Y:F1} drag={cityDrags}/{sortieDrags} "
             + $"cityVisuals={cityVisuals} sortieVisuals={sortieVisuals} "
+            + $"headerDecorations={headerDecorations} "
             + $"aligned={aligned} gaps={cityGap:F1}/{sortieGap:F1} avoidsReport={avoidsReport} "
             + $"adaptiveHeights={adaptiveHeights} heights={_cityQuickScroll.CustomMinimumSize.Y:F1}/"
             + $"{_sortieQuickScroll.CustomMinimumSize.Y:F1}");
@@ -19431,7 +19470,7 @@ public sealed partial class CampaignMapScene : Node3D
         // 방지). 이전 내용은 내부 ScrollContainer로 스크롤해서 본다.
         const float panelW = 340f, panelH = 200f;
         _reportPanel = new PanelContainer { Visible = true };
-        _reportPanel.AddThemeStyleboxOverride("panel", Frame(new Color(Ink, 0.94f), Gold, 2, 8, 9));
+        _reportPanel.AddThemeStyleboxOverride("panel", Frame(new Color(Ink, 0.98f), Gold, 2, 8, 9));
         _reportPanel.AnchorLeft = 0f; _reportPanel.AnchorRight = 0f;
         _reportPanel.AnchorTop = 1f; _reportPanel.AnchorBottom = 1f;
         _reportPanel.OffsetLeft = 12f; _reportPanel.OffsetRight = 12f + panelW;
@@ -19463,7 +19502,7 @@ public sealed partial class CampaignMapScene : Node3D
         v.AddChild(_reportScroll);
 
         _reportBox = new VBoxContainer();
-        _reportBox.AddThemeConstantOverride("separation", 1);
+        _reportBox.AddThemeConstantOverride("separation", 3);
         _reportBox.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
         _reportScroll.AddChild(_reportBox);
     }
@@ -19479,6 +19518,7 @@ public sealed partial class CampaignMapScene : Node3D
         Control reportRow;
         var l = MakeLabel(text, 12, c);
         l.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        l.AddThemeConstantOverride("line_spacing", 3);
         l.CustomMinimumSize = new Vector2(300, 0);
         if (storyId is not null) ConnectStoryReportLabel(l, storyId);
         if (portrait is { } generalId)

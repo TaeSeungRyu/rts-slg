@@ -18,10 +18,10 @@ public sealed partial class CampaignMapScene
         button.TooltipText = "지도 보기";
         button.SizeFlagsVertical = Control.SizeFlags.ShrinkCenter;
         GameUiSkin.ApplyIconButton(button, "hud_round", "map");
-        if (button.Icon is null)
+        if (button.GetNodeOrNull<TextureRect>("GameUiCenteredIcon") is null)
         {
-            button.Icon = GD.Load<Texture2D>("res://assets/icons/icon_map.svg");
-            button.ExpandIcon = true;
+            var fallback = GD.Load<Texture2D>("res://assets/icons/icon_map.svg");
+            if (fallback is not null) GameUiSkin.SetCenteredIcon(button, fallback);
         }
         top.AddChild(button);
 

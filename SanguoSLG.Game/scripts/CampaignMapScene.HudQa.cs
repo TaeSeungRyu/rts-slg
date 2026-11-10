@@ -14,6 +14,8 @@ public sealed partial class CampaignMapScene
         var expectedCities = $"점령 도시  {_state.CityCount(Player)}";
         var viewport = GetViewport().GetVisibleRect().Size;
         var buttons = _hudPanel.FindChildren("RulerHud*Button", "Button", true, false).OfType<Button>().ToArray();
+        var centeredIcons = buttons.Select(button => button.GetNodeOrNull<TextureRect>("GameUiCenteredIcon"))
+            .ToArray();
         var portraitDecoration = _hudFacePanel.GetNodeOrNull<TextureRect>("RulerHudPortraitDecoration");
         var topSafe = Mathf.IsEqualApprox(_hudPanel.Position.Y, 2f)
             && _hudPanel.GetGlobalRect().Position.Y >= 0f
@@ -34,8 +36,10 @@ public sealed partial class CampaignMapScene
             && informationOrder
             && topSafe
             && buttons.Length == 2
-            && buttons.All(button => button.Icon is not null
-                && button.IconAlignment == HorizontalAlignment.Center
+            && centeredIcons.All(icon => icon?.Texture is not null
+                && icon.MouseFilter == Control.MouseFilterEnum.Ignore
+                && icon.Position + icon.Size / 2f == icon.GetParent<Control>().Size / 2f)
+            && buttons.All(button => button.Icon is null
                 && button.GetThemeStylebox("normal") is StyleBoxTexture
                 && button.GetThemeStylebox("hover") is StyleBoxTexture
                 && button.GetThemeStylebox("pressed") is StyleBoxTexture
@@ -44,7 +48,8 @@ public sealed partial class CampaignMapScene
         GD.Print($"[game-hud-qa] passed={passed} viewport={viewport} panel={_hudPanel.Size} "
             + $"date='{_hudDate.Text}' ruler='{_hudRuler.Text}' cities='{_hudCityCount.Text}' "
             + $"portrait={_hudFace.Texture is not null} portraitFrame={portraitDecoration?.Texture is not null} "
-            + $"informationOrder={informationOrder} topSafe={topSafe} buttons={buttons.Length}");
+            + $"informationOrder={informationOrder} topSafe={topSafe} centeredIcons="
+            + $"{centeredIcons.Count(icon => icon?.Texture is not null)} buttons={buttons.Length}");
         var shotArgument = OS.GetCmdlineUserArgs()
             .FirstOrDefault(argument => argument.StartsWith("--maptesthudshot=", StringComparison.Ordinal));
         if (shotArgument is not null)

@@ -84,11 +84,34 @@ internal static class GameUiSkin
     {
         ApplyButton(button, buttonAssetName, textureSlice: 0);
         if (Icon(iconAssetName) is not { } icon) return;
+        SetCenteredIcon(button, icon);
+    }
+
+    internal static void SetCenteredIcon(Button button, Texture2D icon)
+    {
         button.Text = "";
-        button.Icon = icon;
-        button.ExpandIcon = true;
-        button.AddThemeConstantOverride("icon_max_width", 23);
-        button.IconAlignment = HorizontalAlignment.Center;
+        button.Icon = null;
+        button.Alignment = HorizontalAlignment.Center;
+        var existing = button.GetNodeOrNull<TextureRect>("GameUiCenteredIcon");
+        if (existing is not null)
+        {
+            existing.Texture = icon;
+            return;
+        }
+        var iconView = new TextureRect
+        {
+            Name = "GameUiCenteredIcon",
+            Texture = icon,
+            ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
+            StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
+            MouseFilter = Control.MouseFilterEnum.Ignore,
+        };
+        iconView.SetAnchorsPreset(Control.LayoutPreset.Center);
+        iconView.OffsetLeft = -11.5f;
+        iconView.OffsetTop = -11.5f;
+        iconView.OffsetRight = 11.5f;
+        iconView.OffsetBottom = 11.5f;
+        button.AddChild(iconView);
     }
 
     internal static Texture2D? Icon(string assetName)
@@ -150,7 +173,10 @@ internal static class GameUiSkin
             : FlatBox(new Color("3a241a", 0.96f), new Color(Gold, 0.78f), 1, 5, 7));
         button.AddThemeStyleboxOverride("pressed", selected is not null
             ? TextureBox(selected, 18, 7)
-            : FlatBox(new Color("5a321e", 0.98f), GoldBright, 2, 5, 7));
+            : FlatBox(new Color("593018", 0.99f), GoldBright, 2, 5, 7));
+        button.AddThemeStyleboxOverride("hover_pressed", selected is not null
+            ? TextureBox(selected, 18, 7)
+            : FlatBox(new Color("6b3b1d", 1f), new Color("ffe09a"), 2, 5, 7));
         button.AddThemeStyleboxOverride("focus", new StyleBoxEmpty());
         button.AddThemeColorOverride("font_color", Ivory);
         button.AddThemeColorOverride("font_hover_color", new Color("fff0c6"));
