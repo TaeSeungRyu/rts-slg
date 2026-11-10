@@ -18860,16 +18860,36 @@ public sealed partial class CampaignMapScene : Node3D
         _hudRuler.VerticalAlignment = VerticalAlignment.Center;
         _hudRuler.TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis;
         identity.AddChild(_hudRuler);
+
+        var lowerInfoRow = new HBoxContainer
+        {
+            Name = "RulerHudLowerInfoRow",
+            CustomMinimumSize = new Vector2(0, 56),
+            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+            SizeFlagsVertical = Control.SizeFlags.ExpandFill,
+            Alignment = BoxContainer.AlignmentMode.Begin,
+        };
+        lowerInfoRow.AddThemeConstantOverride("separation", 10);
+        identity.AddChild(lowerInfoRow);
+
+        var lowerText = new VBoxContainer
+        {
+            Name = "RulerHudLowerText",
+            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+            SizeFlagsVertical = Control.SizeFlags.ShrinkCenter,
+        };
+        lowerText.AddThemeConstantOverride("separation", 1);
+        lowerInfoRow.AddChild(lowerText);
         _hudCityCount = MakeLabel("", 13, GameUiSkin.Ivory);
         _hudCityCount.Name = "RulerHudCityCount";
         _hudCityCount.CustomMinimumSize = new Vector2(0, 19);
         _hudCityCount.VerticalAlignment = VerticalAlignment.Center;
-        identity.AddChild(_hudCityCount);
+        lowerText.AddChild(_hudCityCount);
         _hudDate = MakeLabel("", 12, new Color(GameUiSkin.Ivory, 0.72f));
         _hudDate.Name = "RulerHudDate";
         _hudDate.CustomMinimumSize = new Vector2(0, 18);
         _hudDate.VerticalAlignment = VerticalAlignment.Center;
-        identity.AddChild(_hudDate);
+        lowerText.AddChild(_hudDate);
 
         var tray = MakeButton("☰");
         tray.Name = "RulerHudSystemButton";
@@ -18879,8 +18899,8 @@ public sealed partial class CampaignMapScene : Node3D
         GameUiSkin.ApplyIconButton(tray, "hud_round", "system");
         tray.TooltipText = "시스템";
         tray.Pressed += OpenSystemPalette;
-        top.AddChild(tray);
-        AddMiniMapButton(top);
+        lowerInfoRow.AddChild(tray);
+        AddMiniMapButton(lowerInfoRow);
         AddClimateTestButtons(layer);
         AddAiTestCaseSelector(layer);
         BuildCityQuickList(layer);

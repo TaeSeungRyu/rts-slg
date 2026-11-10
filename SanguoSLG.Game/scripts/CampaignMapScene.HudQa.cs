@@ -20,9 +20,16 @@ public sealed partial class CampaignMapScene
         var topSafe = Mathf.IsEqualApprox(_hudPanel.Position.Y, 2f)
             && _hudPanel.GetGlobalRect().Position.Y >= 0f
             && (portraitDecoration is null || portraitDecoration.GetGlobalRect().Position.Y >= 0f);
-        var informationOrder = _hudRuler.Position.Y < _hudCityCount.Position.Y
-            && _hudCityCount.Position.Y < _hudDate.Position.Y
-            && _hudDate.Position.Y + _hudDate.Size.Y <= _hudPanel.Size.Y - 8f;
+        var rulerRect = _hudRuler.GetGlobalRect();
+        var cityRect = _hudCityCount.GetGlobalRect();
+        var dateRect = _hudDate.GetGlobalRect();
+        var lowerText = _hudPanel.FindChild("RulerHudLowerText", true, false) as Control;
+        var informationOrder = rulerRect.Position.Y < cityRect.Position.Y
+            && cityRect.Position.Y < dateRect.Position.Y
+            && dateRect.End.Y <= _hudPanel.GetGlobalRect().End.Y - 8f;
+        var lowerInfoCentered = lowerText is not null && buttons.All(button =>
+            Mathf.Abs((lowerText.GetGlobalRect().Position.Y + lowerText.Size.Y / 2f)
+                - (button.GetGlobalRect().Position.Y + button.Size.Y / 2f)) <= 1f);
         var fits = _hudPanel.Position.X >= 0 && _hudPanel.Position.Y >= 0
             && _hudPanel.Position.X + _hudPanel.Size.X <= viewport.X
             && _hudPanel.Position.Y + _hudPanel.Size.Y <= viewport.Y;
@@ -34,6 +41,7 @@ public sealed partial class CampaignMapScene
             && _hudRuler.Text == (ruler?.Name ?? "미지정")
             && _hudCityCount.Text == expectedCities
             && informationOrder
+            && lowerInfoCentered
             && topSafe
             && buttons.Length == 2
             && centeredIcons.All(icon => icon?.Texture is not null
@@ -48,7 +56,7 @@ public sealed partial class CampaignMapScene
         GD.Print($"[game-hud-qa] passed={passed} viewport={viewport} panel={_hudPanel.Size} "
             + $"date='{_hudDate.Text}' ruler='{_hudRuler.Text}' cities='{_hudCityCount.Text}' "
             + $"portrait={_hudFace.Texture is not null} portraitFrame={portraitDecoration?.Texture is not null} "
-            + $"informationOrder={informationOrder} topSafe={topSafe} centeredIcons="
+            + $"informationOrder={informationOrder} lowerInfoCentered={lowerInfoCentered} topSafe={topSafe} centeredIcons="
             + $"{centeredIcons.Count(icon => icon?.Texture is not null)} buttons={buttons.Length}");
         var shotArgument = OS.GetCmdlineUserArgs()
             .FirstOrDefault(argument => argument.StartsWith("--maptesthudshot=", StringComparison.Ordinal));
