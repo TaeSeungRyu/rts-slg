@@ -135,8 +135,17 @@ internal static class GameUiSkin
     private static bool TryLoad(string path, out Texture2D texture)
     {
         texture = null!;
-        if (!ResourceLoader.Exists(path)) return false;
-        texture = GD.Load<Texture2D>(path);
+        if (ResourceLoader.Exists(path))
+        {
+            texture = GD.Load<Texture2D>(path);
+            if (texture is not null) return true;
+        }
+
+        var absolutePath = ProjectSettings.GlobalizePath(path);
+        if (!System.IO.File.Exists(absolutePath)) return false;
+        var image = Image.LoadFromFile(absolutePath);
+        if (image is null || image.IsEmpty()) return false;
+        texture = ImageTexture.CreateFromImage(image);
         return texture is not null;
     }
 
