@@ -18767,8 +18767,8 @@ public sealed partial class CampaignMapScene : Node3D
         panel.SetAnchorsPreset(Control.LayoutPreset.TopLeft);
         panel.Position = new Vector2(10, 10);
         panel.Name = "RulerHudPanel";
-        panel.CustomMinimumSize = new Vector2(430, 0);
-        panel.AddThemeStyleboxOverride("panel", GameUiSkin.Panel("ruler_hud", 28, 12, 7));
+        panel.CustomMinimumSize = new Vector2(500, 124);
+        panel.AddThemeStyleboxOverride("panel", GameUiSkin.Panel("ruler_hud", 104, 24, 40, 24, 12, 12));
         layer.AddChild(panel);
         _hudPanel = panel;
 
@@ -18783,20 +18783,23 @@ public sealed partial class CampaignMapScene : Node3D
         _hudFacePanel = new PanelContainer
         {
             Name = "RulerHudPortraitFrame",
-            CustomMinimumSize = new Vector2(82, 82),
+            CustomMinimumSize = new Vector2(82, 88),
             ClipContents = true,
         };
-        _hudFacePanel.AddThemeStyleboxOverride("panel", GameUiSkin.PortraitFrame("ruler_portrait", 24, 5));
+        var portraitFrameTexture = GameUiSkin.PortraitFrameTexture("ruler_portrait");
+        _hudFacePanel.AddThemeStyleboxOverride("panel", portraitFrameTexture is null
+            ? GameUiSkin.PortraitFrame("ruler_portrait", 24, 5)
+            : new StyleBoxEmpty());
         top.AddChild(_hudFacePanel);
         var faceInset = new MarginContainer
         {
             SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
             SizeFlagsVertical = Control.SizeFlags.ExpandFill,
         };
-        faceInset.AddThemeConstantOverride("margin_left", 8);
-        faceInset.AddThemeConstantOverride("margin_top", 8);
-        faceInset.AddThemeConstantOverride("margin_right", 8);
-        faceInset.AddThemeConstantOverride("margin_bottom", 8);
+        faceInset.AddThemeConstantOverride("margin_left", portraitFrameTexture is null ? 8 : 14);
+        faceInset.AddThemeConstantOverride("margin_top", portraitFrameTexture is null ? 8 : 17);
+        faceInset.AddThemeConstantOverride("margin_right", portraitFrameTexture is null ? 8 : 14);
+        faceInset.AddThemeConstantOverride("margin_bottom", portraitFrameTexture is null ? 8 : 14);
         _hudFacePanel.AddChild(faceInset);
         _hudFace = new TextureRect
         {
@@ -18807,6 +18810,20 @@ public sealed partial class CampaignMapScene : Node3D
             SizeFlagsVertical = Control.SizeFlags.ShrinkCenter,
         };
         faceInset.AddChild(_hudFace);
+        if (portraitFrameTexture is not null)
+        {
+            var frameOverlay = new TextureRect
+            {
+                Name = "RulerHudPortraitDecoration",
+                Texture = portraitFrameTexture,
+                ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
+                StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
+                MouseFilter = Control.MouseFilterEnum.Ignore,
+            };
+            frameOverlay.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
+            _hudFacePanel.AddChild(frameOverlay);
+            _hudFacePanel.MoveChild(frameOverlay, _hudFacePanel.GetChildCount() - 1);
+        }
 
         var identity = new VBoxContainer
         {

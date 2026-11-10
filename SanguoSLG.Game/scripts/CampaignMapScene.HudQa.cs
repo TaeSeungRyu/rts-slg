@@ -14,11 +14,14 @@ public sealed partial class CampaignMapScene
         var expectedCities = $"점령 도시  {_state.CityCount(Player)}";
         var viewport = GetViewport().GetVisibleRect().Size;
         var buttons = _hudPanel.FindChildren("RulerHud*Button", "Button", true, false).OfType<Button>().ToArray();
+        var portraitDecoration = _hudFacePanel.GetNodeOrNull<TextureRect>("RulerHudPortraitDecoration");
         var fits = _hudPanel.Position.X >= 0 && _hudPanel.Position.Y >= 0
             && _hudPanel.Position.X + _hudPanel.Size.X <= viewport.X
             && _hudPanel.Position.Y + _hudPanel.Size.Y <= viewport.Y;
-        var passed = _hudPanel.GetThemeStylebox("panel") is StyleBox
+        var passed = _hudPanel.GetThemeStylebox("panel") is StyleBoxTexture
             && _hudFacePanel.GetThemeStylebox("panel") is StyleBox
+            && portraitDecoration?.Texture is not null
+            && portraitDecoration.MouseFilter == Control.MouseFilterEnum.Ignore
             && _hudDate.Text == expectedDate
             && _hudRuler.Text == (ruler?.Name ?? "미지정")
             && _hudCityCount.Text == expectedCities
@@ -30,7 +33,8 @@ public sealed partial class CampaignMapScene
             && fits;
         GD.Print($"[game-hud-qa] passed={passed} viewport={viewport} panel={_hudPanel.Size} "
             + $"date='{_hudDate.Text}' ruler='{_hudRuler.Text}' cities='{_hudCityCount.Text}' "
-            + $"portrait={_hudFace.Texture is not null} buttons={buttons.Length}");
+            + $"portrait={_hudFace.Texture is not null} portraitFrame={portraitDecoration?.Texture is not null} "
+            + $"buttons={buttons.Length}");
         GetTree().Quit(passed ? 0 : 1);
     }
 }

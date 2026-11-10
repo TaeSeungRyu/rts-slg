@@ -22,12 +22,30 @@ internal static class GameUiSkin
         return FlatBox(Ink, Gold, 1, radius, padding);
     }
 
+    internal static StyleBox Panel(string assetName, int leftSlice, int topSlice, int rightSlice,
+        int bottomSlice, int radius, int padding)
+    {
+        var path = $"{Root}/panels/{assetName}.png";
+        if (TryLoad(path, out var texture))
+            return TextureBox(texture, leftSlice, topSlice, rightSlice, bottomSlice, padding);
+        WarnMissing($"panel:{assetName}", path);
+        return FlatBox(Ink, Gold, 1, radius, padding);
+    }
+
     internal static StyleBox PortraitFrame(string assetName, int slice, int padding)
     {
         var path = $"{Root}/frames/{assetName}.png";
         if (TryLoad(path, out var texture)) return TextureBox(texture, slice, padding);
         WarnMissing($"frame:{assetName}", path);
         return FlatBox(new Color("24150f"), GoldBright, 3, 64, padding);
+    }
+
+    internal static Texture2D? PortraitFrameTexture(string assetName)
+    {
+        var path = $"{Root}/frames/{assetName}.png";
+        if (TryLoad(path, out var texture)) return texture;
+        WarnMissing($"frame:{assetName}", path);
+        return null;
     }
 
     internal static void ApplyButton(Button button, string assetName, bool accent = false)
@@ -87,6 +105,19 @@ internal static class GameUiSkin
             style.SetTextureMargin(side, slice);
             style.SetContentMargin(side, padding);
         }
+        return style;
+    }
+
+    private static StyleBoxTexture TextureBox(Texture2D texture, int leftSlice, int topSlice,
+        int rightSlice, int bottomSlice, int padding)
+    {
+        var style = new StyleBoxTexture { Texture = texture };
+        style.SetTextureMargin(Side.Left, leftSlice);
+        style.SetTextureMargin(Side.Top, topSlice);
+        style.SetTextureMargin(Side.Right, rightSlice);
+        style.SetTextureMargin(Side.Bottom, bottomSlice);
+        foreach (var side in new[] { Side.Left, Side.Top, Side.Right, Side.Bottom })
+            style.SetContentMargin(side, padding);
         return style;
     }
 
