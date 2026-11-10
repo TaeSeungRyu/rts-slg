@@ -18828,16 +18828,13 @@ public sealed partial class CampaignMapScene : Node3D
         var identity = new VBoxContainer
         {
             Name = "RulerHudIdentity",
-            CustomMinimumSize = new Vector2(210, 76),
+            CustomMinimumSize = new Vector2(210, 80),
             SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
             SizeFlagsVertical = Control.SizeFlags.ShrinkCenter,
         };
-        identity.AddThemeConstantOverride("separation", 2);
+        identity.AddThemeConstantOverride("separation", 1);
         top.AddChild(identity);
-        _hudDate = MakeLabel("", 13, new Color(GameUiSkin.Ivory, 0.76f));
-        _hudDate.Name = "RulerHudDate";
-        identity.AddChild(_hudDate);
-        identity.AddChild(new HSeparator());
+        identity.AddChild(new Control { CustomMinimumSize = new Vector2(0, 7) });
         _hudRuler = MakeLabel("", 19, GameUiSkin.GoldBright);
         _hudRuler.Name = "RulerHudName";
         _hudRuler.TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis;
@@ -18845,6 +18842,9 @@ public sealed partial class CampaignMapScene : Node3D
         _hudCityCount = MakeLabel("", 13, GameUiSkin.Ivory);
         _hudCityCount.Name = "RulerHudCityCount";
         identity.AddChild(_hudCityCount);
+        _hudDate = MakeLabel("", 12, new Color(GameUiSkin.Ivory, 0.72f));
+        _hudDate.Name = "RulerHudDate";
+        identity.AddChild(_hudDate);
 
         var tray = MakeButton("☰");
         tray.Name = "RulerHudSystemButton";

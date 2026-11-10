@@ -15,6 +15,9 @@ public sealed partial class CampaignMapScene
         var viewport = GetViewport().GetVisibleRect().Size;
         var buttons = _hudPanel.FindChildren("RulerHud*Button", "Button", true, false).OfType<Button>().ToArray();
         var portraitDecoration = _hudFacePanel.GetNodeOrNull<TextureRect>("RulerHudPortraitDecoration");
+        var informationOrder = _hudRuler.Position.Y < _hudCityCount.Position.Y
+            && _hudCityCount.Position.Y < _hudDate.Position.Y
+            && _hudDate.Position.Y + _hudDate.Size.Y <= _hudPanel.Size.Y - 8f;
         var fits = _hudPanel.Position.X >= 0 && _hudPanel.Position.Y >= 0
             && _hudPanel.Position.X + _hudPanel.Size.X <= viewport.X
             && _hudPanel.Position.Y + _hudPanel.Size.Y <= viewport.Y;
@@ -25,6 +28,7 @@ public sealed partial class CampaignMapScene
             && _hudDate.Text == expectedDate
             && _hudRuler.Text == (ruler?.Name ?? "미지정")
             && _hudCityCount.Text == expectedCities
+            && informationOrder
             && buttons.Length == 2
             && buttons.All(button => button.Icon is not null
                 && button.IconAlignment == HorizontalAlignment.Center
@@ -36,7 +40,7 @@ public sealed partial class CampaignMapScene
         GD.Print($"[game-hud-qa] passed={passed} viewport={viewport} panel={_hudPanel.Size} "
             + $"date='{_hudDate.Text}' ruler='{_hudRuler.Text}' cities='{_hudCityCount.Text}' "
             + $"portrait={_hudFace.Texture is not null} portraitFrame={portraitDecoration?.Texture is not null} "
-            + $"buttons={buttons.Length}");
+            + $"informationOrder={informationOrder} buttons={buttons.Length}");
         var shotArgument = OS.GetCmdlineUserArgs()
             .FirstOrDefault(argument => argument.StartsWith("--maptesthudshot=", StringComparison.Ordinal));
         if (shotArgument is not null)
