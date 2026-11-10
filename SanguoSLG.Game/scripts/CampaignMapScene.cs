@@ -21,6 +21,8 @@ public sealed partial class CampaignMapScene : Node3D
 {
     private const float LeftHudX = 10f;
     private const float LeftHudPanelGap = 6f;
+    private const float QuickListMaximumHeight = 180f;
+    private const float QuickListRowSeparation = 2f;
     private static readonly Color Blue = new(0.24f, 0.44f, 0.86f);
     private static readonly Color Red = new(0.82f, 0.22f, 0.18f);
     private static FactionId Player = new(1); // 선택한 세력 = 플레이어, 나머지는 AI
@@ -96,6 +98,7 @@ public sealed partial class CampaignMapScene : Node3D
     private bool _cityQuickMoved;
     private Button _cityQuickToggle = null!;
     private Label _cityQuickArrow = null!;
+    private ScrollContainer _cityQuickScroll = null!;
     private VBoxContainer _cityQuickList = null!;
     private string _cityQuickListKey = "";
     private int? _cityQuickSelectedCity;
@@ -103,6 +106,7 @@ public sealed partial class CampaignMapScene : Node3D
     private bool _sortieQuickMoved;
     private Button _sortieQuickToggle = null!;
     private Label _sortieQuickArrow = null!;
+    private ScrollContainer _sortieQuickScroll = null!;
     private VBoxContainer _sortieQuickList = null!;
     private string _sortieQuickListKey = "";
     private int? _sortieQuickSelectedUnit;
@@ -18774,7 +18778,9 @@ public sealed partial class CampaignMapScene : Node3D
 
         var panel = new PanelContainer();
         panel.SetAnchorsPreset(Control.LayoutPreset.TopLeft);
-        panel.Position = new Vector2(10, 10);
+        // Keep a 2px safety inset for the upper gold ornament while moving the HUD
+        // approximately 10px upward from its former 10px offset.
+        panel.Position = new Vector2(10, 2);
         panel.Name = "RulerHudPanel";
         panel.CustomMinimumSize = new Vector2(500, 124);
         panel.AddThemeStyleboxOverride("panel", GameUiSkin.Panel("ruler_hud", 104, 24, 40, 24, 12, 12));
@@ -19064,13 +19070,14 @@ public sealed partial class CampaignMapScene : Node3D
 
         var scroll = new ScrollContainer
         {
-            CustomMinimumSize = new Vector2(338f, 180f),
+            CustomMinimumSize = new Vector2(338f, 0f),
             SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
             SizeFlagsVertical = Control.SizeFlags.ExpandFill,
             HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled,
             VerticalScrollMode = ScrollContainer.ScrollMode.Auto,
             Visible = false,
         };
+        _cityQuickScroll = scroll;
         GameUiSkin.ApplyQuickListScroll(scroll);
         content.AddChild(scroll);
         toggle.Pressed += () =>
@@ -19094,6 +19101,7 @@ public sealed partial class CampaignMapScene : Node3D
             .OrderBy(city => city.Name, StringComparer.CurrentCulture)
             .ThenBy(city => city.Id.Value).ToArray();
         _cityQuickToggle.Text = $"도시 목록 ({cities.Length})";
+        SetQuickListHeight(_cityQuickScroll, cities.Length, 38f);
         var key = string.Join("|", cities.Select(city => $"{city.Id.Value}:{city.Name}"));
         if (key == _cityQuickListKey) return;
         _cityQuickListKey = key;
@@ -19168,13 +19176,14 @@ public sealed partial class CampaignMapScene : Node3D
 
         var scroll = new ScrollContainer
         {
-            CustomMinimumSize = new Vector2(338f, 180f),
+            CustomMinimumSize = new Vector2(338f, 0f),
             SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
             SizeFlagsVertical = Control.SizeFlags.ExpandFill,
             HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled,
             VerticalScrollMode = ScrollContainer.ScrollMode.Auto,
             Visible = false,
         };
+        _sortieQuickScroll = scroll;
         GameUiSkin.ApplyQuickListScroll(scroll);
         content.AddChild(scroll);
         toggle.Pressed += () =>
@@ -19197,6 +19206,7 @@ public sealed partial class CampaignMapScene : Node3D
         var units = _state.Armies.Where(unit => unit.Field.Owner == Player && unit.VanguardId is not null)
             .OrderBy(unit => unit.Id.Value).ToArray();
         _sortieQuickToggle.Text = $"출전 장수 목록 ({units.Length})";
+        SetQuickListHeight(_sortieQuickScroll, units.Length, 54f);
         var key = string.Join("|", units.Select(unit =>
             $"{unit.Id.Value}:{unit.VanguardId}:{unit.AdjutantId}:{unit.Pool.Active}:{unit.IsWaitingDeployment}"));
         if (key == _sortieQuickListKey) return;
@@ -19275,6 +19285,18 @@ public sealed partial class CampaignMapScene : Node3D
         }
     }
 
+    private static void SetQuickListHeight(ScrollContainer scroll, int itemCount, float rowHeight)
+    {
+        var height = QuickListHeight(itemCount, rowHeight);
+        if (!Mathf.IsEqualApprox(scroll.CustomMinimumSize.Y, height))
+            scroll.CustomMinimumSize = new Vector2(338f, height);
+    }
+
+    private static float QuickListHeight(int itemCount, float rowHeight)
+        => itemCount <= 0 ? 0f : Mathf.Min(
+            itemCount * rowHeight + (itemCount - 1) * QuickListRowSeparation,
+            QuickListMaximumHeight);
+
     private void AddQuickListDragHandle(HBoxContainer header, PanelContainer panel, Action moved)
     {
         var grip = MakeLabel("⠿", 20, GoldBright);
@@ -19336,6 +19358,14 @@ public sealed partial class CampaignMapScene : Node3D
             && Mathf.Abs(sortieGap - LeftHudPanelGap) < 0.25f;
         var avoidsReport = _sortieQuickPanel.GetGlobalRect().End.Y
             <= _reportPanel.GetGlobalRect().Position.Y + 0.5f;
+        var cityCount = _state.CityCount(Player);
+        var sortieCount = _state.Armies.Count(unit => unit.Field.Owner == Player && unit.VanguardId is not null);
+        var adaptiveHeights = Mathf.IsEqualApprox(_cityQuickScroll.CustomMinimumSize.Y,
+                QuickListHeight(cityCount, 38f))
+            && Mathf.IsEqualApprox(_sortieQuickScroll.CustomMinimumSize.Y,
+                QuickListHeight(sortieCount, 54f))
+            && _cityQuickScroll.GetVScrollBar().Visible
+            && !_sortieQuickScroll.GetVScrollBar().Visible;
         var shotArgument = OS.GetCmdlineUserArgs()
             .FirstOrDefault(argument => argument.StartsWith("--quicklistshot=", StringComparison.Ordinal));
         var shotSaved = true;
@@ -19369,7 +19399,7 @@ public sealed partial class CampaignMapScene : Node3D
                 && row.GetThemeStylebox("normal") is StyleBox
                 && row.GetThemeStylebox("hover") is StyleBox
                 && row.GetThemeStylebox("pressed") is StyleBox);
-        var playerSorties = _state.Armies.Count(unit => unit.Field.Owner == Player && unit.VanguardId is not null);
+        var playerSorties = sortieCount;
         var sortieRows = _sortieQuickList.FindChildren("SortieQuickRow_*", "Button", true, false)
             .OfType<Button>().ToArray();
         var sortieVisuals = _sortieQuickToggle.Text == $"출전 장수 목록 ({playerSorties})"
@@ -19382,11 +19412,13 @@ public sealed partial class CampaignMapScene : Node3D
                 && row.GetThemeStylebox("pressed") is StyleBox);
         var passed = expanded && _cityQuickPanel.Size.Y <= cityClosed + 2f
             && _sortieQuickPanel.Size.Y <= sortieClosed + 2f && cityDrags && sortieDrags
-            && cityVisuals && sortieVisuals && aligned && avoidsReport && shotSaved;
+            && cityVisuals && sortieVisuals && aligned && avoidsReport && adaptiveHeights && shotSaved;
         GD.Print($"[newmap-quicklist-qa] passed={passed} city={cityClosed:F1}/{_cityQuickPanel.Size.Y:F1} "
             + $"sortie={sortieClosed:F1}/{_sortieQuickPanel.Size.Y:F1} drag={cityDrags}/{sortieDrags} "
             + $"cityVisuals={cityVisuals} sortieVisuals={sortieVisuals} "
-            + $"aligned={aligned} gaps={cityGap:F1}/{sortieGap:F1} avoidsReport={avoidsReport}");
+            + $"aligned={aligned} gaps={cityGap:F1}/{sortieGap:F1} avoidsReport={avoidsReport} "
+            + $"adaptiveHeights={adaptiveHeights} heights={_cityQuickScroll.CustomMinimumSize.Y:F1}/"
+            + $"{_sortieQuickScroll.CustomMinimumSize.Y:F1}");
         GetTree().Quit(passed ? 0 : 1);
     }
 
