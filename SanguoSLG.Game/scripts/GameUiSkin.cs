@@ -99,6 +99,79 @@ internal static class GameUiSkin
         return null;
     }
 
+    internal static Texture2D? ListTexture(string assetName, string? fallbackPath = null)
+    {
+        var path = $"{Root}/lists/{assetName}.png";
+        if (TryLoad(path, out var texture)) return texture;
+        if (fallbackPath is not null && TryLoad(fallbackPath, out texture)) return texture;
+        WarnMissing($"list:{assetName}", path);
+        return null;
+    }
+
+    internal static StyleBox QuickListPanel()
+    {
+        var path = $"{Root}/lists/list_body.png";
+        if (TryLoad(path, out var texture)) return TextureBox(texture, 28, 12);
+        return FlatBox(new Color("160d0b", 0.96f), new Color("b9873e"), 2, 8, 10);
+    }
+
+    internal static void ApplyQuickListHeader(Button button)
+    {
+        var path = $"{Root}/lists/list_header.png";
+        if (TryLoad(path, out var texture))
+        {
+            button.AddThemeStyleboxOverride("normal", TextureBox(texture, 24, 10));
+            button.AddThemeStyleboxOverride("hover", TextureBox(texture, 24, 10));
+            button.AddThemeStyleboxOverride("pressed", TextureBox(texture, 24, 10));
+        }
+        else
+        {
+            button.AddThemeStyleboxOverride("normal", FlatBox(new Color("2a1511", 0.94f),
+                new Color("8d6334"), 1, 6, 9));
+            button.AddThemeStyleboxOverride("hover", FlatBox(new Color("3a2018", 0.98f),
+                GoldBright, 1, 6, 9));
+            button.AddThemeStyleboxOverride("pressed", FlatBox(new Color("1b0d0b"),
+                Gold, 1, 6, 9));
+        }
+        button.AddThemeStyleboxOverride("focus", new StyleBoxEmpty());
+        button.AddThemeColorOverride("font_color", Ivory);
+        button.AddThemeColorOverride("font_hover_color", new Color("fff0c6"));
+        button.AddThemeColorOverride("font_pressed_color", GoldBright);
+    }
+
+    internal static void ApplyQuickListRow(Button button)
+    {
+        var hover = ListTexture("list_hover");
+        var selected = ListTexture("list_selected");
+        button.AddThemeStyleboxOverride("normal", FlatBox(new Color("1b100e", 0.82f),
+            new Color(Bronze, 0.45f), 1, 5, 7));
+        button.AddThemeStyleboxOverride("hover", hover is not null
+            ? TextureBox(hover, 18, 7)
+            : FlatBox(new Color("3a241a", 0.96f), new Color(Gold, 0.78f), 1, 5, 7));
+        button.AddThemeStyleboxOverride("pressed", selected is not null
+            ? TextureBox(selected, 18, 7)
+            : FlatBox(new Color("5a321e", 0.98f), GoldBright, 2, 5, 7));
+        button.AddThemeStyleboxOverride("focus", new StyleBoxEmpty());
+        button.AddThemeColorOverride("font_color", Ivory);
+        button.AddThemeColorOverride("font_hover_color", new Color("fff0c6"));
+        button.AddThemeColorOverride("font_pressed_color", GoldBright);
+    }
+
+    internal static void ApplyQuickListScroll(ScrollContainer scroll)
+    {
+        scroll.AddThemeConstantOverride("scrollbar_v_separation", 10);
+        var bar = scroll.GetVScrollBar();
+        bar.CustomMinimumSize = new Vector2(7, 0);
+        bar.AddThemeStyleboxOverride("scroll", FlatBox(new Color("241713"),
+            new Color("3e2b20"), 1, 3, 0));
+        bar.AddThemeStyleboxOverride("grabber", FlatBox(new Color("8c683b"),
+            new Color("b78a4a"), 1, 3, 0));
+        bar.AddThemeStyleboxOverride("grabber_highlight", FlatBox(new Color("c6a05b"),
+            GoldBright, 1, 3, 0));
+        bar.AddThemeStyleboxOverride("grabber_pressed", FlatBox(new Color("a87c3f"),
+            new Color("d9b66e"), 1, 3, 0));
+    }
+
     internal static StyleBoxFlat FlatBox(Color background, Color border, int borderWidth, int radius, int padding)
     {
         var style = new StyleBoxFlat { BgColor = background, BorderColor = border };

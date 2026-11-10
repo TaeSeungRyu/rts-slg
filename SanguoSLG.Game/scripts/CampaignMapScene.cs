@@ -92,8 +92,11 @@ public sealed partial class CampaignMapScene : Node3D
     private PanelContainer _hudPanel = null!;
     private PanelContainer _cityQuickPanel = null!;
     private bool _cityQuickMoved;
+    private Button _cityQuickToggle = null!;
+    private Label _cityQuickArrow = null!;
     private VBoxContainer _cityQuickList = null!;
     private string _cityQuickListKey = "";
+    private int? _cityQuickSelectedCity;
     private PanelContainer _sortieQuickPanel = null!;
     private bool _sortieQuickMoved;
     private VBoxContainer _sortieQuickList = null!;
@@ -19019,9 +19022,10 @@ public sealed partial class CampaignMapScene : Node3D
         var panel = new PanelContainer
         {
             Position = new Vector2(12f, 108f),
-            CustomMinimumSize = new Vector2(340f, 0f),
+            CustomMinimumSize = new Vector2(360f, 0f),
+            Name = "CityQuickPanel",
         };
-        panel.AddThemeStyleboxOverride("panel", Frame(new Color(Ink, 0.94f), Gold, 2, 8, 9));
+        panel.AddThemeStyleboxOverride("panel", GameUiSkin.QuickListPanel());
         layer.AddChild(panel);
         _cityQuickPanel = panel;
 
@@ -19031,29 +19035,43 @@ public sealed partial class CampaignMapScene : Node3D
         var header = new HBoxContainer();
         content.AddChild(header);
         AddQuickListDragHandle(header, panel, () => _cityQuickMoved = true);
-        var toggle = MakeButton("▸ 도시목록");
+        var toggle = MakeButton("도시 목록 (0)");
+        toggle.Name = "CityQuickToggle";
+        toggle.Icon = GameUiSkin.ListTexture("city_icon", "res://assets/icons/icon_wall.png");
+        toggle.ExpandIcon = true;
+        toggle.AddThemeConstantOverride("icon_max_width", 27);
         toggle.Alignment = HorizontalAlignment.Left;
         toggle.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+        toggle.CustomMinimumSize = new Vector2(0, 40);
+        GameUiSkin.ApplyQuickListHeader(toggle);
         header.AddChild(toggle);
+        _cityQuickToggle = toggle;
+        _cityQuickArrow = MakeLabel("›", 22, GameUiSkin.GoldBright);
+        _cityQuickArrow.CustomMinimumSize = new Vector2(24, 40);
+        _cityQuickArrow.HorizontalAlignment = HorizontalAlignment.Center;
+        _cityQuickArrow.VerticalAlignment = VerticalAlignment.Center;
+        _cityQuickArrow.MouseFilter = Control.MouseFilterEnum.Ignore;
+        header.AddChild(_cityQuickArrow);
         var rule = GoldRule();
         rule.Visible = false;
         content.AddChild(rule);
 
         var scroll = new ScrollContainer
         {
-            CustomMinimumSize = new Vector2(318f, 150f),
+            CustomMinimumSize = new Vector2(338f, 180f),
             SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
             SizeFlagsVertical = Control.SizeFlags.ExpandFill,
             HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled,
             VerticalScrollMode = ScrollContainer.ScrollMode.Auto,
             Visible = false,
         };
+        GameUiSkin.ApplyQuickListScroll(scroll);
         content.AddChild(scroll);
         toggle.Pressed += () =>
         {
             scroll.Visible = !scroll.Visible;
             rule.Visible = scroll.Visible;
-            toggle.Text = scroll.Visible ? "▾ 도시목록" : "▸ 도시목록";
+            _cityQuickArrow.Text = scroll.Visible ? "⌄" : "›";
             panel.ResetSize();
         };
         var inset = new MarginContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
@@ -19069,6 +19087,7 @@ public sealed partial class CampaignMapScene : Node3D
         var cities = _state.Cities.Where(city => city.Owner == Player)
             .OrderBy(city => city.Name, StringComparer.CurrentCulture)
             .ThenBy(city => city.Id.Value).ToArray();
+        _cityQuickToggle.Text = $"도시 목록 ({cities.Length})";
         var key = string.Join("|", cities.Select(city => $"{city.Id.Value}:{city.Name}"));
         if (key == _cityQuickListKey) return;
         _cityQuickListKey = key;
@@ -19077,14 +19096,25 @@ public sealed partial class CampaignMapScene : Node3D
             _cityQuickList.RemoveChild(child);
             child.QueueFree();
         }
+        var group = new ButtonGroup { AllowUnpress = false };
         foreach (var city in cities)
         {
             var destination = city.Position;
             var button = MakeButton(city.IsPort ? $"{city.Name} · 항구" : city.Name);
+            button.Name = $"CityQuickRow_{city.Id.Value}";
+            button.Icon = GameUiSkin.ListTexture("city_icon", "res://assets/icons/icon_wall.png");
+            button.ExpandIcon = true;
+            button.AddThemeConstantOverride("icon_max_width", 25);
             button.Alignment = HorizontalAlignment.Left;
             button.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+            button.CustomMinimumSize = new Vector2(0, 38);
+            button.ToggleMode = true;
+            button.ButtonGroup = group;
+            button.ButtonPressed = _cityQuickSelectedCity == city.Id.Value;
+            GameUiSkin.ApplyQuickListRow(button);
             button.Pressed += () =>
             {
+                _cityQuickSelectedCity = city.Id.Value;
                 HidePanels();
                 _camera.JumpTo(_view.HexToWorld(destination));
             };
@@ -19220,10 +19250,20 @@ public sealed partial class CampaignMapScene : Node3D
         var cityDrags = _cityQuickMoved && _dragPanel == _cityQuickPanel;
         sortieGrip?.EmitSignal(Control.SignalName.GuiInput, press);
         var sortieDrags = _sortieQuickMoved && _dragPanel == _sortieQuickPanel;
+        var cityRows = _cityQuickList.FindChildren("CityQuickRow_*", "Button", true, false)
+            .OfType<Button>().ToArray();
+        var cityVisuals = _cityQuickToggle.Text == $"도시 목록 ({_state.CityCount(Player)})"
+            && _cityQuickToggle.Icon is not null
+            && cityRows.Length == _state.CityCount(Player)
+            && cityRows.All(row => row.Icon is not null
+                && row.GetThemeStylebox("normal") is StyleBox
+                && row.GetThemeStylebox("hover") is StyleBox
+                && row.GetThemeStylebox("pressed") is StyleBox);
         var passed = expanded && _cityQuickPanel.Size.Y <= cityClosed + 2f
-            && _sortieQuickPanel.Size.Y <= sortieClosed + 2f && cityDrags && sortieDrags;
+            && _sortieQuickPanel.Size.Y <= sortieClosed + 2f && cityDrags && sortieDrags && cityVisuals;
         GD.Print($"[newmap-quicklist-qa] passed={passed} city={cityClosed:F1}/{_cityQuickPanel.Size.Y:F1} "
-            + $"sortie={sortieClosed:F1}/{_sortieQuickPanel.Size.Y:F1} drag={cityDrags}/{sortieDrags}");
+            + $"sortie={sortieClosed:F1}/{_sortieQuickPanel.Size.Y:F1} drag={cityDrags}/{sortieDrags} "
+            + $"cityVisuals={cityVisuals}");
         GetTree().Quit(passed ? 0 : 1);
     }
 
