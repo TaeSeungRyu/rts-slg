@@ -19,6 +19,8 @@ namespace SanguoSLG.Game;
 /// </summary>
 public sealed partial class CampaignMapScene : Node3D
 {
+    private const float LeftHudX = 10f;
+    private const float LeftHudPanelGap = 6f;
     private static readonly Color Blue = new(0.24f, 0.44f, 0.86f);
     private static readonly Color Red = new(0.82f, 0.22f, 0.18f);
     private static FactionId Player = new(1); // 선택한 세력 = 플레이어, 나머지는 AI
@@ -6983,10 +6985,11 @@ public sealed partial class CampaignMapScene : Node3D
     public override void _Process(double delta)
     {
         if (!_cityQuickMoved && _hudPanel is not null && _cityQuickPanel is not null)
-            _cityQuickPanel.Position = new Vector2(12f, _hudPanel.Position.Y + _hudPanel.Size.Y + 5f);
+            _cityQuickPanel.Position = new Vector2(LeftHudX,
+                _hudPanel.Position.Y + _hudPanel.Size.Y + LeftHudPanelGap);
         if (!_sortieQuickMoved && _cityQuickPanel is not null && _sortieQuickPanel is not null)
-            _sortieQuickPanel.Position = new Vector2(12f,
-                _cityQuickPanel.Position.Y + _cityQuickPanel.Size.Y + 5f);
+            _sortieQuickPanel.Position = new Vector2(LeftHudX,
+                _cityQuickPanel.Position.Y + _cityQuickPanel.Size.Y + LeftHudPanelGap);
         PollActiveVisualPrewarm();
         if (_advancing && _generalTransferTargeting) StopGeneralTransferTargeting(false);
         RefreshGeneralTransferFog();
@@ -19024,7 +19027,7 @@ public sealed partial class CampaignMapScene : Node3D
     {
         var panel = new PanelContainer
         {
-            Position = new Vector2(12f, 108f),
+            Position = new Vector2(LeftHudX, 108f),
             CustomMinimumSize = new Vector2(360f, 0f),
             Name = "CityQuickPanel",
         };
@@ -19129,7 +19132,7 @@ public sealed partial class CampaignMapScene : Node3D
     {
         _sortieQuickPanel = new PanelContainer
         {
-            Position = new Vector2(12f, 160f),
+            Position = new Vector2(LeftHudX, 160f),
             CustomMinimumSize = new Vector2(360f, 0f),
             Name = "SortieQuickPanel",
         };
@@ -19320,8 +19323,31 @@ public sealed partial class CampaignMapScene : Node3D
         cityToggle.EmitSignal(Button.SignalName.Pressed);
         sortieToggle.EmitSignal(Button.SignalName.Pressed);
         await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
         var expanded = _cityQuickPanel.Size.Y > cityClosed + 100f
             && _sortieQuickPanel.Size.Y > sortieClosed + 100f;
+        var cityGap = _cityQuickPanel.Position.Y - (_hudPanel.Position.Y + _hudPanel.Size.Y);
+        var sortieGap = _sortieQuickPanel.Position.Y
+            - (_cityQuickPanel.Position.Y + _cityQuickPanel.Size.Y);
+        var aligned = Mathf.IsEqualApprox(_hudPanel.Position.X, LeftHudX)
+            && Mathf.IsEqualApprox(_cityQuickPanel.Position.X, LeftHudX)
+            && Mathf.IsEqualApprox(_sortieQuickPanel.Position.X, LeftHudX)
+            && Mathf.Abs(cityGap - LeftHudPanelGap) < 0.25f
+            && Mathf.Abs(sortieGap - LeftHudPanelGap) < 0.25f;
+        var avoidsReport = _sortieQuickPanel.GetGlobalRect().End.Y
+            <= _reportPanel.GetGlobalRect().Position.Y + 0.5f;
+        var shotArgument = OS.GetCmdlineUserArgs()
+            .FirstOrDefault(argument => argument.StartsWith("--quicklistshot=", StringComparison.Ordinal));
+        var shotSaved = true;
+        if (shotArgument is not null)
+        {
+            var tag = shotArgument["--quicklistshot=".Length..];
+            var projectDirectory = new System.IO.DirectoryInfo(ProjectSettings.GlobalizePath("res://"));
+            var outputPath = System.IO.Path.Combine(projectDirectory.Parent?.FullName ?? projectDirectory.FullName,
+                $"shot_left_hud_{tag}.png");
+            shotSaved = GetViewport().GetTexture().GetImage().SavePng(outputPath) == Error.Ok;
+            GD.Print($"[newmap-quicklist-shot] saved={shotSaved} path={outputPath}");
+        }
         cityToggle.EmitSignal(Button.SignalName.Pressed);
         sortieToggle.EmitSignal(Button.SignalName.Pressed);
         await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
@@ -19356,10 +19382,11 @@ public sealed partial class CampaignMapScene : Node3D
                 && row.GetThemeStylebox("pressed") is StyleBox);
         var passed = expanded && _cityQuickPanel.Size.Y <= cityClosed + 2f
             && _sortieQuickPanel.Size.Y <= sortieClosed + 2f && cityDrags && sortieDrags
-            && cityVisuals && sortieVisuals;
+            && cityVisuals && sortieVisuals && aligned && avoidsReport && shotSaved;
         GD.Print($"[newmap-quicklist-qa] passed={passed} city={cityClosed:F1}/{_cityQuickPanel.Size.Y:F1} "
             + $"sortie={sortieClosed:F1}/{_sortieQuickPanel.Size.Y:F1} drag={cityDrags}/{sortieDrags} "
-            + $"cityVisuals={cityVisuals} sortieVisuals={sortieVisuals}");
+            + $"cityVisuals={cityVisuals} sortieVisuals={sortieVisuals} "
+            + $"aligned={aligned} gaps={cityGap:F1}/{sortieGap:F1} avoidsReport={avoidsReport}");
         GetTree().Quit(passed ? 0 : 1);
     }
 
