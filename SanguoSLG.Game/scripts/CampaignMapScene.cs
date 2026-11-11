@@ -6686,6 +6686,16 @@ public sealed partial class CampaignMapScene : Node3D
         g.AddChild(v);
     }
 
+    private void StyleCityArtworkActionButton(Button button, bool danger = false)
+    {
+        button.Alignment = HorizontalAlignment.Center;
+        foreach (var state in new[] { "normal", "hover", "pressed", "disabled", "focus" })
+            button.AddThemeStyleboxOverride(state, new StyleBoxEmpty());
+        button.AddThemeColorOverride("font_color", danger ? new Color("efb08a") : GameUiSkin.Ivory);
+        button.AddThemeColorOverride("font_hover_color", GameUiSkin.GoldBright);
+        button.AddThemeColorOverride("font_pressed_color", danger ? new Color("d77b61") : GameUiSkin.Gold);
+    }
+
     private static PanelContainer WrapCityInfoGrid(GridContainer grid, string name)
     {
         var panel = new PanelContainer
@@ -6794,6 +6804,7 @@ public sealed partial class CampaignMapScene : Node3D
         var c = _state.Cities.First(x => x.Id == id);
         var owned = c.Owner == Player;
         var known = CanInspectCity(c);
+        var scoutedEnemy = !owned && _state.IsScouted(Player, id);
         if (_portCommandButton is not null) { _portCommandButton.Visible = c.IsPort; }
         if (_productionCommandButton is not null) { _productionCommandButton.Visible = !c.IsPort; }
         var totalTroops = CityTroopsForDisplay(id);
@@ -6804,6 +6815,10 @@ public sealed partial class CampaignMapScene : Node3D
 
         ClearLayoutChildren(_infoRows);
         ClearLayoutChildren(_infoActions);
+        _infoScroll.ScrollVertical = 0;
+        _infoScroll.VerticalScrollMode = ScrollContainer.ScrollMode.Auto;
+        _infoRows.CustomMinimumSize = new Vector2(268f, 0f);
+        _infoActions.CustomMinimumSize = Vector2.Zero;
         // PNG의 제목 띠와 부제 띠는 서로 중심선이 다르므로 컨테이너 흐름에 맡기지 않고
         // 각각 고정 영역으로 배치한다. 제목은 기존 위치보다 7px 위, 부제는 그대로 유지한다.
         var infoHeader = new Control
@@ -6820,7 +6835,8 @@ public sealed partial class CampaignMapScene : Node3D
         cityTitle.TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis;
         infoHeader.AddChild(cityTitle);
         var siteType = c.IsPort ? "항구" : "성";
-        var cityVision = MakeLabel($"{siteType} · 시야 {_vision.CityRadius(c.Castle) + _state.ResearchOf(c.Owner, FactionResearch.ObservationCode)}칸", 12,
+        var scoutStatus = scoutedEnemy ? $" · 정찰 {ScoutDaysLeft(id)}일" : "";
+        var cityVision = MakeLabel($"{siteType} · 시야 {_vision.CityRadius(c.Castle) + _state.ResearchOf(c.Owner, FactionResearch.ObservationCode)}칸{scoutStatus}", 12,
             new Color(GameUiSkin.Ivory, 0.76f));
         cityVision.Name = "CityInfoSubtitle";
         cityVision.AnchorRight = 1f;
@@ -6828,24 +6844,58 @@ public sealed partial class CampaignMapScene : Node3D
         cityVision.OffsetBottom = 48f;
         cityVision.HorizontalAlignment = HorizontalAlignment.Center;
         cityVision.VerticalAlignment = VerticalAlignment.Center;
+        cityVision.TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis;
         infoHeader.AddChild(cityVision);
         _infoRows.AddChild(infoHeader);
-        if (!owned && _state.IsScouted(Player, id))
-            _infoRows.AddChild(MakeLabel($"정찰 남은 일수: {ScoutDaysLeft(id)}일", 13, GoldBright));
         if (!known)
         {
-            _infoRows.AddChild(MakeLabel("시야 밖 — 아군 시야에 들어오거나 정찰에 성공하면 정보를 볼 수 있습니다.", 13, Parchment));
+            var unknownPanel = new PanelContainer
+            {
+                Name = "CityUnknownIntel",
+                CustomMinimumSize = new Vector2(0f, 245f),
+                SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+            };
+            unknownPanel.AddThemeStyleboxOverride("panel", new StyleBoxEmpty
+            {
+                ContentMarginLeft = 16f,
+                ContentMarginTop = 16f,
+                ContentMarginRight = 16f,
+                ContentMarginBottom = 16f,
+            });
+            var unknownText = MakeLabel(
+                "시야 밖의 적 거점입니다.\n아군 시야에 들어오거나 정찰에 성공하면 정보를 확인할 수 있습니다.",
+                13, Parchment);
+            unknownText.Name = "CityUnknownIntelText";
+            unknownText.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+            unknownText.HorizontalAlignment = HorizontalAlignment.Center;
+            unknownText.VerticalAlignment = VerticalAlignment.Center;
+            unknownText.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+            unknownText.SizeFlagsVertical = Control.SizeFlags.ExpandFill;
+            unknownPanel.AddChild(unknownText);
+            _infoRows.AddChild(unknownPanel);
+            var enemyActions = new HBoxContainer
+            {
+                Name = "CityEnemyActions",
+                SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+            };
+            enemyActions.AddThemeConstantOverride("separation", 4);
             var detailUnknown = MakeButton("▶ 상세");
             detailUnknown.AddThemeFontSizeOverride("font_size", 12);
             detailUnknown.CustomMinimumSize = new Vector2(0, 26);
+            detailUnknown.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+            StyleCityArtworkActionButton(detailUnknown);
             detailUnknown.Pressed += () => OpenCityInfoReadonly(id);
-            _infoActions.AddChild(detailUnknown);
+            enemyActions.AddChild(detailUnknown);
             if (!_advancing)
             {
                 var attack = MakeButton("공격", accent: true);
+                attack.CustomMinimumSize = new Vector2(0, 26);
+                attack.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+                StyleCityArtworkActionButton(attack, danger: true);
                 attack.Pressed += () => ShowAttackChoices(c.Position, c.Name);
-                _infoActions.AddChild(attack);
+                enemyActions.AddChild(attack);
             }
+            _infoActions.AddChild(enemyActions);
             FitCityInfoContent();
             PlacePalette(c.Position);
             _infoCard.Visible = true;
@@ -6905,8 +6955,21 @@ public sealed partial class CampaignMapScene : Node3D
         if (!owned && !_advancing)
         {
             var attack = MakeButton("공격", accent: true);
+            attack.CustomMinimumSize = new Vector2(0, 30);
+            attack.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+            StyleCityArtworkActionButton(attack, danger: true);
             attack.Pressed += () => ShowAttackChoices(c.Position, c.Name);
-            _infoActions.AddChild(attack);
+            _infoActions.RemoveChild(detailBtn);
+            var enemyActions = new HBoxContainer
+            {
+                Name = "CityEnemyActions",
+                SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+            };
+            enemyActions.AddThemeConstantOverride("separation", 4);
+            detailBtn.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+            enemyActions.AddChild(detailBtn);
+            enemyActions.AddChild(attack);
+            _infoActions.AddChild(enemyActions);
         }
 
         FitCityInfoContent();
