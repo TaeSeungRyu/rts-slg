@@ -226,6 +226,8 @@ public sealed partial class CampaignMapScene : Node3D
     private VBoxContainer _cmdSubList = null!;
     private int _openGroup = -1;
     private VBoxContainer _cmdList = null!;
+    private readonly List<Button> _cmdGroupButtons = [];
+    private Button _deployCommandButton = null!;
     private Button? _portCommandButton;
     private Button? _productionCommandButton;
     private PanelContainer _unitMenu = null!; // 유닛 명령 팔레트(정보·이동 재지정)
@@ -5607,23 +5609,28 @@ public sealed partial class CampaignMapScene : Node3D
         infoPanel.AddChild(_infoRows);
 
         // 명령 팔레트: 클릭한 성 우측에 뜨는 아주 작은 떠있는 패널(텍스트 전용, 위치는 SelectCity).
-        _cmdMenu = new PanelContainer { Visible = false, ZIndex = 50 };
-        _cmdMenu.AddThemeStyleboxOverride("panel", Frame(Ink, Gold, 2, 5, 4));
+        _cmdMenu = new PanelContainer { Name = "CityCommandMenu", Visible = false, ZIndex = 50 };
+        _cmdMenu.AddThemeStyleboxOverride("panel", GameUiSkin.FlatBox(
+            new Color("160d0b", 0.96f), GameUiSkin.Gold, 2, 8, 7));
         layer.AddChild(_cmdMenu);
         var menu = new VBoxContainer();
-        menu.AddThemeConstantOverride("separation", 1);
+        menu.AddThemeConstantOverride("separation", 4);
         _cmdMenu.AddChild(menu);
         _cmdList = new VBoxContainer();
-        _cmdList.AddThemeConstantOverride("separation", 1);
+        _cmdList.AddThemeConstantOverride("separation", 4);
         menu.AddChild(_cmdList);
+        _cmdGroupButtons.Clear();
         // 팔레트에는 그룹 버튼만 둔다. 단일 명령인 계략은 중간 플라이아웃 없이 모달을 바로 연다.
         for (var gi = 0; gi < CmdGroups.Length; gi++)
         {
             var groupIdx = gi;
             var gbtn = MakeButton(CmdGroups[gi].Group);
-            gbtn.AddThemeFontSizeOverride("font_size", 12);
+            gbtn.Name = $"CityCommandGroup{groupIdx}";
+            gbtn.ToggleMode = true;
+            gbtn.AddThemeFontSizeOverride("font_size", 13);
             gbtn.Alignment = HorizontalAlignment.Center;
-            gbtn.CustomMinimumSize = new Vector2(74, 24);
+            gbtn.CustomMinimumSize = new Vector2(96, 32);
+            GameUiSkin.ApplyCommandButton(gbtn);
             gbtn.Pressed += () =>
             {
                 var commands = CmdGroups[groupIdx].Indices;
@@ -5637,30 +5644,38 @@ public sealed partial class CampaignMapScene : Node3D
                 ToggleGroup(groupIdx);
             };
             if (CmdGroups[gi].Group == "항구") { _portCommandButton = gbtn; }
+            _cmdGroupButtons.Add(gbtn);
             _cmdList.AddChild(gbtn);
         }
 
         var deployBtn = MakeButton("출전", accent: true);
-        deployBtn.AddThemeFontSizeOverride("font_size", 12);
+        deployBtn.Name = "CityCommandDeploy";
+        deployBtn.ToggleMode = true;
+        deployBtn.AddThemeFontSizeOverride("font_size", 13);
         deployBtn.Alignment = HorizontalAlignment.Center;
-        deployBtn.CustomMinimumSize = new Vector2(74, 24);
+        deployBtn.CustomMinimumSize = new Vector2(96, 32);
+        GameUiSkin.ApplyCommandButton(deployBtn, accent: true);
         deployBtn.Pressed += ToggleDeployGroup;
+        _deployCommandButton = deployBtn;
         _cmdList.AddChild(deployBtn);
 
         var productionBtn = MakeButton("생산", accent: true);
-        productionBtn.AddThemeFontSizeOverride("font_size", 12);
+        productionBtn.Name = "CityCommandProduction";
+        productionBtn.AddThemeFontSizeOverride("font_size", 13);
         productionBtn.Alignment = HorizontalAlignment.Center;
-        productionBtn.CustomMinimumSize = new Vector2(74, 24);
+        productionBtn.CustomMinimumSize = new Vector2(96, 32);
+        GameUiSkin.ApplyCommandButton(productionBtn, accent: true);
         productionBtn.Pressed += () => { CloseGroupMenu(); if (_selected is { } c) { OpenProductionModal(c); } };
         _productionCommandButton = productionBtn;
         _cmdList.AddChild(productionBtn);
 
         // 그룹 플라이아웃(팔레트 우측에 붙는 작은 패널).
         _cmdSubMenu = new PanelContainer { Visible = false, ZIndex = 51 };
-        _cmdSubMenu.AddThemeStyleboxOverride("panel", Frame(Ink, Gold, 2, 5, 4));
+        _cmdSubMenu.AddThemeStyleboxOverride("panel", GameUiSkin.FlatBox(
+            new Color("160d0b", 0.97f), GameUiSkin.Gold, 2, 7, 7));
         layer.AddChild(_cmdSubMenu);
         _cmdSubList = new VBoxContainer();
-        _cmdSubList.AddThemeConstantOverride("separation", 1);
+        _cmdSubList.AddThemeConstantOverride("separation", 4);
         _cmdSubMenu.AddChild(_cmdSubList);
 
         BuildUnitMenu(layer);
@@ -6840,6 +6855,7 @@ public sealed partial class CampaignMapScene : Node3D
     {
         if (_openGroup == groupIdx) { CloseGroupMenu(); return; }
         _openGroup = groupIdx;
+        RefreshCommandGroupSelection();
         Clear(_cmdSubList);
         _cmdSubList.AddChild(MakeLabel($"· {CmdGroups[groupIdx].Group}", 10, GoldBright));
         foreach (var i in CmdGroups[groupIdx].Indices)
@@ -6848,7 +6864,8 @@ public sealed partial class CampaignMapScene : Node3D
             var btn = MakeButton(Cmds[i].Label);
             btn.AddThemeFontSizeOverride("font_size", 11);
             btn.Alignment = HorizontalAlignment.Center;
-            btn.CustomMinimumSize = new Vector2(84, 21);
+            btn.CustomMinimumSize = new Vector2(108, 28);
+            GameUiSkin.ApplyCommandButton(btn);
 
             // 모병·징병은 같은 종류가 이 성에서 진행 중이면 중복 발행 금지(2026-08-23).
             var busy = (Cmds[i].Kind is CommandKind.Recruit or CommandKind.Conscript
@@ -6905,7 +6922,8 @@ public sealed partial class CampaignMapScene : Node3D
             var navalBtn = MakeButton(isPort ? "출항" : "출항 (항구 필요)");
             navalBtn.AddThemeFontSizeOverride("font_size", 11);
             navalBtn.Alignment = HorizontalAlignment.Center;
-            navalBtn.CustomMinimumSize = new Vector2(84, 21);
+            navalBtn.CustomMinimumSize = new Vector2(108, 28);
+            GameUiSkin.ApplyCommandButton(navalBtn, accent: true);
             navalBtn.Disabled = !isPort;
             navalBtn.Pressed += () => { CloseGroupMenu(); if (_selected is { } c) { OpenNavalHub(c); } };
             _cmdSubList.AddChild(navalBtn);
@@ -6917,7 +6935,8 @@ public sealed partial class CampaignMapScene : Node3D
             {
                 var recruitButton = MakeButton(label);
                 recruitButton.AddThemeFontSizeOverride("font_size", 11);
-                recruitButton.CustomMinimumSize = new Vector2(84, 21);
+                recruitButton.CustomMinimumSize = new Vector2(108, 28);
+                GameUiSkin.ApplyCommandButton(recruitButton);
                 recruitButton.Pressed += () =>
                 {
                     CloseGroupMenu();
@@ -6960,6 +6979,7 @@ public sealed partial class CampaignMapScene : Node3D
         const int DeployGroupMarker = -100;
         if (_openGroup == DeployGroupMarker) { CloseGroupMenu(); return; }
         _openGroup = DeployGroupMarker;
+        RefreshCommandGroupSelection();
         Clear(_cmdSubList);
         _cmdSubList.AddChild(MakeLabel("· 출전", 10, GoldBright));
 
@@ -6968,7 +6988,8 @@ public sealed partial class CampaignMapScene : Node3D
             var btn = MakeButton(label);
             btn.AddThemeFontSizeOverride("font_size", 11);
             btn.Alignment = HorizontalAlignment.Center;
-            btn.CustomMinimumSize = new Vector2(84, 21);
+            btn.CustomMinimumSize = new Vector2(108, 28);
+            GameUiSkin.ApplyCommandButton(btn);
             btn.Pressed += () =>
             {
                 CloseGroupMenu();
@@ -6997,7 +7018,16 @@ public sealed partial class CampaignMapScene : Node3D
     private void CloseGroupMenu()
     {
         _openGroup = -1;
+        RefreshCommandGroupSelection();
         _cmdSubMenu.Visible = false;
+    }
+
+    private void RefreshCommandGroupSelection()
+    {
+        for (var index = 0; index < _cmdGroupButtons.Count; index++)
+            _cmdGroupButtons[index].SetPressedNoSignal(_openGroup == index);
+        if (_deployCommandButton is not null)
+            _deployCommandButton.SetPressedNoSignal(_openGroup == -100);
     }
 
     // 플라이아웃을 팔레트 바로 우측에 붙인다(화면 밖 clamp — 오른쪽이 좁으면 왼쪽에).

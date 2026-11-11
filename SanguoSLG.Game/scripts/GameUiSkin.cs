@@ -198,6 +198,26 @@ internal static class GameUiSkin
             new Color("d9b66e"), 1, 3, 0));
     }
 
+    internal static void ApplyCommandButton(Button button, bool accent = false)
+    {
+        button.AddThemeStyleboxOverride("normal", FlatBox(
+            accent ? new Color("542018", 0.98f) : new Color("241411", 0.96f),
+            new Color("9d7139"), 1, 6, 8));
+        button.AddThemeStyleboxOverride("hover", FlatBox(
+            accent ? new Color("743025") : new Color("3b241a"), GoldBright, 2, 6, 8));
+        button.AddThemeStyleboxOverride("pressed", FlatBox(
+            new Color("6b281e"), GoldBright, 2, 6, 8));
+        button.AddThemeStyleboxOverride("hover_pressed", FlatBox(
+            new Color("843326"), new Color("ffe09a"), 2, 6, 8));
+        button.AddThemeStyleboxOverride("disabled", FlatBox(
+            new Color("211715", 0.82f), new Color(Gold, 0.30f), 1, 6, 8));
+        button.AddThemeStyleboxOverride("focus", new StyleBoxEmpty());
+        button.AddThemeColorOverride("font_color", Ivory);
+        button.AddThemeColorOverride("font_hover_color", new Color("fff0c6"));
+        button.AddThemeColorOverride("font_pressed_color", GoldBright);
+        button.AddThemeColorOverride("font_disabled_color", new Color(Ivory, 0.42f));
+    }
+
     internal static StyleBoxFlat FlatBox(Color background, Color border, int borderWidth, int radius, int padding)
     {
         var style = new StyleBoxFlat { BgColor = background, BorderColor = border };
