@@ -6687,12 +6687,9 @@ public sealed partial class CampaignMapScene : Node3D
         if (_portCommandButton is not null) { _portCommandButton.Visible = c.IsPort; }
         if (_productionCommandButton is not null) { _productionCommandButton.Visible = !c.IsPort; }
         var totalTroops = CityTroopsForDisplay(id);
-        var securityName = OfficerNameWithMonthlyEffect(c.SecurityOfficer, CommandKind.AppointSecurityOfficer, c);
-        var domesticName = OfficerNameWithMonthlyEffect(c.DomesticOfficer, CommandKind.AppointDomesticOfficer, c);
-        var recruitmentName = OfficerNameWithMonthlyEffect(c.RecruitmentOfficer, CommandKind.AppointRecruitmentOfficer, c);
-        var trainingName = OfficerNameWithMonthlyEffect(c.TrainingOfficer, CommandKind.AppointTrainingOfficer, c);
-        var pending = _state.Commands.Where(p => p.City == id).Select(p =>
-            $"{KindName(p.Kind)} 남은 {p.CompletionDay - _state.Day}일");
+        var pending = _state.Commands.Where(command => command.City == id)
+            .Select(command => $"{KindName(command.Kind)} 남은 {command.CompletionDay - _state.Day}일")
+            .ToList();
         var facilities = $"논{c.Paddies} 밭{c.Farms} 마을{c.Villages}{(c.Workshop ? " 공방" : "")}";
 
         ClearLayoutChildren(_infoRows);
@@ -6751,8 +6748,6 @@ public sealed partial class CampaignMapScene : Node3D
         var (weeklyGold, weeklyProvisions) = WeeklyIncomePreview(c);
         AddCell(g4, Sym.Coin, "주 금", $"+{weeklyGold}");
         AddCell(g4, Sym.Grain, "주 군량", $"+{weeklyProvisions}");
-        AddCell(g4, Sym.Sword, "주 병력", $"+{WeeklyRecruitPreview(c)}");
-        AddCell(g4, Sym.Book, "주 훈련도", $"+{WeeklyTrainingPreview(c)}");
         AddCell(g4, Sym.Shield, "치안", $"{c.Security}");
         AddCell(g4, Sym.Wall, "성벽", $"{c.Wall}");
 
@@ -6761,33 +6756,13 @@ public sealed partial class CampaignMapScene : Node3D
         g2.AddThemeConstantOverride("h_separation", 10);
         g2.AddThemeConstantOverride("v_separation", 4);
         _infoRows.AddChild(WrapCityInfoGrid(g2, "CitySecondaryStats"));
-        AddCell(g2, Sym.Ore, "광물", $"{c.Ore}/{c.Horses}/{c.Elephants}");
         AddCell(g2, Sym.Book, "시설", facilities);
-        AddCell(g2, Sym.Sword, "대기", totalTroops > 0 ? $"{totalTroops}명" : "없음");
-        AddCell(g2, Sym.Shield, "부상병", WoundedForFaction(c.Owner));
-        if (owned)
+        AddCell(g2, Sym.Sword, "주둔 병력", totalTroops > 0 ? $"{totalTroops}명" : "없음");
+        if (owned && pending.Count > 0)
         {
-            AddCell(g2, Sym.Shield, "치안담당", securityName ?? "없음");
-            AddCell(g2, Sym.Coin, "내정담당", domesticName ?? "없음");
-            AddCell(g2, Sym.Sword, "병력담당", recruitmentName ?? "없음");
-            AddCell(g2, Sym.Book, "훈련담당", trainingName ?? "없음");
-        }
-        var securityBreakdown = MakeLabel(owned ? SecurityWeeklySummary(c) : $"주 치안 변화 {SecurityWeeklyDelta(c):+0;-0;0}", 12, Parchment);
-        securityBreakdown.AutowrapMode = TextServer.AutowrapMode.WordSmart;
-        _infoRows.AddChild(securityBreakdown);
-        if (owned && pending.Any())
-        {
-            AddCell(g2, Sym.Scroll, "진행", string.Join(",", pending));
-        }
-
-        var depQueue = _pendingDeploys.Where(p => p.Req.City == id).Select(p => p.Label)
-            .Concat(_pendingSupplyDeploys.Where(p => p.Req.City == id).Select(p => p.Label))
-            .Concat(_pendingTransportDeploys.Where(p => p.Req.City == id).Select(p => p.Label))
-            .Concat(_pendingArmyGroupDeploys.Where(p => p.Req.City == id).Select(p => p.Label))
-            .ToList();
-        if (owned && depQueue.Count > 0)
-        {
-            AddCell(g2, Sym.Flag, "출전대기", string.Join(",", depQueue));
+            var visiblePending = string.Join(", ", pending.Take(2));
+            if (pending.Count > 2) visiblePending += $" 외 {pending.Count - 2}건";
+            AddCell(g2, Sym.Scroll, "진행", visiblePending);
         }
 
         var detailBtn = MakeButton("▶ 상세 · 진행 목록");

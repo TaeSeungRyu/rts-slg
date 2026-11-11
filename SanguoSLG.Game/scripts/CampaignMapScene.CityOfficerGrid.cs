@@ -148,6 +148,25 @@ public sealed partial class CampaignMapScene
             && _infoScroll.ScrollVertical == 0;
         passed &= stableReselection;
 
+        var summaryLabels = _infoRows.FindChildren("*", "Label", true, false)
+            .OfType<Label>().Select(label => label.Text).ToHashSet();
+        var requiredSummary = new[]
+            { "태수", "군사", "금", "군량", "주 금", "주 군량", "치안", "성벽", "시설", "주둔 병력" };
+        var removedDetails = new[]
+            { "광물", "부상병", "치안담당", "내정담당", "병력담당", "훈련담당", "출전대기" };
+        var compactSummary = requiredSummary.All(summaryLabels.Contains)
+            && removedDetails.All(label => !summaryLabels.Contains(label));
+        var detailButton = _infoActions.GetChildren().OfType<Button>()
+            .FirstOrDefault(button => button.Text.Contains("상세 · 진행 목록", System.StringComparison.Ordinal));
+        detailButton?.EmitSignal(BaseButton.SignalName.Pressed);
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        var detailOpened = _modalLayer is not null;
+        if (detailOpened) CloseModal();
+        SelectCity(city.Id);
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        passed &= compactSummary && detailOpened;
+
         var port = _state.Cities.FirstOrDefault(candidate => candidate.Owner == Player && candidate.IsPort);
         var portOk = true;
         if (port is not null)
@@ -160,7 +179,7 @@ public sealed partial class CampaignMapScene
                 .OfType<Label>().Any(label => label.Text.StartsWith("항구 · 시야", System.StringComparison.Ordinal));
             passed &= portOk;
         }
-        GD.Print($"[right-ui-qa] passed={passed} resolution={resolution} info={info} command={command} submenu={submenu} gap={gap} contentMin={_infoRows.GetCombinedMinimumSize()} scrollMin={_infoScroll.CustomMinimumSize} contentFits={contentFitsWithoutScroll} stableReselection={stableReselection} heights={firstHeight}/{reselectionHeight}/{reopenedHeight} port={portOk} shot={outputPath}");
+        GD.Print($"[right-ui-qa] passed={passed} resolution={resolution} info={info} command={command} submenu={submenu} gap={gap} contentMin={_infoRows.GetCombinedMinimumSize()} scrollMin={_infoScroll.CustomMinimumSize} contentFits={contentFitsWithoutScroll} stableReselection={stableReselection} heights={firstHeight}/{reselectionHeight}/{reopenedHeight} compactSummary={compactSummary} detailOpened={detailOpened} port={portOk} shot={outputPath}");
         GetTree().Quit(passed ? 0 : 1);
     }
 }
