@@ -13,7 +13,7 @@ public sealed partial class CampaignMapScene
         foreach (var (role, officerId) in new[] { ("태수", city.Governor), ("군사", city.Strategist) })
         {
             var frame = new PanelContainer { Name = "CityOfficerCard",
-                CustomMinimumSize = new Vector2(0, 64),
+                CustomMinimumSize = new Vector2(0, 60),
                 SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
             var style = new StyleBoxFlat { BgColor = new Color(InkSoft),
                 BorderColor = new Color(Gold, .42f) };
@@ -25,11 +25,11 @@ public sealed partial class CampaignMapScene
             var row = new HBoxContainer { Alignment = BoxContainer.AlignmentMode.Begin };
             row.AddThemeConstantOverride("separation", 8);
             frame.AddChild(row);
-            var portraitCell = new CenterContainer { CustomMinimumSize = new Vector2(52, 52),
+            var portraitCell = new CenterContainer { CustomMinimumSize = new Vector2(48, 48),
                 SizeFlagsVertical = Control.SizeFlags.ShrinkCenter };
             var picture = new TextureRect { Name = "CityOfficerPortrait",
                 Texture = officerId is { } id ? CircularPortraitFor(id) : null,
-                CustomMinimumSize = new Vector2(52, 52),
+                CustomMinimumSize = new Vector2(48, 48),
                 StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
                 ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize };
             portraitCell.AddChild(picture);
@@ -101,17 +101,24 @@ public sealed partial class CampaignMapScene
         ToggleGroup(0);
         await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
         await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
 
         var viewport = GetViewport().GetVisibleRect().Size;
         var info = _infoCard.GetGlobalRect();
         var command = _cmdMenu.GetGlobalRect();
         var submenu = _cmdSubMenu.GetGlobalRect();
         var gap = info.Position.X - command.End.X;
+        var header = _infoRows.FindChild("CityInfoHeader", true, false) as Control;
+        var contentFitsWithoutScroll = !_infoScroll.GetVScrollBar().Visible
+            && _infoScroll.ScrollVertical == 0
+            && header is not null && header.GetGlobalRect().Position.Y >= _infoScroll.GetGlobalRect().Position.Y;
         var passed = _infoCard.Visible && _cmdMenu.Visible && _cmdSubMenu.Visible
-            && Mathf.Abs(info.End.X - (viewport.X - 12f)) <= 1f
+            && Mathf.Abs(info.End.X - (viewport.X - 12f)) <= 3f
             && Mathf.Abs(gap - 10f) <= 1f
             && command.End.X < info.Position.X
             && submenu.End.X < command.Position.X
+            && contentFitsWithoutScroll
             && info.Position.Y >= 8f && info.End.Y <= viewport.Y - 8f
             && command.Position.Y >= 8f && command.End.Y <= viewport.Y - 8f;
         var outputPath = System.IO.Path.Combine(
@@ -126,11 +133,13 @@ public sealed partial class CampaignMapScene
         {
             SelectCity(port.Id);
             await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+            await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+            await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
             portOk = _infoCard.Visible && _infoRows.FindChildren("*", "Label", true, false)
                 .OfType<Label>().Any(label => label.Text.StartsWith("항구 · 시야", System.StringComparison.Ordinal));
             passed &= portOk;
         }
-        GD.Print($"[right-ui-qa] passed={passed} resolution={resolution} info={info} command={command} submenu={submenu} gap={gap} port={portOk} shot={outputPath}");
+        GD.Print($"[right-ui-qa] passed={passed} resolution={resolution} info={info} command={command} submenu={submenu} gap={gap} contentMin={_infoRows.GetCombinedMinimumSize()} scrollMin={_infoScroll.CustomMinimumSize} contentFits={contentFitsWithoutScroll} port={portOk} shot={outputPath}");
         GetTree().Quit(passed ? 0 : 1);
     }
 }

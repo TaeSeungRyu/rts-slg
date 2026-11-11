@@ -222,6 +222,7 @@ public sealed partial class CampaignMapScene : Node3D
     private Control _infoCard = null!;
     private VBoxContainer _infoRows = null!;
     private VBoxContainer _infoActions = null!;
+    private ScrollContainer _infoScroll = null!;
     private PanelContainer _cmdMenu = null!;
     private PanelContainer _cmdSubMenu = null!; // 그룹 클릭 시 팔레트 옆에 뜨는 명령 플라이아웃
     private VBoxContainer _cmdSubList = null!;
@@ -5613,11 +5614,12 @@ public sealed partial class CampaignMapScene : Node3D
         var infoScroll = new ScrollContainer
         {
             Name = "CityInfoScroll",
-            CustomMinimumSize = new Vector2(276, 430),
+            CustomMinimumSize = new Vector2(276, 0),
             HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled,
             VerticalScrollMode = ScrollContainer.ScrollMode.Auto,
             SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
         };
+        _infoScroll = infoScroll;
         GameUiSkin.ApplyQuickListScroll(infoScroll);
         infoLayout.AddChild(infoScroll);
         _infoRows = new VBoxContainer
@@ -6587,9 +6589,27 @@ public sealed partial class CampaignMapScene : Node3D
     {
         var panel = new PanelContainer { Name = name };
         panel.AddThemeStyleboxOverride("panel", GameUiSkin.FlatBox(
-            new Color("241411", 0.78f), new Color(GameUiSkin.Bronze, 0.72f), 1, 6, 7));
+            new Color("241411", 0.78f), new Color(GameUiSkin.Bronze, 0.72f), 1, 6, 5));
         panel.AddChild(grid);
         return panel;
+    }
+
+    private void FitCityInfoContent()
+    {
+        _infoScroll.ScrollVertical = 0;
+        CallDeferred(nameof(ApplyCityInfoContentHeight));
+    }
+
+    private void ApplyCityInfoContentHeight()
+    {
+        var viewportHeight = GetViewport().GetVisibleRect().Size.Y;
+        var actionHeight = _infoActions.GetCombinedMinimumSize().Y;
+        var contentHeight = _infoRows.GetCombinedMinimumSize().Y;
+        var available = Mathf.Max(180f, viewportHeight - 52f - actionHeight);
+        var preferredMaximum = Mathf.Min(520f, available);
+        _infoScroll.CustomMinimumSize = new Vector2(276f, Mathf.Min(contentHeight, preferredMaximum));
+        _infoScroll.ScrollVertical = 0;
+        _infoCard.ResetSize();
     }
 
     private Control Header(string text)
@@ -6698,6 +6718,7 @@ public sealed partial class CampaignMapScene : Node3D
                 attack.Pressed += () => ShowAttackChoices(c.Position, c.Name);
                 _infoActions.AddChild(attack);
             }
+            FitCityInfoContent();
             PlacePalette(c.Position);
             _infoCard.Visible = true;
             _cmdMenu.Visible = false;
@@ -6715,7 +6736,7 @@ public sealed partial class CampaignMapScene : Node3D
         // 짧은 수치: 4칸(라벨·값·라벨·값) 2쌍씩.
         var g4 = new GridContainer { Columns = 4, SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
         g4.AddThemeConstantOverride("h_separation", 10);
-        g4.AddThemeConstantOverride("v_separation", 5);
+        g4.AddThemeConstantOverride("v_separation", 4);
         _infoRows.AddChild(WrapCityInfoGrid(g4, "CityPrimaryStats"));
         AddCell(g4, Sym.Coin, "금", $"{c.Gold}");
         AddCell(g4, Sym.Grain, "군량", $"{c.Provisions}");
@@ -6730,7 +6751,7 @@ public sealed partial class CampaignMapScene : Node3D
         // 긴 값: 전체폭 2칸(라벨·값).
         var g2 = new GridContainer { Columns = 2, SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
         g2.AddThemeConstantOverride("h_separation", 10);
-        g2.AddThemeConstantOverride("v_separation", 5);
+        g2.AddThemeConstantOverride("v_separation", 4);
         _infoRows.AddChild(WrapCityInfoGrid(g2, "CitySecondaryStats"));
         AddCell(g2, Sym.Ore, "광물", $"{c.Ore}/{c.Horses}/{c.Elephants}");
         AddCell(g2, Sym.Book, "시설", facilities);
@@ -6777,6 +6798,7 @@ public sealed partial class CampaignMapScene : Node3D
             _infoActions.AddChild(attack);
         }
 
+        FitCityInfoContent();
         PlacePalette(c.Position);
         _infoCard.Visible = true;
         _cmdMenu.Visible = owned && !_advancing; // 진행 중·적 성에는 명령 팔레트를 숨긴다(상태 카드는 보임)
