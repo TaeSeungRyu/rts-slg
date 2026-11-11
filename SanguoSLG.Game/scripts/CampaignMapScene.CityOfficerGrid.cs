@@ -127,6 +127,27 @@ public sealed partial class CampaignMapScene
             $"shot_right_ui_{resolution.X}x{resolution.Y}.png");
         var saveResult = GetViewport().GetTexture().GetImage().SavePng(outputPath);
         passed &= saveResult == Error.Ok;
+
+        var firstHeight = info.Size.Y;
+        var otherCity = _state.Cities.First(candidate => candidate.Owner == Player
+            && !candidate.IsPort && candidate.Id != city.Id);
+        SelectCity(otherCity.Id);
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        SelectCity(city.Id);
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        var reselectionHeight = _infoCard.Size.Y;
+        HidePanels();
+        SelectCity(city.Id);
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        var reopenedHeight = _infoCard.Size.Y;
+        var stableReselection = Mathf.Abs(firstHeight - reselectionHeight) <= 1f
+            && Mathf.Abs(firstHeight - reopenedHeight) <= 1f
+            && _infoScroll.ScrollVertical == 0;
+        passed &= stableReselection;
+
         var port = _state.Cities.FirstOrDefault(candidate => candidate.Owner == Player && candidate.IsPort);
         var portOk = true;
         if (port is not null)
@@ -139,7 +160,7 @@ public sealed partial class CampaignMapScene
                 .OfType<Label>().Any(label => label.Text.StartsWith("항구 · 시야", System.StringComparison.Ordinal));
             passed &= portOk;
         }
-        GD.Print($"[right-ui-qa] passed={passed} resolution={resolution} info={info} command={command} submenu={submenu} gap={gap} contentMin={_infoRows.GetCombinedMinimumSize()} scrollMin={_infoScroll.CustomMinimumSize} contentFits={contentFitsWithoutScroll} port={portOk} shot={outputPath}");
+        GD.Print($"[right-ui-qa] passed={passed} resolution={resolution} info={info} command={command} submenu={submenu} gap={gap} contentMin={_infoRows.GetCombinedMinimumSize()} scrollMin={_infoScroll.CustomMinimumSize} contentFits={contentFitsWithoutScroll} stableReselection={stableReselection} heights={firstHeight}/{reselectionHeight}/{reopenedHeight} port={portOk} shot={outputPath}");
         GetTree().Quit(passed ? 0 : 1);
     }
 }

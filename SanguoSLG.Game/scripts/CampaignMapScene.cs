@@ -223,6 +223,7 @@ public sealed partial class CampaignMapScene : Node3D
     private VBoxContainer _infoRows = null!;
     private VBoxContainer _infoActions = null!;
     private ScrollContainer _infoScroll = null!;
+    private int _cityInfoLayoutRevision;
     private PanelContainer _cmdMenu = null!;
     private PanelContainer _cmdSubMenu = null!; // 그룹 클릭 시 팔레트 옆에 뜨는 명령 플라이아웃
     private VBoxContainer _cmdSubList = null!;
@@ -6594,10 +6595,17 @@ public sealed partial class CampaignMapScene : Node3D
         return panel;
     }
 
-    private void FitCityInfoContent()
+    private async void FitCityInfoContent()
     {
+        var revision = ++_cityInfoLayoutRevision;
         _infoScroll.ScrollVertical = 0;
-        CallDeferred(nameof(ApplyCityInfoContentHeight));
+        _infoScroll.CustomMinimumSize = new Vector2(276f, 0f);
+        _infoCard.ResetSize();
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        if (revision != _cityInfoLayoutRevision) return;
+        ApplyCityInfoContentHeight();
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        if (revision == _cityInfoLayoutRevision) _infoScroll.ScrollVertical = 0;
     }
 
     private void ApplyCityInfoContentHeight()
@@ -6687,8 +6695,8 @@ public sealed partial class CampaignMapScene : Node3D
             $"{KindName(p.Kind)} 남은 {p.CompletionDay - _state.Day}일");
         var facilities = $"논{c.Paddies} 밭{c.Farms} 마을{c.Villages}{(c.Workshop ? " 공방" : "")}";
 
-        Clear(_infoRows);
-        Clear(_infoActions);
+        ClearLayoutChildren(_infoRows);
+        ClearLayoutChildren(_infoActions);
         var infoHeader = new VBoxContainer { Name = "CityInfoHeader" };
         infoHeader.AddThemeConstantOverride("separation", 3);
         var cityTitle = MakeLabel(c.Name, 18, GameUiSkin.GoldBright);
@@ -17420,6 +17428,17 @@ public sealed partial class CampaignMapScene : Node3D
     {
         foreach (var child in parent.GetChildren())
         {
+            child.QueueFree();
+        }
+    }
+
+    // 동적 정보 패널은 다음 프레임까지 QueueFree 대상이 최소 크기 계산에 남지 않도록
+    // 레이아웃 트리에서 즉시 분리한다. 실제 해제는 안전하게 프레임 끝에 처리한다.
+    private static void ClearLayoutChildren(Node parent)
+    {
+        foreach (var child in parent.GetChildren())
+        {
+            parent.RemoveChild(child);
             child.QueueFree();
         }
     }
