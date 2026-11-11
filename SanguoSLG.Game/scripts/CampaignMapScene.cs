@@ -5620,11 +5620,11 @@ public sealed partial class CampaignMapScene : Node3D
         var layer = new CanvasLayer();
         AddChild(layer);
 
-        // 우상단: 성 정보 카드 — 폭 300 고정, 높이는 내용에 맞춰 자동(하단 여백 없음).
+        // 우상단: 성 정보 카드 — 원본(855×1111) 비율을 그대로 축소한 320×416 금장 패널.
         var infoPanel = new PanelContainer { Name = "CityInfoPanel", Visible = false };
         infoPanel.TextureFilter = CanvasItem.TextureFilterEnum.LinearWithMipmaps;
-        infoPanel.AddThemeStyleboxOverride("panel", GameUiSkin.FlatBox(
-            new Color("160d0b", 0.96f), GameUiSkin.Gold, 2, 9, 11));
+        infoPanel.CustomMinimumSize = new Vector2(320f, 416f);
+        infoPanel.AddThemeStyleboxOverride("panel", new StyleBoxEmpty());
         layer.AddChild(infoPanel);
         // 우상단 지점 앵커 → 왼쪽·아래로 자람(오른쪽 위 모서리 고정).
         infoPanel.AnchorLeft = 1f;
@@ -5633,20 +5633,45 @@ public sealed partial class CampaignMapScene : Node3D
         infoPanel.AnchorBottom = 0f;
         infoPanel.GrowHorizontal = Control.GrowDirection.Begin;
         infoPanel.GrowVertical = Control.GrowDirection.End;
-        infoPanel.OffsetLeft = -312f; // 폭 300 + 여백 12
+        infoPanel.OffsetLeft = -332f; // 폭 320 + 여백 12
         infoPanel.OffsetTop = 12f;
         infoPanel.OffsetRight = -12f;
         _infoCard = infoPanel;
+        var infoComposition = new Control
+        {
+            Name = "CityInfoComposition",
+            CustomMinimumSize = new Vector2(320f, 416f),
+            MouseFilter = Control.MouseFilterEnum.Pass,
+        };
+        infoPanel.AddChild(infoComposition);
+        var infoArtwork = new TextureRect
+        {
+            Name = "CityInfoPanelArtwork",
+            Texture = GD.Load<Texture2D>("res://assets/ui/game/panels/city_info_panel.png"),
+            ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
+            StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
+            MouseFilter = Control.MouseFilterEnum.Ignore,
+        };
+        infoArtwork.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
+        infoComposition.AddChild(infoArtwork);
+        var infoMargin = new MarginContainer { Name = "CityInfoContentMargin" };
+        infoMargin.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
+        infoMargin.AddThemeConstantOverride("margin_left", 17);
+        infoMargin.AddThemeConstantOverride("margin_top", 24);
+        infoMargin.AddThemeConstantOverride("margin_right", 17);
+        infoMargin.AddThemeConstantOverride("margin_bottom", 22);
+        infoComposition.AddChild(infoMargin);
         var infoLayout = new VBoxContainer { Name = "CityInfoLayout" };
         infoLayout.AddThemeConstantOverride("separation", 6);
-        infoPanel.AddChild(infoLayout);
+        infoMargin.AddChild(infoLayout);
         var infoScroll = new ScrollContainer
         {
             Name = "CityInfoScroll",
-            CustomMinimumSize = new Vector2(276, 0),
+            CustomMinimumSize = new Vector2(286, 0),
             HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled,
             VerticalScrollMode = ScrollContainer.ScrollMode.Auto,
             SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+            SizeFlagsVertical = Control.SizeFlags.ExpandFill,
         };
         _infoScroll = infoScroll;
         GameUiSkin.ApplyQuickListScroll(infoScroll);
@@ -5654,7 +5679,7 @@ public sealed partial class CampaignMapScene : Node3D
         _infoRows = new VBoxContainer
         {
             Name = "CityInfoRows",
-            CustomMinimumSize = new Vector2(258, 0),
+            CustomMinimumSize = new Vector2(268, 0),
             SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
         };
         _infoRows.AddThemeConstantOverride("separation", 5);
@@ -6666,7 +6691,7 @@ public sealed partial class CampaignMapScene : Node3D
     {
         var revision = ++_cityInfoLayoutRevision;
         _infoScroll.ScrollVertical = 0;
-        _infoScroll.CustomMinimumSize = new Vector2(276f, 0f);
+        _infoScroll.CustomMinimumSize = new Vector2(286f, 0f);
         _infoCard.ResetSize();
         await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
         if (revision != _cityInfoLayoutRevision) return;
@@ -6680,9 +6705,8 @@ public sealed partial class CampaignMapScene : Node3D
         var viewportHeight = GetViewport().GetVisibleRect().Size.Y;
         var actionHeight = _infoActions.GetCombinedMinimumSize().Y;
         var contentHeight = _infoRows.GetCombinedMinimumSize().Y;
-        var available = Mathf.Max(180f, viewportHeight - 52f - actionHeight);
-        var preferredMaximum = Mathf.Min(520f, available);
-        _infoScroll.CustomMinimumSize = new Vector2(276f, Mathf.Min(contentHeight, preferredMaximum));
+        var available = Mathf.Max(180f, Mathf.Min(342f, viewportHeight - 74f - actionHeight));
+        _infoScroll.CustomMinimumSize = new Vector2(286f, Mathf.Min(contentHeight, available));
         _infoScroll.ScrollVertical = 0;
         _infoCard.ResetSize();
     }
@@ -6923,7 +6947,7 @@ public sealed partial class CampaignMapScene : Node3D
     {
         var sz = _cmdMenu.GetCombinedMinimumSize();
         var vp = GetViewport().GetVisibleRect().Size;
-        const float infoLeftOffset = 312f;
+        const float infoLeftOffset = 332f;
         const float panelGap = 10f;
         var infoLeft = vp.X - infoLeftOffset;
         var px = Mathf.Max(8f, infoLeft - sz.X - panelGap);
