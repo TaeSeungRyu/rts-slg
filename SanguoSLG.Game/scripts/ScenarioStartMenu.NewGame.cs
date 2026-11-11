@@ -36,6 +36,8 @@ public sealed partial class ScenarioStartMenu
     private static readonly Color NewGameMuted = new("b6aa94");
     private static readonly Dictionary<(bool Selected, string State, int Width, int Height), Texture2D>
         DifficultyTextureCache = new();
+    private static readonly Dictionary<(string Tier, string State, int Width, int Height), Texture2D>
+        FooterTextureCache = new();
     private static readonly HashSet<string> OfficialScenarioIds =
     [
         "historical-184", "historical-190", "historical-194",
@@ -109,18 +111,14 @@ public sealed partial class ScenarioStartMenu
         var key = (selected, state, width, height);
         if (!DifficultyTextureCache.TryGetValue(key, out var texture))
         {
-            // The supplied secondary hover/pressed PNGs contain a detached lower strip.
-            // Keep the intact normal artwork and express those states through tinting.
-            var sourceState = selected ? state : "normal";
-            var source = GD.Load<Texture2D>($"res://assets/ui/new_game/buttons/{kind}_{sourceState}.png");
+            var source = GD.Load<Texture2D>($"res://assets/ui/new_game/buttons/{kind}_{state}.png");
             using var original = source.GetImage();
             // 상태 이미지가 교체되어도 모서리 장식을 같은 비율로 보존한다.
             var side = Mathf.RoundToInt(original.GetWidth() * (selected ? 0.13f : 0.142f));
             var scaledSide = Mathf.RoundToInt(side * height / (float)original.GetHeight());
-            // Primary artwork has about 4.5% transparent padding on each side while
-            // secondary artwork reaches the canvas edge. Match their visible widths.
-            var horizontalInset = selected ? 0 : Mathf.RoundToInt(width * 0.045f);
-            var innerWidth = width - 2 * horizontalInset;
+            // 새 primary/secondary 세트는 같은 장식 폭과 투명 여백을 사용한다.
+            var horizontalInset = 0;
+            var innerWidth = width;
             var middleWidth = innerWidth - 2 * scaledSide;
             using var left = original.GetRegion(new Rect2I(0, 0, side, original.GetHeight()));
             using var middle = original.GetRegion(new Rect2I(side, 0,
@@ -143,11 +141,7 @@ public sealed partial class ScenarioStartMenu
         var style = new StyleBoxTexture
         {
             Texture = texture,
-            ModulateColor = selected || state == "normal"
-                ? Colors.White
-                : state == "pressed"
-                    ? new Color(0.84f, 0.84f, 0.84f, 1f)
-                    : new Color(1.12f, 1.12f, 1.12f, 1f)
+            ModulateColor = Colors.White
         };
         style.SetContentMarginAll(0);
         return style;
@@ -571,9 +565,12 @@ public sealed partial class ScenarioStartMenu
     private static TextureButton NewGameFooterAction(string name, string text, bool primary)
     {
         var tier = primary ? "primary" : "secondary";
-        var normalTexture = GD.Load<Texture2D>($"res://assets/ui/new_game/buttons/{tier}_normal.png");
-        var hoverTexture = GD.Load<Texture2D>($"res://assets/ui/new_game/buttons/{tier}_hover.png");
-        var pressedTexture = GD.Load<Texture2D>($"res://assets/ui/new_game/buttons/{tier}_pressed.png");
+        var normalSource = GD.Load<Texture2D>($"res://assets/ui/new_game/buttons/{tier}_normal.png");
+        var textureWidth = normalSource.GetWidth();
+        var textureHeight = normalSource.GetHeight();
+        var normalTexture = NewGameFooterTexture(tier, "normal", textureWidth, textureHeight);
+        var hoverTexture = NewGameFooterTexture(tier, "hover", textureWidth, textureHeight);
+        var pressedTexture = NewGameFooterTexture(tier, "pressed", textureWidth, textureHeight);
         var width = primary ? 370f : 286f;
         var height = width * normalTexture.GetHeight() / normalTexture.GetWidth();
         var button = new TextureButton
@@ -619,6 +616,20 @@ public sealed partial class ScenarioStartMenu
             ? new Color(1.12f, 1.12f, 1.12f)
             : Colors.White;
         return button;
+    }
+
+    private static Texture2D NewGameFooterTexture(string tier, string state, int width, int height)
+    {
+        var key = (tier, state, width, height);
+        if (FooterTextureCache.TryGetValue(key, out var cached)) return cached;
+        var source = GD.Load<Texture2D>($"res://assets/ui/new_game/buttons/{tier}_{state}.png");
+        using var image = source.GetImage();
+        // 제공된 상태별 PNG 캔버스가 1~5px씩 달라도 버튼 위치와 외곽선은 움직이지 않는다.
+        if (image.GetWidth() != width || image.GetHeight() != height)
+            image.Resize(width, height, Image.Interpolation.Lanczos);
+        var texture = ImageTexture.CreateFromImage(image);
+        FooterTextureCache[key] = texture;
+        return texture;
     }
 
     private static void SetFooterActionEnabled(TextureButton? button, bool enabled)
