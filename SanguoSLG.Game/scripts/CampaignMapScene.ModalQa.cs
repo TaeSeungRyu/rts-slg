@@ -266,8 +266,8 @@ public sealed partial class CampaignMapScene
     {
         bool WidthOk() => _terrainCard.FindChildren("*", "VBoxContainer", true, false)
             .OfType<VBoxContainer>().Any(box => box.HasMeta("expanded_info_palette_width")
-                && box.GetMeta("expanded_info_palette_width").AsInt32() == 160
-                && box.CustomMinimumSize.X >= 158f);
+                && box.GetMeta("expanded_info_palette_width").AsInt32() == 288
+                && box.CustomMinimumSize.X >= 286f);
 
         var occupied = _state.Cities.SelectMany(SanguoSLG.Core.Domain.CastleFootprint.TilesFor).ToHashSet();
         var facilities = _state.FacilityPlacements ?? [];
@@ -280,10 +280,19 @@ public sealed partial class CampaignMapScene
 
         ShowMapInfo(terrain);
         await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
-        var terrainOk = WidthOk();
+        var terrainLabels = _terrainInfo.FindChildren("*", "Label", true, false)
+            .OfType<Label>().Select(label => label.Text).ToList();
+        var terrainOk = WidthOk()
+            && _terrainCard.FindChild("TerrainInfoHeader", true, false) is HBoxContainer
+            && _terrainCard.FindChild("TerrainIconPreview", true, false) is SubViewportContainer
+            && _terrainCard.FindChild("TerrainInfoBody", true, false) is PanelContainer
+            && new[] { "좌표", "이동", "기후", "전투" }.All(terrainLabels.Contains);
         ShowMapInfo(facility.Plot);
         await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
-        var facilityOk = WidthOk();
+        var facilityLabels = _terrainInfo.FindChildren("*", "Label", true, false)
+            .OfType<Label>().Select(label => label.Text).ToList();
+        var facilityOk = WidthOk() && facilityLabels.Contains("효과")
+            && facilityLabels.Count(label => label == "좌표") == 1;
         ShowRuinInfo(ruin);
         await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
         var ruinOk = WidthOk();

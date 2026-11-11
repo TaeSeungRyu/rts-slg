@@ -1994,7 +1994,7 @@ public sealed partial class CampaignMapScene : Node3D
         FrameTerrainCamera(preview);
         _terrainName.Text = ruin.Name;
 
-        Clear(_terrainInfo);
+        ClearLayoutChildren(_terrainInfo);
         void Row(string key, string value, Color? valueColor = null)
         {
             var row = new HBoxContainer();
@@ -2049,7 +2049,7 @@ public sealed partial class CampaignMapScene : Node3D
             FrameTerrainCamera(preview);
         }
         _terrainName.Text = definition.Name;
-        Clear(_terrainInfo);
+        ClearLayoutChildren(_terrainInfo);
         void Row(string key, string value)
         {
             var row = new HBoxContainer();
@@ -2121,7 +2121,7 @@ public sealed partial class CampaignMapScene : Node3D
             FrameTerrainCamera(preview);
         }
         _terrainName.Text = gate.Name;
-        Clear(_terrainInfo);
+        ClearLayoutChildren(_terrainInfo);
         foreach (var line in new[]
         {
             gate.Gate == GateSize.Medium ? "중형 관문" : "소형 관문",
@@ -2898,17 +2898,19 @@ public sealed partial class CampaignMapScene : Node3D
         _terrainName.Text = !inMap ? "맵 밖" : facility is { } fn ? FacilityName(fn) : TerrainName(terrain);
 
         // 하단: 이동·전투 보정.
-        Clear(_terrainInfo);
+        ClearLayoutChildren(_terrainInfo);
         void Row(string k, string v, Color? valueColor = null)
         {
-            var hb = new HBoxContainer();
-            hb.AddThemeConstantOverride("separation", 8);
-            var kl = MakeLabel(k, 11, Parchment);
-            kl.CustomMinimumSize = new Vector2(38, 0);
+            var hb = new HBoxContainer { CustomMinimumSize = new Vector2(0, 24) };
+            hb.AddThemeConstantOverride("separation", 10);
+            var kl = MakeLabel(k, 11, new Color(GameUiSkin.Ivory, 0.76f));
+            kl.CustomMinimumSize = new Vector2(58, 0);
+            kl.VerticalAlignment = VerticalAlignment.Center;
             hb.AddChild(kl);
-            var vl = MakeLabel(v, 11, valueColor ?? GoldBright);
+            var vl = MakeLabel(v, 12, valueColor ?? Parchment);
             vl.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
             vl.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+            vl.VerticalAlignment = VerticalAlignment.Center;
             hb.AddChild(vl);
             _terrainInfo.AddChild(hb);
         }
@@ -5938,35 +5940,72 @@ public sealed partial class CampaignMapScene : Node3D
     // 지형 정보 카드: 상단 = 지형 3D 에셋 미리보기 + 한글 이름, 하단 = 이동·전투 보정.
     private void BuildTerrainCard(CanvasLayer layer)
     {
-        _terrainCard = new PanelContainer { Name = "TerrainInfoPalette", Visible = false, ZIndex = 60 };
-        _terrainCard.AddThemeStyleboxOverride("panel", Frame(Ink, Gold, 2, 8, 10));
+        _terrainCard = new PanelContainer
+        {
+            Name = "TerrainInfoPalette",
+            Visible = false,
+            ZIndex = 60,
+            MouseFilter = Control.MouseFilterEnum.Stop,
+        };
+        _terrainCard.AddThemeStyleboxOverride("panel", GameUiSkin.FlatBox(
+            new Color("160d0b", 0.96f), GameUiSkin.Gold, 2, 9, 11));
         _terrainCard.TextureFilter = CanvasItem.TextureFilterEnum.LinearWithMipmaps;
         layer.AddChild(_terrainCard);
 
-        var box = new VBoxContainer { CustomMinimumSize = new Vector2(160, 0) };
-        box.SetMeta("expanded_info_palette_width", 160);
-        box.AddThemeConstantOverride("separation", 4);
+        var box = new VBoxContainer { CustomMinimumSize = new Vector2(288, 0) };
+        box.SetMeta("expanded_info_palette_width", 288);
+        box.AddThemeConstantOverride("separation", 6);
         _terrainCard.AddChild(box);
 
-        var closeRow = new HBoxContainer();
-        closeRow.Alignment = BoxContainer.AlignmentMode.End;
-        box.AddChild(closeRow);
+        var header = new HBoxContainer
+        {
+            Name = "TerrainInfoHeader",
+            CustomMinimumSize = new Vector2(0, 68),
+            MouseFilter = Control.MouseFilterEnum.Ignore,
+        };
+        header.AddThemeConstantOverride("separation", 10);
+        box.AddChild(header);
+
+        // 기존 3D 지형 에셋을 아이콘처럼 재사용한다. 별도 PNG가 없어도 원본 지형을 식별할 수 있다.
+        var svc = new SubViewportContainer
+        {
+            Name = "TerrainIconPreview",
+            Stretch = true,
+            CustomMinimumSize = new Vector2(86, 64),
+            MouseFilter = Control.MouseFilterEnum.Ignore,
+            SizeFlagsVertical = Control.SizeFlags.ShrinkCenter,
+        };
+        header.AddChild(svc);
+        var titleStack = new VBoxContainer
+        {
+            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+            SizeFlagsVertical = Control.SizeFlags.ShrinkCenter,
+            MouseFilter = Control.MouseFilterEnum.Ignore,
+        };
+        titleStack.AddThemeConstantOverride("separation", 2);
+        header.AddChild(titleStack);
+        var eyebrow = MakeLabel("지형 정보", 11, new Color(GameUiSkin.Ivory, 0.66f));
+        eyebrow.MouseFilter = Control.MouseFilterEnum.Ignore;
+        titleStack.AddChild(eyebrow);
+        _terrainName = MakeLabel("", 17, GoldBright);
+        _terrainName.TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis;
+        _terrainName.MouseFilter = Control.MouseFilterEnum.Ignore;
+        titleStack.AddChild(_terrainName);
+
         var close = MakeButton("✕");
-        close.CustomMinimumSize = new Vector2(28, 24);
+        close.CustomMinimumSize = new Vector2(26, 24);
+        close.SizeFlagsVertical = Control.SizeFlags.ShrinkBegin;
         close.AddThemeFontSizeOverride("font_size", 11);
         close.Pressed += () =>
         {
             _terrainCard.Visible = false;
             _terrainHex = null;
         };
-        closeRow.AddChild(close);
+        header.AddChild(close);
 
-        // 상단: 지형 에셋 3D 미리보기(자체 월드 SubViewport). 영역을 작게.
-        var svc = new SubViewportContainer { Stretch = true, CustomMinimumSize = new Vector2(136, 84), MouseFilter = Control.MouseFilterEnum.Ignore, SizeFlagsHorizontal = Control.SizeFlags.ShrinkCenter };
-        box.AddChild(svc);
         _terrainViewport = new SubViewport
         {
-            Size = new Vector2I(136, 84),
+            Size = new Vector2I(172, 128),
             RenderTargetUpdateMode = SubViewport.UpdateMode.Always,
             OwnWorld3D = true, // 자체 3D 월드 — 없으면 메인 씬 월드를 봐 빈 화면이 된다
         };
@@ -5992,13 +6031,14 @@ public sealed partial class CampaignMapScene : Node3D
         _terrainHolder = new Node3D();
         _terrainViewport.AddChild(_terrainHolder);
 
-        _terrainName = MakeLabel("", 15, GoldBright);
-        _terrainName.HorizontalAlignment = HorizontalAlignment.Center;
-        box.AddChild(_terrainName);
         box.AddChild(GoldRule());
-        _terrainInfo = new VBoxContainer();
-        _terrainInfo.AddThemeConstantOverride("separation", 2);
-        box.AddChild(_terrainInfo);
+        var infoFrame = new PanelContainer { Name = "TerrainInfoBody" };
+        infoFrame.AddThemeStyleboxOverride("panel", GameUiSkin.FlatBox(
+            new Color("241411", 0.72f), new Color(GameUiSkin.Bronze, 0.66f), 1, 6, 7));
+        box.AddChild(infoFrame);
+        _terrainInfo = new VBoxContainer { MouseFilter = Control.MouseFilterEnum.Pass };
+        _terrainInfo.AddThemeConstantOverride("separation", 3);
+        infoFrame.AddChild(_terrainInfo);
     }
 
     // 유닛 명령 팔레트 — 성 팔레트와 같은 개념(작은 떠있는 패널). 지금은 '정보'만 동작하고
