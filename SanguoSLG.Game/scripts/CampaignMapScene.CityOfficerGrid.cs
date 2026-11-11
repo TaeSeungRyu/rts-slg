@@ -119,7 +119,7 @@ public sealed partial class CampaignMapScene
             && header is not null && header.GetGlobalRect().Position.Y >= _infoScroll.GetGlobalRect().Position.Y;
         var titleCenter = title?.GetGlobalRect().GetCenter().Y ?? -1f;
         var subtitleCenter = subtitle?.GetGlobalRect().GetCenter().Y ?? -1f;
-        var titleBandsCentered = Mathf.Abs(titleCenter - (info.Position.Y + 34f)) <= 2f
+        var titleBandsCentered = Mathf.Abs(titleCenter - (info.Position.Y + 27f)) <= 1f
             && Mathf.Abs(subtitleCenter - (info.Position.Y + 55.5f)) <= 2f;
         var passed = _infoCard.Visible && _cmdMenu.Visible && _cmdSubMenu.Visible
             && Mathf.Abs(info.End.X - (viewport.X - 12f)) <= 3f
