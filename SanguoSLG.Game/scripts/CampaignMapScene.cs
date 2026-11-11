@@ -18400,6 +18400,12 @@ public sealed partial class CampaignMapScene : Node3D
         };
         ShowUnitInfo(sample.Id.Value);
         await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        var requiredLabels = new[] { "병력", "부상병", "훈련", "모드", "목표", "군량", "공용 스킬원" };
+        var visibleLabels = _infoRows.FindChildren("*", "Label", true, false).OfType<Label>().ToList();
+        var restoredFields = requiredLabels.All(required => visibleLabels.Any(label => label.Text == required));
+        var unitPanelMode = !_infoArtwork.Visible
+            && _infoCard.CustomMinimumSize == new Vector2(320f, 620f)
+            && _infoActions.GetChildCount() == 0;
         var visual = _infoRows.FindChild("UnitCommanderVisual", true, false) as PanelContainer;
         var vanguardPortrait = _infoRows.FindChild("UnitVanguardPortrait", true, false) as TextureRect;
         var adjutantPortrait = _infoRows.FindChild("UnitAdjutantPortrait", true, false) as PanelContainer;
@@ -18453,6 +18459,41 @@ public sealed partial class CampaignMapScene : Node3D
         await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
         var restoredAfterDismiss = _infoCard.Visible
             && _infoRows.FindChild("UnitCommanderVisual", true, false) is PanelContainer;
+
+        var restoredAdjutantLink = _infoRows.FindChild("UnitAdjutantGeneralLink", true, false) as Button;
+        restoredAdjutantLink?.EmitSignal(BaseButton.SignalName.Pressed);
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        var adjutantDetailOpened = _modalLayer?.FindChildren("*", "Label", true, false).OfType<Label>()
+            .Any(label => label.Text.Contains(generals[1].Name, System.StringComparison.Ordinal)) == true;
+        CloseModal();
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+
+        _state = _state with { FieldArmies = _state.Armies.Select(unit => unit.Id == sample.Id
+            ? unit with { VanguardId = generals[0].Id, AdjutantId = null }
+            : unit).ToList() };
+        ShowUnitInfo(sample.Id.Value);
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        var singleGeneralLayout = _infoRows.FindChild("UnitVanguardGeneralLink", true, false) is Button
+            && _infoRows.FindChild("UnitAdjutantGeneralLink", true, false) is null
+            && _infoRows.FindChild("UnitAdjutantPortrait", true, false) is null
+            && _infoCard.CustomMinimumSize == new Vector2(320f, 620f)
+            && _infoActions.GetChildCount() == 0;
+
+        SelectCity(city.Id);
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        var cityPanelRestored = _infoArtwork.Visible
+            && _infoCard.CustomMinimumSize == new Vector2(320f, 416f)
+            && _infoActions.FindChildren("*", "Button", true, false).OfType<Button>()
+                .Any(button => button.Text.Contains("상세", System.StringComparison.Ordinal));
+
+        _state = _state with { FieldArmies = _state.Armies.Select(unit => unit.Id == sample.Id
+            ? unit with { VanguardId = generals[0].Id, AdjutantId = generals[1].Id }
+            : unit).ToList() };
+        var commandSample = _state.Armies.First(unit => unit.Id == sample.Id);
+        OpenUnitMenu(commandSample);
+        var commandsPreserved = _unitMenu.Visible && _unitCmdBox.Visible;
+        ShowUnitInfo(sample.Id.Value);
         _state = _state with { FieldArmies = _state.Armies.Select(unit => unit.Id == sample.Id
             ? unit with { IsArmyGroup = true, TroopCode = "army_group" } : unit).ToList() };
         ShowUnitInfo(sample.Id.Value);
@@ -18463,9 +18504,11 @@ public sealed partial class CampaignMapScene : Node3D
         ShowUnitInfo(sample.Id.Value);
         var transportNameTranslated = _infoRows.GetChildren().OfType<Label>()
             .Any(label => label.Text.StartsWith("수송부대 ·", System.StringComparison.Ordinal));
-        var passed = layoutOk && detailOpened && aptitudeImagesInsideBorder && regionTranslated
-            && restoredAfterDismiss && groupNameTranslated && transportNameTranslated;
-        GD.Print($"[unit-info-ui-qa] passed={passed} layout={layoutOk} detail={detailOpened} aptitudeInsets={aptitudeImagesInsideBorder}:{aptitudeFrames.Count} regionKo={regionTranslated}:{expectedRegion} restored={restoredAfterDismiss} armyGroupKo={groupNameTranslated} badge={troopBadge is not null} adjutant={adjutantPortrait is not null} roleCards={roleCardCount}");
+        var passed = layoutOk && restoredFields && unitPanelMode
+            && detailOpened && adjutantDetailOpened && aptitudeImagesInsideBorder && regionTranslated
+            && restoredAfterDismiss && singleGeneralLayout && cityPanelRestored && commandsPreserved
+            && groupNameTranslated && transportNameTranslated;
+        GD.Print($"[unit-info-ui-qa] passed={passed} layout={layoutOk} fields={restoredFields} unitPanel={unitPanelMode} vanguardDetail={detailOpened} adjutantDetail={adjutantDetailOpened} aptitudeInsets={aptitudeImagesInsideBorder}:{aptitudeFrames.Count} regionKo={regionTranslated}:{expectedRegion} restored={restoredAfterDismiss} single={singleGeneralLayout} cityRestore={cityPanelRestored} commands={commandsPreserved} armyGroupKo={groupNameTranslated} badge={troopBadge is not null} adjutant={adjutantPortrait is not null} roleCards={roleCardCount}");
         _state = original;
         _infoCard.Visible = false;
         if (passed) GetParent().CallDeferred("RequestGracefulShutdown");
