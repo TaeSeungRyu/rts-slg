@@ -5659,7 +5659,7 @@ public sealed partial class CampaignMapScene : Node3D
         infoMargin.AddThemeConstantOverride("margin_left", 17);
         infoMargin.AddThemeConstantOverride("margin_top", 24);
         infoMargin.AddThemeConstantOverride("margin_right", 17);
-        infoMargin.AddThemeConstantOverride("margin_bottom", 22);
+        infoMargin.AddThemeConstantOverride("margin_bottom", 26);
         infoComposition.AddChild(infoMargin);
         var infoLayout = new VBoxContainer { Name = "CityInfoLayout" };
         infoLayout.AddThemeConstantOverride("separation", 6);
@@ -6680,9 +6680,15 @@ public sealed partial class CampaignMapScene : Node3D
 
     private static PanelContainer WrapCityInfoGrid(GridContainer grid, string name)
     {
-        var panel = new PanelContainer { Name = name };
-        panel.AddThemeStyleboxOverride("panel", GameUiSkin.FlatBox(
-            new Color("241411", 0.78f), new Color(GameUiSkin.Bronze, 0.72f), 1, 6, 5));
+        var panel = new PanelContainer
+        {
+            Name = name,
+            CustomMinimumSize = new Vector2(0, name == "CityPrimaryStats" ? 90f : 96f),
+        };
+        // 자원·시설 구획선은 city_info_panel.png에 포함되어 있다.
+        var style = new StyleBoxEmpty();
+        if (name == "CitySecondaryStats") style.ContentMarginTop = 10f;
+        panel.AddThemeStyleboxOverride("panel", style);
         panel.AddChild(grid);
         return panel;
     }
@@ -6796,7 +6802,6 @@ public sealed partial class CampaignMapScene : Node3D
             new Color(GameUiSkin.Ivory, 0.76f));
         cityVision.HorizontalAlignment = HorizontalAlignment.Center;
         infoHeader.AddChild(cityVision);
-        infoHeader.AddChild(GoldRule());
         _infoRows.AddChild(infoHeader);
         if (!owned && _state.IsScouted(Player, id))
             _infoRows.AddChild(MakeLabel($"정찰 남은 일수: {ScoutDaysLeft(id)}일", 13, GoldBright));
@@ -6825,8 +6830,7 @@ public sealed partial class CampaignMapScene : Node3D
         _infoRows.AddChild(BuildCityOfficerGrid(c));
         var resourceDivider = new MarginContainer { Name = "CityResourceDivider" };
         resourceDivider.AddThemeConstantOverride("margin_top", 6);
-        resourceDivider.AddThemeConstantOverride("margin_bottom", 4);
-        resourceDivider.AddChild(GoldRule());
+        resourceDivider.AddThemeConstantOverride("margin_bottom", 2);
         _infoRows.AddChild(resourceDivider);
 
         // 짧은 수치: 4칸(라벨·값·라벨·값) 2쌍씩.
@@ -6859,6 +6863,11 @@ public sealed partial class CampaignMapScene : Node3D
         var detailBtn = MakeButton("▶ 상세 · 진행 목록");
         detailBtn.AddThemeFontSizeOverride("font_size", 12);
         detailBtn.CustomMinimumSize = new Vector2(0, 26);
+        foreach (var state in new[] { "normal", "hover", "pressed", "disabled", "focus" })
+            detailBtn.AddThemeStyleboxOverride(state, new StyleBoxEmpty());
+        detailBtn.AddThemeColorOverride("font_color", GameUiSkin.Ivory);
+        detailBtn.AddThemeColorOverride("font_hover_color", GameUiSkin.GoldBright);
+        detailBtn.AddThemeColorOverride("font_pressed_color", GameUiSkin.Gold);
         detailBtn.Pressed += () =>
         {
             if (owned || _state.IsScouted(Player, id)) { OpenCityDetail(id); }

@@ -15,12 +15,14 @@ public sealed partial class CampaignMapScene
             var frame = new PanelContainer { Name = "CityOfficerCard",
                 CustomMinimumSize = new Vector2(0, 60),
                 SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
-            var style = new StyleBoxFlat { BgColor = new Color(InkSoft),
-                BorderColor = new Color(Gold, .42f) };
-            style.SetBorderWidthAll(1);
-            style.SetCornerRadiusAll(8);
-            style.SetContentMarginAll(6);
-            frame.AddThemeStyleboxOverride("panel", style);
+            // 배경 PNG가 태수·군사 칸의 테두리를 이미 제공하므로 중복 프레임은 그리지 않는다.
+            frame.AddThemeStyleboxOverride("panel", new StyleBoxEmpty
+            {
+                ContentMarginLeft = 5,
+                ContentMarginTop = 5,
+                ContentMarginRight = 5,
+                ContentMarginBottom = 5,
+            });
             frame.SetMeta("city_officer_card", true);
             var row = new HBoxContainer { Alignment = BoxContainer.AlignmentMode.Begin };
             row.AddThemeConstantOverride("separation", 8);
