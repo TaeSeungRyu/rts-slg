@@ -282,10 +282,17 @@ public sealed partial class CampaignMapScene
         await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
         var terrainLabels = _terrainInfo.FindChildren("*", "Label", true, false)
             .OfType<Label>().Select(label => label.Text).ToList();
+        var terrainValueLabels = _terrainInfo.GetChildren().OfType<HBoxContainer>()
+            .SelectMany(row => row.GetChildren().OfType<Label>().Skip(1)).ToList();
+        var terrainKeyLabels = _terrainInfo.GetChildren().OfType<HBoxContainer>()
+            .Select(row => row.GetChildren().OfType<Label>().FirstOrDefault()).Where(label => label is not null).ToList();
         var terrainOk = WidthOk()
             && _terrainCard.FindChild("TerrainInfoHeader", true, false) is HBoxContainer
             && _terrainCard.FindChild("TerrainIconPreview", true, false) is SubViewportContainer
             && _terrainCard.FindChild("TerrainInfoBody", true, false) is PanelContainer
+            && _terrainViewport.TransparentBg
+            && terrainValueLabels.All(label => label.AutowrapMode == TextServer.AutowrapMode.Word)
+            && terrainKeyLabels.All(label => label!.GetThemeColor("font_color").A >= 0.89f)
             && new[] { "좌표", "이동", "기후", "전투" }.All(terrainLabels.Contains);
         ShowMapInfo(facility.Plot);
         await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
@@ -332,6 +339,13 @@ public sealed partial class CampaignMapScene
             projected.MinBy(item => item.Screen.Y).Hex,
             projected.MaxBy(item => item.Screen.Y).Hex,
         }.Distinct().ToList();
+        var suppliedTarget = projected.FirstOrDefault(item => _state.Cities.Any(city => city.Owner == Player
+            && city.Position.Distance(item.Hex) <= _cb.CityResupplyRadius));
+        if (suppliedTarget != default)
+        {
+            targets.Remove(suppliedTarget.Hex);
+            targets.Add(suppliedTarget.Hex);
+        }
         var insideViewport = true;
         var refreshed = true;
         var avoidsPersistentHud = true;

@@ -2904,14 +2904,14 @@ public sealed partial class CampaignMapScene : Node3D
         void Row(string k, string v, Color? valueColor = null)
         {
             var hb = new HBoxContainer { CustomMinimumSize = new Vector2(0, 24) };
-            hb.AddThemeConstantOverride("separation", 10);
-            var kl = MakeLabel(k, 11, new Color(GameUiSkin.Ivory, 0.76f));
-            kl.CustomMinimumSize = new Vector2(58, 0);
+            hb.AddThemeConstantOverride("separation", 8);
+            var kl = MakeLabel(k, 11, new Color(GameUiSkin.Ivory, 0.9f));
+            kl.CustomMinimumSize = new Vector2(56, 0);
             kl.VerticalAlignment = VerticalAlignment.Center;
             hb.AddChild(kl);
             var vl = MakeLabel(v, 12, valueColor ?? Parchment);
             vl.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
-            vl.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+            vl.AutowrapMode = TextServer.AutowrapMode.Word;
             vl.VerticalAlignment = VerticalAlignment.Center;
             hb.AddChild(vl);
             _terrainInfo.AddChild(hb);
@@ -6032,6 +6032,7 @@ public sealed partial class CampaignMapScene : Node3D
         _terrainViewport = new SubViewport
         {
             Size = new Vector2I(172, 128),
+            TransparentBg = true,
             RenderTargetUpdateMode = SubViewport.UpdateMode.Always,
             OwnWorld3D = true, // 자체 3D 월드 — 없으면 메인 씬 월드를 봐 빈 화면이 된다
         };
@@ -6041,7 +6042,7 @@ public sealed partial class CampaignMapScene : Node3D
             Environment = new Godot.Environment
             {
                 BackgroundMode = Godot.Environment.BGMode.Color,
-                BackgroundColor = new Color(0.09f, 0.07f, 0.06f),
+                BackgroundColor = new Color(0f, 0f, 0f, 0f),
                 AmbientLightSource = Godot.Environment.AmbientSource.Color,
                 AmbientLightColor = new Color(0.78f, 0.78f, 0.82f),
                 AmbientLightEnergy = 0.9f,
