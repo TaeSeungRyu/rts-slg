@@ -29,7 +29,7 @@ public sealed partial class CampaignMapScene
             && dateRect.End.Y <= _hudPanel.GetGlobalRect().End.Y - 8f;
         var lowerInfoCentered = lowerText is not null && buttons.All(button =>
             Mathf.Abs((lowerText.GetGlobalRect().Position.Y + lowerText.Size.Y / 2f)
-                - (button.GetGlobalRect().Position.Y + button.Size.Y / 2f)) <= 1f);
+                - (button.GetGlobalRect().Position.Y + button.Size.Y / 2f) - 5f) <= 1f);
         var fits = _hudPanel.Position.X >= 0 && _hudPanel.Position.Y >= 0
             && _hudPanel.Position.X + _hudPanel.Size.X <= viewport.X
             && _hudPanel.Position.Y + _hudPanel.Size.Y <= viewport.Y;
@@ -46,10 +46,7 @@ public sealed partial class CampaignMapScene
             && buttons.Length == 2
             && centeredIcons.All(icon => icon?.Texture is not null
                 && icon.MouseFilter == Control.MouseFilterEnum.Ignore
-                && Mathf.IsEqualApprox((icon.Position + icon.Size / 2f).X,
-                    icon.GetParent<Control>().Size.X / 2f)
-                && Mathf.IsEqualApprox((icon.Position + icon.Size / 2f).Y,
-                    icon.GetParent<Control>().Size.Y / 2f - 5f))
+                && icon.Position + icon.Size / 2f == icon.GetParent<Control>().Size / 2f)
             && buttons.All(button => button.Icon is null
                 && button.GetThemeStylebox("normal") is StyleBoxTexture
                 && button.GetThemeStylebox("hover") is StyleBoxTexture

@@ -10,18 +10,18 @@ public sealed partial class CampaignMapScene
     private PanelContainer? _miniMapPanel;
     private CampaignMiniMap? _miniMapView;
 
-    private void AddMiniMapButton(HBoxContainer top)
+    private void AddMiniMapButton(Control top)
     {
         var button = MakeButton("");
         button.Name = "RulerHudMapButton";
         button.CustomMinimumSize = new Vector2(42, 42);
         button.TooltipText = "지도 보기";
         button.SizeFlagsVertical = Control.SizeFlags.ShrinkCenter;
-        GameUiSkin.ApplyIconButton(button, "hud_round", "map", iconVerticalOffset: -5f);
+        GameUiSkin.ApplyIconButton(button, "hud_round", "map");
         if (button.GetNodeOrNull<TextureRect>("GameUiCenteredIcon") is null)
         {
             var fallback = GD.Load<Texture2D>("res://assets/icons/icon_map.svg");
-            if (fallback is not null) GameUiSkin.SetCenteredIcon(button, fallback, verticalOffset: -5f);
+            if (fallback is not null) GameUiSkin.SetCenteredIcon(button, fallback);
         }
         top.AddChild(button);
 

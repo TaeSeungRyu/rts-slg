@@ -18896,11 +18896,15 @@ public sealed partial class CampaignMapScene : Node3D
         tray.AddThemeFontSizeOverride("font_size", 18);
         tray.CustomMinimumSize = new Vector2(42, 42);
         tray.SizeFlagsVertical = Control.SizeFlags.ShrinkCenter;
-        GameUiSkin.ApplyIconButton(tray, "hud_round", "system", iconVerticalOffset: -5f);
+        GameUiSkin.ApplyIconButton(tray, "hud_round", "system");
         tray.TooltipText = "시스템";
         tray.Pressed += OpenSystemPalette;
-        lowerInfoRow.AddChild(tray);
-        AddMiniMapButton(lowerInfoRow);
+        var systemSlot = MakeRaisedHudButtonSlot();
+        lowerInfoRow.AddChild(systemSlot);
+        systemSlot.AddChild(tray);
+        var mapSlot = MakeRaisedHudButtonSlot();
+        lowerInfoRow.AddChild(mapSlot);
+        AddMiniMapButton(mapSlot);
         AddClimateTestButtons(layer);
         AddAiTestCaseSelector(layer);
         BuildCityQuickList(layer);
@@ -18919,6 +18923,18 @@ public sealed partial class CampaignMapScene : Node3D
 
         BuildReportPanel();
         BuildAdvanceControl();
+    }
+
+    private static MarginContainer MakeRaisedHudButtonSlot()
+    {
+        var slot = new MarginContainer
+        {
+            CustomMinimumSize = new Vector2(42, 52),
+            SizeFlagsVertical = Control.SizeFlags.ShrinkCenter,
+        };
+        // Preserve the button and icon sizes while shifting the complete round control 5px upward.
+        slot.AddThemeConstantOverride("margin_bottom", 10);
+        return slot;
     }
 
     // 교전·특기·지속 피해를 자연 문장으로(내 세력만). "도검병을 이끄는 XX가 XX과 교전하여 피해 A를 주고 B를 받았습니다."

@@ -80,15 +80,14 @@ internal static class GameUiSkin
         button.AddThemeColorOverride("font_disabled_color", new Color(Ivory, 0.45f));
     }
 
-    internal static void ApplyIconButton(Button button, string buttonAssetName, string iconAssetName,
-        float iconVerticalOffset = 0f)
+    internal static void ApplyIconButton(Button button, string buttonAssetName, string iconAssetName)
     {
         ApplyButton(button, buttonAssetName, textureSlice: 0);
         if (Icon(iconAssetName) is not { } icon) return;
-        SetCenteredIcon(button, icon, iconVerticalOffset);
+        SetCenteredIcon(button, icon);
     }
 
-    internal static void SetCenteredIcon(Button button, Texture2D icon, float verticalOffset = 0f)
+    internal static void SetCenteredIcon(Button button, Texture2D icon)
     {
         button.Text = "";
         button.Icon = null;
@@ -109,9 +108,9 @@ internal static class GameUiSkin
         };
         iconView.SetAnchorsPreset(Control.LayoutPreset.Center);
         iconView.OffsetLeft = -11.5f;
-        iconView.OffsetTop = -11.5f + verticalOffset;
+        iconView.OffsetTop = -11.5f;
         iconView.OffsetRight = 11.5f;
-        iconView.OffsetBottom = 11.5f + verticalOffset;
+        iconView.OffsetBottom = 11.5f;
         button.AddChild(iconView);
     }
 
