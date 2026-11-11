@@ -30,7 +30,7 @@ public sealed partial class CampaignMapScene
         var lowerInfoCentered = lowerText is not null && buttons.All(button =>
             Mathf.Abs((lowerText.GetGlobalRect().Position.Y + lowerText.Size.Y / 2f)
                 - (button.GetGlobalRect().Position.Y + button.Size.Y / 2f) - 5f) <= 1f);
-        var rulerClearOfPortrait = rulerRect.Position.X >= _hudFacePanel.GetGlobalRect().End.X + 6f;
+        var rulerClearOfPortrait = rulerRect.Position.X >= _hudFacePanel.GetGlobalRect().End.X + 10f;
         var fits = _hudPanel.Position.X >= 0 && _hudPanel.Position.Y >= 0
             && _hudPanel.Position.X + _hudPanel.Size.X <= viewport.X
             && _hudPanel.Position.Y + _hudPanel.Size.Y <= viewport.Y;

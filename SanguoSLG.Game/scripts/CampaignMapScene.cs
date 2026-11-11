@@ -7002,6 +7002,7 @@ public sealed partial class CampaignMapScene : Node3D
             {
                 var recruitButton = MakeButton(label);
                 recruitButton.AddThemeFontSizeOverride("font_size", 11);
+                recruitButton.Alignment = HorizontalAlignment.Center;
                 recruitButton.CustomMinimumSize = new Vector2(108, 32);
                 GameUiSkin.ApplyCommandButton(recruitButton);
                 recruitButton.Pressed += () =>
@@ -18977,7 +18978,7 @@ public sealed partial class CampaignMapScene : Node3D
             SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
             SizeFlagsVertical = Control.SizeFlags.ShrinkCenter,
         };
-        identityInset.AddThemeConstantOverride("margin_left", 6);
+        identityInset.AddThemeConstantOverride("margin_left", 10);
         identityInset.AddChild(identity);
         top.AddChild(identityInset);
         _hudRuler = MakeLabel("", 19, GameUiSkin.GoldBright);
