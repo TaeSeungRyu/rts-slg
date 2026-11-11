@@ -109,12 +109,19 @@ public sealed partial class ScenarioStartMenu
         var key = (selected, state, width, height);
         if (!DifficultyTextureCache.TryGetValue(key, out var texture))
         {
-            var source = GD.Load<Texture2D>($"res://assets/ui/new_game/buttons/{kind}_{state}.png");
+            // The supplied secondary hover/pressed PNGs contain a detached lower strip.
+            // Keep the intact normal artwork and express those states through tinting.
+            var sourceState = selected ? state : "normal";
+            var source = GD.Load<Texture2D>($"res://assets/ui/new_game/buttons/{kind}_{sourceState}.png");
             using var original = source.GetImage();
             // 상태 이미지가 교체되어도 모서리 장식을 같은 비율로 보존한다.
             var side = Mathf.RoundToInt(original.GetWidth() * (selected ? 0.13f : 0.142f));
             var scaledSide = Mathf.RoundToInt(side * height / (float)original.GetHeight());
-            var middleWidth = width - 2 * scaledSide;
+            // Primary artwork has about 4.5% transparent padding on each side while
+            // secondary artwork reaches the canvas edge. Match their visible widths.
+            var horizontalInset = selected ? 0 : Mathf.RoundToInt(width * 0.045f);
+            var innerWidth = width - 2 * horizontalInset;
+            var middleWidth = innerWidth - 2 * scaledSide;
             using var left = original.GetRegion(new Rect2I(0, 0, side, original.GetHeight()));
             using var middle = original.GetRegion(new Rect2I(side, 0,
                 original.GetWidth() - 2 * side, original.GetHeight()));
@@ -124,18 +131,23 @@ public sealed partial class ScenarioStartMenu
             middle.Resize(middleWidth, height, Image.Interpolation.Lanczos);
             right.Resize(scaledSide, height, Image.Interpolation.Lanczos);
             using var composed = Image.CreateEmpty(width, height, false, Image.Format.Rgba8);
-            composed.BlitRect(left, new Rect2I(0, 0, scaledSide, height), Vector2I.Zero);
+            composed.BlitRect(left, new Rect2I(0, 0, scaledSide, height),
+                new Vector2I(horizontalInset, 0));
             composed.BlitRect(middle, new Rect2I(0, 0, middleWidth, height),
-                new Vector2I(scaledSide, 0));
+                new Vector2I(horizontalInset + scaledSide, 0));
             composed.BlitRect(right, new Rect2I(0, 0, scaledSide, height),
-                new Vector2I(width - scaledSide, 0));
+                new Vector2I(horizontalInset + innerWidth - scaledSide, 0));
             texture = ImageTexture.CreateFromImage(composed);
             DifficultyTextureCache[key] = texture;
         }
         var style = new StyleBoxTexture
         {
             Texture = texture,
-            ModulateColor = Colors.White
+            ModulateColor = selected || state == "normal"
+                ? Colors.White
+                : state == "pressed"
+                    ? new Color(0.84f, 0.84f, 0.84f, 1f)
+                    : new Color(1.12f, 1.12f, 1.12f, 1f)
         };
         style.SetContentMarginAll(0);
         return style;
