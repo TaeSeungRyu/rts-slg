@@ -18949,7 +18949,15 @@ public sealed partial class CampaignMapScene : Node3D
             SizeFlagsVertical = Control.SizeFlags.ShrinkCenter,
         };
         identity.AddThemeConstantOverride("separation", 2);
-        top.AddChild(identity);
+        var identityInset = new MarginContainer
+        {
+            Name = "RulerHudIdentityInset",
+            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+            SizeFlagsVertical = Control.SizeFlags.ShrinkCenter,
+        };
+        identityInset.AddThemeConstantOverride("margin_left", 6);
+        identityInset.AddChild(identity);
+        top.AddChild(identityInset);
         _hudRuler = MakeLabel("", 19, GameUiSkin.GoldBright);
         _hudRuler.Name = "RulerHudName";
         _hudRuler.CustomMinimumSize = new Vector2(0, 24);
@@ -19341,7 +19349,7 @@ public sealed partial class CampaignMapScene : Node3D
         inset.AddThemeConstantOverride("margin_right", 10);
         scroll.AddChild(inset);
         _sortieQuickList = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
-        _sortieQuickList.AddThemeConstantOverride("separation", 2);
+        _sortieQuickList.AddThemeConstantOverride("separation", 1);
         inset.AddChild(_sortieQuickList);
     }
 
@@ -19350,7 +19358,7 @@ public sealed partial class CampaignMapScene : Node3D
         var units = _state.Armies.Where(unit => unit.Field.Owner == Player && unit.VanguardId is not null)
             .OrderBy(unit => unit.Id.Value).ToArray();
         _sortieQuickToggle.Text = $"출전 장수 목록 ({units.Length})";
-        SetQuickListHeight(_sortieQuickScroll, units.Length, 54f);
+        SetQuickListHeight(_sortieQuickScroll, units.Length, 50f, separation: 1f);
         var key = string.Join("|", units.Select(unit =>
             $"{unit.Id.Value}:{unit.VanguardId}:{unit.AdjutantId}:{unit.Pool.Active}:{unit.IsWaitingDeployment}"));
         if (key == _sortieQuickListKey) return;
@@ -19369,7 +19377,7 @@ public sealed partial class CampaignMapScene : Node3D
             var button = MakeButton("");
             button.Name = $"SortieQuickRow_{unit.Id.Value}";
             button.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
-            button.CustomMinimumSize = new Vector2(0, 54);
+            button.CustomMinimumSize = new Vector2(0, 50);
             button.ToggleMode = true;
             button.ButtonGroup = group;
             button.ButtonPressed = _sortieQuickSelectedUnit == unit.Id.Value;
@@ -19378,17 +19386,17 @@ public sealed partial class CampaignMapScene : Node3D
             var rowInset = new MarginContainer { MouseFilter = Control.MouseFilterEnum.Ignore };
             rowInset.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
             rowInset.AddThemeConstantOverride("margin_left", 8);
-            rowInset.AddThemeConstantOverride("margin_top", 5);
+            rowInset.AddThemeConstantOverride("margin_top", 4);
             rowInset.AddThemeConstantOverride("margin_right", 8);
-            rowInset.AddThemeConstantOverride("margin_bottom", 5);
+            rowInset.AddThemeConstantOverride("margin_bottom", 4);
             button.AddChild(rowInset);
             var row = new HBoxContainer { MouseFilter = Control.MouseFilterEnum.Ignore };
-            row.AddThemeConstantOverride("separation", 9);
+            row.AddThemeConstantOverride("separation", 7);
             rowInset.AddChild(row);
             var portrait = new TextureRect
             {
                 Texture = unit.VanguardId is { } generalId ? CircularPortraitFor(generalId) : null,
-                CustomMinimumSize = new Vector2(38, 38),
+                CustomMinimumSize = new Vector2(36, 36),
                 ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
                 StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
                 MouseFilter = Control.MouseFilterEnum.Ignore,
@@ -19442,16 +19450,18 @@ public sealed partial class CampaignMapScene : Node3D
         }
     }
 
-    private static void SetQuickListHeight(ScrollContainer scroll, int itemCount, float rowHeight)
+    private static void SetQuickListHeight(ScrollContainer scroll, int itemCount, float rowHeight,
+        float separation = QuickListRowSeparation)
     {
-        var height = QuickListHeight(itemCount, rowHeight);
+        var height = QuickListHeight(itemCount, rowHeight, separation);
         if (!Mathf.IsEqualApprox(scroll.CustomMinimumSize.Y, height))
             scroll.CustomMinimumSize = new Vector2(338f, height);
     }
 
-    private static float QuickListHeight(int itemCount, float rowHeight)
+    private static float QuickListHeight(int itemCount, float rowHeight,
+        float separation = QuickListRowSeparation)
         => itemCount <= 0 ? 0f : Mathf.Min(
-            itemCount * rowHeight + (itemCount - 1) * QuickListRowSeparation,
+            itemCount * rowHeight + (itemCount - 1) * separation,
             QuickListMaximumHeight);
 
     private void AddQuickListDragHandle(HBoxContainer header, PanelContainer panel, Action moved)
@@ -19520,7 +19530,7 @@ public sealed partial class CampaignMapScene : Node3D
         var adaptiveHeights = Mathf.IsEqualApprox(_cityQuickScroll.CustomMinimumSize.Y,
                 QuickListHeight(cityCount, 38f))
             && Mathf.IsEqualApprox(_sortieQuickScroll.CustomMinimumSize.Y,
-                QuickListHeight(sortieCount, 54f))
+                QuickListHeight(sortieCount, 50f, 1f))
             && _cityQuickScroll.GetVScrollBar().Visible
             && !_sortieQuickScroll.GetVScrollBar().Visible;
         var expandedCityRows = _cityQuickList.FindChildren("CityQuickRow_*", "Button", true, false)

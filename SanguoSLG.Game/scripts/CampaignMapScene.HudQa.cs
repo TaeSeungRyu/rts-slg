@@ -30,6 +30,7 @@ public sealed partial class CampaignMapScene
         var lowerInfoCentered = lowerText is not null && buttons.All(button =>
             Mathf.Abs((lowerText.GetGlobalRect().Position.Y + lowerText.Size.Y / 2f)
                 - (button.GetGlobalRect().Position.Y + button.Size.Y / 2f) - 5f) <= 1f);
+        var rulerClearOfPortrait = rulerRect.Position.X >= _hudFacePanel.GetGlobalRect().End.X + 6f;
         var fits = _hudPanel.Position.X >= 0 && _hudPanel.Position.Y >= 0
             && _hudPanel.Position.X + _hudPanel.Size.X <= viewport.X
             && _hudPanel.Position.Y + _hudPanel.Size.Y <= viewport.Y;
@@ -42,6 +43,7 @@ public sealed partial class CampaignMapScene
             && _hudCityCount.Text == expectedCities
             && informationOrder
             && lowerInfoCentered
+            && rulerClearOfPortrait
             && topSafe
             && buttons.Length == 2
             && centeredIcons.All(icon => icon?.Texture is not null
@@ -56,7 +58,7 @@ public sealed partial class CampaignMapScene
         GD.Print($"[game-hud-qa] passed={passed} viewport={viewport} panel={_hudPanel.Size} "
             + $"date='{_hudDate.Text}' ruler='{_hudRuler.Text}' cities='{_hudCityCount.Text}' "
             + $"portrait={_hudFace.Texture is not null} portraitFrame={portraitDecoration?.Texture is not null} "
-            + $"informationOrder={informationOrder} lowerInfoCentered={lowerInfoCentered} topSafe={topSafe} centeredIcons="
+            + $"informationOrder={informationOrder} lowerInfoCentered={lowerInfoCentered} rulerClearOfPortrait={rulerClearOfPortrait} topSafe={topSafe} centeredIcons="
             + $"{centeredIcons.Count(icon => icon?.Texture is not null)} buttons={buttons.Length}");
         var shotArgument = OS.GetCmdlineUserArgs()
             .FirstOrDefault(argument => argument.StartsWith("--maptesthudshot=", StringComparison.Ordinal));
