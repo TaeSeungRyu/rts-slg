@@ -46,7 +46,10 @@ public sealed partial class CampaignMapScene
             && buttons.Length == 2
             && centeredIcons.All(icon => icon?.Texture is not null
                 && icon.MouseFilter == Control.MouseFilterEnum.Ignore
-                && icon.Position + icon.Size / 2f == icon.GetParent<Control>().Size / 2f)
+                && Mathf.IsEqualApprox((icon.Position + icon.Size / 2f).X,
+                    icon.GetParent<Control>().Size.X / 2f)
+                && Mathf.IsEqualApprox((icon.Position + icon.Size / 2f).Y,
+                    icon.GetParent<Control>().Size.Y / 2f - 5f))
             && buttons.All(button => button.Icon is null
                 && button.GetThemeStylebox("normal") is StyleBoxTexture
                 && button.GetThemeStylebox("hover") is StyleBoxTexture

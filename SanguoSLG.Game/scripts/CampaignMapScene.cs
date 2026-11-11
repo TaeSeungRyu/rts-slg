@@ -18896,7 +18896,7 @@ public sealed partial class CampaignMapScene : Node3D
         tray.AddThemeFontSizeOverride("font_size", 18);
         tray.CustomMinimumSize = new Vector2(42, 42);
         tray.SizeFlagsVertical = Control.SizeFlags.ShrinkCenter;
-        GameUiSkin.ApplyIconButton(tray, "hud_round", "system");
+        GameUiSkin.ApplyIconButton(tray, "hud_round", "system", iconVerticalOffset: -5f);
         tray.TooltipText = "시스템";
         tray.Pressed += OpenSystemPalette;
         lowerInfoRow.AddChild(tray);

@@ -17,11 +17,11 @@ public sealed partial class CampaignMapScene
         button.CustomMinimumSize = new Vector2(42, 42);
         button.TooltipText = "지도 보기";
         button.SizeFlagsVertical = Control.SizeFlags.ShrinkCenter;
-        GameUiSkin.ApplyIconButton(button, "hud_round", "map");
+        GameUiSkin.ApplyIconButton(button, "hud_round", "map", iconVerticalOffset: -5f);
         if (button.GetNodeOrNull<TextureRect>("GameUiCenteredIcon") is null)
         {
             var fallback = GD.Load<Texture2D>("res://assets/icons/icon_map.svg");
-            if (fallback is not null) GameUiSkin.SetCenteredIcon(button, fallback);
+            if (fallback is not null) GameUiSkin.SetCenteredIcon(button, fallback, verticalOffset: -5f);
         }
         top.AddChild(button);
 
