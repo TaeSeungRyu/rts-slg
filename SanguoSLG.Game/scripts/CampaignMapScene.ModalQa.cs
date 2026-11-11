@@ -301,6 +301,73 @@ public sealed partial class CampaignMapScene
         GetTree().Quit(passed ? 0 : 1);
     }
 
+    private async void RunTerrainPopupLayoutQa()
+    {
+        var argument = OS.GetCmdlineUserArgs().FirstOrDefault(value =>
+            value.StartsWith("--maptestterrainlayoutqa=", StringComparison.Ordinal));
+        var resolution = argument?.EndsWith("1920x1080", StringComparison.Ordinal) == true
+            ? new Vector2I(1920, 1080) : new Vector2I(1600, 900);
+        GetWindow().Size = resolution;
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+
+        var viewport = GetViewport().GetVisibleRect().Size;
+        var projected = _visibleTiles.Where(_map.Contains)
+            .Select(hex => (Hex: hex, Screen: _camera.UnprojectPosition(
+                _view.HexToWorld(hex) + new Vector3(0f, _view.TileTopY + 0.3f, 0f))))
+            .Where(item => item.Screen.X >= 0f && item.Screen.X <= viewport.X
+                && item.Screen.Y >= 0f && item.Screen.Y <= viewport.Y)
+            .ToList();
+        if (projected.Count == 0)
+        {
+            GD.Print("[terrain-popup-layout-qa] passed=False reason=no-visible-terrain");
+            GetTree().Quit(1);
+            return;
+        }
+
+        var targets = new[]
+        {
+            projected.MinBy(item => item.Screen.X).Hex,
+            projected.MaxBy(item => item.Screen.X).Hex,
+            projected.MinBy(item => item.Screen.Y).Hex,
+            projected.MaxBy(item => item.Screen.Y).Hex,
+        }.Distinct().ToList();
+        var insideViewport = true;
+        var refreshed = true;
+        var avoidsPersistentHud = true;
+        var sampledRects = new List<string>();
+        foreach (var target in targets)
+        {
+            ShowMapInfo(target);
+            await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+            await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+            var rect = _terrainCard.GetGlobalRect();
+            sampledRects.Add($"{target}:{rect}");
+            insideViewport &= rect.Position.X >= 9f && rect.Position.Y >= 9f
+                && rect.End.X <= viewport.X - 9f && rect.End.Y <= viewport.Y - 9f;
+            avoidsPersistentHud &= new Control[] { _hudPanel, _cityQuickPanel, _sortieQuickPanel, _reportPanel }
+                .Where(control => control is not null && control.Visible)
+                .All(control => !rect.Intersects(control.GetGlobalRect()));
+            var coordinate = $"({target.Q}, {target.R})";
+            var values = _terrainInfo.FindChildren("*", "Label", true, false)
+                .OfType<Label>().Select(label => label.Text).ToList();
+            refreshed &= values.Count(value => value == coordinate) == 1;
+        }
+
+        var decorationsIgnoreInput = _terrainCard.FindChild("TerrainInfoHeader", true, false) is Control header
+            && header.MouseFilter == Control.MouseFilterEnum.Ignore
+            && _terrainCard.FindChild("TerrainIconPreview", true, false) is Control icon
+            && icon.MouseFilter == Control.MouseFilterEnum.Ignore;
+        var outputPath = System.IO.Path.Combine(
+            new System.IO.DirectoryInfo(ProjectSettings.GlobalizePath("res://")).Parent?.FullName
+                ?? ProjectSettings.GlobalizePath("res://"),
+            $"shot_terrain_popup_{resolution.X}x{resolution.Y}.png");
+        var saved = GetViewport().GetTexture().GetImage().SavePng(outputPath) == Error.Ok;
+        var passed = insideViewport && refreshed && avoidsPersistentHud && decorationsIgnoreInput && saved;
+        GD.Print($"[terrain-popup-layout-qa] passed={passed} resolution={resolution} targets={targets.Count} inside={insideViewport} avoidsPersistentHud={avoidsPersistentHud} refreshed={refreshed} decorationsIgnoreInput={decorationsIgnoreInput} rects={string.Join('|', sampledRects)} shot={outputPath}");
+        GetTree().Quit(passed ? 0 : 1);
+    }
+
     private async void RunExplorationLayoutQa()
     {
         var city = _state.Cities.First(candidate => candidate.Owner == Player && !candidate.IsPort);

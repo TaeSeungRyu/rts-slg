@@ -813,6 +813,8 @@ public sealed partial class CampaignMapScene : Node3D
         if (args.Contains("--maptestloadslotuiqa")) CallDeferred(nameof(RunLoadSlotUiQa));
         if (args.Contains("--maptestpalettechevronqa")) CallDeferred(nameof(RunPaletteChevronQa));
         if (args.Contains("--maptestterrainpalettewidthqa")) CallDeferred(nameof(RunTerrainPaletteWidthQa));
+        if (args.Any(argument => argument.StartsWith("--maptestterrainlayoutqa", StringComparison.Ordinal)))
+            CallDeferred(nameof(RunTerrainPopupLayoutQa));
         if (args.Contains("--maptestterrainmovementqa")) CallDeferred(nameof(RunTerrainMovementInfoQa));
         if (args.Contains("--maptestexplorationlayoutqa")) CallDeferred(nameof(RunExplorationLayoutQa));
         if (args.Contains("--maptestsystempalettecloseqa")) CallDeferred(nameof(RunSystemPaletteCloseQa));
@@ -3003,6 +3005,7 @@ public sealed partial class CampaignMapScene : Node3D
         }
 
         _terrainHex = h;
+        _terrainCard.ResetSize();
         PlaceTerrainCard(h);
         _terrainCard.Visible = true;
         MoveRing(h);
@@ -3069,10 +3072,33 @@ public sealed partial class CampaignMapScene : Node3D
     {
         var world = _view.HexToWorld(h) + new Vector3(0f, _view.TileTopY + 0.3f, 0f);
         var screen = _camera.UnprojectPosition(world);
-        var sz = _terrainCard.GetCombinedMinimumSize();
+        var minimum = _terrainCard.GetCombinedMinimumSize();
+        // 자유 배치 Control은 이전 지형의 할당 크기를 유지할 수 있으므로 매번 현재 콘텐츠 최소 크기로
+        // 되돌린다. 그렇지 않으면 연속 클릭 시 이전 팝업 높이가 누적되어 화면 밖으로 밀린다.
+        _terrainCard.Size = minimum;
+        var sz = minimum;
         var vp = GetViewport().GetVisibleRect().Size;
-        var px = Mathf.Clamp(screen.X - sz.X / 2f, 8f, System.Math.Max(8f, vp.X - sz.X - 8f));
-        var py = Mathf.Clamp(screen.Y - sz.Y - 14f, 8f, System.Math.Max(8f, vp.Y - sz.Y - 8f));
+        const float margin = 10f;
+        const float pointerGap = 14f;
+        var px = Mathf.Clamp(screen.X - sz.X / 2f, margin,
+            System.Math.Max(margin, vp.X - sz.X - margin));
+        var py = screen.Y - sz.Y - pointerGap;
+        if (py < margin && screen.Y + pointerGap + sz.Y <= vp.Y - margin)
+            py = screen.Y + pointerGap;
+        py = Mathf.Clamp(py, margin, System.Math.Max(margin, vp.Y - sz.Y - margin));
+
+        // 좌측 고정 HUD 위에 팝업이 겹치면 우측으로만 최소 이동한다. 지도상의 클릭 위치와의
+        // 연관성은 유지하면서 보고/목록 조작을 가리지 않기 위한 보정이다.
+        foreach (var blocker in new Control[] { _hudPanel, _cityQuickPanel, _sortieQuickPanel, _reportPanel })
+        {
+            if (blocker is null || !GodotObject.IsInstanceValid(blocker) || !blocker.Visible) continue;
+            var popupRect = new Rect2(new Vector2(px, py), sz);
+            var blockerRect = blocker.GetGlobalRect();
+            if (!popupRect.Intersects(blockerRect)) continue;
+            var rightOfBlocker = blockerRect.End.X + margin;
+            if (rightOfBlocker + sz.X <= vp.X - margin)
+                px = rightOfBlocker;
+        }
         _terrainCard.Position = new Vector2(px, py);
     }
 
