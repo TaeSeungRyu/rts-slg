@@ -6872,9 +6872,10 @@ public sealed partial class CampaignMapScene : Node3D
             AddCell(g2, Sym.Scroll, "진행", visiblePending);
         }
 
-        var detailBtn = MakeButton("▶ 상세 · 진행 목록");
+        var detailBtn = MakeButton("상세 · 진행 목록");
         detailBtn.AddThemeFontSizeOverride("font_size", 12);
         detailBtn.CustomMinimumSize = new Vector2(0, 26);
+        detailBtn.Alignment = HorizontalAlignment.Center;
         foreach (var state in new[] { "normal", "hover", "pressed", "disabled", "focus" })
             detailBtn.AddThemeStyleboxOverride(state, new StyleBoxEmpty());
         detailBtn.AddThemeColorOverride("font_color", GameUiSkin.Ivory);
