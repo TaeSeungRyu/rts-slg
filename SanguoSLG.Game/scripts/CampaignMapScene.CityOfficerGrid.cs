@@ -191,4 +191,105 @@ public sealed partial class CampaignMapScene
         GD.Print($"[right-ui-qa] passed={passed} resolution={resolution} info={info} command={command} submenu={submenu} gap={gap} contentMin={_infoRows.GetCombinedMinimumSize()} scrollMin={_infoScroll.CustomMinimumSize} contentFits={contentFitsWithoutScroll} titleCenters={titleCenter}/{subtitleCenter} titleBandsCentered={titleBandsCentered} stableReselection={stableReselection} heights={firstHeight}/{reselectionHeight}/{reopenedHeight} compactSummary={compactSummary} detailOpened={detailOpened} port={portOk} shot={outputPath}");
         GetTree().Quit(passed ? 0 : 1);
     }
+
+    private async void RunEnemyCityPanelQa()
+    {
+        var argument = OS.GetCmdlineUserArgs().FirstOrDefault(value =>
+            value.StartsWith("--maptestenemycitypanelqa=", System.StringComparison.Ordinal));
+        var resolution = argument?.EndsWith("1920x1080", System.StringComparison.Ordinal) == true
+            ? new Vector2I(1920, 1080) : new Vector2I(1600, 900);
+        GetWindow().Size = resolution;
+
+        async System.Threading.Tasks.Task WaitForLayout()
+        {
+            for (var frame = 0; frame < 4; frame++)
+                await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        }
+
+        string SaveShot(string state)
+        {
+            if (DisplayServer.GetName() == "headless") return "headless";
+            var root = new System.IO.DirectoryInfo(ProjectSettings.GlobalizePath("res://")).Parent?.FullName
+                ?? ProjectSettings.GlobalizePath("res://");
+            var path = System.IO.Path.Combine(root,
+                $"shot_enemy_city_{state}_{resolution.X}x{resolution.Y}.png");
+            var result = GetViewport().GetTexture().GetImage().SavePng(path);
+            return result == Error.Ok ? path : result.ToString();
+        }
+
+        await WaitForLayout();
+        var own = _state.Cities.First(city => city.Owner == Player);
+        var enemy = _state.Cities.First(city => city.Owner != Player);
+        var originalIntel = _state.Intel.ToList();
+
+        SelectCity(own.Id);
+        await WaitForLayout();
+        var ownRect = _infoCard.GetGlobalRect();
+        var ownShot = SaveShot("own");
+
+        _state = _state with
+        {
+            ScoutedCities = originalIntel.Where(intel => intel.City != enemy.Id).ToList(),
+        };
+        SelectCity(enemy.Id);
+        await WaitForLayout();
+        var unknownRect = _infoCard.GetGlobalRect();
+        var unknownShot = SaveShot("unknown");
+        var unknownText = _infoRows.FindChild("CityUnknownIntelText", true, false) as Label;
+        var unknownActions = _infoActions.FindChild("CityEnemyActions", true, false) as HBoxContainer;
+        var unknownFits = unknownText is not null
+            && unknownRect.Encloses(unknownText.GetGlobalRect())
+            && unknownActions is not null
+            && unknownRect.Encloses(unknownActions.GetGlobalRect())
+            && unknownActions.GetChildren().OfType<Button>().Count() == 2
+            && _infoScroll.ScrollVertical == 0;
+
+        const int firstScoutDays = 24;
+        _state = _state with
+        {
+            ScoutedCities = originalIntel.Where(intel => intel.City != enemy.Id)
+                .Append(new CityIntel(Player, enemy.Id, _state.Day + firstScoutDays)).ToList(),
+        };
+        SelectCity(enemy.Id);
+        await WaitForLayout();
+        var scoutedRect = _infoCard.GetGlobalRect();
+        var scoutedShot = SaveShot("scouted");
+        var scoutedSubtitle = _infoRows.FindChild("CityInfoSubtitle", true, false) as Label;
+        var scoutedActions = _infoActions.FindChild("CityEnemyActions", true, false) as HBoxContainer;
+        var scoutedFits = scoutedSubtitle?.Text.Contains($"정찰 {firstScoutDays}일",
+                System.StringComparison.Ordinal) == true
+            && _infoRows.FindChild("CityOfficerGrid", true, false) is GridContainer
+            && _infoRows.FindChild("CityPrimaryStats", true, false) is PanelContainer
+            && _infoRows.FindChild("CitySecondaryStats", true, false) is PanelContainer
+            && scoutedActions is not null
+            && scoutedRect.Encloses(scoutedActions.GetGlobalRect())
+            && scoutedActions.GetChildren().OfType<Button>().Count() == 2
+            && _infoScroll.ScrollVertical == 0;
+
+        const int updatedScoutDays = 9;
+        _state = _state with
+        {
+            ScoutedCities = originalIntel.Where(intel => intel.City != enemy.Id)
+                .Append(new CityIntel(Player, enemy.Id, _state.Day + updatedScoutDays)).ToList(),
+        };
+        SelectCity(own.Id);
+        await WaitForLayout();
+        SelectCity(enemy.Id);
+        await WaitForLayout();
+        var reselectionRect = _infoCard.GetGlobalRect();
+        var updatedSubtitle = _infoRows.FindChild("CityInfoSubtitle", true, false) as Label;
+
+        var stableSize = new[] { unknownRect.Size, scoutedRect.Size, reselectionRect.Size }
+            .All(size => Mathf.Abs(size.X - ownRect.Size.X) <= 1f
+                && Mathf.Abs(size.Y - ownRect.Size.Y) <= 1f);
+        var boundsOk = new[] { ownRect, unknownRect, scoutedRect, reselectionRect }
+            .All(rect => rect.Position.X >= 0f && rect.Position.Y >= 0f
+                && rect.End.X <= resolution.X && rect.End.Y <= resolution.Y);
+        var refreshed = updatedSubtitle?.Text.Contains($"정찰 {updatedScoutDays}일",
+                System.StringComparison.Ordinal) == true
+            && _infoScroll.ScrollVertical == 0;
+        var passed = unknownFits && scoutedFits && stableSize && boundsOk && refreshed;
+        GD.Print($"[enemy-city-panel-qa] passed={passed} resolution={resolution} own={ownRect} unknown={unknownRect} scouted={scoutedRect} reselected={reselectionRect} unknownFits={unknownFits} scoutedFits={scoutedFits} stable={stableSize} bounds={boundsOk} refreshed={refreshed} shots={ownShot}|{unknownShot}|{scoutedShot}");
+        GetTree().Quit(passed ? 0 : 1);
+    }
 }

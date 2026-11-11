@@ -881,6 +881,8 @@ public sealed partial class CampaignMapScene : Node3D
         if (args.Contains("--maptestcityofficergridqa")) CallDeferred(nameof(RunCityOfficerGridQa));
         if (args.Any(argument => argument.StartsWith("--maptestrightuiqa", StringComparison.Ordinal)))
             CallDeferred(nameof(RunRightUiLayoutQa));
+        if (args.Any(argument => argument.StartsWith("--maptestenemycitypanelqa", StringComparison.Ordinal)))
+            CallDeferred(nameof(RunEnemyCityPanelQa));
         if (args.Contains("--maptestgeneraltransferuiqa")) CallDeferred(nameof(RunGeneralTransferUiQa));
         if (args.Contains("--maptestgeneraltransferresultqa")) CallDeferred(nameof(RunGeneralTransferResultQa));
         if (args.Contains("--maptestarmydragqa")) CallDeferred(nameof(RunArmyDragQa));
@@ -6815,6 +6817,10 @@ public sealed partial class CampaignMapScene : Node3D
 
         ClearLayoutChildren(_infoRows);
         ClearLayoutChildren(_infoActions);
+        // Every city state reuses the same 320×416 artwork. Reset any minimum size
+        // left by the previous selection before the new branch is populated.
+        _infoCard.CustomMinimumSize = new Vector2(320f, 416f);
+        _infoCard.ResetSize();
         _infoScroll.ScrollVertical = 0;
         _infoScroll.VerticalScrollMode = ScrollContainer.ScrollMode.Auto;
         _infoRows.CustomMinimumSize = new Vector2(268f, 0f);
