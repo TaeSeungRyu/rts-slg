@@ -112,15 +112,22 @@ public sealed partial class CampaignMapScene
         var submenu = _cmdSubMenu.GetGlobalRect();
         var gap = info.Position.X - command.End.X;
         var header = _infoRows.FindChild("CityInfoHeader", true, false) as Control;
+        var title = _infoRows.FindChild("CityInfoTitle", true, false) as Label;
+        var subtitle = _infoRows.FindChild("CityInfoSubtitle", true, false) as Label;
         var contentFitsWithoutScroll = !_infoScroll.GetVScrollBar().Visible
             && _infoScroll.ScrollVertical == 0
             && header is not null && header.GetGlobalRect().Position.Y >= _infoScroll.GetGlobalRect().Position.Y;
+        var titleCenter = title?.GetGlobalRect().GetCenter().Y ?? -1f;
+        var subtitleCenter = subtitle?.GetGlobalRect().GetCenter().Y ?? -1f;
+        var titleBandsCentered = Mathf.Abs(titleCenter - (info.Position.Y + 34f)) <= 2f
+            && Mathf.Abs(subtitleCenter - (info.Position.Y + 55.5f)) <= 2f;
         var passed = _infoCard.Visible && _cmdMenu.Visible && _cmdSubMenu.Visible
             && Mathf.Abs(info.End.X - (viewport.X - 12f)) <= 3f
             && Mathf.Abs(gap - 10f) <= 1f
             && command.End.X < info.Position.X
             && submenu.End.X < command.Position.X
             && contentFitsWithoutScroll
+            && titleBandsCentered
             && info.Position.Y >= 8f && info.End.Y <= viewport.Y - 8f
             && command.Position.Y >= 8f && command.End.Y <= viewport.Y - 8f;
         var outputPath = System.IO.Path.Combine(
@@ -181,7 +188,7 @@ public sealed partial class CampaignMapScene
                 .OfType<Label>().Any(label => label.Text.StartsWith("항구 · 시야", System.StringComparison.Ordinal));
             passed &= portOk;
         }
-        GD.Print($"[right-ui-qa] passed={passed} resolution={resolution} info={info} command={command} submenu={submenu} gap={gap} contentMin={_infoRows.GetCombinedMinimumSize()} scrollMin={_infoScroll.CustomMinimumSize} contentFits={contentFitsWithoutScroll} stableReselection={stableReselection} heights={firstHeight}/{reselectionHeight}/{reopenedHeight} compactSummary={compactSummary} detailOpened={detailOpened} port={portOk} shot={outputPath}");
+        GD.Print($"[right-ui-qa] passed={passed} resolution={resolution} info={info} command={command} submenu={submenu} gap={gap} contentMin={_infoRows.GetCombinedMinimumSize()} scrollMin={_infoScroll.CustomMinimumSize} contentFits={contentFitsWithoutScroll} titleCenters={titleCenter}/{subtitleCenter} titleBandsCentered={titleBandsCentered} stableReselection={stableReselection} heights={firstHeight}/{reselectionHeight}/{reopenedHeight} compactSummary={compactSummary} detailOpened={detailOpened} port={portOk} shot={outputPath}");
         GetTree().Quit(passed ? 0 : 1);
     }
 }

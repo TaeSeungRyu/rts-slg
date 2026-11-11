@@ -5657,7 +5657,7 @@ public sealed partial class CampaignMapScene : Node3D
         var infoMargin = new MarginContainer { Name = "CityInfoContentMargin" };
         infoMargin.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
         infoMargin.AddThemeConstantOverride("margin_left", 17);
-        infoMargin.AddThemeConstantOverride("margin_top", 24);
+        infoMargin.AddThemeConstantOverride("margin_top", 23);
         infoMargin.AddThemeConstantOverride("margin_right", 17);
         // 버튼 글리프의 기준선이 컨트롤 중심보다 낮으므로 장식 중심선에 맞춰 올린다.
         infoMargin.AddThemeConstantOverride("margin_bottom", 35);
@@ -6805,15 +6805,21 @@ public sealed partial class CampaignMapScene : Node3D
         ClearLayoutChildren(_infoRows);
         ClearLayoutChildren(_infoActions);
         var infoHeader = new VBoxContainer { Name = "CityInfoHeader" };
-        infoHeader.AddThemeConstantOverride("separation", 1);
+        infoHeader.AddThemeConstantOverride("separation", 0);
         var cityTitle = MakeLabel(c.Name, 18, GameUiSkin.GoldBright);
+        cityTitle.Name = "CityInfoTitle";
+        cityTitle.CustomMinimumSize = new Vector2(0, 22);
         cityTitle.HorizontalAlignment = HorizontalAlignment.Center;
+        cityTitle.VerticalAlignment = VerticalAlignment.Center;
         cityTitle.TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis;
         infoHeader.AddChild(cityTitle);
         var siteType = c.IsPort ? "항구" : "성";
         var cityVision = MakeLabel($"{siteType} · 시야 {_vision.CityRadius(c.Castle) + _state.ResearchOf(c.Owner, FactionResearch.ObservationCode)}칸", 12,
             new Color(GameUiSkin.Ivory, 0.76f));
+        cityVision.Name = "CityInfoSubtitle";
+        cityVision.CustomMinimumSize = new Vector2(0, 19);
         cityVision.HorizontalAlignment = HorizontalAlignment.Center;
+        cityVision.VerticalAlignment = VerticalAlignment.Center;
         infoHeader.AddChild(cityVision);
         _infoRows.AddChild(infoHeader);
         if (!owned && _state.IsScouted(Player, id))
