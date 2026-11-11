@@ -220,6 +220,9 @@ public sealed partial class CampaignMapScene : Node3D
     private CityId? _selected;
     private int _cmdIndex = -1;
     private Control _infoCard = null!;
+    private Control _infoComposition = null!;
+    private TextureRect _infoArtwork = null!;
+    private MarginContainer _infoContentMargin = null!;
     private VBoxContainer _infoRows = null!;
     private VBoxContainer _infoActions = null!;
     private ScrollContainer _infoScroll = null!;
@@ -2524,7 +2527,10 @@ public sealed partial class CampaignMapScene : Node3D
         var van = u.VanguardId is { } vid ? _state.Generals.FirstOrDefault(g => g.Id == vid)?.Name : null;
         var adj = u.AdjutantId is { } aid ? _state.Generals.FirstOrDefault(g => g.Id == aid)?.Name : null;
 
-        Clear(_infoRows);
+        ConfigureUnitInfoPanel();
+        ClearLayoutChildren(_infoRows);
+        // 성 정보에서 사용한 하단 상세 버튼이 공유 컨테이너에 남지 않게 한다.
+        ClearLayoutChildren(_infoActions);
         _infoRows.AddChild(MakeLabel($"{TroopName(u.TroopCode)} · {(u.Field.Owner == EventHuntService.EventFaction ? "중립 강적" : faction?.Name)}", 15, GoldBright));
         _infoRows.AddChild(MakeLabel($"시야 {_vision.UnitRadius(u)}칸", 13, Parchment));
         if (u.VanguardId is { } vanguardId)
@@ -2616,6 +2622,8 @@ public sealed partial class CampaignMapScene : Node3D
             }
         }
 
+        _infoScroll.ScrollVertical = 0;
+        _infoCard.ResetSize();
         _infoCard.Visible = true;
     }
 
@@ -2725,7 +2733,7 @@ public sealed partial class CampaignMapScene : Node3D
             MouseFilter = Control.MouseFilterEnum.Ignore,
         };
         copy.AddThemeConstantOverride("separation", 0);
-        copy.AddChild(MakeLabel(primary ? "선봉장 · 부대 지휘" : "부관 · 전투 보좌", 9, new Color(accent, 0.86f)));
+        copy.AddChild(MakeLabel(primary ? "선봉장 · 부대 지휘" : "부장 · 전투 보좌", 9, new Color(accent, 0.86f)));
         copy.AddChild(UnitGeneralLink(role, generalId, name, unitId));
         row.AddChild(copy);
         return card;
@@ -5645,6 +5653,7 @@ public sealed partial class CampaignMapScene : Node3D
             CustomMinimumSize = new Vector2(320f, 416f),
             MouseFilter = Control.MouseFilterEnum.Pass,
         };
+        _infoComposition = infoComposition;
         infoPanel.AddChild(infoComposition);
         var infoArtwork = new TextureRect
         {
@@ -5654,9 +5663,11 @@ public sealed partial class CampaignMapScene : Node3D
             StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
             MouseFilter = Control.MouseFilterEnum.Ignore,
         };
+        _infoArtwork = infoArtwork;
         infoArtwork.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
         infoComposition.AddChild(infoArtwork);
         var infoMargin = new MarginContainer { Name = "CityInfoContentMargin" };
+        _infoContentMargin = infoMargin;
         infoMargin.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
         infoMargin.AddThemeConstantOverride("margin_left", 17);
         infoMargin.AddThemeConstantOverride("margin_top", 16);
@@ -6771,6 +6782,42 @@ public sealed partial class CampaignMapScene : Node3D
         RefreshSelectedCityVitals();
     }
 
+    /// <summary>성·항구 전용 원본 금장 PNG와 고정 구획을 복원한다.</summary>
+    private void ConfigureCityInfoPanel()
+    {
+        _infoArtwork.Visible = true;
+        _infoCard.AddThemeStyleboxOverride("panel", new StyleBoxEmpty());
+        _infoCard.CustomMinimumSize = new Vector2(320f, 416f);
+        _infoComposition.CustomMinimumSize = new Vector2(320f, 416f);
+        _infoContentMargin.AddThemeConstantOverride("margin_left", 17);
+        _infoContentMargin.AddThemeConstantOverride("margin_top", 16);
+        _infoContentMargin.AddThemeConstantOverride("margin_right", 17);
+        _infoContentMargin.AddThemeConstantOverride("margin_bottom", 35);
+        _infoScroll.CustomMinimumSize = new Vector2(286f, 0f);
+        _infoRows.CustomMinimumSize = new Vector2(268f, 0f);
+        _infoScroll.VerticalScrollMode = ScrollContainer.ScrollMode.Auto;
+    }
+
+    /// <summary>
+    /// 부대 정보는 성 PNG의 고정 구획을 사용하지 않는다. 기존 금장 카드 스타일 안에서
+    /// 장수와 전투 수치를 독립적으로 스크롤하여 한 명·두 명 부대 모두 같은 크기를 유지한다.
+    /// </summary>
+    private void ConfigureUnitInfoPanel()
+    {
+        _infoArtwork.Visible = false;
+        _infoCard.AddThemeStyleboxOverride("panel", GameUiSkin.FlatBox(
+            new Color("160d0b", 0.97f), GameUiSkin.Gold, 2, 9, 11));
+        _infoCard.CustomMinimumSize = new Vector2(320f, 620f);
+        _infoComposition.CustomMinimumSize = new Vector2(320f, 620f);
+        _infoContentMargin.AddThemeConstantOverride("margin_left", 12);
+        _infoContentMargin.AddThemeConstantOverride("margin_top", 12);
+        _infoContentMargin.AddThemeConstantOverride("margin_right", 12);
+        _infoContentMargin.AddThemeConstantOverride("margin_bottom", 12);
+        _infoScroll.CustomMinimumSize = new Vector2(296f, 0f);
+        _infoRows.CustomMinimumSize = new Vector2(278f, 0f);
+        _infoScroll.VerticalScrollMode = ScrollContainer.ScrollMode.Auto;
+    }
+
     private void RunAdvanceCityPaletteQa()
     {
         var city = _state.Cities.First(c => c.Owner == Player);
@@ -6815,6 +6862,7 @@ public sealed partial class CampaignMapScene : Node3D
             .ToList();
         var facilities = $"논{c.Paddies} 밭{c.Farms} 마을{c.Villages}{(c.Workshop ? " 공방" : "")}";
 
+        ConfigureCityInfoPanel();
         ClearLayoutChildren(_infoRows);
         ClearLayoutChildren(_infoActions);
         // Every city state reuses the same 320×416 artwork. Reset any minimum size
