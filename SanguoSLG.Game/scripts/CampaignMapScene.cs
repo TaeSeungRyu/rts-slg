@@ -5657,10 +5657,10 @@ public sealed partial class CampaignMapScene : Node3D
         var infoMargin = new MarginContainer { Name = "CityInfoContentMargin" };
         infoMargin.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
         infoMargin.AddThemeConstantOverride("margin_left", 17);
-        infoMargin.AddThemeConstantOverride("margin_top", 27);
+        infoMargin.AddThemeConstantOverride("margin_top", 24);
         infoMargin.AddThemeConstantOverride("margin_right", 17);
-        // 버튼 글리프의 기준선이 컨트롤 중심보다 낮으므로 장식 중심선에 맞춰 3px 올린다.
-        infoMargin.AddThemeConstantOverride("margin_bottom", 33);
+        // 버튼 글리프의 기준선이 컨트롤 중심보다 낮으므로 장식 중심선에 맞춰 올린다.
+        infoMargin.AddThemeConstantOverride("margin_bottom", 35);
         infoComposition.AddChild(infoMargin);
         var infoLayout = new VBoxContainer { Name = "CityInfoLayout" };
         infoLayout.AddThemeConstantOverride("separation", 6);
