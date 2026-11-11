@@ -949,8 +949,8 @@ public sealed partial class CampaignMapScene : Node3D
         await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
         var sample = _reportBox.GetChildren().OfType<Label>().LastOrDefault();
         var reportStyle = _reportPanel.GetThemeStylebox("panel") as StyleBoxFlat;
-        var readability = _reportBox.GetThemeConstant("separation") == 3
-            && sample?.GetThemeConstant("line_spacing") == 3
+        var readability = _reportBox.GetThemeConstant("separation") == 4
+            && sample?.GetThemeConstant("line_spacing") == 4
             && reportStyle?.BgColor.A >= 0.97f;
         var passed = _reportBox.GetChildCount() == ReportBoxMax && readability;
         GD.Print($"[map-report-qa] passed={passed} rows={_reportBox.GetChildCount()} readability={readability}");
@@ -19649,7 +19649,7 @@ public sealed partial class CampaignMapScene : Node3D
         var headRow = new HBoxContainer();
         headRow.AddThemeConstantOverride("separation", 8);
         v.AddChild(headRow);
-        var head = MakeLabel("보고", 13, Gold);
+        var head = MakeLabel("보고", 14, GoldBright);
         head.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
         headRow.AddChild(head);
         var full = MakeButton("전체");
@@ -19664,10 +19664,11 @@ public sealed partial class CampaignMapScene : Node3D
         _reportScroll.SizeFlagsVertical = Control.SizeFlags.ExpandFill;
         _reportScroll.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
         _reportScroll.HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled;
+        GameUiSkin.ApplyQuickListScroll(_reportScroll);
         v.AddChild(_reportScroll);
 
         _reportBox = new VBoxContainer();
-        _reportBox.AddThemeConstantOverride("separation", 3);
+        _reportBox.AddThemeConstantOverride("separation", 4);
         _reportBox.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
         _reportScroll.AddChild(_reportBox);
     }
@@ -19683,7 +19684,7 @@ public sealed partial class CampaignMapScene : Node3D
         Control reportRow;
         var l = MakeLabel(text, 12, c);
         l.AutowrapMode = TextServer.AutowrapMode.WordSmart;
-        l.AddThemeConstantOverride("line_spacing", 3);
+        l.AddThemeConstantOverride("line_spacing", 4);
         l.CustomMinimumSize = new Vector2(300, 0);
         if (storyId is not null) ConnectStoryReportLabel(l, storyId);
         if (portrait is { } generalId)
