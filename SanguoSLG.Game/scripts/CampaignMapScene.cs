@@ -5586,9 +5586,10 @@ public sealed partial class CampaignMapScene : Node3D
         AddChild(layer);
 
         // 우상단: 성 정보 카드 — 폭 300 고정, 높이는 내용에 맞춰 자동(하단 여백 없음).
-        var infoPanel = new PanelContainer { Visible = false };
+        var infoPanel = new PanelContainer { Name = "CityInfoPanel", Visible = false };
         infoPanel.TextureFilter = CanvasItem.TextureFilterEnum.LinearWithMipmaps;
-        infoPanel.AddThemeStyleboxOverride("panel", Frame(Ink, Gold, 2, 8, 10));
+        infoPanel.AddThemeStyleboxOverride("panel", GameUiSkin.FlatBox(
+            new Color("160d0b", 0.96f), GameUiSkin.Gold, 2, 9, 11));
         layer.AddChild(infoPanel);
         // 우상단 지점 앵커 → 왼쪽·아래로 자람(오른쪽 위 모서리 고정).
         infoPanel.AnchorLeft = 1f;
@@ -5601,8 +5602,8 @@ public sealed partial class CampaignMapScene : Node3D
         infoPanel.OffsetTop = 12f;
         infoPanel.OffsetRight = -12f;
         _infoCard = infoPanel;
-        _infoRows = new VBoxContainer { CustomMinimumSize = new Vector2(276, 0) };
-        _infoRows.AddThemeConstantOverride("separation", 2);
+        _infoRows = new VBoxContainer { Name = "CityInfoRows", CustomMinimumSize = new Vector2(276, 0) };
+        _infoRows.AddThemeConstantOverride("separation", 5);
         infoPanel.AddChild(_infoRows);
 
         // 명령 팔레트: 클릭한 성 우측에 뜨는 아주 작은 떠있는 패널(텍스트 전용, 위치는 SelectCity).
@@ -6539,6 +6540,15 @@ public sealed partial class CampaignMapScene : Node3D
         g.AddChild(v);
     }
 
+    private static PanelContainer WrapCityInfoGrid(GridContainer grid, string name)
+    {
+        var panel = new PanelContainer { Name = name };
+        panel.AddThemeStyleboxOverride("panel", GameUiSkin.FlatBox(
+            new Color("241411", 0.78f), new Color(GameUiSkin.Bronze, 0.72f), 1, 6, 7));
+        panel.AddChild(grid);
+        return panel;
+    }
+
     private Control Header(string text)
     {
         var v = new VBoxContainer();
@@ -6615,8 +6625,19 @@ public sealed partial class CampaignMapScene : Node3D
         var facilities = $"논{c.Paddies} 밭{c.Farms} 마을{c.Villages}{(c.Workshop ? " 공방" : "")}";
 
         Clear(_infoRows);
-        _infoRows.AddChild(MakeLabel(c.Name, 15, GoldBright));
-        _infoRows.AddChild(MakeLabel($"성 시야 {_vision.CityRadius(c.Castle) + _state.ResearchOf(c.Owner, FactionResearch.ObservationCode)}칸", 13, Parchment));
+        var infoHeader = new VBoxContainer { Name = "CityInfoHeader" };
+        infoHeader.AddThemeConstantOverride("separation", 3);
+        var cityTitle = MakeLabel(c.Name, 18, GameUiSkin.GoldBright);
+        cityTitle.HorizontalAlignment = HorizontalAlignment.Center;
+        cityTitle.TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis;
+        infoHeader.AddChild(cityTitle);
+        var siteType = c.IsPort ? "항구" : "성";
+        var cityVision = MakeLabel($"{siteType} · 시야 {_vision.CityRadius(c.Castle) + _state.ResearchOf(c.Owner, FactionResearch.ObservationCode)}칸", 12,
+            new Color(GameUiSkin.Ivory, 0.76f));
+        cityVision.HorizontalAlignment = HorizontalAlignment.Center;
+        infoHeader.AddChild(cityVision);
+        infoHeader.AddChild(GoldRule());
+        _infoRows.AddChild(infoHeader);
         if (!owned && _state.IsScouted(Player, id))
             _infoRows.AddChild(MakeLabel($"정찰 남은 일수: {ScoutDaysLeft(id)}일", 13, GoldBright));
         if (!known)
@@ -6651,7 +6672,7 @@ public sealed partial class CampaignMapScene : Node3D
         var g4 = new GridContainer { Columns = 4, SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
         g4.AddThemeConstantOverride("h_separation", 10);
         g4.AddThemeConstantOverride("v_separation", 5);
-        _infoRows.AddChild(g4);
+        _infoRows.AddChild(WrapCityInfoGrid(g4, "CityPrimaryStats"));
         AddCell(g4, Sym.Coin, "금", $"{c.Gold}");
         AddCell(g4, Sym.Grain, "군량", $"{c.Provisions}");
         var (weeklyGold, weeklyProvisions) = WeeklyIncomePreview(c);
@@ -6666,7 +6687,7 @@ public sealed partial class CampaignMapScene : Node3D
         var g2 = new GridContainer { Columns = 2, SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
         g2.AddThemeConstantOverride("h_separation", 10);
         g2.AddThemeConstantOverride("v_separation", 5);
-        _infoRows.AddChild(g2);
+        _infoRows.AddChild(WrapCityInfoGrid(g2, "CitySecondaryStats"));
         AddCell(g2, Sym.Ore, "광물", $"{c.Ore}/{c.Horses}/{c.Elephants}");
         AddCell(g2, Sym.Book, "시설", facilities);
         AddCell(g2, Sym.Sword, "대기", totalTroops > 0 ? $"{totalTroops}명" : "없음");
