@@ -6655,16 +6655,21 @@ public sealed partial class CampaignMapScene : Node3D
     // 라벨 셀(아이콘 + 항목명).
     private Control LabelCell(Sym icon, string name)
     {
-        var h = new HBoxContainer();
+        var h = new HBoxContainer { SizeFlagsVertical = Control.SizeFlags.ShrinkCenter };
         h.AddThemeConstantOverride("separation", 5);
-        h.AddChild(new TextureRect
+        var iconView = new TextureRect
         {
             Texture = Icon(icon),
             CustomMinimumSize = new Vector2(16, 16),
             StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
             ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
-        });
-        h.AddChild(MakeLabel(name, 13, Gold));
+            SizeFlagsVertical = Control.SizeFlags.ShrinkCenter,
+        };
+        h.AddChild(iconView);
+        var label = MakeLabel(name, 13, Gold);
+        label.VerticalAlignment = VerticalAlignment.Center;
+        label.SizeFlagsVertical = Control.SizeFlags.ShrinkCenter;
+        h.AddChild(label);
         return h;
     }
 
@@ -6674,6 +6679,8 @@ public sealed partial class CampaignMapScene : Node3D
         g.AddChild(LabelCell(icon, name));
         var v = MakeLabel(value, 13, Parchment);
         v.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+        v.SizeFlagsVertical = Control.SizeFlags.ShrinkCenter;
+        v.VerticalAlignment = VerticalAlignment.Center;
         v.AutowrapMode = TextServer.AutowrapMode.WordSmart; // 폭 초과 시 줄바꿈(카드 폭 300 유지)
         g.AddChild(v);
     }
@@ -6686,8 +6693,13 @@ public sealed partial class CampaignMapScene : Node3D
             CustomMinimumSize = new Vector2(0, name == "CityPrimaryStats" ? 90f : 96f),
         };
         // 자원·시설 구획선은 city_info_panel.png에 포함되어 있다.
-        var style = new StyleBoxEmpty();
-        if (name == "CitySecondaryStats") style.ContentMarginTop = 10f;
+        var style = new StyleBoxEmpty
+        {
+            ContentMarginLeft = 9f,
+            ContentMarginRight = 9f,
+            ContentMarginTop = name == "CityPrimaryStats" ? 10f : 20f,
+            ContentMarginBottom = name == "CityPrimaryStats" ? 10f : 20f,
+        };
         panel.AddThemeStyleboxOverride("panel", style);
         panel.AddChild(grid);
         return panel;

@@ -18,9 +18,9 @@ public sealed partial class CampaignMapScene
             // 배경 PNG가 태수·군사 칸의 테두리를 이미 제공하므로 중복 프레임은 그리지 않는다.
             frame.AddThemeStyleboxOverride("panel", new StyleBoxEmpty
             {
-                ContentMarginLeft = 5,
+                ContentMarginLeft = 8,
                 ContentMarginTop = 5,
-                ContentMarginRight = 5,
+                ContentMarginRight = 8,
                 ContentMarginBottom = 5,
             });
             frame.SetMeta("city_officer_card", true);
