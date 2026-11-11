@@ -221,6 +221,7 @@ public sealed partial class CampaignMapScene : Node3D
     private int _cmdIndex = -1;
     private Control _infoCard = null!;
     private VBoxContainer _infoRows = null!;
+    private VBoxContainer _infoActions = null!;
     private PanelContainer _cmdMenu = null!;
     private PanelContainer _cmdSubMenu = null!; // 그룹 클릭 시 팔레트 옆에 뜨는 명령 플라이아웃
     private VBoxContainer _cmdSubList = null!;
@@ -5606,9 +5607,34 @@ public sealed partial class CampaignMapScene : Node3D
         infoPanel.OffsetTop = 12f;
         infoPanel.OffsetRight = -12f;
         _infoCard = infoPanel;
-        _infoRows = new VBoxContainer { Name = "CityInfoRows", CustomMinimumSize = new Vector2(276, 0) };
+        var infoLayout = new VBoxContainer { Name = "CityInfoLayout" };
+        infoLayout.AddThemeConstantOverride("separation", 6);
+        infoPanel.AddChild(infoLayout);
+        var infoScroll = new ScrollContainer
+        {
+            Name = "CityInfoScroll",
+            CustomMinimumSize = new Vector2(276, 430),
+            HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled,
+            VerticalScrollMode = ScrollContainer.ScrollMode.Auto,
+            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+        };
+        GameUiSkin.ApplyQuickListScroll(infoScroll);
+        infoLayout.AddChild(infoScroll);
+        _infoRows = new VBoxContainer
+        {
+            Name = "CityInfoRows",
+            CustomMinimumSize = new Vector2(258, 0),
+            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+        };
         _infoRows.AddThemeConstantOverride("separation", 5);
-        infoPanel.AddChild(_infoRows);
+        infoScroll.AddChild(_infoRows);
+        _infoActions = new VBoxContainer
+        {
+            Name = "CityInfoActions",
+            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+        };
+        _infoActions.AddThemeConstantOverride("separation", 5);
+        infoLayout.AddChild(_infoActions);
 
         // 명령 팔레트: 클릭한 성 우측에 뜨는 아주 작은 떠있는 패널(텍스트 전용, 위치는 SelectCity).
         _cmdMenu = new PanelContainer { Name = "CityCommandMenu", Visible = false, ZIndex = 50 };
@@ -6642,6 +6668,7 @@ public sealed partial class CampaignMapScene : Node3D
         var facilities = $"논{c.Paddies} 밭{c.Farms} 마을{c.Villages}{(c.Workshop ? " 공방" : "")}";
 
         Clear(_infoRows);
+        Clear(_infoActions);
         var infoHeader = new VBoxContainer { Name = "CityInfoHeader" };
         infoHeader.AddThemeConstantOverride("separation", 3);
         var cityTitle = MakeLabel(c.Name, 18, GameUiSkin.GoldBright);
@@ -6664,12 +6691,12 @@ public sealed partial class CampaignMapScene : Node3D
             detailUnknown.AddThemeFontSizeOverride("font_size", 12);
             detailUnknown.CustomMinimumSize = new Vector2(0, 26);
             detailUnknown.Pressed += () => OpenCityInfoReadonly(id);
-            _infoRows.AddChild(detailUnknown);
+            _infoActions.AddChild(detailUnknown);
             if (!_advancing)
             {
                 var attack = MakeButton("공격", accent: true);
                 attack.Pressed += () => ShowAttackChoices(c.Position, c.Name);
-                _infoRows.AddChild(attack);
+                _infoActions.AddChild(attack);
             }
             PlacePalette(c.Position);
             _infoCard.Visible = true;
@@ -6680,8 +6707,8 @@ public sealed partial class CampaignMapScene : Node3D
 
         _infoRows.AddChild(BuildCityOfficerGrid(c));
         var resourceDivider = new MarginContainer { Name = "CityResourceDivider" };
-        resourceDivider.AddThemeConstantOverride("margin_top", 10);
-        resourceDivider.AddThemeConstantOverride("margin_bottom", 5);
+        resourceDivider.AddThemeConstantOverride("margin_top", 6);
+        resourceDivider.AddThemeConstantOverride("margin_bottom", 4);
         resourceDivider.AddChild(GoldRule());
         _infoRows.AddChild(resourceDivider);
 
@@ -6742,12 +6769,12 @@ public sealed partial class CampaignMapScene : Node3D
             if (owned || _state.IsScouted(Player, id)) { OpenCityDetail(id); }
             else { OpenCityInfoReadonly(id); }
         };
-        _infoRows.AddChild(detailBtn);
+        _infoActions.AddChild(detailBtn);
         if (!owned && !_advancing)
         {
             var attack = MakeButton("공격", accent: true);
             attack.Pressed += () => ShowAttackChoices(c.Position, c.Name);
-            _infoRows.AddChild(attack);
+            _infoActions.AddChild(attack);
         }
 
         PlacePalette(c.Position);

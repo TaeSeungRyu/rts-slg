@@ -9,11 +9,11 @@ public sealed partial class CampaignMapScene
     {
         var grid = new GridContainer { Name = "CityOfficerGrid", Columns = 2,
             SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
-        grid.AddThemeConstantOverride("h_separation", 8);
+        grid.AddThemeConstantOverride("h_separation", 10);
         foreach (var (role, officerId) in new[] { ("태수", city.Governor), ("군사", city.Strategist) })
         {
             var frame = new PanelContainer { Name = "CityOfficerCard",
-                CustomMinimumSize = new Vector2(0, 62),
+                CustomMinimumSize = new Vector2(0, 64),
                 SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
             var style = new StyleBoxFlat { BgColor = new Color(InkSoft),
                 BorderColor = new Color(Gold, .42f) };
@@ -23,13 +23,13 @@ public sealed partial class CampaignMapScene
             frame.AddThemeStyleboxOverride("panel", style);
             frame.SetMeta("city_officer_card", true);
             var row = new HBoxContainer { Alignment = BoxContainer.AlignmentMode.Begin };
-            row.AddThemeConstantOverride("separation", 7);
+            row.AddThemeConstantOverride("separation", 8);
             frame.AddChild(row);
-            var portraitCell = new CenterContainer { CustomMinimumSize = new Vector2(48, 48),
+            var portraitCell = new CenterContainer { CustomMinimumSize = new Vector2(52, 52),
                 SizeFlagsVertical = Control.SizeFlags.ShrinkCenter };
             var picture = new TextureRect { Name = "CityOfficerPortrait",
                 Texture = officerId is { } id ? CircularPortraitFor(id) : null,
-                CustomMinimumSize = new Vector2(48, 48),
+                CustomMinimumSize = new Vector2(52, 52),
                 StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
                 ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize };
             portraitCell.AddChild(picture);
@@ -48,7 +48,9 @@ public sealed partial class CampaignMapScene
                 { (role, 11, GoldBright), (name, 14, Parchment) })
             {
                 var label = MakeLabel(caption, size, color);
+                label.CustomMinimumSize = new Vector2(0, caption == role ? 18 : 22);
                 label.HorizontalAlignment = HorizontalAlignment.Left;
+                label.VerticalAlignment = VerticalAlignment.Center;
                 label.TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis;
                 stack.AddChild(label);
             }
@@ -68,6 +70,8 @@ public sealed partial class CampaignMapScene
         SelectCity(city.Id);
         var grid = _infoRows.FindChild("CityOfficerGrid", true, false) as GridContainer;
         var divider = _infoRows.FindChild("CityResourceDivider", true, false) as MarginContainer;
+        var scroll = _infoCard.FindChild("CityInfoScroll", true, false) as ScrollContainer;
+        var actions = _infoCard.FindChild("CityInfoActions", true, false) as VBoxContainer;
         var labels = grid?.FindChildren("*", "Label", true, false).OfType<Label>()
             .Select(label => label.Text).ToList() ?? [];
         var passed = grid?.Columns == 2 && grid.GetChildCount() == 2
@@ -77,7 +81,9 @@ public sealed partial class CampaignMapScene
             && grid.FindChildren("CityOfficerPortrait", "TextureRect", true, false).OfType<TextureRect>()
                 .Count(portrait => portrait.Texture is not null) == 2
             && grid.FindChildren("*", "HBoxContainer", true, false).Count >= 2
-            && divider?.GetThemeConstant("margin_top") >= 10;
+            && divider?.GetThemeConstant("margin_top") is >= 4 and <= 6
+            && scroll?.VerticalScrollMode == ScrollContainer.ScrollMode.Auto
+            && actions?.FindChildren("*", "Button", true, false).Count > 0;
         GD.Print($"[city-officer-grid-qa] passed={passed} labels={string.Join(',', labels)} cards={grid?.GetChildCount()} divider={divider?.GetThemeConstant("margin_top")} portraits={grid?.FindChildren("CityOfficerPortrait", "TextureRect", true, false).Count}");
         GetTree().Quit(passed ? 0 : 1);
     }
