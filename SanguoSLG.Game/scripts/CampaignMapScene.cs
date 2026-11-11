@@ -5642,10 +5642,10 @@ public sealed partial class CampaignMapScene : Node3D
             new Color("160d0b", 0.96f), GameUiSkin.Gold, 2, 8, 7));
         layer.AddChild(_cmdMenu);
         var menu = new VBoxContainer();
-        menu.AddThemeConstantOverride("separation", 4);
+        menu.AddThemeConstantOverride("separation", 5);
         _cmdMenu.AddChild(menu);
         _cmdList = new VBoxContainer();
-        _cmdList.AddThemeConstantOverride("separation", 4);
+        _cmdList.AddThemeConstantOverride("separation", 5);
         menu.AddChild(_cmdList);
         _cmdGroupButtons.Clear();
         // 팔레트에는 그룹 버튼만 둔다. 단일 명령인 계략은 중간 플라이아웃 없이 모달을 바로 연다.
@@ -5703,7 +5703,7 @@ public sealed partial class CampaignMapScene : Node3D
             new Color("160d0b", 0.97f), GameUiSkin.Gold, 2, 7, 7));
         layer.AddChild(_cmdSubMenu);
         _cmdSubList = new VBoxContainer();
-        _cmdSubList.AddThemeConstantOverride("separation", 4);
+        _cmdSubList.AddThemeConstantOverride("separation", 5);
         _cmdSubMenu.AddChild(_cmdSubList);
 
         BuildUnitMenu(layer);
@@ -6865,6 +6865,21 @@ public sealed partial class CampaignMapScene : Node3D
         var city = _state.Cities.First(c => c.Owner == Player && !c.IsPort);
         _selected = city.Id;
         var menusCompact = Cmds.All(command => !command.Label.Contains(' '));
+        var mainButtons = _cmdList.GetChildren().OfType<Button>().ToList();
+        var mainSizing = mainButtons.All(button => Mathf.IsEqualApprox(button.CustomMinimumSize.Y, 32f))
+            && _cmdList.GetThemeConstant("separation") == 5;
+        var accentMeaning = mainButtons.Where(button => button.Name.ToString() is not "CityCommandDeploy" and not "CityCommandProduction")
+                .All(button => !button.GetMeta("command_accent").AsBool())
+            && mainButtons.Where(button => button.Name.ToString() is "CityCommandDeploy" or "CityCommandProduction")
+                .All(button => button.GetMeta("command_accent").AsBool());
+        ToggleGroup(1);
+        var selectedMeaning = _cmdGroupButtons[1].ButtonPressed
+            && _cmdGroupButtons.Where((_, index) => index != 1).All(button => !button.ButtonPressed)
+            && !_deployCommandButton.ButtonPressed;
+        var submenuSizing = _cmdSubList.GetChildren().OfType<Button>()
+            .All(button => Mathf.IsEqualApprox(button.CustomMinimumSize.Y, 32f))
+            && _cmdSubList.GetThemeConstant("separation") == 5;
+        CloseGroupMenu();
         var titlesCompact = true;
         foreach (var param in new[] { "wall", "stratagem", "war_city" })
         {
@@ -6876,8 +6891,8 @@ public sealed partial class CampaignMapScene : Node3D
                     System.StringComparison.Ordinal)) == true;
             CloseModal();
         }
-        var passed = menusCompact && titlesCompact;
-        GD.Print($"[maptestcitycommandlabelsqa] passed={passed} menu={menusCompact} titles={titlesCompact}");
+        var passed = menusCompact && titlesCompact && mainSizing && submenuSizing && accentMeaning && selectedMeaning;
+        GD.Print($"[maptestcitycommandlabelsqa] passed={passed} menu={menusCompact} titles={titlesCompact} mainSizing={mainSizing} submenuSizing={submenuSizing} accentMeaning={accentMeaning} selectedMeaning={selectedMeaning}");
         GetTree().Quit(passed ? 0 : 1);
     }
 
@@ -6894,7 +6909,7 @@ public sealed partial class CampaignMapScene : Node3D
             var btn = MakeButton(Cmds[i].Label);
             btn.AddThemeFontSizeOverride("font_size", 11);
             btn.Alignment = HorizontalAlignment.Center;
-            btn.CustomMinimumSize = new Vector2(108, 28);
+            btn.CustomMinimumSize = new Vector2(108, 32);
             GameUiSkin.ApplyCommandButton(btn);
 
             // 모병·징병은 같은 종류가 이 성에서 진행 중이면 중복 발행 금지(2026-08-23).
@@ -6952,7 +6967,7 @@ public sealed partial class CampaignMapScene : Node3D
             var navalBtn = MakeButton(isPort ? "출항" : "출항 (항구 필요)");
             navalBtn.AddThemeFontSizeOverride("font_size", 11);
             navalBtn.Alignment = HorizontalAlignment.Center;
-            navalBtn.CustomMinimumSize = new Vector2(108, 28);
+            navalBtn.CustomMinimumSize = new Vector2(108, 32);
             GameUiSkin.ApplyCommandButton(navalBtn, accent: true);
             navalBtn.Disabled = !isPort;
             navalBtn.Pressed += () => { CloseGroupMenu(); if (_selected is { } c) { OpenNavalHub(c); } };
@@ -6965,7 +6980,7 @@ public sealed partial class CampaignMapScene : Node3D
             {
                 var recruitButton = MakeButton(label);
                 recruitButton.AddThemeFontSizeOverride("font_size", 11);
-                recruitButton.CustomMinimumSize = new Vector2(108, 28);
+                recruitButton.CustomMinimumSize = new Vector2(108, 32);
                 GameUiSkin.ApplyCommandButton(recruitButton);
                 recruitButton.Pressed += () =>
                 {
@@ -7018,7 +7033,7 @@ public sealed partial class CampaignMapScene : Node3D
             var btn = MakeButton(label);
             btn.AddThemeFontSizeOverride("font_size", 11);
             btn.Alignment = HorizontalAlignment.Center;
-            btn.CustomMinimumSize = new Vector2(108, 28);
+            btn.CustomMinimumSize = new Vector2(108, 32);
             GameUiSkin.ApplyCommandButton(btn);
             btn.Pressed += () =>
             {

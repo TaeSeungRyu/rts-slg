@@ -200,6 +200,8 @@ internal static class GameUiSkin
 
     internal static void ApplyCommandButton(Button button, bool accent = false)
     {
+        // Accent marks the two primary actions (deploy/production); pressed state alone marks selection.
+        button.SetMeta("command_accent", accent);
         button.AddThemeStyleboxOverride("normal", FlatBox(
             accent ? new Color("542018", 0.98f) : new Color("241411", 0.96f),
             new Color("9d7139"), 1, 6, 8));
