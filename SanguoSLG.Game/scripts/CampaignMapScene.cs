@@ -5657,9 +5657,10 @@ public sealed partial class CampaignMapScene : Node3D
         var infoMargin = new MarginContainer { Name = "CityInfoContentMargin" };
         infoMargin.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
         infoMargin.AddThemeConstantOverride("margin_left", 17);
-        infoMargin.AddThemeConstantOverride("margin_top", 24);
+        infoMargin.AddThemeConstantOverride("margin_top", 27);
         infoMargin.AddThemeConstantOverride("margin_right", 17);
-        infoMargin.AddThemeConstantOverride("margin_bottom", 26);
+        // 버튼 글리프의 기준선이 컨트롤 중심보다 낮으므로 장식 중심선에 맞춰 3px 올린다.
+        infoMargin.AddThemeConstantOverride("margin_bottom", 33);
         infoComposition.AddChild(infoMargin);
         var infoLayout = new VBoxContainer { Name = "CityInfoLayout" };
         infoLayout.AddThemeConstantOverride("separation", 6);
@@ -6804,7 +6805,7 @@ public sealed partial class CampaignMapScene : Node3D
         ClearLayoutChildren(_infoRows);
         ClearLayoutChildren(_infoActions);
         var infoHeader = new VBoxContainer { Name = "CityInfoHeader" };
-        infoHeader.AddThemeConstantOverride("separation", 3);
+        infoHeader.AddThemeConstantOverride("separation", 1);
         var cityTitle = MakeLabel(c.Name, 18, GameUiSkin.GoldBright);
         cityTitle.HorizontalAlignment = HorizontalAlignment.Center;
         cityTitle.TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis;
@@ -6873,8 +6874,8 @@ public sealed partial class CampaignMapScene : Node3D
         }
 
         var detailBtn = MakeButton("상세 · 진행 목록");
-        detailBtn.AddThemeFontSizeOverride("font_size", 12);
-        detailBtn.CustomMinimumSize = new Vector2(0, 26);
+        detailBtn.AddThemeFontSizeOverride("font_size", 14);
+        detailBtn.CustomMinimumSize = new Vector2(0, 30);
         detailBtn.Alignment = HorizontalAlignment.Center;
         foreach (var state in new[] { "normal", "hover", "pressed", "disabled", "focus" })
             detailBtn.AddThemeStyleboxOverride(state, new StyleBoxEmpty());
