@@ -109,9 +109,10 @@ public sealed partial class ScenarioStartMenu
         var key = (selected, state, width, height);
         if (!DifficultyTextureCache.TryGetValue(key, out var texture))
         {
-            var source = GD.Load<Texture2D>($"res://assets/ui/new_game/buttons/{kind}_normal.png");
+            var source = GD.Load<Texture2D>($"res://assets/ui/new_game/buttons/{kind}_{state}.png");
             using var original = source.GetImage();
-            var side = selected ? 108 : 91;
+            // 상태 이미지가 교체되어도 모서리 장식을 같은 비율로 보존한다.
+            var side = Mathf.RoundToInt(original.GetWidth() * (selected ? 0.13f : 0.142f));
             var scaledSide = Mathf.RoundToInt(side * height / (float)original.GetHeight());
             var middleWidth = width - 2 * scaledSide;
             using var left = original.GetRegion(new Rect2I(0, 0, side, original.GetHeight()));
@@ -134,12 +135,7 @@ public sealed partial class ScenarioStartMenu
         var style = new StyleBoxTexture
         {
             Texture = texture,
-            ModulateColor = state switch
-            {
-                "hover" => new Color(1.12f, 1.12f, 1.12f),
-                "pressed" => new Color(0.85f, 0.85f, 0.85f),
-                _ => Colors.White
-            }
+            ModulateColor = Colors.White
         };
         style.SetContentMarginAll(0);
         return style;
@@ -563,14 +559,20 @@ public sealed partial class ScenarioStartMenu
     private static TextureButton NewGameFooterAction(string name, string text, bool primary)
     {
         var tier = primary ? "primary" : "secondary";
+        var normalTexture = GD.Load<Texture2D>($"res://assets/ui/new_game/buttons/{tier}_normal.png");
+        var hoverTexture = GD.Load<Texture2D>($"res://assets/ui/new_game/buttons/{tier}_hover.png");
+        var pressedTexture = GD.Load<Texture2D>($"res://assets/ui/new_game/buttons/{tier}_pressed.png");
+        var width = primary ? 370f : 286f;
+        var height = width * normalTexture.GetHeight() / normalTexture.GetWidth();
         var button = new TextureButton
         {
             Name = name,
-            CustomMinimumSize = primary ? new Vector2(370, 58.14f) : new Vector2(286, 50.05f),
-            TextureNormal = GD.Load<Texture2D>($"res://assets/ui/new_game/buttons/{tier}_normal.png"),
-            TextureHover = GD.Load<Texture2D>($"res://assets/ui/new_game/buttons/{tier}_normal.png"),
-            TexturePressed = GD.Load<Texture2D>($"res://assets/ui/new_game/buttons/{tier}_normal.png"),
-            TextureDisabled = GD.Load<Texture2D>($"res://assets/ui/new_game/buttons/{tier}_normal.png"),
+            CustomMinimumSize = new Vector2(width, height),
+            TextureNormal = normalTexture,
+            TextureHover = hoverTexture,
+            TexturePressed = pressedTexture,
+            // disabled 전용 이미지는 구형 비율이므로 normal을 감색하여 테두리 비율을 유지한다.
+            TextureDisabled = normalTexture,
             IgnoreTextureSize = true,
             StretchMode = TextureButton.StretchModeEnum.KeepAspectCentered,
             FocusMode = FocusModeEnum.None,

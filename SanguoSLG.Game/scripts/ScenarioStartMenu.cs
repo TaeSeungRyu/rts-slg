@@ -298,9 +298,9 @@ public sealed partial class ScenarioStartMenu : Control
         var styledFooter = footerActions.Length == 2 && footerActions.All(button => button is
             { TextureNormal: not null, TextureHover: not null, TexturePressed: not null, TextureDisabled: not null,
                 StretchMode: TextureButton.StretchModeEnum.KeepAspectCentered, FocusMode: FocusModeEnum.None }
-            && button.TextureHover == button.TextureNormal
-            && button.TexturePressed == button.TextureNormal
-            && button.TextureDisabled == button.TextureNormal
+            && button.TextureHover.GetSize() == button.TextureNormal.GetSize()
+            && button.TexturePressed.GetSize() == button.TextureNormal.GetSize()
+            && button.TextureDisabled.GetSize() == button.TextureNormal.GetSize()
             && button.FindChild("Caption", false, false) is Label
                 { HorizontalAlignment: HorizontalAlignment.Center }
             && Mathf.Abs(button.CustomMinimumSize.X / button.CustomMinimumSize.Y
