@@ -81,4 +81,50 @@ public sealed partial class CampaignMapScene
         GD.Print($"[city-officer-grid-qa] passed={passed} labels={string.Join(',', labels)} cards={grid?.GetChildCount()} divider={divider?.GetThemeConstant("margin_top")} portraits={grid?.FindChildren("CityOfficerPortrait", "TextureRect", true, false).Count}");
         GetTree().Quit(passed ? 0 : 1);
     }
+
+    private async void RunRightUiLayoutQa()
+    {
+        var argument = OS.GetCmdlineUserArgs().FirstOrDefault(value =>
+            value.StartsWith("--maptestrightuiqa=", System.StringComparison.Ordinal));
+        var resolution = argument?.EndsWith("1920x1080", System.StringComparison.Ordinal) == true
+            ? new Vector2I(1920, 1080) : new Vector2I(1600, 900);
+        GetWindow().Size = resolution;
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        var city = _state.Cities.First(candidate => candidate.Owner == Player && !candidate.IsPort);
+        SelectCity(city.Id);
+        ToggleGroup(0);
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+
+        var viewport = GetViewport().GetVisibleRect().Size;
+        var info = _infoCard.GetGlobalRect();
+        var command = _cmdMenu.GetGlobalRect();
+        var submenu = _cmdSubMenu.GetGlobalRect();
+        var gap = info.Position.X - command.End.X;
+        var passed = _infoCard.Visible && _cmdMenu.Visible && _cmdSubMenu.Visible
+            && Mathf.Abs(info.End.X - (viewport.X - 12f)) <= 1f
+            && Mathf.Abs(gap - 10f) <= 1f
+            && command.End.X < info.Position.X
+            && submenu.End.X < command.Position.X
+            && info.Position.Y >= 8f && info.End.Y <= viewport.Y - 8f
+            && command.Position.Y >= 8f && command.End.Y <= viewport.Y - 8f;
+        var outputPath = System.IO.Path.Combine(
+            new System.IO.DirectoryInfo(ProjectSettings.GlobalizePath("res://")).Parent?.FullName
+                ?? ProjectSettings.GlobalizePath("res://"),
+            $"shot_right_ui_{resolution.X}x{resolution.Y}.png");
+        var saveResult = GetViewport().GetTexture().GetImage().SavePng(outputPath);
+        passed &= saveResult == Error.Ok;
+        var port = _state.Cities.FirstOrDefault(candidate => candidate.Owner == Player && candidate.IsPort);
+        var portOk = true;
+        if (port is not null)
+        {
+            SelectCity(port.Id);
+            await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+            portOk = _infoCard.Visible && _infoRows.FindChildren("*", "Label", true, false)
+                .OfType<Label>().Any(label => label.Text.StartsWith("항구 · 시야", System.StringComparison.Ordinal));
+            passed &= portOk;
+        }
+        GD.Print($"[right-ui-qa] passed={passed} resolution={resolution} info={info} command={command} submenu={submenu} gap={gap} port={portOk} shot={outputPath}");
+        GetTree().Quit(passed ? 0 : 1);
+    }
 }

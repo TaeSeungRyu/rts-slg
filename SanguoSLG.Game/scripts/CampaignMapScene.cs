@@ -874,6 +874,8 @@ public sealed partial class CampaignMapScene : Node3D
         if (args.Contains("--maptesttroopguideqa")) CallDeferred(nameof(RunTroopGuideQa));
         if (args.Contains("--maptestskillguideqa")) CallDeferred(nameof(RunSkillGuideQa));
         if (args.Contains("--maptestcityofficergridqa")) CallDeferred(nameof(RunCityOfficerGridQa));
+        if (args.Any(argument => argument.StartsWith("--maptestrightuiqa", StringComparison.Ordinal)))
+            CallDeferred(nameof(RunRightUiLayoutQa));
         if (args.Contains("--maptestgeneraltransferuiqa")) CallDeferred(nameof(RunGeneralTransferUiQa));
         if (args.Contains("--maptestgeneraltransferresultqa")) CallDeferred(nameof(RunGeneralTransferResultQa));
         if (args.Contains("--maptestarmydragqa")) CallDeferred(nameof(RunArmyDragQa));
@@ -6817,15 +6819,16 @@ public sealed partial class CampaignMapScene : Node3D
         _ => "",
     };
 
-    // 명령 팔레트를 성 화면좌표의 우측에 배치(화면 밖으로 안 나가게 clamp). 줌/이동 시 매 프레임 추종.
-    private void PlacePalette(HexCoord at)
+    // 정보 카드는 우측에 고정하고 명령 팔레트는 그 왼쪽에 일정한 간격으로 배치한다.
+    private void PlacePalette(HexCoord _)
     {
-        var world = _view.HexToWorld(at) + new Vector3(0f, _view.TileTopY, 0f);
-        var screen = _camera.UnprojectPosition(world);
         var sz = _cmdMenu.GetCombinedMinimumSize();
         var vp = GetViewport().GetVisibleRect().Size;
-        var px = Mathf.Clamp(screen.X + 100f, 8f, System.Math.Max(8f, vp.X - sz.X - 8f));
-        var py = Mathf.Clamp(screen.Y - (sz.Y * 0.5f), 8f, System.Math.Max(8f, vp.Y - sz.Y - 8f));
+        const float infoLeftOffset = 312f;
+        const float panelGap = 10f;
+        var infoLeft = vp.X - infoLeftOffset;
+        var px = Mathf.Max(8f, infoLeft - sz.X - panelGap);
+        var py = Mathf.Clamp(12f, 8f, System.Math.Max(8f, vp.Y - sz.Y - 8f));
         _cmdMenu.Position = new Vector2(px, py);
     }
 
@@ -7030,13 +7033,13 @@ public sealed partial class CampaignMapScene : Node3D
             _deployCommandButton.SetPressedNoSignal(_openGroup == -100);
     }
 
-    // 플라이아웃을 팔레트 바로 우측에 붙인다(화면 밖 clamp — 오른쪽이 좁으면 왼쪽에).
+    // 플라이아웃은 정보 카드를 가리지 않도록 명령 팔레트의 왼쪽에 붙인다.
     private void PlaceGroupMenu()
     {
         var sz = _cmdSubMenu.GetCombinedMinimumSize();
         var vp = GetViewport().GetVisibleRect().Size;
-        var px = _cmdMenu.Position.X + _cmdMenu.Size.X + 4f;
-        if (px + sz.X > vp.X - 8f) { px = _cmdMenu.Position.X - sz.X - 4f; }
+        var px = _cmdMenu.Position.X - sz.X - 8f;
+        if (px < 8f) { px = _cmdMenu.Position.X + _cmdMenu.Size.X + 8f; }
         var py = Mathf.Clamp(_cmdMenu.Position.Y, 8f, System.Math.Max(8f, vp.Y - sz.Y - 8f));
         _cmdSubMenu.Position = new Vector2(px, py);
     }
