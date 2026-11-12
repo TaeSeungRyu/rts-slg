@@ -232,6 +232,7 @@ public sealed partial class CampaignMapScene : Node3D
     private PanelContainer _cmdSubMenu = null!; // 그룹 클릭 시 팔레트 옆에 뜨는 명령 플라이아웃
     private VBoxContainer _cmdSubList = null!;
     private Label _cmdSubTitle = null!;
+    private NinePatchRect _cmdSubMiddle = null!;
     private int _openGroup = -1;
     private VBoxContainer _cmdList = null!;
     private readonly List<Button> _cmdGroupButtons = [];
@@ -5887,7 +5888,7 @@ public sealed partial class CampaignMapScene : Node3D
         _cmdSubMenu = new PanelContainer { Visible = false, ZIndex = 51 };
         _cmdSubMenu.AddThemeStyleboxOverride("panel", new StyleBoxEmpty());
         layer.AddChild(_cmdSubMenu);
-        var subFrame = new VBoxContainer { CustomMinimumSize = new Vector2(188, 0) };
+        var subFrame = new VBoxContainer { CustomMinimumSize = new Vector2(198, 0) };
         subFrame.AddThemeConstantOverride("separation", 0);
         _cmdSubMenu.AddChild(subFrame);
         var subTitle = new TextureRect
@@ -5895,7 +5896,7 @@ public sealed partial class CampaignMapScene : Node3D
             Texture = GameUiSkin.CommandTexture("서브프레임title.png"),
             ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
             StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
-            CustomMinimumSize = new Vector2(188, 40),
+            CustomMinimumSize = new Vector2(198, 42),
             MouseFilter = Control.MouseFilterEnum.Ignore,
         };
         _cmdSubTitle = new Label
@@ -5909,26 +5910,32 @@ public sealed partial class CampaignMapScene : Node3D
         _cmdSubTitle.AddThemeColorOverride("font_color", GoldBright);
         subTitle.AddChild(_cmdSubTitle);
         subFrame.AddChild(subTitle);
-        var subMiddle = new PanelContainer();
-        var subMiddleStyle = (StyleBox?)GameUiSkin.CommandFrameBox("서브프레임middle.png", 14, 14)
-            ?? new StyleBoxEmpty();
-        subMiddle.AddThemeStyleboxOverride("panel", subMiddleStyle);
-        subFrame.AddChild(subMiddle);
+        _cmdSubMiddle = new NinePatchRect
+        {
+            Texture = GameUiSkin.CommandTexture("서브프레임middle.png"),
+            PatchMarginLeft = 22,
+            PatchMarginRight = 22,
+            PatchMarginTop = 14,
+            PatchMarginBottom = 14,
+            MouseFilter = Control.MouseFilterEnum.Ignore,
+        };
+        subFrame.AddChild(_cmdSubMiddle);
         var subMargin = new MarginContainer();
-        subMargin.AddThemeConstantOverride("margin_left", 8);
-        subMargin.AddThemeConstantOverride("margin_right", 8);
-        subMargin.AddThemeConstantOverride("margin_top", 5);
-        subMargin.AddThemeConstantOverride("margin_bottom", 5);
-        subMiddle.AddChild(subMargin);
+        subMargin.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
+        subMargin.AddThemeConstantOverride("margin_left", 12);
+        subMargin.AddThemeConstantOverride("margin_right", 12);
+        subMargin.AddThemeConstantOverride("margin_top", 8);
+        subMargin.AddThemeConstantOverride("margin_bottom", 8);
+        _cmdSubMiddle.AddChild(subMargin);
         _cmdSubList = new VBoxContainer();
-        _cmdSubList.AddThemeConstantOverride("separation", 1);
+        _cmdSubList.AddThemeConstantOverride("separation", 6);
         subMargin.AddChild(_cmdSubList);
         var subTail = new TextureRect
         {
             Texture = GameUiSkin.CommandTexture("서브프레임tail.png"),
             ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
             StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
-            CustomMinimumSize = new Vector2(188, 37),
+            CustomMinimumSize = new Vector2(198, 39),
             MouseFilter = Control.MouseFilterEnum.Ignore,
         };
         subFrame.AddChild(subTail);
@@ -7288,7 +7295,7 @@ public sealed partial class CampaignMapScene : Node3D
             && !_deployCommandButton.ButtonPressed;
         var submenuSizing = _cmdSubList.GetChildren().OfType<Button>()
             .All(button => Mathf.IsEqualApprox(button.CustomMinimumSize.Y, 38f))
-            && _cmdSubList.GetThemeConstant("separation") == 1;
+            && _cmdSubList.GetThemeConstant("separation") == 6;
         CloseGroupMenu();
         var titlesCompact = true;
         foreach (var param in new[] { "wall", "stratagem", "war_city" })
@@ -7319,7 +7326,7 @@ public sealed partial class CampaignMapScene : Node3D
             var btn = new CommandPaletteButton { Text = Cmds[i].Label };
             btn.AddThemeFontSizeOverride("font_size", 13);
             btn.Alignment = HorizontalAlignment.Center;
-            btn.CustomMinimumSize = new Vector2(172, 38);
+            btn.CustomMinimumSize = new Vector2(174, 38);
             if (!GameUiSkin.ApplySubCommandArtwork(btn)) GameUiSkin.ApplyCommandButton(btn);
 
             // 모병·징병은 같은 종류가 이 성에서 진행 중이면 중복 발행 금지(2026-08-23).
@@ -7377,7 +7384,7 @@ public sealed partial class CampaignMapScene : Node3D
             var navalBtn = new CommandPaletteButton { Text = isPort ? "출항" : "출항 (항구 필요)" };
             navalBtn.AddThemeFontSizeOverride("font_size", 13);
             navalBtn.Alignment = HorizontalAlignment.Center;
-            navalBtn.CustomMinimumSize = new Vector2(172, 38);
+            navalBtn.CustomMinimumSize = new Vector2(174, 38);
             if (!GameUiSkin.ApplySubCommandArtwork(navalBtn)) GameUiSkin.ApplyCommandButton(navalBtn, accent: true);
             navalBtn.Disabled = !isPort;
             navalBtn.Pressed += () => { CloseGroupMenu(); if (_selected is { } c) { OpenNavalHub(c); } };
@@ -7391,7 +7398,7 @@ public sealed partial class CampaignMapScene : Node3D
                 var recruitButton = new CommandPaletteButton { Text = label };
                 recruitButton.AddThemeFontSizeOverride("font_size", 13);
                 recruitButton.Alignment = HorizontalAlignment.Center;
-                recruitButton.CustomMinimumSize = new Vector2(172, 38);
+                recruitButton.CustomMinimumSize = new Vector2(174, 38);
                 if (!GameUiSkin.ApplySubCommandArtwork(recruitButton)) GameUiSkin.ApplyCommandButton(recruitButton);
                 recruitButton.Pressed += () =>
                 {
@@ -7402,6 +7409,7 @@ public sealed partial class CampaignMapScene : Node3D
             }
         }
 
+        UpdateCommandSubmenuHeight();
         PlaceGroupMenu();
         _cmdSubMenu.Visible = true;
     }
@@ -7444,7 +7452,7 @@ public sealed partial class CampaignMapScene : Node3D
             var btn = new CommandPaletteButton { Text = label };
             btn.AddThemeFontSizeOverride("font_size", 13);
             btn.Alignment = HorizontalAlignment.Center;
-            btn.CustomMinimumSize = new Vector2(172, 38);
+            btn.CustomMinimumSize = new Vector2(174, 38);
             if (!GameUiSkin.ApplySubCommandArtwork(btn)) GameUiSkin.ApplyCommandButton(btn);
             btn.Pressed += () =>
             {
@@ -7467,8 +7475,19 @@ public sealed partial class CampaignMapScene : Node3D
             Add("집단군편성", () => { if (_selected is { } c) { OpenArmyGroupHub(c); } });
         }
 
+        UpdateCommandSubmenuHeight();
         PlaceGroupMenu();
         _cmdSubMenu.Visible = true;
+    }
+
+    private void UpdateCommandSubmenuHeight()
+    {
+        var count = _cmdSubList.GetChildren().OfType<Button>().Count();
+        const float buttonHeight = 38f;
+        const float separation = 6f;
+        const float verticalInsets = 16f;
+        _cmdSubMiddle.CustomMinimumSize = new Vector2(198,
+            verticalInsets + count * buttonHeight + Mathf.Max(0, count - 1) * separation);
     }
 
     private void CloseGroupMenu()
