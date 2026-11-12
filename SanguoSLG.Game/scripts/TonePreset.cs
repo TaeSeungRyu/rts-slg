@@ -4,7 +4,7 @@ using Godot;
 namespace SanguoSLG.Game;
 
 /// <summary>
-/// 화면 색 톤 프리셋. --tone=이름 으로 선택한다(기본 pastel).
+/// 화면 색 톤 프리셋. --tone=이름 으로 선택한다(기본 natural).
 /// 사용자가 스크린샷 비교로 최종 톤을 고르기 위한 장치.
 /// </summary>
 public sealed record TonePreset(
@@ -23,6 +23,13 @@ public sealed record TonePreset(
 {
     public static readonly IReadOnlyDictionary<string, TonePreset> All = new Dictionary<string, TonePreset>
     {
+        // 자연스러운 전략 지도 주간광: 초목의 녹색과 흙·암석의 온도를 살리면서
+        // 성과 부대가 묻히지 않도록 중간 명도와 대비를 확보한다.
+        ["natural"] = new(
+            new Color(0.45f, 0.57f, 0.66f), new Color(0.78f, 0.75f, 0.66f), new Color(0.22f, 0.28f, 0.30f),
+            Ambient: 0.90f, Exposure: 0.98f, Brightness: 1.02f, Contrast: 1.0f, Saturation: 0.52f,
+            SunEnergy: 1.02f, SunColor: new Color(1f, 0.94f, 0.82f), Vignette: 0.18f, FogDensity: 0.0015f),
+
         // 연한 파스텔(현재 기본): 밝기 유지 + 채도 다운
         ["pastel"] = new(
             new Color(0.62f, 0.70f, 0.80f), new Color(0.86f, 0.85f, 0.81f), new Color(0.42f, 0.47f, 0.54f),
@@ -55,7 +62,7 @@ public sealed record TonePreset(
             SunEnergy: 1.1f, SunColor: new Color(0.98f, 0.97f, 0.95f), Vignette: 0.3f, FogDensity: 0f),
     };
 
-    /// <summary>커맨드라인(--tone=이름)에서 프리셋을 고른다. 없거나 모르면 inkwash(사용자 선택 기본값).</summary>
+    /// <summary>커맨드라인(--tone=이름)에서 프리셋을 고른다. 없거나 모르면 자연광 프리셋.</summary>
     public static TonePreset FromCmdline()
     {
         foreach (var arg in OS.GetCmdlineArgs())
@@ -66,6 +73,6 @@ public sealed record TonePreset(
             }
         }
 
-        return All["inkwash"];
+        return All["natural"];
     }
 }
