@@ -2589,21 +2589,21 @@ public sealed partial class CampaignMapScene : Node3D
         }
 
         var statusBox = new VBoxContainer { Name = "UnitStatusArea", ClipContents = true };
-        statusBox.AddThemeConstantOverride("separation", 4);
+        statusBox.AddThemeConstantOverride("separation", 6);
         Place(statusBox, 29, 261, 291, 444);
         fixedLayout.AddChild(statusBox);
 
         var stats = new GridContainer { Name = "UnitCoreStats", Columns = 4, SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
         stats.AddThemeConstantOverride("h_separation", 5);
-        stats.AddThemeConstantOverride("v_separation", 4);
+        stats.AddThemeConstantOverride("v_separation", 6);
         statusBox.AddChild(stats);
 
         void Pair(string key, string value)
         {
-            var keyLabel = MakeLabel(key, 10, Parchment);
-            keyLabel.CustomMinimumSize = new Vector2(38, 18);
-            var valueLabel = MakeLabel(value, 11, GoldBright);
-            valueLabel.CustomMinimumSize = new Vector2(86, 18);
+            var keyLabel = MakeLabel(key, 12, Parchment);
+            keyLabel.CustomMinimumSize = new Vector2(38, 22);
+            var valueLabel = MakeLabel(value, 13, GoldBright);
+            valueLabel.CustomMinimumSize = new Vector2(86, 22);
             valueLabel.ClipText = true;
             valueLabel.TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis;
             valueLabel.TooltipText = value;
@@ -2620,13 +2620,13 @@ public sealed partial class CampaignMapScene : Node3D
 
         var skillState = new HBoxContainer { Name = "UnitSkillState", SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
         skillState.AddThemeConstantOverride("separation", 5);
-        var gaugeText = MakeLabel($"공용 스킬원  {ActiveGaugeText(u.State.SharedActiveGauge)}", 10, Parchment);
+        var gaugeText = MakeLabel($"공용 스킬원  {ActiveGaugeText(u.State.SharedActiveGauge)}", 12, Parchment);
         gaugeText.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
         skillState.AddChild(gaugeText);
         var nextText = u.State.ScheduledActive is { } scheduled
             ? $"다음  {(u.State.ScheduledActiveSlot == ActiveCommanderSlot.Vanguard ? "선봉" : "부장")} · {scheduled.Name}"
             : "다음  없음";
-        var nextLabel = MakeLabel(nextText, 10, GoldBright);
+        var nextLabel = MakeLabel(nextText, 12, GoldBright);
         nextLabel.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
         nextLabel.ClipText = true;
         nextLabel.TooltipText = nextText;
@@ -2649,7 +2649,7 @@ public sealed partial class CampaignMapScene : Node3D
             extras.Add($"공방 {u.Stats.AtkStat}/{u.Stats.DfStat} · 보상 경험 {eventUnit.ExperienceReward} 숙련 {eventUnit.AptitudeReward}");
         if (extras.Count > 0)
         {
-            var extraLabel = MakeLabel(string.Join("\n", extras), 9, new Color(Parchment, 0.86f));
+            var extraLabel = MakeLabel(string.Join("\n", extras), 11, new Color(Parchment, 0.86f));
             extraLabel.Name = "UnitExtraStatus";
             extraLabel.AutowrapMode = TextServer.AutowrapMode.WordSmart;
             extraLabel.MaxLinesVisible = 2;
@@ -2783,10 +2783,10 @@ public sealed partial class CampaignMapScene : Node3D
         row.AddThemeConstantOverride("separation", 6);
         card.AddChild(row);
 
-        var badgeSize = artworkLayout ? 22 : 28;
+        var badgeSize = artworkLayout ? 18 : 28;
         var badge = new PanelContainer { CustomMinimumSize = new Vector2(badgeSize, badgeSize), MouseFilter = Control.MouseFilterEnum.Ignore };
-        badge.AddThemeStyleboxOverride("panel", Frame(new Color(accent, 0.14f), accent, 1, 14, 1));
-        var badgeText = MakeLabel(primary ? "先" : "副", artworkLayout ? 10 : 12, accent);
+        badge.AddThemeStyleboxOverride("panel", Frame(new Color(accent, 0.14f), accent, 1, badgeSize / 2, 1));
+        var badgeText = MakeLabel(primary ? "先" : "副", artworkLayout ? 9 : 12, accent);
         badgeText.HorizontalAlignment = HorizontalAlignment.Center;
         badgeText.VerticalAlignment = VerticalAlignment.Center;
         badge.AddChild(badgeText);
