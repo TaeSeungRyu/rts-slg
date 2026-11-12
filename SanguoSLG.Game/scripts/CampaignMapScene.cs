@@ -7296,6 +7296,20 @@ public sealed partial class CampaignMapScene : Node3D
         var submenuSizing = _cmdSubList.GetChildren().OfType<Button>()
             .All(button => Mathf.IsEqualApprox(button.CustomMinimumSize.Y, 38f))
             && _cmdSubList.GetThemeConstant("separation") == 6;
+        ToggleGroup(0);
+        var twoItemCount = _cmdSubList.GetChildren().OfType<Button>()
+            .Count(button => !button.IsQueuedForDeletion());
+        var twoItemHeight = _cmdSubMiddle.CustomMinimumSize.Y;
+        ToggleGroup(1);
+        var fourItemCount = _cmdSubList.GetChildren().OfType<Button>()
+            .Count(button => !button.IsQueuedForDeletion());
+        var fourItemHeight = _cmdSubMiddle.CustomMinimumSize.Y;
+        ToggleDeployGroup();
+        var fiveItemCount = _cmdSubList.GetChildren().OfType<Button>()
+            .Count(button => !button.IsQueuedForDeletion());
+        var fiveItemHeight = _cmdSubMiddle.CustomMinimumSize.Y;
+        var dynamicSubmenuSizing = twoItemCount == 2 && fourItemCount == 4 && fiveItemCount == 5
+            && twoItemHeight < fourItemHeight && fourItemHeight < fiveItemHeight;
         CloseGroupMenu();
         var titlesCompact = true;
         foreach (var param in new[] { "wall", "stratagem", "war_city" })
@@ -7308,8 +7322,9 @@ public sealed partial class CampaignMapScene : Node3D
                     System.StringComparison.Ordinal)) == true;
             CloseModal();
         }
-        var passed = menusCompact && titlesCompact && mainSizing && submenuSizing && accentMeaning && selectedMeaning;
-        GD.Print($"[maptestcitycommandlabelsqa] passed={passed} menu={menusCompact} titles={titlesCompact} mainSizing={mainSizing} submenuSizing={submenuSizing} accentMeaning={accentMeaning} selectedMeaning={selectedMeaning}");
+        var passed = menusCompact && titlesCompact && mainSizing && submenuSizing && dynamicSubmenuSizing
+            && accentMeaning && selectedMeaning;
+        GD.Print($"[maptestcitycommandlabelsqa] passed={passed} menu={menusCompact} titles={titlesCompact} mainSizing={mainSizing} submenuSizing={submenuSizing} dynamicSubmenu={dynamicSubmenuSizing} counts={twoItemCount}/{fourItemCount}/{fiveItemCount} heights={twoItemHeight}/{fourItemHeight}/{fiveItemHeight} accentMeaning={accentMeaning} selectedMeaning={selectedMeaning}");
         GetTree().Quit(passed ? 0 : 1);
     }
 
@@ -7482,7 +7497,8 @@ public sealed partial class CampaignMapScene : Node3D
 
     private void UpdateCommandSubmenuHeight()
     {
-        var count = _cmdSubList.GetChildren().OfType<Button>().Count();
+        var count = _cmdSubList.GetChildren().OfType<Button>()
+            .Count(button => !button.IsQueuedForDeletion());
         const float buttonHeight = 38f;
         const float separation = 6f;
         const float verticalInsets = 16f;
