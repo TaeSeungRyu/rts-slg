@@ -186,6 +186,7 @@ public partial class MapView3D : Node3D
                 // 내용물(창고·잔교·배)만 인접 물 타일 방향으로 회전한다
                 var ground = _tiles[TerrainType.Plains].Instantiate<Node3D>();
                 ground.Position = HexToWorld(tile);
+                ApplyTerrainPalette(ground, TerrainType.Plains);
                 AddChild(ground);
                 if (cityPorts?.Contains(tile) == true) { continue; }
 
@@ -213,6 +214,7 @@ public partial class MapView3D : Node3D
                 : TileScene(terrain, tile)!;
             var instance = scene.Instantiate<Node3D>();
             instance.Position = HexToWorld(tile);
+            ApplyTerrainPalette(instance, terrain);
             if (terrain is not (TerrainType.Workshop or TerrainType.Village2))
             {
                 // 숲·산의 단조로움을 깨는 결정론적 회전(좌표 해시, 60° 단위).
@@ -305,6 +307,42 @@ public partial class MapView3D : Node3D
         AddChild(instance);
     }
 
+    // 원본 저채도 로우폴리 재질의 질감은 유지하고, 지형군별 색조만 곱해
+    // 평야·숲·산·물을 멀리서도 구분되게 한다. 각 인스턴스의 재질을 복제하므로
+    // 같은 GLB를 공유하는 성·부대나 다른 타일의 재질에는 영향을 주지 않는다.
+    private static void ApplyTerrainPalette(Node3D visual, TerrainType terrain)
+    {
+        var tint = terrain switch
+        {
+            TerrainType.Plains => new Color(0.72f, 0.88f, 0.58f),
+            TerrainType.Forest => new Color(0.50f, 0.72f, 0.40f),
+            TerrainType.Mountain => new Color(0.70f, 0.67f, 0.57f),
+            TerrainType.Rocks or TerrainType.RockHill or TerrainType.RockMountain
+                or TerrainType.Karst or TerrainType.Cliff => new Color(0.72f, 0.69f, 0.61f),
+            TerrainType.Desert or TerrainType.DesertCactus => new Color(0.94f, 0.82f, 0.57f),
+            TerrainType.Paddy => new Color(0.63f, 0.82f, 0.50f),
+            TerrainType.Farm => new Color(0.78f, 0.72f, 0.47f),
+            TerrainType.Swamp => new Color(0.55f, 0.62f, 0.42f),
+            _ => Colors.White,
+        };
+        if (tint == Colors.White) return;
+
+        foreach (var mesh in visual.FindChildren("*", "MeshInstance3D", true, false).OfType<MeshInstance3D>())
+        {
+            if (mesh.Mesh is null) continue;
+            for (var surface = 0; surface < mesh.Mesh.GetSurfaceCount(); surface++)
+            {
+                if (mesh.GetActiveMaterial(surface) is not StandardMaterial3D source) continue;
+                var material = (StandardMaterial3D)source.Duplicate();
+                var color = material.AlbedoColor;
+                material.AlbedoColor = new Color(color.R * tint.R, color.G * tint.G,
+                    color.B * tint.B, color.A);
+                material.Roughness = Mathf.Max(material.Roughness, 0.82f);
+                mesh.SetSurfaceOverrideMaterial(surface, material);
+            }
+        }
+    }
+
     /// <summary>다중 타일 지물(중간산·큰산)을 발자국 중심점에 배치하고, 산 위에 구름을 흘려보낸다.</summary>
     public void BuildFeatures(System.Collections.Generic.IReadOnlyList<MapFeature> features, TileConditionMap conditions)
     {
@@ -331,6 +369,9 @@ public partial class MapView3D : Node3D
 
             var instance = models[feature.Type].Instantiate<Node3D>();
             instance.Position = centroid;
+            if (feature.Type is FeatureType.MountainMedium or FeatureType.MountainLarge
+                or FeatureType.MountainHuge or FeatureType.WaterfallCliff)
+                ApplyTerrainPalette(instance, TerrainType.Mountain);
             AddChild(instance);
 
             if (feature.Type == FeatureType.PortMedium)
@@ -814,8 +855,8 @@ public partial class MapView3D : Node3D
         if (mesh is null) return;
         mesh.MaterialOverride = new StandardMaterial3D
         {
-            AlbedoColor = new Color(0.22f, 0.58f, 0.78f),
-            Roughness = 0.38f,
+            AlbedoColor = new Color(0.18f, 0.43f, 0.55f),
+            Roughness = 0.48f,
         };
     }
 
@@ -825,9 +866,9 @@ public partial class MapView3D : Node3D
         mesh.MaterialOverride = new StandardMaterial3D
         {
             AlbedoColor = terrain == TerrainType.WaterDeep
-                ? new Color(0.25f, 0.48f, 0.62f)
-                : new Color(0.42f, 0.76f, 0.84f),
-            Roughness = 0.25f,
+                ? new Color(0.14f, 0.34f, 0.43f)
+                : new Color(0.28f, 0.58f, 0.62f),
+            Roughness = 0.42f,
         };
     }
 
