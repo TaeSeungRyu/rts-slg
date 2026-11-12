@@ -554,14 +554,17 @@ public partial class GameRoot3D : Node3D
         WorldMapLoadMetrics.RecordWorldNodeBuild(worldNodesStarted);
         if (_menuCampaign) ScenarioStartMenu.FinishLoading(GetTree());
         if (profileLoad)
-        {
-            var firstFramesStarted = WorldMapLoadMetrics.Timestamp();
-            await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
-            await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
-            WorldMapLoadMetrics.RecordFirstFrames(firstFramesStarted);
-            WorldMapLoadMetrics.Print();
-            GetTree().Quit();
-        }
+            CallDeferred(nameof(FinishMapLoadProfile));
+    }
+
+    private async void FinishMapLoadProfile()
+    {
+        var firstFramesStarted = WorldMapLoadMetrics.Timestamp();
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        WorldMapLoadMetrics.RecordFirstFrames(firstFramesStarted);
+        WorldMapLoadMetrics.Print();
+        GetTree().Quit();
     }
 
     private void RunScenarioIntegrationQa()
