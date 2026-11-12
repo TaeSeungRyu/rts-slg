@@ -214,6 +214,7 @@ public partial class MapView3D : Node3D
                 : TileScene(terrain, tile)!;
             var instance = scene.Instantiate<Node3D>();
             instance.Position = HexToWorld(tile);
+            WorldMapLoadMetrics.RecordTerrain(terrain);
             ApplyTerrainPalette(instance, terrain);
             if (terrain is not (TerrainType.Workshop or TerrainType.Village2))
             {
@@ -312,6 +313,8 @@ public partial class MapView3D : Node3D
     // 같은 GLB를 공유하는 성·부대나 다른 타일의 재질에는 영향을 주지 않는다.
     private static void ApplyTerrainPalette(Node3D visual, TerrainType terrain)
     {
+        var started = WorldMapLoadMetrics.Timestamp();
+        var surfaces = 0;
         var tint = terrain switch
         {
             TerrainType.Plains => new Color(0.72f, 0.88f, 0.58f),
@@ -339,8 +342,10 @@ public partial class MapView3D : Node3D
                     color.B * tint.B, color.A);
                 material.Roughness = Mathf.Max(material.Roughness, 0.82f);
                 mesh.SetSurfaceOverrideMaterial(surface, material);
+                surfaces++;
             }
         }
+        WorldMapLoadMetrics.RecordMaterialPreparation(started, surfaces);
     }
 
     /// <summary>다중 타일 지물(중간산·큰산)을 발자국 중심점에 배치하고, 산 위에 구름을 흘려보낸다.</summary>
@@ -371,7 +376,10 @@ public partial class MapView3D : Node3D
             instance.Position = centroid;
             if (feature.Type is FeatureType.MountainMedium or FeatureType.MountainLarge
                 or FeatureType.MountainHuge or FeatureType.WaterfallCliff)
+            {
+                WorldMapLoadMetrics.RecordFeatureMountain();
                 ApplyTerrainPalette(instance, TerrainType.Mountain);
+            }
             AddChild(instance);
 
             if (feature.Type == FeatureType.PortMedium)

@@ -472,6 +472,9 @@ public partial class GameRoot3D : Node3D
 
     private async Task BuildCampaignMapInternal(bool incremental)
     {
+        var profileLoad = OS.GetCmdlineUserArgs().Contains("--maploadprofile");
+        WorldMapLoadMetrics.Begin(profileLoad);
+        var dataStarted = WorldMapLoadMetrics.Timestamp();
         var newMap = OS.GetCmdlineUserArgs().Contains("--newmap");
         if (newMap)
         {
@@ -497,6 +500,8 @@ public partial class GameRoot3D : Node3D
         var map = CampaignMapScene.TestMap;
         var occupied = new System.Collections.Generic.HashSet<HexCoord>();
         var conditions = new TileConditionMap();
+        WorldMapLoadMetrics.RecordDataPreparation(dataStarted);
+        var terrainStarted = WorldMapLoadMetrics.Timestamp();
         if (incremental)
         {
             foreach (var batch in map.Tiles().Chunk(320))
@@ -509,6 +514,7 @@ public partial class GameRoot3D : Node3D
                 Array.Empty<HexCoord>());
         }
         else mapView.Build(map, occupied, conditions, CampaignMapScene.TestPortTiles);
+        WorldMapLoadMetrics.RecordTerrainBuild(terrainStarted);
 
         var camera = new CameraController3D { Fov = 55f };
         AddChild(camera);
@@ -523,6 +529,7 @@ public partial class GameRoot3D : Node3D
 
         if (incremental)
         {
+            var tuneStarted = WorldMapLoadMetrics.Timestamp();
             var tuned = 0;
             foreach (var child in mapView.GetChildren())
             {
@@ -530,14 +537,31 @@ public partial class GameRoot3D : Node3D
                 if (++tuned % 320 == 0)
                     await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
             }
+            WorldMapLoadMetrics.RecordImportedMeshTuning(tuneStarted);
         }
-        else MapView3D.TuneImportedMeshes(this);
+        else
+        {
+            var tuneStarted = WorldMapLoadMetrics.Timestamp();
+            MapView3D.TuneImportedMeshes(this);
+            WorldMapLoadMetrics.RecordImportedMeshTuning(tuneStarted);
+        }
 
+        var worldNodesStarted = WorldMapLoadMetrics.Timestamp();
         var scene = new CampaignMapScene();
         AddChild(scene);
         if (incremental) await scene.BuildIncremental(mapView, camera, FindDataDirectory());
         else scene.Build(mapView, camera, FindDataDirectory());
+        WorldMapLoadMetrics.RecordWorldNodeBuild(worldNodesStarted);
         if (_menuCampaign) ScenarioStartMenu.FinishLoading(GetTree());
+        if (profileLoad)
+        {
+            var firstFramesStarted = WorldMapLoadMetrics.Timestamp();
+            await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+            await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+            WorldMapLoadMetrics.RecordFirstFrames(firstFramesStarted);
+            WorldMapLoadMetrics.Print();
+            GetTree().Quit();
+        }
     }
 
     private void RunScenarioIntegrationQa()
