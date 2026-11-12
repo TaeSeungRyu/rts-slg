@@ -222,6 +222,7 @@ public sealed partial class CampaignMapScene : Node3D
     private Control _infoCard = null!;
     private Control _infoComposition = null!;
     private TextureRect _infoArtwork = null!;
+    private TextureRect _unitInfoArtwork = null!;
     private MarginContainer _infoContentMargin = null!;
     private VBoxContainer _infoRows = null!;
     private VBoxContainer _infoActions = null!;
@@ -2529,94 +2530,151 @@ public sealed partial class CampaignMapScene : Node3D
 
         ConfigureUnitInfoPanel();
         ClearLayoutChildren(_infoRows);
-        // 성 정보에서 사용한 하단 상세 버튼이 공유 컨테이너에 남지 않게 한다.
         ClearLayoutChildren(_infoActions);
-        _infoRows.AddChild(MakeLabel($"{TroopName(u.TroopCode)} · {(u.Field.Owner == EventHuntService.EventFaction ? "중립 강적" : faction?.Name)}", 15, GoldBright));
-        _infoRows.AddChild(MakeLabel($"시야 {_vision.UnitRadius(u)}칸", 13, Parchment));
+
+        var fixedLayout = new Control
+        {
+            Name = "UnitInfoFixedLayout",
+            CustomMinimumSize = new Vector2(320f, 480f),
+            ClipContents = true,
+            MouseFilter = Control.MouseFilterEnum.Pass,
+        };
+        fixedLayout.SetMeta("uses_artwork_sections", true);
+        _infoRows.AddChild(fixedLayout);
+
+        static void Place(Control control, float left, float top, float right, float bottom)
+        {
+            control.SetAnchorsPreset(Control.LayoutPreset.TopLeft);
+            control.OffsetLeft = left;
+            control.OffsetTop = top;
+            control.OffsetRight = right;
+            control.OffsetBottom = bottom;
+        }
+
+        var title = MakeLabel($"{TroopName(u.TroopCode)} · {(u.Field.Owner == EventHuntService.EventFaction ? "중립 강적" : faction?.Name)}", 14, GoldBright);
+        title.Name = "UnitInfoTitle";
+        title.HorizontalAlignment = HorizontalAlignment.Center;
+        title.VerticalAlignment = VerticalAlignment.Center;
+        title.TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis;
+        Place(title, 68, 13, 252, 37);
+        fixedLayout.AddChild(title);
+
+        var sight = MakeLabel($"시야 {_vision.UnitRadius(u)}칸", 10, new Color(Parchment, 0.9f));
+        sight.Name = "UnitInfoSight";
+        sight.HorizontalAlignment = HorizontalAlignment.Center;
+        sight.VerticalAlignment = VerticalAlignment.Center;
+        Place(sight, 112, 42, 208, 58);
+        fixedLayout.AddChild(sight);
+
         if (u.VanguardId is { } vanguardId)
         {
-            _infoRows.AddChild(UnitCommanderVisual(u, vanguardId));
-            var roles = new HBoxContainer { Name = "UnitGeneralRoleCards", SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+            var commander = UnitCommanderVisual(u, vanguardId, artworkLayout: true);
+            Place(commander, 27, 64, 293, 199);
+            fixedLayout.AddChild(commander);
+
+            var roles = new HBoxContainer { Name = "UnitGeneralRoleCards" };
             roles.SetMeta("role_card_layout", "side_by_side");
-            roles.AddThemeConstantOverride("separation", 7);
-            roles.AddChild(UnitGeneralRoleCard("선봉", vanguardId, van ?? "—", unitId));
+            roles.AddThemeConstantOverride("separation", 6);
+            roles.AddChild(UnitGeneralRoleCard("선봉", vanguardId, van ?? "—", unitId, artworkLayout: true));
             if (u.AdjutantId is { } adjutantId)
-                roles.AddChild(UnitGeneralRoleCard("부관", adjutantId, adj ?? "—", unitId));
-            _infoRows.AddChild(roles);
+                roles.AddChild(UnitGeneralRoleCard("부관", adjutantId, adj ?? "—", unitId, artworkLayout: true));
+            Place(roles, 29, 211, 291, 246);
+            fixedLayout.AddChild(roles);
         }
         else
         {
-            _infoRows.AddChild(UnitCardPanel(UnitCardCode(u), u.Class));
+            var unitArt = UnitCardPanel(UnitCardCode(u), u.Class);
+            Place(unitArt, 27, 64, 293, 199);
+            fixedLayout.AddChild(unitArt);
         }
 
-        var g = new GridContainer { Columns = 2, SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
-        g.AddThemeConstantOverride("h_separation", 10);
-        g.AddThemeConstantOverride("v_separation", 5);
-        _infoRows.AddChild(g);
+        var statusBox = new VBoxContainer { Name = "UnitStatusArea", ClipContents = true };
+        statusBox.AddThemeConstantOverride("separation", 4);
+        Place(statusBox, 29, 261, 291, 444);
+        fixedLayout.AddChild(statusBox);
 
-        void Row(string k, string v)
+        var stats = new GridContainer { Name = "UnitCoreStats", Columns = 4, SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+        stats.AddThemeConstantOverride("h_separation", 5);
+        stats.AddThemeConstantOverride("v_separation", 4);
+        statusBox.AddChild(stats);
+
+        void Pair(string key, string value)
         {
-            g.AddChild(MakeLabel(k, 12, Parchment));
-            g.AddChild(MakeLabel(v, 12, GoldBright));
+            var keyLabel = MakeLabel(key, 10, Parchment);
+            keyLabel.CustomMinimumSize = new Vector2(38, 18);
+            var valueLabel = MakeLabel(value, 11, GoldBright);
+            valueLabel.CustomMinimumSize = new Vector2(86, 18);
+            valueLabel.ClipText = true;
+            valueLabel.TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis;
+            valueLabel.TooltipText = value;
+            stats.AddChild(keyLabel);
+            stats.AddChild(valueLabel);
         }
 
-        Row(u.Field.Owner == EventHuntService.EventFaction ? "체력" : "병력", $"{u.Pool.Active}");
+        Pair(u.Field.Owner == EventHuntService.EventFaction ? "체력" : "병력", $"{u.Pool.Active:N0}");
+        Pair("부상병", u.Pool.Wounded > 0 ? $"{u.Pool.Wounded:N0}" : "없음");
+        Pair("훈련", $"{u.Training}");
+        Pair("모드", ModeName(u.Field.Mode));
+        Pair("목표", u.Field.Target is { } t ? $"({t.Q}, {t.R})" : "없음");
+        Pair("군량", u.TracksProvisions ? $"{u.Provisions:N0} · {EstimateCarriedProvisionDays(u)}일" : "무한");
+
+        var skillState = new HBoxContainer { Name = "UnitSkillState", SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+        skillState.AddThemeConstantOverride("separation", 5);
+        var gaugeText = MakeLabel($"스킬원  {ActiveGaugeText(u.State.SharedActiveGauge)}", 10, Parchment);
+        gaugeText.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+        skillState.AddChild(gaugeText);
+        var nextText = u.State.ScheduledActive is { } scheduled
+            ? $"다음  {(u.State.ScheduledActiveSlot == ActiveCommanderSlot.Vanguard ? "선봉" : "부장")} · {scheduled.Name}"
+            : "다음  없음";
+        var nextLabel = MakeLabel(nextText, 10, GoldBright);
+        nextLabel.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+        nextLabel.ClipText = true;
+        nextLabel.TooltipText = nextText;
+        skillState.AddChild(nextLabel);
+        statusBox.AddChild(skillState);
+
+        var extras = new List<string>();
         if (u.IsSummon && _state.Summons.FirstOrDefault(x => x.Unit == u.Id) is { } summon)
         {
-            Row("소환 활동", $"{System.Math.Max(0, summon.EndDay - _state.Day)}일 남음");
+            extras.Add($"소환 {System.Math.Max(0, summon.EndDay - _state.Day)}일");
             var treasure = _state.Treasures.FirstOrDefault(x => x.Id == summon.TreasureId);
-            if (treasure?.ReusableDay is { } ready)
-                Row("재사용", ready <= _state.Day ? "가능" : $"{ready - _state.Day}일 후");
+            if (treasure?.ReusableDay is { } ready) extras.Add(ready <= _state.Day ? "재사용 가능" : $"재사용 {ready - _state.Day}일 후");
         }
-        if (u.Field.Owner == EventHuntService.EventFaction && _eventHunts.Definition(u.TroopCode) is { } eventUnit)
-        {
-            Row("공격 / 방어", $"{u.Stats.AtkStat} / {u.Stats.DfStat}");
-            Row("행동", "가까운 약한 육상 부대를 추격");
-            Row("처치 보상", $"장수 경험치 +{eventUnit.ExperienceReward}\n병종 숙련 +{eventUnit.AptitudeReward} · {eventUnit.TreasureName}");
-        }
-        Row("부상병", u.Pool.Wounded > 0 ? $"{u.Pool.Wounded}" : "없음");
-        Row("훈련", $"{u.Training}");
-        Row("모드", ModeName(u.Field.Mode));
-        Row("목표", u.Field.Target is { } t ? $"({t.Q}, {t.R})" : "없음");
-        if (u.Field.Mode == UnitMode.Advance
-            && _movementStatus.TryGetValue(u.Id, out var movement)
-            && movement.PursuitTarget is { } pursuit)
-        {
-            Row("현재 추격", $"{pursuit} · {movement.StopReason}");
-        }
-        Row("군량", u.TracksProvisions ? $"{u.Provisions:N0} · 예상 {EstimateCarriedProvisionDays(u)}일" : "무한");
-        if (u.IsSupply)
-        {
-            Row("보급범위", $"{FieldSupplyRadius}칸");
-            Row("전투규칙", "공격 가능 · 스킬/적성 미적용 · 공방 최하");
-        }
-        Row("공용 스킬원", ActiveGaugeText(u.State.SharedActiveGauge));
-        Row("다음 발동", u.State.ScheduledActive is { } scheduled
-            ? $"{(u.State.ScheduledActiveSlot == ActiveCommanderSlot.Vanguard ? "선봉" : "부관")} · {scheduled.Name}"
-            : "없음");
+        if (u.Field.Mode == UnitMode.Advance && _movementStatus.TryGetValue(u.Id, out var movement)
+            && movement.PursuitTarget is { } pursuit) extras.Add($"추격 {pursuit} · {movement.StopReason}");
+        if (u.IsSupply) extras.Add($"보급 {FieldSupplyRadius}칸 · 공격 가능 · 스킬/적성 미적용");
         var activeStatuses = ActiveStatusLines(u.State);
-        if (activeStatuses.Count > 0)
-            Row("현재 상태", string.Join("\n", activeStatuses));
+        if (activeStatuses.Count > 0) extras.Add(string.Join(" · ", activeStatuses));
+        if (u.Field.Owner == EventHuntService.EventFaction && _eventHunts.Definition(u.TroopCode) is { } eventUnit)
+            extras.Add($"공방 {u.Stats.AtkStat}/{u.Stats.DfStat} · 보상 경험 {eventUnit.ExperienceReward} 숙련 {eventUnit.AptitudeReward}");
+        if (extras.Count > 0)
+        {
+            var extraLabel = MakeLabel(string.Join("\n", extras), 9, new Color(Parchment, 0.86f));
+            extraLabel.Name = "UnitExtraStatus";
+            extraLabel.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+            extraLabel.MaxLinesVisible = 2;
+            extraLabel.TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis;
+            extraLabel.TooltipText = string.Join("\n", extras);
+            statusBox.AddChild(extraLabel);
+        }
 
-        var activeSkills = new[] { (Role: "선봉", Skill: u.State.VanguardActive), (Role: "부관", Skill: u.State.AdjutantActive) }
-            .Where(entry => entry.Skill is not null)
-            .ToList();
+        var activeSkills = new[] { (Role: "선봉", Skill: u.State.VanguardActive), (Role: "부장", Skill: u.State.AdjutantActive) }
+            .Where(entry => entry.Skill is not null).ToList();
         if (activeSkills.Count > 0)
         {
-            var margin = new MarginContainer { Name = "UnitActiveSkillsTopMargin", SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
-            margin.AddThemeConstantOverride("margin_top", 10);
-            margin.SetMeta("active_skill_top_margin", 10);
-            var skillRows = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+            var skillRows = new HBoxContainer { Name = "UnitActiveSkillsTopMargin", SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
             skillRows.AddThemeConstantOverride("separation", 5);
-            margin.AddChild(skillRows);
-            _infoRows.AddChild(margin);
+            skillRows.SetMeta("active_skill_top_margin", 4);
+            statusBox.AddChild(skillRows);
             foreach (var (role, skill) in activeSkills)
             {
-                var button = MakeButton($"{role} · {skill!.Name}   ›");
-                button.Alignment = HorizontalAlignment.Left;
+                var button = MakeButton($"{role} · {skill!.Name}  ›");
+                button.CustomMinimumSize = new Vector2(0, 28);
+                button.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+                button.Alignment = HorizontalAlignment.Center;
                 button.ClipText = true;
                 button.TooltipText = SkillDescriptions.Active(skill);
-                ActiveSkillIcons.Apply(button, skill.Code, 32);
+                ActiveSkillIcons.Apply(button, skill.Code, 24);
                 button.Pressed += () => ShowSkillDescription(skill.Name, "액티브", SkillDescriptions.Active(skill), skill.Code);
                 skillRows.AddChild(button);
             }
@@ -2627,17 +2685,20 @@ public sealed partial class CampaignMapScene : Node3D
         _infoCard.Visible = true;
     }
 
-    private Control UnitCommanderVisual(CombatUnit unit, GeneralId vanguardId)
+    private Control UnitCommanderVisual(CombatUnit unit, GeneralId vanguardId, bool artworkLayout = false)
     {
         var frame = new PanelContainer
         {
             Name = "UnitCommanderVisual",
-            CustomMinimumSize = new Vector2(260, 210),
+            CustomMinimumSize = artworkLayout ? Vector2.Zero : new Vector2(260, 210),
             ClipContents = true,
         };
         frame.SetMeta("commander_replaces_unit_art", true);
-        frame.SetMeta("portrait_display_height", 210);
-        frame.AddThemeStyleboxOverride("panel", Frame(new Color(0.055f, 0.045f, 0.038f), Gold, 1, 9, 3));
+        frame.SetMeta("portrait_display_height", artworkLayout ? 135 : 210);
+        frame.SetMeta("artwork_layout", artworkLayout);
+        frame.AddThemeStyleboxOverride("panel", artworkLayout
+            ? new StyleBoxEmpty { ContentMarginLeft = 3, ContentMarginTop = 3, ContentMarginRight = 3, ContentMarginBottom = 3 }
+            : Frame(new Color(0.055f, 0.045f, 0.038f), Gold, 1, 9, 3));
         var overlay = new Control { MouseFilter = Control.MouseFilterEnum.Ignore };
         frame.AddChild(overlay);
 
@@ -2660,12 +2721,12 @@ public sealed partial class CampaignMapScene : Node3D
             MouseFilter = Control.MouseFilterEnum.Ignore,
         };
         troopBadge.SetAnchorsPreset(Control.LayoutPreset.TopLeft);
-        troopBadge.OffsetLeft = 8;
-        troopBadge.OffsetTop = 8;
-        troopBadge.OffsetRight = 56;
-        troopBadge.OffsetBottom = 56;
+            troopBadge.OffsetLeft = artworkLayout ? 5 : 8;
+            troopBadge.OffsetTop = artworkLayout ? 5 : 8;
+            troopBadge.OffsetRight = artworkLayout ? 41 : 56;
+            troopBadge.OffsetBottom = artworkLayout ? 41 : 56;
         troopBadge.SetMeta("recommended_troop_badge", "top_left_absolute");
-        troopBadge.AddChild(DeployUnitArtwork(UnitCard(UnitCardCode(unit), unit.Class), 40));
+            troopBadge.AddChild(DeployUnitArtwork(UnitCard(UnitCardCode(unit), unit.Class), artworkLayout ? 30 : 40));
         overlay.AddChild(troopBadge);
 
         if (unit.AdjutantId is { } adjutantId)
@@ -2673,16 +2734,18 @@ public sealed partial class CampaignMapScene : Node3D
             var adjutantFrame = new PanelContainer
             {
                 Name = "UnitAdjutantPortrait",
-                CustomMinimumSize = new Vector2(56, 56),
+                CustomMinimumSize = artworkLayout ? new Vector2(42, 42) : new Vector2(56, 56),
                 MouseFilter = Control.MouseFilterEnum.Ignore,
             };
             adjutantFrame.SetAnchorsPreset(Control.LayoutPreset.BottomRight);
-            adjutantFrame.OffsetLeft = -64;
-            adjutantFrame.OffsetTop = -64;
-            adjutantFrame.OffsetRight = -8;
-            adjutantFrame.OffsetBottom = -8;
+            var inset = artworkLayout ? 5f : 8f;
+            var size = artworkLayout ? 42f : 56f;
+            adjutantFrame.OffsetLeft = -inset - size;
+            adjutantFrame.OffsetTop = -inset - size;
+            adjutantFrame.OffsetRight = -inset;
+            adjutantFrame.OffsetBottom = -inset;
             adjutantFrame.SetMeta("adjutant_overlay", "bottom_right_absolute_circle");
-            adjutantFrame.AddThemeStyleboxOverride("panel", Frame(new Color(0.06f, 0.05f, 0.04f), GoldBright, 1, 28, 2));
+            adjutantFrame.AddThemeStyleboxOverride("panel", Frame(new Color(0.06f, 0.05f, 0.04f), GoldBright, 1, artworkLayout ? 21 : 28, 2));
             adjutantFrame.AddChild(new TextureRect
             {
                 Texture = CircularPortraitFor(adjutantId),
@@ -2695,7 +2758,7 @@ public sealed partial class CampaignMapScene : Node3D
         return frame;
     }
 
-    private Control UnitGeneralRoleCard(string role, GeneralId generalId, string name, int unitId)
+    private Control UnitGeneralRoleCard(string role, GeneralId generalId, string name, int unitId, bool artworkLayout = false)
     {
         var primary = role == "선봉";
         var accent = primary ? GoldBright : new Color(0.62f, 0.76f, 0.88f);
@@ -2703,12 +2766,14 @@ public sealed partial class CampaignMapScene : Node3D
         {
             Name = primary ? "UnitVanguardRoleCard" : "UnitAdjutantRoleCard",
             SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
-            CustomMinimumSize = new Vector2(0, 46),
+            CustomMinimumSize = new Vector2(0, artworkLayout ? 34 : 46),
         };
         card.SetMeta("unit_general_role_card", true);
         card.SetMeta("general_role", role);
         card.SetMeta("vertical_content_alignment", "center");
-        card.AddThemeStyleboxOverride("panel", Frame(new Color(0.075f, 0.064f, 0.055f), new Color(accent, 0.75f), 1, 7, 4));
+        card.AddThemeStyleboxOverride("panel", artworkLayout
+            ? new StyleBoxEmpty { ContentMarginLeft = 3, ContentMarginRight = 3 }
+            : Frame(new Color(0.075f, 0.064f, 0.055f), new Color(accent, 0.75f), 1, 7, 4));
 
         var row = new HBoxContainer
         {
@@ -2718,9 +2783,10 @@ public sealed partial class CampaignMapScene : Node3D
         row.AddThemeConstantOverride("separation", 6);
         card.AddChild(row);
 
-        var badge = new PanelContainer { CustomMinimumSize = new Vector2(28, 28), MouseFilter = Control.MouseFilterEnum.Ignore };
+        var badgeSize = artworkLayout ? 22 : 28;
+        var badge = new PanelContainer { CustomMinimumSize = new Vector2(badgeSize, badgeSize), MouseFilter = Control.MouseFilterEnum.Ignore };
         badge.AddThemeStyleboxOverride("panel", Frame(new Color(accent, 0.14f), accent, 1, 14, 1));
-        var badgeText = MakeLabel(primary ? "先" : "副", 12, accent);
+        var badgeText = MakeLabel(primary ? "先" : "副", artworkLayout ? 10 : 12, accent);
         badgeText.HorizontalAlignment = HorizontalAlignment.Center;
         badgeText.VerticalAlignment = VerticalAlignment.Center;
         badge.AddChild(badgeText);
@@ -2733,7 +2799,8 @@ public sealed partial class CampaignMapScene : Node3D
             MouseFilter = Control.MouseFilterEnum.Ignore,
         };
         copy.AddThemeConstantOverride("separation", 0);
-        copy.AddChild(MakeLabel(primary ? "선봉장 · 부대 지휘" : "부장 · 전투 보좌", 9, new Color(accent, 0.86f)));
+        if (!artworkLayout)
+            copy.AddChild(MakeLabel(primary ? "선봉장 · 부대 지휘" : "부장 · 전투 보좌", 9, new Color(accent, 0.86f)));
         copy.AddChild(UnitGeneralLink(role, generalId, name, unitId));
         row.AddChild(copy);
         return card;
@@ -5666,6 +5733,18 @@ public sealed partial class CampaignMapScene : Node3D
         _infoArtwork = infoArtwork;
         infoArtwork.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
         infoComposition.AddChild(infoArtwork);
+        var unitInfoArtwork = new TextureRect
+        {
+            Name = "UnitInfoPanelArtwork",
+            Texture = GD.Load<Texture2D>("res://assets/ui/game/panels/unit_info_panel.png"),
+            ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
+            StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
+            MouseFilter = Control.MouseFilterEnum.Ignore,
+            Visible = false,
+        };
+        _unitInfoArtwork = unitInfoArtwork;
+        unitInfoArtwork.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
+        infoComposition.AddChild(unitInfoArtwork);
         var infoMargin = new MarginContainer { Name = "CityInfoContentMargin" };
         _infoContentMargin = infoMargin;
         infoMargin.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
@@ -6786,6 +6865,7 @@ public sealed partial class CampaignMapScene : Node3D
     private void ConfigureCityInfoPanel()
     {
         _infoArtwork.Visible = true;
+        _unitInfoArtwork.Visible = false;
         _infoCard.AddThemeStyleboxOverride("panel", new StyleBoxEmpty());
         _infoCard.CustomMinimumSize = new Vector2(320f, 416f);
         _infoComposition.CustomMinimumSize = new Vector2(320f, 416f);
@@ -6805,17 +6885,19 @@ public sealed partial class CampaignMapScene : Node3D
     private void ConfigureUnitInfoPanel()
     {
         _infoArtwork.Visible = false;
-        _infoCard.AddThemeStyleboxOverride("panel", GameUiSkin.FlatBox(
-            new Color("160d0b", 0.97f), GameUiSkin.Gold, 2, 9, 11));
-        _infoCard.CustomMinimumSize = new Vector2(320f, 620f);
-        _infoComposition.CustomMinimumSize = new Vector2(320f, 620f);
-        _infoContentMargin.AddThemeConstantOverride("margin_left", 12);
-        _infoContentMargin.AddThemeConstantOverride("margin_top", 12);
-        _infoContentMargin.AddThemeConstantOverride("margin_right", 12);
-        _infoContentMargin.AddThemeConstantOverride("margin_bottom", 12);
-        _infoScroll.CustomMinimumSize = new Vector2(296f, 0f);
-        _infoRows.CustomMinimumSize = new Vector2(278f, 0f);
-        _infoScroll.VerticalScrollMode = ScrollContainer.ScrollMode.Auto;
+        _unitInfoArtwork.Visible = _unitInfoArtwork.Texture is not null;
+        _infoCard.AddThemeStyleboxOverride("panel", _unitInfoArtwork.Visible
+            ? new StyleBoxEmpty()
+            : GameUiSkin.FlatBox(new Color("160d0b", 0.97f), GameUiSkin.Gold, 2, 9, 11));
+        _infoCard.CustomMinimumSize = new Vector2(320f, 480f);
+        _infoComposition.CustomMinimumSize = new Vector2(320f, 480f);
+        _infoContentMargin.AddThemeConstantOverride("margin_left", 0);
+        _infoContentMargin.AddThemeConstantOverride("margin_top", 0);
+        _infoContentMargin.AddThemeConstantOverride("margin_right", 0);
+        _infoContentMargin.AddThemeConstantOverride("margin_bottom", 0);
+        _infoScroll.CustomMinimumSize = new Vector2(320f, 480f);
+        _infoRows.CustomMinimumSize = new Vector2(320f, 480f);
+        _infoScroll.VerticalScrollMode = ScrollContainer.ScrollMode.Disabled;
     }
 
     private void RunAdvanceCityPaletteQa()
