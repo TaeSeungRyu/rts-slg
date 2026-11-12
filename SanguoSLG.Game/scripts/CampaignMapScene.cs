@@ -5799,17 +5799,25 @@ public sealed partial class CampaignMapScene : Node3D
             MouseFilter = Control.MouseFilterEnum.Pass,
         };
         _cmdMenu.AddChild(paletteComposition);
-        var paletteWood = new ColorRect
+        var paletteWood = new Panel
         {
             Name = "CityCommandPaletteWoodBackground",
-            Color = new Color("24150f", 0.94f),
             MouseFilter = Control.MouseFilterEnum.Ignore,
         };
+        var paletteWoodStyle = new StyleBoxFlat
+        {
+            BgColor = new Color("24150f", 0.94f),
+            CornerRadiusTopLeft = 12,
+            CornerRadiusTopRight = 12,
+            CornerRadiusBottomLeft = 12,
+            CornerRadiusBottomRight = 12,
+        };
+        paletteWood.AddThemeStyleboxOverride("panel", paletteWoodStyle);
         paletteWood.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
-        paletteWood.OffsetLeft = 10;
-        paletteWood.OffsetTop = 12;
-        paletteWood.OffsetRight = -10;
-        paletteWood.OffsetBottom = -12;
+        paletteWood.OffsetLeft = 17;
+        paletteWood.OffsetTop = 72;
+        paletteWood.OffsetRight = -17;
+        paletteWood.OffsetBottom = -58;
         paletteComposition.AddChild(paletteWood);
         var mainFrameTexture = GameUiSkin.CommandTexture("main-frame.png");
         static AtlasTexture Slice(Texture2D atlas, float y, float height) => new()
