@@ -2620,7 +2620,7 @@ public sealed partial class CampaignMapScene : Node3D
 
         var skillState = new HBoxContainer { Name = "UnitSkillState", SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
         skillState.AddThemeConstantOverride("separation", 5);
-        var gaugeText = MakeLabel($"스킬원  {ActiveGaugeText(u.State.SharedActiveGauge)}", 10, Parchment);
+        var gaugeText = MakeLabel($"공용 스킬원  {ActiveGaugeText(u.State.SharedActiveGauge)}", 10, Parchment);
         gaugeText.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
         skillState.AddChild(gaugeText);
         var nextText = u.State.ScheduledActive is { } scheduled
@@ -18482,11 +18482,17 @@ public sealed partial class CampaignMapScene : Node3D
         };
         ShowUnitInfo(sample.Id.Value);
         await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
-        var requiredLabels = new[] { "병력", "부상병", "훈련", "모드", "목표", "군량", "공용 스킬원" };
+        var requiredLabels = new[] { "병력", "부상병", "훈련", "모드", "목표", "군량" };
         var visibleLabels = _infoRows.FindChildren("*", "Label", true, false).OfType<Label>().ToList();
-        var restoredFields = requiredLabels.All(required => visibleLabels.Any(label => label.Text == required));
-        var unitPanelMode = !_infoArtwork.Visible
-            && _infoCard.CustomMinimumSize == new Vector2(320f, 620f)
+        var restoredFields = requiredLabels.All(required => visibleLabels.Any(label => label.Text == required))
+            && visibleLabels.Any(label => label.Text.StartsWith("공용 스킬원", System.StringComparison.Ordinal))
+            && visibleLabels.Any(label => label.Text.StartsWith("다음", System.StringComparison.Ordinal));
+        var fixedLayout = _infoRows.FindChild("UnitInfoFixedLayout", true, false) as Control;
+        var unitPanelMode = !_infoArtwork.Visible && _unitInfoArtwork.Visible
+            && _unitInfoArtwork.Texture is not null
+            && _infoCard.CustomMinimumSize == new Vector2(320f, 480f)
+            && _infoScroll.VerticalScrollMode == ScrollContainer.ScrollMode.Disabled
+            && fixedLayout?.GetMeta("uses_artwork_sections").AsBool() == true
             && _infoActions.GetChildCount() == 0;
         var visual = _infoRows.FindChild("UnitCommanderVisual", true, false) as PanelContainer;
         var vanguardPortrait = _infoRows.FindChild("UnitVanguardPortrait", true, false) as TextureRect;
@@ -18497,10 +18503,10 @@ public sealed partial class CampaignMapScene : Node3D
         var adjutantRoleCard = _infoRows.FindChild("UnitAdjutantRoleCard", true, false) as PanelContainer;
         var vanguardLink = _infoRows.FindChild("UnitVanguardGeneralLink", true, false) as Button;
         var adjutantLink = _infoRows.FindChild("UnitAdjutantGeneralLink", true, false) as Button;
-        var activeSkillMargin = _infoRows.FindChild("UnitActiveSkillsTopMargin", true, false) as MarginContainer;
+        var activeSkillMargin = _infoRows.FindChild("UnitActiveSkillsTopMargin", true, false) as HBoxContainer;
         var layoutOk = visual?.GetMeta("commander_replaces_unit_art").AsBool() == true
-            && visual.CustomMinimumSize.Y >= 210f
-            && visual.GetMeta("portrait_display_height").AsInt32() == 210
+            && visual.GetMeta("artwork_layout").AsBool() == true
+            && visual.GetMeta("portrait_display_height").AsInt32() == 135
             && vanguardPortrait?.Texture is not null
             && vanguardPortrait.StretchMode == TextureRect.StretchModeEnum.KeepAspectCentered
             && vanguardPortrait.GetMeta("portrait_fit_without_crop").AsBool()
@@ -18512,14 +18518,28 @@ public sealed partial class CampaignMapScene : Node3D
             && roleCards?.GetMeta("role_card_layout").AsString() == "side_by_side"
             && vanguardRoleCard?.GetMeta("general_role").AsString() == "선봉"
             && adjutantRoleCard?.GetMeta("general_role").AsString() == "부관"
-            && vanguardRoleCard.CustomMinimumSize.Y <= 46f
-            && adjutantRoleCard.CustomMinimumSize.Y <= 46f
+            && vanguardRoleCard.CustomMinimumSize.Y == 34f
+            && adjutantRoleCard.CustomMinimumSize.Y == 34f
             && vanguardRoleCard.GetMeta("vertical_content_alignment").AsString() == "center"
             && adjutantRoleCard.GetMeta("vertical_content_alignment").AsString() == "center"
             && vanguardLink?.GetMeta("hover_underline").AsBool() == true
             && adjutantLink?.GetMeta("hover_underline").AsBool() == true
-            && activeSkillMargin?.GetMeta("active_skill_top_margin").AsInt32() == 10
-            && activeSkillMargin.GetThemeConstant("margin_top") == 10;
+            && activeSkillMargin?.GetMeta("active_skill_top_margin").AsInt32() == 4;
+
+        var shotArgument = OS.GetCmdlineUserArgs()
+            .FirstOrDefault(argument => argument.StartsWith("--unitinfoshot=", StringComparison.Ordinal));
+        var shotSaved = true;
+        if (shotArgument is not null)
+        {
+            await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+            RenderingServer.ForceDraw();
+            var tag = shotArgument["--unitinfoshot=".Length..];
+            var projectDirectory = new System.IO.DirectoryInfo(ProjectSettings.GlobalizePath("res://"));
+            var outputPath = System.IO.Path.Combine(projectDirectory.Parent?.FullName ?? projectDirectory.FullName,
+                $"shot_unit_info_{tag}.png");
+            shotSaved = GetViewport().GetTexture().GetImage().SavePng(outputPath) == Error.Ok;
+            GD.Print($"[unit-info-ui-shot] saved={shotSaved} path={outputPath}");
+        }
 
         vanguardLink?.EmitSignal(BaseButton.SignalName.Pressed);
         await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
@@ -18559,7 +18579,8 @@ public sealed partial class CampaignMapScene : Node3D
         var singleGeneralLayout = _infoRows.FindChild("UnitVanguardGeneralLink", true, false) is Button
             && _infoRows.FindChild("UnitAdjutantGeneralLink", true, false) is null
             && _infoRows.FindChild("UnitAdjutantPortrait", true, false) is null
-            && _infoCard.CustomMinimumSize == new Vector2(320f, 620f)
+            && _infoCard.CustomMinimumSize == new Vector2(320f, 480f)
+            && _unitInfoArtwork.Visible
             && _infoActions.GetChildCount() == 0;
 
         SelectCity(city.Id);
@@ -18579,18 +18600,18 @@ public sealed partial class CampaignMapScene : Node3D
         _state = _state with { FieldArmies = _state.Armies.Select(unit => unit.Id == sample.Id
             ? unit with { IsArmyGroup = true, TroopCode = "army_group" } : unit).ToList() };
         ShowUnitInfo(sample.Id.Value);
-        var groupNameTranslated = _infoRows.GetChildren().OfType<Label>()
+        var groupNameTranslated = _infoRows.FindChildren("*", "Label", true, false).OfType<Label>()
             .Any(label => label.Text.StartsWith("집단군 ·", System.StringComparison.Ordinal));
         _state = _state with { FieldArmies = _state.Armies.Select(unit => unit.Id == sample.Id
             ? unit with { IsArmyGroup = false, TroopCode = "transport" } : unit).ToList() };
         ShowUnitInfo(sample.Id.Value);
-        var transportNameTranslated = _infoRows.GetChildren().OfType<Label>()
+        var transportNameTranslated = _infoRows.FindChildren("*", "Label", true, false).OfType<Label>()
             .Any(label => label.Text.StartsWith("수송부대 ·", System.StringComparison.Ordinal));
         var passed = layoutOk && restoredFields && unitPanelMode
             && detailOpened && adjutantDetailOpened && aptitudeImagesInsideBorder && regionTranslated
-            && restoredAfterDismiss && singleGeneralLayout && cityPanelRestored && commandsPreserved
+            && restoredAfterDismiss && singleGeneralLayout && cityPanelRestored && commandsPreserved && shotSaved
             && groupNameTranslated && transportNameTranslated;
-        GD.Print($"[unit-info-ui-qa] passed={passed} layout={layoutOk} fields={restoredFields} unitPanel={unitPanelMode} vanguardDetail={detailOpened} adjutantDetail={adjutantDetailOpened} aptitudeInsets={aptitudeImagesInsideBorder}:{aptitudeFrames.Count} regionKo={regionTranslated}:{expectedRegion} restored={restoredAfterDismiss} single={singleGeneralLayout} cityRestore={cityPanelRestored} commands={commandsPreserved} armyGroupKo={groupNameTranslated} badge={troopBadge is not null} adjutant={adjutantPortrait is not null} roleCards={roleCardCount}");
+        GD.Print($"[unit-info-ui-qa] passed={passed} layout={layoutOk} fields={restoredFields} unitPanel={unitPanelMode} vanguardDetail={detailOpened} adjutantDetail={adjutantDetailOpened} aptitudeInsets={aptitudeImagesInsideBorder}:{aptitudeFrames.Count} regionKo={regionTranslated}:{expectedRegion} restored={restoredAfterDismiss} single={singleGeneralLayout} cityRestore={cityPanelRestored} commands={commandsPreserved} screenshot={shotSaved} armyGroupKo={groupNameTranslated} badge={troopBadge is not null} adjutant={adjutantPortrait is not null} roleCards={roleCardCount}");
         _state = original;
         _infoCard.Visible = false;
         if (passed) GetParent().CallDeferred("RequestGracefulShutdown");
