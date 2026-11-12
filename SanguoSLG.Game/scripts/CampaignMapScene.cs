@@ -5793,10 +5793,23 @@ public sealed partial class CampaignMapScene : Node3D
         var paletteComposition = new Control
         {
             Name = "CityCommandPaletteComposition",
-            CustomMinimumSize = new Vector2(230, 518),
+            // 10 x 42px buttons + 9 x 6px gaps + balanced frame insets.
+            CustomMinimumSize = new Vector2(230, 510),
             MouseFilter = Control.MouseFilterEnum.Pass,
         };
         _cmdMenu.AddChild(paletteComposition);
+        var paletteWood = new ColorRect
+        {
+            Name = "CityCommandPaletteWoodBackground",
+            Color = new Color("24150f", 0.94f),
+            MouseFilter = Control.MouseFilterEnum.Ignore,
+        };
+        paletteWood.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
+        paletteWood.OffsetLeft = 10;
+        paletteWood.OffsetTop = 12;
+        paletteWood.OffsetRight = -10;
+        paletteWood.OffsetBottom = -12;
+        paletteComposition.AddChild(paletteWood);
         var paletteArtwork = new TextureRect
         {
             Name = "CityCommandPaletteArtwork",
@@ -5810,12 +5823,12 @@ public sealed partial class CampaignMapScene : Node3D
         var paletteMargin = new MarginContainer { Name = "CityCommandPaletteMargin" };
         paletteMargin.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
         paletteMargin.AddThemeConstantOverride("margin_left", 12);
-        paletteMargin.AddThemeConstantOverride("margin_top", 25);
+        paletteMargin.AddThemeConstantOverride("margin_top", 18);
         paletteMargin.AddThemeConstantOverride("margin_right", 12);
-        paletteMargin.AddThemeConstantOverride("margin_bottom", 25);
+        paletteMargin.AddThemeConstantOverride("margin_bottom", 18);
         paletteComposition.AddChild(paletteMargin);
         _cmdList = new VBoxContainer { SizeFlagsVertical = Control.SizeFlags.ExpandFill };
-        _cmdList.AddThemeConstantOverride("separation", 1);
+        _cmdList.AddThemeConstantOverride("separation", 6);
         paletteMargin.AddChild(_cmdList);
         _cmdGroupButtons.Clear();
         // 팔레트에는 그룹 버튼만 둔다. 단일 명령인 계략은 중간 플라이아웃 없이 모달을 바로 연다.
@@ -7264,7 +7277,7 @@ public sealed partial class CampaignMapScene : Node3D
         var menusCompact = Cmds.All(command => !command.Label.Contains(' '));
         var mainButtons = _cmdList.GetChildren().OfType<Button>().ToList();
         var mainSizing = mainButtons.All(button => Mathf.IsEqualApprox(button.CustomMinimumSize.Y, 42f))
-            && _cmdList.GetThemeConstant("separation") == 1;
+            && _cmdList.GetThemeConstant("separation") == 6;
         var accentMeaning = mainButtons.Where(button => button.Name.ToString() is not "CityCommandDeploy" and not "CityCommandProduction")
                 .All(button => !button.GetMeta("command_accent").AsBool())
             && mainButtons.Where(button => button.Name.ToString() is "CityCommandDeploy" or "CityCommandProduction")
