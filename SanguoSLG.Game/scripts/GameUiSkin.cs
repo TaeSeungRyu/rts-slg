@@ -131,6 +131,14 @@ internal static class GameUiSkin
         return null;
     }
 
+    internal static Texture2D? CommandTexture(string fileName)
+    {
+        var path = $"{Root}/commands/{fileName}";
+        if (TryLoad(path, out var texture)) return texture;
+        WarnMissing($"command:{fileName}", path);
+        return null;
+    }
+
     internal static StyleBox QuickListPanel()
     {
         var path = $"{Root}/lists/list_body.png";
