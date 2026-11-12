@@ -5787,27 +5787,48 @@ public sealed partial class CampaignMapScene : Node3D
 
         // 명령 팔레트: 클릭한 성 우측에 뜨는 아주 작은 떠있는 패널(텍스트 전용, 위치는 SelectCity).
         _cmdMenu = new PanelContainer { Name = "CityCommandMenu", Visible = false, ZIndex = 50 };
-        _cmdMenu.AddThemeStyleboxOverride("panel", GameUiSkin.FlatBox(
-            new Color("160d0b", 0.96f), GameUiSkin.Gold, 2, 8, 7));
+        _cmdMenu.AddThemeStyleboxOverride("panel", new StyleBoxEmpty());
         layer.AddChild(_cmdMenu);
-        var menu = new VBoxContainer();
-        menu.AddThemeConstantOverride("separation", 5);
-        _cmdMenu.AddChild(menu);
-        _cmdList = new VBoxContainer();
-        _cmdList.AddThemeConstantOverride("separation", 5);
-        menu.AddChild(_cmdList);
+        var paletteComposition = new Control
+        {
+            Name = "CityCommandPaletteComposition",
+            CustomMinimumSize = new Vector2(230, 518),
+            MouseFilter = Control.MouseFilterEnum.Pass,
+        };
+        _cmdMenu.AddChild(paletteComposition);
+        var paletteArtwork = new TextureRect
+        {
+            Name = "CityCommandPaletteArtwork",
+            Texture = GameUiSkin.CommandTexture("main-frame.png"),
+            ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
+            StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
+            MouseFilter = Control.MouseFilterEnum.Ignore,
+        };
+        paletteArtwork.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
+        paletteComposition.AddChild(paletteArtwork);
+        var paletteMargin = new MarginContainer { Name = "CityCommandPaletteMargin" };
+        paletteMargin.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
+        paletteMargin.AddThemeConstantOverride("margin_left", 12);
+        paletteMargin.AddThemeConstantOverride("margin_top", 25);
+        paletteMargin.AddThemeConstantOverride("margin_right", 12);
+        paletteMargin.AddThemeConstantOverride("margin_bottom", 25);
+        paletteComposition.AddChild(paletteMargin);
+        _cmdList = new VBoxContainer { SizeFlagsVertical = Control.SizeFlags.ExpandFill };
+        _cmdList.AddThemeConstantOverride("separation", 1);
+        paletteMargin.AddChild(_cmdList);
         _cmdGroupButtons.Clear();
         // 팔레트에는 그룹 버튼만 둔다. 단일 명령인 계략은 중간 플라이아웃 없이 모달을 바로 연다.
         for (var gi = 0; gi < CmdGroups.Length; gi++)
         {
             var groupIdx = gi;
-            var gbtn = MakeButton(CmdGroups[gi].Group);
+            var gbtn = new CommandPaletteButton { Text = CmdGroups[gi].Group };
             gbtn.Name = $"CityCommandGroup{groupIdx}";
             gbtn.ToggleMode = true;
-            gbtn.AddThemeFontSizeOverride("font_size", 13);
+            gbtn.AddThemeFontSizeOverride("font_size", 15);
             gbtn.Alignment = HorizontalAlignment.Center;
-            gbtn.CustomMinimumSize = new Vector2(96, 32);
-            GameUiSkin.ApplyCommandButton(gbtn);
+            gbtn.CustomMinimumSize = new Vector2(206, 42);
+            if (!GameUiSkin.ApplyMainCommandArtwork(gbtn, CmdGroups[gi].Group))
+                GameUiSkin.ApplyCommandButton(gbtn);
             gbtn.Pressed += () =>
             {
                 var commands = CmdGroups[groupIdx].Indices;
@@ -5825,23 +5846,25 @@ public sealed partial class CampaignMapScene : Node3D
             _cmdList.AddChild(gbtn);
         }
 
-        var deployBtn = MakeButton("출전", accent: true);
+        var deployBtn = new CommandPaletteButton { Text = "출전" };
         deployBtn.Name = "CityCommandDeploy";
         deployBtn.ToggleMode = true;
-        deployBtn.AddThemeFontSizeOverride("font_size", 13);
+        deployBtn.AddThemeFontSizeOverride("font_size", 15);
         deployBtn.Alignment = HorizontalAlignment.Center;
-        deployBtn.CustomMinimumSize = new Vector2(96, 32);
-        GameUiSkin.ApplyCommandButton(deployBtn, accent: true);
+        deployBtn.CustomMinimumSize = new Vector2(206, 42);
+        if (!GameUiSkin.ApplyMainCommandArtwork(deployBtn, "출전", accent: true))
+            GameUiSkin.ApplyCommandButton(deployBtn, accent: true);
         deployBtn.Pressed += ToggleDeployGroup;
         _deployCommandButton = deployBtn;
         _cmdList.AddChild(deployBtn);
 
-        var productionBtn = MakeButton("생산", accent: true);
+        var productionBtn = new CommandPaletteButton { Text = "생산" };
         productionBtn.Name = "CityCommandProduction";
-        productionBtn.AddThemeFontSizeOverride("font_size", 13);
+        productionBtn.AddThemeFontSizeOverride("font_size", 15);
         productionBtn.Alignment = HorizontalAlignment.Center;
-        productionBtn.CustomMinimumSize = new Vector2(96, 32);
-        GameUiSkin.ApplyCommandButton(productionBtn, accent: true);
+        productionBtn.CustomMinimumSize = new Vector2(206, 42);
+        if (!GameUiSkin.ApplyMainCommandArtwork(productionBtn, "생산", accent: true))
+            GameUiSkin.ApplyCommandButton(productionBtn, accent: true);
         productionBtn.Pressed += () => { CloseGroupMenu(); if (_selected is { } c) { OpenProductionModal(c); } };
         _productionCommandButton = productionBtn;
         _cmdList.AddChild(productionBtn);
@@ -7198,8 +7221,8 @@ public sealed partial class CampaignMapScene : Node3D
         _selected = city.Id;
         var menusCompact = Cmds.All(command => !command.Label.Contains(' '));
         var mainButtons = _cmdList.GetChildren().OfType<Button>().ToList();
-        var mainSizing = mainButtons.All(button => Mathf.IsEqualApprox(button.CustomMinimumSize.Y, 32f))
-            && _cmdList.GetThemeConstant("separation") == 5;
+        var mainSizing = mainButtons.All(button => Mathf.IsEqualApprox(button.CustomMinimumSize.Y, 42f))
+            && _cmdList.GetThemeConstant("separation") == 1;
         var accentMeaning = mainButtons.Where(button => button.Name.ToString() is not "CityCommandDeploy" and not "CityCommandProduction")
                 .All(button => !button.GetMeta("command_accent").AsBool())
             && mainButtons.Where(button => button.Name.ToString() is "CityCommandDeploy" or "CityCommandProduction")

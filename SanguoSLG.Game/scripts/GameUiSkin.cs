@@ -139,6 +139,16 @@ internal static class GameUiSkin
         return null;
     }
 
+    internal static bool ApplyMainCommandArtwork(CommandPaletteButton button, string menuName, bool accent = false)
+    {
+        button.SetMeta("command_accent", accent);
+        var normal = CommandTexture($"{menuName}normal.png");
+        var active = CommandTexture($"{menuName}active.png");
+        if (normal is null || active is null) return false;
+        button.Configure(normal, active);
+        return true;
+    }
+
     internal static StyleBox QuickListPanel()
     {
         var path = $"{Root}/lists/list_body.png";
