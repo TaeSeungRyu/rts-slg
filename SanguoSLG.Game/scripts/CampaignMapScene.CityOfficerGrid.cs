@@ -100,7 +100,8 @@ public sealed partial class CampaignMapScene
         await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
         var city = _state.Cities.First(candidate => candidate.Owner == Player && !candidate.IsPort);
         SelectCity(city.Id);
-        ToggleGroup(0);
+        // Four entries exercise the dynamic three-part submenu at its common tall size.
+        ToggleGroup(1);
         await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
         await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
         await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
