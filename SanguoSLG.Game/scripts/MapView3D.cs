@@ -14,6 +14,9 @@ public partial class MapView3D : Node3D
     private readonly Dictionary<TerrainType, PackedScene> _tiles = new();
     private readonly Dictionary<TerrainType, PackedScene[]> _terrainVariants = new();
     private readonly Dictionary<HexCoord, int> _presetTerrainVariants = new();
+    private readonly Dictionary<(ulong SourceId, TerrainType Terrain), StandardMaterial3D> _paletteMaterials = new();
+    private static bool DisablePaletteMaterialCache
+        => OS.GetCmdlineUserArgs().Contains("--maploaddisablematerialcache");
     private PackedScene _water = null!;
     private PackedScene _riverRocky = null!;
     private PackedScene _farmBroken = null!;
@@ -311,10 +314,11 @@ public partial class MapView3D : Node3D
     // 원본 저채도 로우폴리 재질의 질감은 유지하고, 지형군별 색조만 곱해
     // 평야·숲·산·물을 멀리서도 구분되게 한다. 각 인스턴스의 재질을 복제하므로
     // 같은 GLB를 공유하는 성·부대나 다른 타일의 재질에는 영향을 주지 않는다.
-    private static void ApplyTerrainPalette(Node3D visual, TerrainType terrain)
+    private void ApplyTerrainPalette(Node3D visual, TerrainType terrain)
     {
         var started = WorldMapLoadMetrics.Timestamp();
         var surfaces = 0;
+        var created = 0;
         var tint = terrain switch
         {
             TerrainType.Plains => new Color(0.72f, 0.88f, 0.58f),
@@ -336,16 +340,22 @@ public partial class MapView3D : Node3D
             for (var surface = 0; surface < mesh.Mesh.GetSurfaceCount(); surface++)
             {
                 if (mesh.GetActiveMaterial(surface) is not StandardMaterial3D source) continue;
-                var material = (StandardMaterial3D)source.Duplicate();
-                var color = material.AlbedoColor;
-                material.AlbedoColor = new Color(color.R * tint.R, color.G * tint.G,
-                    color.B * tint.B, color.A);
-                material.Roughness = Mathf.Max(material.Roughness, 0.82f);
+                var key = (source.GetInstanceId(), terrain);
+                if (DisablePaletteMaterialCache || !_paletteMaterials.TryGetValue(key, out var material))
+                {
+                    material = (StandardMaterial3D)source.Duplicate();
+                    var color = material.AlbedoColor;
+                    material.AlbedoColor = new Color(color.R * tint.R, color.G * tint.G,
+                        color.B * tint.B, color.A);
+                    material.Roughness = Mathf.Max(material.Roughness, 0.82f);
+                    if (!DisablePaletteMaterialCache) _paletteMaterials[key] = material;
+                    created++;
+                }
                 mesh.SetSurfaceOverrideMaterial(surface, material);
                 surfaces++;
             }
         }
-        WorldMapLoadMetrics.RecordMaterialPreparation(started, surfaces);
+        WorldMapLoadMetrics.RecordMaterialPreparation(started, surfaces, created);
     }
 
     /// <summary>다중 타일 지물(중간산·큰산)을 발자국 중심점에 배치하고, 산 위에 구름을 흘려보낸다.</summary>

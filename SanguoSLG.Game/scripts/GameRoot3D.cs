@@ -563,6 +563,12 @@ public partial class GameRoot3D : Node3D
         await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
         await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
         WorldMapLoadMetrics.RecordFirstFrames(firstFramesStarted);
+        WorldMapLoadMetrics.MarkLoadReady();
+        const int sampleFrames = 120;
+        var frameSampleStarted = WorldMapLoadMetrics.Timestamp();
+        for (var frame = 0; frame < sampleFrames; frame++)
+            await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        WorldMapLoadMetrics.RecordFrameSample(frameSampleStarted, sampleFrames);
         WorldMapLoadMetrics.Print();
         GetTree().Quit();
     }

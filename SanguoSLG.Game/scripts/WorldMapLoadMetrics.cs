@@ -15,7 +15,11 @@ internal static class WorldMapLoadMetrics
     public static double ImportedMeshTuningMs { get; private set; }
     public static double WorldNodeBuildMs { get; private set; }
     public static double FirstFramesMs { get; private set; }
+    public static double LoadReadyMs { get; private set; }
+    public static double FrameSampleMs { get; private set; }
+    public static int FrameSampleCount { get; private set; }
     public static int MaterialSurfaceCount { get; private set; }
+    public static int MaterialCreatedCount { get; private set; }
     public static int ForestTileCount { get; private set; }
     public static int MountainTileCount { get; private set; }
     public static int FeatureMountainCount { get; private set; }
@@ -25,8 +29,9 @@ internal static class WorldMapLoadMetrics
         Enabled = enabled;
         if (!enabled) return;
         DataPreparationMs = TerrainBuildMs = MaterialPreparationMs = ImportedMeshTuningMs = 0d;
-        WorldNodeBuildMs = FirstFramesMs = 0d;
-        MaterialSurfaceCount = ForestTileCount = MountainTileCount = FeatureMountainCount = 0;
+        WorldNodeBuildMs = FirstFramesMs = LoadReadyMs = FrameSampleMs = 0d;
+        FrameSampleCount = 0;
+        MaterialSurfaceCount = MaterialCreatedCount = ForestTileCount = MountainTileCount = FeatureMountainCount = 0;
         Total.Restart();
     }
 
@@ -39,12 +44,20 @@ internal static class WorldMapLoadMetrics
     public static void RecordImportedMeshTuning(long start) => ImportedMeshTuningMs += ElapsedMilliseconds(start);
     public static void RecordWorldNodeBuild(long start) => WorldNodeBuildMs += ElapsedMilliseconds(start);
     public static void RecordFirstFrames(long start) => FirstFramesMs += ElapsedMilliseconds(start);
+    public static void MarkLoadReady() => LoadReadyMs = Total.Elapsed.TotalMilliseconds;
 
-    public static void RecordMaterialPreparation(long start, int surfaces)
+    public static void RecordFrameSample(long start, int frames)
+    {
+        FrameSampleMs = ElapsedMilliseconds(start);
+        FrameSampleCount = frames;
+    }
+
+    public static void RecordMaterialPreparation(long start, int surfaces, int created)
     {
         if (!Enabled) return;
         MaterialPreparationMs += ElapsedMilliseconds(start);
         MaterialSurfaceCount += surfaces;
+        MaterialCreatedCount += created;
     }
 
     public static void RecordTerrain(TerrainType terrain)
@@ -63,11 +76,14 @@ internal static class WorldMapLoadMetrics
     {
         if (!Enabled) return;
         Total.Stop();
-        GD.Print($"[map-load-profile] total_ms={Total.Elapsed.TotalMilliseconds:F2} "
+        var fps = FrameSampleMs > 0d ? FrameSampleCount * 1000d / FrameSampleMs : 0d;
+        GD.Print($"[map-load-profile] total_ms={LoadReadyMs:F2} "
             + $"data_ms={DataPreparationMs:F2} terrain_mesh_ms={TerrainBuildMs:F2} "
             + $"material_ms={MaterialPreparationMs:F2} tune_ms={ImportedMeshTuningMs:F2} "
             + $"world_nodes_ms={WorldNodeBuildMs:F2} first_frames_ms={FirstFramesMs:F2} "
-            + $"material_surfaces={MaterialSurfaceCount} forest_tiles={ForestTileCount} "
+            + $"sample_frames={FrameSampleCount} sample_ms={FrameSampleMs:F2} fps={fps:F2} "
+            + $"material_surfaces={MaterialSurfaceCount} material_created={MaterialCreatedCount} "
+            + $"forest_tiles={ForestTileCount} "
             + $"mountain_tiles={MountainTileCount} feature_mountains={FeatureMountainCount}");
     }
 }
