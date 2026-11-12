@@ -149,6 +149,34 @@ internal static class GameUiSkin
         return true;
     }
 
+    internal static bool ApplySubCommandArtwork(CommandPaletteButton button)
+    {
+        var normal = CommandTexture("서브normal.png");
+        var active = CommandTexture("서브active.png");
+        var disabled = CommandTexture("서브disabled.png");
+        if (normal is null || active is null || disabled is null) return false;
+        button.Configure(normal, active, disabled, 0.08f, 0.08f);
+        return true;
+    }
+
+    internal static StyleBoxTexture? CommandFrameBox(string fileName, int horizontalMargin, int verticalMargin)
+    {
+        var texture = CommandTexture(fileName);
+        if (texture is null) return null;
+        return new StyleBoxTexture
+        {
+            Texture = texture,
+            TextureMarginLeft = horizontalMargin,
+            TextureMarginRight = horizontalMargin,
+            TextureMarginTop = verticalMargin,
+            TextureMarginBottom = verticalMargin,
+            ContentMarginLeft = 0,
+            ContentMarginRight = 0,
+            ContentMarginTop = 0,
+            ContentMarginBottom = 0,
+        };
+    }
+
     internal static StyleBox QuickListPanel()
     {
         var path = $"{Root}/lists/list_body.png";

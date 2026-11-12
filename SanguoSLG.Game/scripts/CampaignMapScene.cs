@@ -231,6 +231,7 @@ public sealed partial class CampaignMapScene : Node3D
     private PanelContainer _cmdMenu = null!;
     private PanelContainer _cmdSubMenu = null!; // 그룹 클릭 시 팔레트 옆에 뜨는 명령 플라이아웃
     private VBoxContainer _cmdSubList = null!;
+    private Label _cmdSubTitle = null!;
     private int _openGroup = -1;
     private VBoxContainer _cmdList = null!;
     private readonly List<Button> _cmdGroupButtons = [];
@@ -5869,14 +5870,55 @@ public sealed partial class CampaignMapScene : Node3D
         _productionCommandButton = productionBtn;
         _cmdList.AddChild(productionBtn);
 
-        // 그룹 플라이아웃(팔레트 우측에 붙는 작은 패널).
+        // 그룹 플라이아웃: 상단/가변 중앙/하단의 원본 장식을 독립 레이어로 조합한다.
         _cmdSubMenu = new PanelContainer { Visible = false, ZIndex = 51 };
-        _cmdSubMenu.AddThemeStyleboxOverride("panel", GameUiSkin.FlatBox(
-            new Color("160d0b", 0.97f), GameUiSkin.Gold, 2, 7, 7));
+        _cmdSubMenu.AddThemeStyleboxOverride("panel", new StyleBoxEmpty());
         layer.AddChild(_cmdSubMenu);
+        var subFrame = new VBoxContainer { CustomMinimumSize = new Vector2(188, 0) };
+        subFrame.AddThemeConstantOverride("separation", 0);
+        _cmdSubMenu.AddChild(subFrame);
+        var subTitle = new TextureRect
+        {
+            Texture = GameUiSkin.CommandTexture("서브프레임title.png"),
+            ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
+            StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
+            CustomMinimumSize = new Vector2(188, 40),
+            MouseFilter = Control.MouseFilterEnum.Ignore,
+        };
+        _cmdSubTitle = new Label
+        {
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center,
+            MouseFilter = Control.MouseFilterEnum.Ignore,
+        };
+        _cmdSubTitle.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
+        _cmdSubTitle.AddThemeFontSizeOverride("font_size", 14);
+        _cmdSubTitle.AddThemeColorOverride("font_color", GoldBright);
+        subTitle.AddChild(_cmdSubTitle);
+        subFrame.AddChild(subTitle);
+        var subMiddle = new PanelContainer();
+        var subMiddleStyle = (StyleBox?)GameUiSkin.CommandFrameBox("서브프레임middle.png", 14, 14)
+            ?? new StyleBoxEmpty();
+        subMiddle.AddThemeStyleboxOverride("panel", subMiddleStyle);
+        subFrame.AddChild(subMiddle);
+        var subMargin = new MarginContainer();
+        subMargin.AddThemeConstantOverride("margin_left", 8);
+        subMargin.AddThemeConstantOverride("margin_right", 8);
+        subMargin.AddThemeConstantOverride("margin_top", 5);
+        subMargin.AddThemeConstantOverride("margin_bottom", 5);
+        subMiddle.AddChild(subMargin);
         _cmdSubList = new VBoxContainer();
-        _cmdSubList.AddThemeConstantOverride("separation", 5);
-        _cmdSubMenu.AddChild(_cmdSubList);
+        _cmdSubList.AddThemeConstantOverride("separation", 1);
+        subMargin.AddChild(_cmdSubList);
+        var subTail = new TextureRect
+        {
+            Texture = GameUiSkin.CommandTexture("서브프레임tail.png"),
+            ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
+            StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
+            CustomMinimumSize = new Vector2(188, 37),
+            MouseFilter = Control.MouseFilterEnum.Ignore,
+        };
+        subFrame.AddChild(subTail);
 
         BuildUnitMenu(layer);
         BuildTerrainCard(layer);
@@ -7232,8 +7274,8 @@ public sealed partial class CampaignMapScene : Node3D
             && _cmdGroupButtons.Where((_, index) => index != 1).All(button => !button.ButtonPressed)
             && !_deployCommandButton.ButtonPressed;
         var submenuSizing = _cmdSubList.GetChildren().OfType<Button>()
-            .All(button => Mathf.IsEqualApprox(button.CustomMinimumSize.Y, 32f))
-            && _cmdSubList.GetThemeConstant("separation") == 5;
+            .All(button => Mathf.IsEqualApprox(button.CustomMinimumSize.Y, 38f))
+            && _cmdSubList.GetThemeConstant("separation") == 1;
         CloseGroupMenu();
         var titlesCompact = true;
         foreach (var param in new[] { "wall", "stratagem", "war_city" })
@@ -7257,15 +7299,15 @@ public sealed partial class CampaignMapScene : Node3D
         _openGroup = groupIdx;
         RefreshCommandGroupSelection();
         Clear(_cmdSubList);
-        _cmdSubList.AddChild(MakeLabel($"· {CmdGroups[groupIdx].Group}", 10, GoldBright));
+        _cmdSubTitle.Text = CmdGroups[groupIdx].Group;
         foreach (var i in CmdGroups[groupIdx].Indices)
         {
             var idx = i;
-            var btn = MakeButton(Cmds[i].Label);
-            btn.AddThemeFontSizeOverride("font_size", 11);
+            var btn = new CommandPaletteButton { Text = Cmds[i].Label };
+            btn.AddThemeFontSizeOverride("font_size", 13);
             btn.Alignment = HorizontalAlignment.Center;
-            btn.CustomMinimumSize = new Vector2(108, 32);
-            GameUiSkin.ApplyCommandButton(btn);
+            btn.CustomMinimumSize = new Vector2(172, 38);
+            if (!GameUiSkin.ApplySubCommandArtwork(btn)) GameUiSkin.ApplyCommandButton(btn);
 
             // 모병·징병은 같은 종류가 이 성에서 진행 중이면 중복 발행 금지(2026-08-23).
             var busy = (Cmds[i].Kind is CommandKind.Recruit or CommandKind.Conscript
@@ -7319,11 +7361,11 @@ public sealed partial class CampaignMapScene : Node3D
         if (CmdGroups[groupIdx].Group == "항구")
         {
             var isPort = _selected is { } sel && _state.Cities.FirstOrDefault(c => c.Id == sel) is { IsPort: true };
-            var navalBtn = MakeButton(isPort ? "출항" : "출항 (항구 필요)");
-            navalBtn.AddThemeFontSizeOverride("font_size", 11);
+            var navalBtn = new CommandPaletteButton { Text = isPort ? "출항" : "출항 (항구 필요)" };
+            navalBtn.AddThemeFontSizeOverride("font_size", 13);
             navalBtn.Alignment = HorizontalAlignment.Center;
-            navalBtn.CustomMinimumSize = new Vector2(108, 32);
-            GameUiSkin.ApplyCommandButton(navalBtn, accent: true);
+            navalBtn.CustomMinimumSize = new Vector2(172, 38);
+            if (!GameUiSkin.ApplySubCommandArtwork(navalBtn)) GameUiSkin.ApplyCommandButton(navalBtn, accent: true);
             navalBtn.Disabled = !isPort;
             navalBtn.Pressed += () => { CloseGroupMenu(); if (_selected is { } c) { OpenNavalHub(c); } };
             _cmdSubList.AddChild(navalBtn);
@@ -7333,11 +7375,11 @@ public sealed partial class CampaignMapScene : Node3D
         {
             foreach (var (label, martial) in new[] { ("무관모집", true), ("문관모집", false) })
             {
-                var recruitButton = MakeButton(label);
-                recruitButton.AddThemeFontSizeOverride("font_size", 11);
+                var recruitButton = new CommandPaletteButton { Text = label };
+                recruitButton.AddThemeFontSizeOverride("font_size", 13);
                 recruitButton.Alignment = HorizontalAlignment.Center;
-                recruitButton.CustomMinimumSize = new Vector2(108, 32);
-                GameUiSkin.ApplyCommandButton(recruitButton);
+                recruitButton.CustomMinimumSize = new Vector2(172, 38);
+                if (!GameUiSkin.ApplySubCommandArtwork(recruitButton)) GameUiSkin.ApplyCommandButton(recruitButton);
                 recruitButton.Pressed += () =>
                 {
                     CloseGroupMenu();
@@ -7382,15 +7424,15 @@ public sealed partial class CampaignMapScene : Node3D
         _openGroup = DeployGroupMarker;
         RefreshCommandGroupSelection();
         Clear(_cmdSubList);
-        _cmdSubList.AddChild(MakeLabel("· 출전", 10, GoldBright));
+        _cmdSubTitle.Text = "출전";
 
         void Add(string label, System.Action action)
         {
-            var btn = MakeButton(label);
-            btn.AddThemeFontSizeOverride("font_size", 11);
+            var btn = new CommandPaletteButton { Text = label };
+            btn.AddThemeFontSizeOverride("font_size", 13);
             btn.Alignment = HorizontalAlignment.Center;
-            btn.CustomMinimumSize = new Vector2(108, 32);
-            GameUiSkin.ApplyCommandButton(btn);
+            btn.CustomMinimumSize = new Vector2(172, 38);
+            if (!GameUiSkin.ApplySubCommandArtwork(btn)) GameUiSkin.ApplyCommandButton(btn);
             btn.Pressed += () =>
             {
                 CloseGroupMenu();
