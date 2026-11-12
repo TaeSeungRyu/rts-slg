@@ -145,7 +145,7 @@ internal static class GameUiSkin
         var normal = CommandTexture($"{menuName}normal.png");
         var active = CommandTexture($"{menuName}active.png");
         if (normal is null || active is null) return false;
-        button.Configure(normal, active);
+        button.Configure(normal, active, fitArtworkWidth: true);
         return true;
     }
 

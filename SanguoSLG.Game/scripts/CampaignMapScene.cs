@@ -5794,8 +5794,8 @@ public sealed partial class CampaignMapScene : Node3D
         var paletteComposition = new Control
         {
             Name = "CityCommandPaletteComposition",
-            // 10 x 42px buttons + 9 x 6px gaps + balanced frame insets.
-            CustomMinimumSize = new Vector2(230, 510),
+            // Original artwork split: fixed top/bottom ornaments and a stretchable rail section.
+            CustomMinimumSize = new Vector2(230, 668),
             MouseFilter = Control.MouseFilterEnum.Pass,
         };
         _cmdMenu.AddChild(paletteComposition);
@@ -5811,22 +5811,67 @@ public sealed partial class CampaignMapScene : Node3D
         paletteWood.OffsetRight = -10;
         paletteWood.OffsetBottom = -12;
         paletteComposition.AddChild(paletteWood);
-        var paletteArtwork = new TextureRect
+        var mainFrameTexture = GameUiSkin.CommandTexture("main-frame.png");
+        static AtlasTexture Slice(Texture2D atlas, float y, float height) => new()
         {
-            Name = "CityCommandPaletteArtwork",
-            Texture = GameUiSkin.CommandTexture("main-frame.png"),
+            Atlas = atlas,
+            Region = new Rect2(0, y, 384, height),
+        };
+        static AtlasTexture Rail(Texture2D atlas, float x) => new()
+        {
+            Atlas = atlas,
+            Region = new Rect2(x, 150, 64, 590),
+        };
+        var paletteTop = new TextureRect
+        {
+            Name = "CityCommandPaletteTopArtwork",
+            Texture = mainFrameTexture is null ? null : Slice(mainFrameTexture, 0, 150),
             ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
             StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
+            Position = Vector2.Zero,
+            Size = new Vector2(230, 90),
             MouseFilter = Control.MouseFilterEnum.Ignore,
         };
-        paletteArtwork.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
-        paletteComposition.AddChild(paletteArtwork);
+        paletteComposition.AddChild(paletteTop);
+        var paletteLeftRail = new TextureRect
+        {
+            Name = "CityCommandPaletteLeftRail",
+            Texture = mainFrameTexture is null ? null : Rail(mainFrameTexture, 0),
+            ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
+            StretchMode = TextureRect.StretchModeEnum.Scale,
+            Position = new Vector2(0, 84),
+            Size = new Vector2(38, 520),
+            MouseFilter = Control.MouseFilterEnum.Ignore,
+        };
+        paletteComposition.AddChild(paletteLeftRail);
+        var paletteRightRail = new TextureRect
+        {
+            Name = "CityCommandPaletteRightRail",
+            Texture = mainFrameTexture is null ? null : Rail(mainFrameTexture, 320),
+            ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
+            StretchMode = TextureRect.StretchModeEnum.Scale,
+            Position = new Vector2(192, 84),
+            Size = new Vector2(38, 520),
+            MouseFilter = Control.MouseFilterEnum.Ignore,
+        };
+        paletteComposition.AddChild(paletteRightRail);
+        var paletteBottom = new TextureRect
+        {
+            Name = "CityCommandPaletteBottomArtwork",
+            Texture = mainFrameTexture is null ? null : Slice(mainFrameTexture, 740, 124),
+            ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
+            StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
+            Position = new Vector2(0, 594),
+            Size = new Vector2(230, 74),
+            MouseFilter = Control.MouseFilterEnum.Ignore,
+        };
+        paletteComposition.AddChild(paletteBottom);
         var paletteMargin = new MarginContainer { Name = "CityCommandPaletteMargin" };
         paletteMargin.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
         paletteMargin.AddThemeConstantOverride("margin_left", 12);
-        paletteMargin.AddThemeConstantOverride("margin_top", 18);
+        paletteMargin.AddThemeConstantOverride("margin_top", 74);
         paletteMargin.AddThemeConstantOverride("margin_right", 12);
-        paletteMargin.AddThemeConstantOverride("margin_bottom", 18);
+        paletteMargin.AddThemeConstantOverride("margin_bottom", 60);
         paletteComposition.AddChild(paletteMargin);
         _cmdList = new VBoxContainer { SizeFlagsVertical = Control.SizeFlags.ExpandFill };
         _cmdList.AddThemeConstantOverride("separation", 6);
@@ -5841,7 +5886,7 @@ public sealed partial class CampaignMapScene : Node3D
             gbtn.ToggleMode = true;
             gbtn.AddThemeFontSizeOverride("font_size", 15);
             gbtn.Alignment = HorizontalAlignment.Center;
-            gbtn.CustomMinimumSize = new Vector2(206, 42);
+            gbtn.CustomMinimumSize = new Vector2(206, 48);
             if (!GameUiSkin.ApplyMainCommandArtwork(gbtn, CmdGroups[gi].Group))
                 GameUiSkin.ApplyCommandButton(gbtn);
             gbtn.Pressed += () =>
@@ -5866,7 +5911,7 @@ public sealed partial class CampaignMapScene : Node3D
         deployBtn.ToggleMode = true;
         deployBtn.AddThemeFontSizeOverride("font_size", 15);
         deployBtn.Alignment = HorizontalAlignment.Center;
-        deployBtn.CustomMinimumSize = new Vector2(206, 42);
+        deployBtn.CustomMinimumSize = new Vector2(206, 48);
         if (!GameUiSkin.ApplyMainCommandArtwork(deployBtn, "출전", accent: true))
             GameUiSkin.ApplyCommandButton(deployBtn, accent: true);
         deployBtn.Pressed += ToggleDeployGroup;
@@ -5877,7 +5922,7 @@ public sealed partial class CampaignMapScene : Node3D
         productionBtn.Name = "CityCommandProduction";
         productionBtn.AddThemeFontSizeOverride("font_size", 15);
         productionBtn.Alignment = HorizontalAlignment.Center;
-        productionBtn.CustomMinimumSize = new Vector2(206, 42);
+        productionBtn.CustomMinimumSize = new Vector2(206, 48);
         if (!GameUiSkin.ApplyMainCommandArtwork(productionBtn, "생산", accent: true))
             GameUiSkin.ApplyCommandButton(productionBtn, accent: true);
         productionBtn.Pressed += () => { CloseGroupMenu(); if (_selected is { } c) { OpenProductionModal(c); } };
@@ -7283,7 +7328,7 @@ public sealed partial class CampaignMapScene : Node3D
         _selected = city.Id;
         var menusCompact = Cmds.All(command => !command.Label.Contains(' '));
         var mainButtons = _cmdList.GetChildren().OfType<Button>().ToList();
-        var mainSizing = mainButtons.All(button => Mathf.IsEqualApprox(button.CustomMinimumSize.Y, 42f))
+        var mainSizing = mainButtons.All(button => Mathf.IsEqualApprox(button.CustomMinimumSize.Y, 48f))
             && _cmdList.GetThemeConstant("separation") == 6;
         var accentMeaning = mainButtons.Where(button => button.Name.ToString() is not "CityCommandDeploy" and not "CityCommandProduction")
                 .All(button => !button.GetMeta("command_accent").AsBool())

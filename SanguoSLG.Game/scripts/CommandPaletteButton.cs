@@ -13,15 +13,17 @@ internal partial class CommandPaletteButton : Button
     private Texture2D? _disabled;
     private float _textLeftRatio = 0.30f;
     private float _textRightRatio = 0.06f;
+    private bool _fitArtworkWidth;
 
     internal void Configure(Texture2D normal, Texture2D active, Texture2D? disabled = null,
-        float textLeftRatio = 0.30f, float textRightRatio = 0.06f)
+        float textLeftRatio = 0.30f, float textRightRatio = 0.06f, bool fitArtworkWidth = false)
     {
         _normal = normal;
         _active = active;
         _disabled = disabled;
         _textLeftRatio = textLeftRatio;
         _textRightRatio = textRightRatio;
+        _fitArtworkWidth = fitArtworkWidth;
         foreach (var state in new[] { "normal", "hover", "pressed", "hover_pressed", "disabled", "focus" })
             AddThemeStyleboxOverride(state, new StyleBoxEmpty());
         AddThemeColorOverride("font_color", Colors.Transparent);
@@ -41,7 +43,9 @@ internal partial class CommandPaletteButton : Button
         var highlighted = ButtonPressed || IsHovered() || HasFocus();
         var texture = Disabled ? _disabled ?? _normal : highlighted ? _active ?? _normal : _normal;
         var referenceHeight = Mathf.Max(_normal.GetHeight(), _active?.GetHeight() ?? 0);
-        var scale = Mathf.Min((Size.X - 2f) / _normal.GetWidth(), (Size.Y - 2f) / referenceHeight);
+        var scale = _fitArtworkWidth
+            ? (Size.X - 2f) / texture.GetWidth()
+            : Mathf.Min((Size.X - 2f) / _normal.GetWidth(), (Size.Y - 2f) / referenceHeight);
         var drawSize = texture.GetSize() * scale;
         var rect = new Rect2((Size - drawSize) * 0.5f, drawSize);
         var imageColor = Disabled ? new Color(1f, 1f, 1f, 0.48f) : Colors.White;
