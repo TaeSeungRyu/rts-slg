@@ -7400,6 +7400,10 @@ public sealed partial class CampaignMapScene : Node3D
         var fiveItemHeight = _cmdSubMiddle.CustomMinimumSize.Y;
         var dynamicSubmenuSizing = twoItemCount == 2 && fourItemCount == 4 && fiveItemCount == 5
             && twoItemHeight < fourItemHeight && fourItemHeight < fiveItemHeight;
+        var mainBackdrop = _cmdMenu.FindChild("CityCommandPaletteWoodBackground", true, false) as Control;
+        var subBackdrop = _cmdSubMenu.FindChild("CityCommandSubmenuBackdrop", true, false) as Control;
+        var backdropLayers = mainBackdrop?.MouseFilter == Control.MouseFilterEnum.Ignore
+            && subBackdrop?.MouseFilter == Control.MouseFilterEnum.Ignore;
         CloseGroupMenu();
         var titlesCompact = true;
         foreach (var param in new[] { "wall", "stratagem", "war_city" })
@@ -7413,8 +7417,9 @@ public sealed partial class CampaignMapScene : Node3D
             CloseModal();
         }
         var passed = menusCompact && titlesCompact && mainSizing && submenuSizing && dynamicSubmenuSizing
+            && backdropLayers
             && accentMeaning && selectedMeaning;
-        GD.Print($"[maptestcitycommandlabelsqa] passed={passed} menu={menusCompact} titles={titlesCompact} mainSizing={mainSizing} submenuSizing={submenuSizing} dynamicSubmenu={dynamicSubmenuSizing} counts={twoItemCount}/{fourItemCount}/{fiveItemCount} heights={twoItemHeight}/{fourItemHeight}/{fiveItemHeight} accentMeaning={accentMeaning} selectedMeaning={selectedMeaning}");
+        GD.Print($"[maptestcitycommandlabelsqa] passed={passed} menu={menusCompact} titles={titlesCompact} mainSizing={mainSizing} submenuSizing={submenuSizing} dynamicSubmenu={dynamicSubmenuSizing} backdrops={backdropLayers} counts={twoItemCount}/{fourItemCount}/{fiveItemCount} heights={twoItemHeight}/{fourItemHeight}/{fiveItemHeight} accentMeaning={accentMeaning} selectedMeaning={selectedMeaning}");
         GetTree().Quit(passed ? 0 : 1);
     }
 
