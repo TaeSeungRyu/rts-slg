@@ -54,18 +54,19 @@ internal partial class CommandPaletteButton : Button
         var imageColor = Disabled ? new Color(1f, 1f, 1f, 0.48f) : Colors.White;
         DrawTextureRect(texture, rect, false, imageColor);
 
-        // 항구는 출전 버튼의 금장 틀만 재사용한다. PNG의 빈 우측 목재 영역을
-        // 아이콘 내부에 복사해 검 아이콘만 가리고 외곽 금장과 구분선은 보존한다.
+        // 항구는 출전 버튼의 금장 틀만 재사용한다. 우측 목재 영역의 폭이 좁은
+        // 세로 샘플을 늘려 검 아이콘만 가린다. 넓은 영역을 복사하면 원본 목재
+        // 무늬가 아이콘 칸에 얼룩처럼 반복되므로 사용하지 않는다.
         if (_hideArtworkIcon)
         {
             var source = new Rect2(
-                texture.GetWidth() * 0.45f,
-                texture.GetHeight() * 0.22f,
-                texture.GetWidth() * 0.22f,
-                texture.GetHeight() * 0.56f);
+                texture.GetWidth() * 0.72f,
+                texture.GetHeight() * 0.18f,
+                2f,
+                texture.GetHeight() * 0.64f);
             var destination = new Rect2(
-                rect.Position + new Vector2(texture.GetWidth() * 0.10f, texture.GetHeight() * 0.22f) * scale,
-                new Vector2(texture.GetWidth() * 0.22f, texture.GetHeight() * 0.56f) * scale);
+                rect.Position + new Vector2(texture.GetWidth() * 0.09f, texture.GetHeight() * 0.16f) * scale,
+                new Vector2(texture.GetWidth() * 0.26f, texture.GetHeight() * 0.68f) * scale);
             DrawTextureRectRegion(texture, destination, source, imageColor);
         }
 
