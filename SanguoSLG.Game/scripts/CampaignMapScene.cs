@@ -233,6 +233,7 @@ public sealed partial class CampaignMapScene : Node3D
     private VBoxContainer _cmdSubList = null!;
     private Label _cmdSubTitle = null!;
     private NinePatchRect _cmdSubMiddle = null!;
+    private VBoxContainer _cmdSubFrame = null!;
     private int _openGroup = -1;
     private VBoxContainer _cmdList = null!;
     private readonly List<Button> _cmdGroupButtons = [];
@@ -5969,10 +5970,10 @@ public sealed partial class CampaignMapScene : Node3D
         });
         subBackdropMargin.AddChild(subBackdrop);
         _cmdSubMenu.AddChild(subBackdropMargin);
-        var subFrame = new VBoxContainer { CustomMinimumSize = new Vector2(197, 0) };
+        _cmdSubFrame = new VBoxContainer { CustomMinimumSize = new Vector2(197, 0) };
         // The artwork edges overlap by one pixel so transparent antialiasing never reveals the map.
-        subFrame.AddThemeConstantOverride("separation", -1);
-        _cmdSubMenu.AddChild(subFrame);
+        _cmdSubFrame.AddThemeConstantOverride("separation", -1);
+        _cmdSubMenu.AddChild(_cmdSubFrame);
         var subTitle = new TextureRect
         {
             Texture = GameUiSkin.CommandTexture("서브프레임title.png"),
@@ -5991,7 +5992,7 @@ public sealed partial class CampaignMapScene : Node3D
         _cmdSubTitle.AddThemeFontSizeOverride("font_size", 14);
         _cmdSubTitle.AddThemeColorOverride("font_color", GoldBright);
         subTitle.AddChild(_cmdSubTitle);
-        subFrame.AddChild(subTitle);
+        _cmdSubFrame.AddChild(subTitle);
         var subMiddleTexture = GameUiSkin.CommandTexture("서브프레임middle.png");
         var subMiddleBody = subMiddleTexture is null ? null : new AtlasTexture
         {
@@ -6008,7 +6009,7 @@ public sealed partial class CampaignMapScene : Node3D
             PatchMarginBottom = 1,
             MouseFilter = Control.MouseFilterEnum.Ignore,
         };
-        subFrame.AddChild(_cmdSubMiddle);
+        _cmdSubFrame.AddChild(_cmdSubMiddle);
         var subMargin = new MarginContainer();
         subMargin.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
         subMargin.AddThemeConstantOverride("margin_left", 12);
@@ -6027,7 +6028,7 @@ public sealed partial class CampaignMapScene : Node3D
             CustomMinimumSize = new Vector2(197, 39),
             MouseFilter = Control.MouseFilterEnum.Ignore,
         };
-        subFrame.AddChild(subTail);
+        _cmdSubFrame.AddChild(subTail);
 
         BuildUnitMenu(layer);
         BuildTerrainCard(layer);
@@ -7391,16 +7392,20 @@ public sealed partial class CampaignMapScene : Node3D
         var twoItemCount = _cmdSubList.GetChildren().OfType<Button>()
             .Count(button => !button.IsQueuedForDeletion());
         var twoItemHeight = _cmdSubMiddle.CustomMinimumSize.Y;
+        var twoItemBounds = _cmdSubMenu.Size.Y;
         ToggleGroup(1);
         var fourItemCount = _cmdSubList.GetChildren().OfType<Button>()
             .Count(button => !button.IsQueuedForDeletion());
         var fourItemHeight = _cmdSubMiddle.CustomMinimumSize.Y;
+        var fourItemBounds = _cmdSubMenu.Size.Y;
         ToggleDeployGroup();
         var fiveItemCount = _cmdSubList.GetChildren().OfType<Button>()
             .Count(button => !button.IsQueuedForDeletion());
         var fiveItemHeight = _cmdSubMiddle.CustomMinimumSize.Y;
+        var fiveItemBounds = _cmdSubMenu.Size.Y;
         var dynamicSubmenuSizing = twoItemCount == 2 && fourItemCount == 4 && fiveItemCount == 5
-            && twoItemHeight < fourItemHeight && fourItemHeight < fiveItemHeight;
+            && twoItemHeight < fourItemHeight && fourItemHeight < fiveItemHeight
+            && twoItemBounds < fourItemBounds && fourItemBounds < fiveItemBounds;
         var mainBackdrop = _cmdMenu.FindChild("CityCommandPaletteWoodBackground", true, false) as Control;
         var subBackdrop = _cmdSubMenu.FindChild("CityCommandSubmenuBackdrop", true, false) as Control;
         var backdropLayers = mainBackdrop?.MouseFilter == Control.MouseFilterEnum.Ignore
@@ -7420,7 +7425,7 @@ public sealed partial class CampaignMapScene : Node3D
         var passed = menusCompact && titlesCompact && mainSizing && submenuSizing && dynamicSubmenuSizing
             && backdropLayers
             && accentMeaning && selectedMeaning;
-        GD.Print($"[maptestcitycommandlabelsqa] passed={passed} menu={menusCompact} titles={titlesCompact} mainSizing={mainSizing} submenuSizing={submenuSizing} dynamicSubmenu={dynamicSubmenuSizing} backdrops={backdropLayers} counts={twoItemCount}/{fourItemCount}/{fiveItemCount} heights={twoItemHeight}/{fourItemHeight}/{fiveItemHeight} accentMeaning={accentMeaning} selectedMeaning={selectedMeaning}");
+        GD.Print($"[maptestcitycommandlabelsqa] passed={passed} menu={menusCompact} titles={titlesCompact} mainSizing={mainSizing} submenuSizing={submenuSizing} dynamicSubmenu={dynamicSubmenuSizing} backdrops={backdropLayers} counts={twoItemCount}/{fourItemCount}/{fiveItemCount} heights={twoItemHeight}/{fourItemHeight}/{fiveItemHeight} bounds={twoItemBounds}/{fourItemBounds}/{fiveItemBounds} accentMeaning={accentMeaning} selectedMeaning={selectedMeaning}");
         GetTree().Quit(passed ? 0 : 1);
     }
 
@@ -7429,7 +7434,7 @@ public sealed partial class CampaignMapScene : Node3D
         if (_openGroup == groupIdx) { CloseGroupMenu(); return; }
         _openGroup = groupIdx;
         RefreshCommandGroupSelection();
-        Clear(_cmdSubList);
+        ClearCommandSubmenuItems();
         _cmdSubTitle.Text = CmdGroups[groupIdx].Group;
         foreach (var i in CmdGroups[groupIdx].Indices)
         {
@@ -7555,7 +7560,7 @@ public sealed partial class CampaignMapScene : Node3D
         if (_openGroup == DeployGroupMarker) { CloseGroupMenu(); return; }
         _openGroup = DeployGroupMarker;
         RefreshCommandGroupSelection();
-        Clear(_cmdSubList);
+        ClearCommandSubmenuItems();
         _cmdSubTitle.Text = "출전";
 
         void Add(string label, System.Action action)
@@ -7600,6 +7605,26 @@ public sealed partial class CampaignMapScene : Node3D
         const float verticalInsets = 16f;
         _cmdSubMiddle.CustomMinimumSize = new Vector2(197,
             verticalInsets + count * buttonHeight + Mathf.Max(0, count - 1) * separation);
+        SyncCommandSubmenuBounds();
+    }
+
+    private void ClearCommandSubmenuItems()
+    {
+        foreach (var child in _cmdSubList.GetChildren())
+        {
+            _cmdSubList.RemoveChild(child);
+            child.QueueFree();
+        }
+    }
+
+    private void SyncCommandSubmenuBounds()
+    {
+        // The shared frame is the single source of truth for frame and backdrop height.
+        var frameMinimum = _cmdSubFrame.GetCombinedMinimumSize();
+        _cmdSubFrame.Size = frameMinimum;
+        _cmdSubMenu.Size = frameMinimum;
+        _cmdSubFrame.QueueSort();
+        _cmdSubMenu.QueueSort();
     }
 
     private void CloseGroupMenu()
