@@ -5944,6 +5944,30 @@ public sealed partial class CampaignMapScene : Node3D
         _cmdSubMenu = new PanelContainer { Visible = false, ZIndex = 51 };
         _cmdSubMenu.AddThemeStyleboxOverride("panel", new StyleBoxEmpty());
         layer.AddChild(_cmdSubMenu);
+        var subBackdropMargin = new MarginContainer
+        {
+            Name = "CityCommandSubmenuBackdropMargin",
+            MouseFilter = Control.MouseFilterEnum.Ignore,
+        };
+        subBackdropMargin.AddThemeConstantOverride("margin_left", 5);
+        subBackdropMargin.AddThemeConstantOverride("margin_top", 4);
+        subBackdropMargin.AddThemeConstantOverride("margin_right", 5);
+        subBackdropMargin.AddThemeConstantOverride("margin_bottom", 4);
+        var subBackdrop = new Panel
+        {
+            Name = "CityCommandSubmenuBackdrop",
+            MouseFilter = Control.MouseFilterEnum.Ignore,
+        };
+        subBackdrop.AddThemeStyleboxOverride("panel", new StyleBoxFlat
+        {
+            BgColor = new Color("24150f", 0.97f),
+            CornerRadiusTopLeft = 10,
+            CornerRadiusTopRight = 10,
+            CornerRadiusBottomLeft = 10,
+            CornerRadiusBottomRight = 10,
+        });
+        subBackdropMargin.AddChild(subBackdrop);
+        _cmdSubMenu.AddChild(subBackdropMargin);
         var subFrame = new VBoxContainer { CustomMinimumSize = new Vector2(197, 0) };
         // The artwork edges overlap by one pixel so transparent antialiasing never reveals the map.
         subFrame.AddThemeConstantOverride("separation", -1);
