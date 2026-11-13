@@ -5898,7 +5898,10 @@ public sealed partial class CampaignMapScene : Node3D
             gbtn.Alignment = HorizontalAlignment.Center;
             gbtn.CustomMinimumSize = new Vector2(166, 48);
             gbtn.SizeFlagsHorizontal = Control.SizeFlags.ShrinkCenter;
-            if (!GameUiSkin.ApplyMainCommandArtwork(gbtn, CmdGroups[gi].Group))
+            var isPortGroup = CmdGroups[gi].Group == "항구";
+            if (!GameUiSkin.ApplyMainCommandArtwork(gbtn, CmdGroups[gi].Group,
+                    artworkName: isPortGroup ? "출전" : null,
+                    hideArtworkIcon: isPortGroup))
                 GameUiSkin.ApplyCommandButton(gbtn);
             gbtn.Pressed += () =>
             {

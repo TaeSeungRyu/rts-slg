@@ -14,9 +14,11 @@ internal partial class CommandPaletteButton : Button
     private float _textLeftRatio = 0.30f;
     private float _textRightRatio = 0.06f;
     private bool _fitArtworkWidth;
+    private bool _hideArtworkIcon;
 
     internal void Configure(Texture2D normal, Texture2D active, Texture2D? disabled = null,
-        float textLeftRatio = 0.30f, float textRightRatio = 0.06f, bool fitArtworkWidth = false)
+        float textLeftRatio = 0.30f, float textRightRatio = 0.06f, bool fitArtworkWidth = false,
+        bool hideArtworkIcon = false)
     {
         _normal = normal;
         _active = active;
@@ -24,6 +26,7 @@ internal partial class CommandPaletteButton : Button
         _textLeftRatio = textLeftRatio;
         _textRightRatio = textRightRatio;
         _fitArtworkWidth = fitArtworkWidth;
+        _hideArtworkIcon = hideArtworkIcon;
         foreach (var state in new[] { "normal", "hover", "pressed", "hover_pressed", "disabled", "focus" })
             AddThemeStyleboxOverride(state, new StyleBoxEmpty());
         AddThemeColorOverride("font_color", Colors.Transparent);
@@ -50,6 +53,21 @@ internal partial class CommandPaletteButton : Button
         var rect = new Rect2((Size - drawSize) * 0.5f, drawSize);
         var imageColor = Disabled ? new Color(1f, 1f, 1f, 0.48f) : Colors.White;
         DrawTextureRect(texture, rect, false, imageColor);
+
+        // 항구는 출전 버튼의 금장 틀만 재사용한다. PNG의 빈 우측 목재 영역을
+        // 아이콘 내부에 복사해 검 아이콘만 가리고 외곽 금장과 구분선은 보존한다.
+        if (_hideArtworkIcon)
+        {
+            var source = new Rect2(
+                texture.GetWidth() * 0.45f,
+                texture.GetHeight() * 0.22f,
+                texture.GetWidth() * 0.22f,
+                texture.GetHeight() * 0.56f);
+            var destination = new Rect2(
+                rect.Position + new Vector2(texture.GetWidth() * 0.10f, texture.GetHeight() * 0.22f) * scale,
+                new Vector2(texture.GetWidth() * 0.22f, texture.GetHeight() * 0.56f) * scale);
+            DrawTextureRectRegion(texture, destination, source, imageColor);
+        }
 
         var font = GetThemeDefaultFont();
         var fontSize = GetThemeFontSize("font_size");

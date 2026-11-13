@@ -139,13 +139,16 @@ internal static class GameUiSkin
         return null;
     }
 
-    internal static bool ApplyMainCommandArtwork(CommandPaletteButton button, string menuName, bool accent = false)
+    internal static bool ApplyMainCommandArtwork(CommandPaletteButton button, string menuName, bool accent = false,
+        string? artworkName = null, bool hideArtworkIcon = false)
     {
         button.SetMeta("command_accent", accent);
-        var normal = CommandTexture($"{menuName}normal.png");
-        var active = CommandTexture($"{menuName}active.png");
+        var artwork = artworkName ?? menuName;
+        var normal = CommandTexture($"{artwork}normal.png");
+        var active = CommandTexture($"{artwork}active.png");
         if (normal is null || active is null) return false;
-        button.Configure(normal, active, fitArtworkWidth: true);
+        button.Configure(normal, active, fitArtworkWidth: true, hideArtworkIcon: hideArtworkIcon);
+        button.SetMeta("command_artwork", artwork);
         return true;
     }
 
