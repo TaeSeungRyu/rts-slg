@@ -13842,7 +13842,11 @@ public sealed partial class CampaignMapScene : Node3D
     }
 
     // 자유 배치 패널(드래그 가능). panel은 레이어에 직접 얹혀 Position으로 움직인다.
-    private VBoxContainer DeployScaffold(float mw, out ScrollContainer scroll, out PanelContainer panel)
+    private VBoxContainer DeployScaffold(
+        float mw,
+        out ScrollContainer scroll,
+        out PanelContainer panel,
+        bool useModalChrome = false)
     {
         var layer = new CanvasLayer { Layer = 20 };
         AddChild(layer);
@@ -13855,6 +13859,16 @@ public sealed partial class CampaignMapScene : Node3D
             if (e is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left }) { CloseModal(); }
         };
         layer.AddChild(backdrop);
+        if (useModalChrome && ModalChrome.HasRequiredAssets)
+        {
+            var chrome = new ModalChrome(mw);
+            panel = chrome;
+            panel.SetMeta("modal_root", true);
+            layer.AddChild(panel);
+            scroll = chrome.BodyScroll;
+            return chrome.Body;
+        }
+
         panel = new PanelContainer();
         panel.SetMeta("modal_root", true);
         panel.AddThemeStyleboxOverride("panel", Frame(Ink, Gold, 2, 10, 14));
