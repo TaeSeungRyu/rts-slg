@@ -7259,7 +7259,7 @@ public sealed partial class CampaignMapScene : Node3D
         detailBtn.CustomMinimumSize = new Vector2(0, 30);
         detailBtn.Alignment = HorizontalAlignment.Center;
         foreach (var state in new[] { "normal", "hover", "pressed", "disabled", "focus" })
-            detailBtn.AddThemeStyleboxOverride(state, new StyleBoxEmpty());
+            detailBtn.AddThemeStyleboxOverride(state, new StyleBoxEmpty { ContentMarginBottom = 3f });
         detailBtn.AddThemeColorOverride("font_color", GameUiSkin.Ivory);
         detailBtn.AddThemeColorOverride("font_hover_color", GameUiSkin.GoldBright);
         detailBtn.AddThemeColorOverride("font_pressed_color", GameUiSkin.Gold);
