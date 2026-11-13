@@ -5815,7 +5815,8 @@ public sealed partial class CampaignMapScene : Node3D
         paletteWood.AddThemeStyleboxOverride("panel", paletteWoodStyle);
         paletteWood.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
         paletteWood.OffsetLeft = 17;
-        paletteWood.OffsetTop = 72;
+        // Begin below the crest itself, not at the first button, so the header gap is never transparent.
+        paletteWood.OffsetTop = 54;
         paletteWood.OffsetRight = -17;
         paletteWood.OffsetBottom = -17;
         paletteComposition.AddChild(paletteWood);
