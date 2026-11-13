@@ -6970,7 +6970,7 @@ public sealed partial class CampaignMapScene : Node3D
         button.AddThemeColorOverride("font_pressed_color", danger ? new Color("d77b61") : GameUiSkin.Gold);
     }
 
-    private static PanelContainer WrapCityInfoGrid(GridContainer grid, string name)
+    private static PanelContainer WrapCityInfoGrid(GridContainer grid, string name, float textOffsetUp = 0f)
     {
         var panel = new PanelContainer
         {
@@ -6982,8 +6982,8 @@ public sealed partial class CampaignMapScene : Node3D
         {
             ContentMarginLeft = 9f,
             ContentMarginRight = 9f,
-            ContentMarginTop = name == "CityPrimaryStats" ? 10f : 20f,
-            ContentMarginBottom = name == "CityPrimaryStats" ? 10f : 20f,
+            ContentMarginTop = (name == "CityPrimaryStats" ? 10f : 20f) - textOffsetUp,
+            ContentMarginBottom = (name == "CityPrimaryStats" ? 10f : 20f) + textOffsetUp,
         };
         panel.AddThemeStyleboxOverride("panel", style);
         panel.AddChild(grid);
@@ -7147,8 +7147,9 @@ public sealed partial class CampaignMapScene : Node3D
         var cityTitle = MakeLabel(c.Name, 18, GameUiSkin.GoldBright);
         cityTitle.Name = "CityInfoTitle";
         cityTitle.AnchorRight = 1f;
-        cityTitle.OffsetTop = !known ? -5f : 0f;
-        cityTitle.OffsetBottom = !known ? 17f : 22f;
+        var cityTextOffset = !known ? 5f : scoutedEnemy ? 3f : 0f;
+        cityTitle.OffsetTop = -cityTextOffset;
+        cityTitle.OffsetBottom = 22f - cityTextOffset;
         cityTitle.HorizontalAlignment = HorizontalAlignment.Center;
         cityTitle.VerticalAlignment = VerticalAlignment.Center;
         cityTitle.TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis;
@@ -7159,8 +7160,8 @@ public sealed partial class CampaignMapScene : Node3D
             new Color(GameUiSkin.Ivory, 0.76f));
         cityVision.Name = "CityInfoSubtitle";
         cityVision.AnchorRight = 1f;
-        cityVision.OffsetTop = !known ? 25f : 30f;
-        cityVision.OffsetBottom = !known ? 43f : 48f;
+        cityVision.OffsetTop = 30f - cityTextOffset;
+        cityVision.OffsetBottom = 48f - cityTextOffset;
         cityVision.HorizontalAlignment = HorizontalAlignment.Center;
         cityVision.VerticalAlignment = VerticalAlignment.Center;
         cityVision.TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis;
@@ -7223,7 +7224,8 @@ public sealed partial class CampaignMapScene : Node3D
             return;
         }
 
-        _infoRows.AddChild(BuildCityOfficerGrid(c));
+        var scoutedTextOffset = scoutedEnemy ? 3f : 0f;
+        _infoRows.AddChild(BuildCityOfficerGrid(c, scoutedTextOffset));
         var resourceDivider = new MarginContainer { Name = "CityResourceDivider" };
         resourceDivider.AddThemeConstantOverride("margin_top", 6);
         resourceDivider.AddThemeConstantOverride("margin_bottom", 2);
@@ -7233,7 +7235,7 @@ public sealed partial class CampaignMapScene : Node3D
         var g4 = new GridContainer { Columns = 4, SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
         g4.AddThemeConstantOverride("h_separation", 10);
         g4.AddThemeConstantOverride("v_separation", 4);
-        _infoRows.AddChild(WrapCityInfoGrid(g4, "CityPrimaryStats"));
+        _infoRows.AddChild(WrapCityInfoGrid(g4, "CityPrimaryStats", scoutedTextOffset));
         AddCell(g4, Sym.Coin, "금", $"{c.Gold}");
         AddCell(g4, Sym.Grain, "군량", $"{c.Provisions}");
         var (weeklyGold, weeklyProvisions) = WeeklyIncomePreview(c);
@@ -7246,7 +7248,7 @@ public sealed partial class CampaignMapScene : Node3D
         var g2 = new GridContainer { Columns = 2, SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
         g2.AddThemeConstantOverride("h_separation", 10);
         g2.AddThemeConstantOverride("v_separation", 4);
-        _infoRows.AddChild(WrapCityInfoGrid(g2, "CitySecondaryStats"));
+        _infoRows.AddChild(WrapCityInfoGrid(g2, "CitySecondaryStats", scoutedTextOffset));
         AddCell(g2, Sym.Book, "시설", facilities);
         AddCell(g2, Sym.Sword, "주둔 병력", totalTroops > 0 ? $"{totalTroops}명" : "없음");
         if (owned && pending.Count > 0)
@@ -7276,7 +7278,7 @@ public sealed partial class CampaignMapScene : Node3D
             var attack = MakeButton("공격", accent: true);
             attack.CustomMinimumSize = new Vector2(0, 30);
             attack.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
-            StyleCityArtworkActionButton(attack, danger: true);
+            StyleCityArtworkActionButton(attack, danger: true, textOffsetUp: scoutedTextOffset);
             attack.Pressed += () => ShowAttackChoices(c.Position, c.Name);
             _infoActions.RemoveChild(detailBtn);
             var enemyActions = new HBoxContainer

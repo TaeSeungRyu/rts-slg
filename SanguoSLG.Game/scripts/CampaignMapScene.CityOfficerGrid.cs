@@ -5,7 +5,7 @@ namespace SanguoSLG.Game;
 
 public sealed partial class CampaignMapScene
 {
-    private GridContainer BuildCityOfficerGrid(City city)
+    private GridContainer BuildCityOfficerGrid(City city, float textOffsetUp = 0f)
     {
         var grid = new GridContainer { Name = "CityOfficerGrid", Columns = 2,
             SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
@@ -19,9 +19,9 @@ public sealed partial class CampaignMapScene
             frame.AddThemeStyleboxOverride("panel", new StyleBoxEmpty
             {
                 ContentMarginLeft = 8,
-                ContentMarginTop = 5,
+                ContentMarginTop = 5 - textOffsetUp,
                 ContentMarginRight = 8,
-                ContentMarginBottom = 5,
+                ContentMarginBottom = 5 + textOffsetUp,
             });
             frame.SetMeta("city_officer_card", true);
             var row = new HBoxContainer { Alignment = BoxContainer.AlignmentMode.Begin };
