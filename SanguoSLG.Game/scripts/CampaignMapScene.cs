@@ -5806,7 +5806,7 @@ public sealed partial class CampaignMapScene : Node3D
         };
         var paletteWoodStyle = new StyleBoxFlat
         {
-            BgColor = new Color("24150f", 0.94f),
+            BgColor = new Color("24150f", 0.97f),
             CornerRadiusTopLeft = 12,
             CornerRadiusTopRight = 12,
             CornerRadiusBottomLeft = 12,
@@ -5817,7 +5817,7 @@ public sealed partial class CampaignMapScene : Node3D
         paletteWood.OffsetLeft = 17;
         paletteWood.OffsetTop = 72;
         paletteWood.OffsetRight = -17;
-        paletteWood.OffsetBottom = -58;
+        paletteWood.OffsetBottom = -17;
         paletteComposition.AddChild(paletteWood);
         var mainFrameTexture = GameUiSkin.CommandTexture("main-frame.png");
         static AtlasTexture Slice(Texture2D atlas, float y, float height) => new()
