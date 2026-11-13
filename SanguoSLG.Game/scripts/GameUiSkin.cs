@@ -149,9 +149,40 @@ internal static class GameUiSkin
         var normal = CommandTexture($"{artwork}normal.png");
         var active = CommandTexture($"{artwork}active.png");
         if (normal is null || active is null) return false;
-        button.Configure(normal, active, fitArtworkWidth: true, hideArtworkIcon: hideArtworkIcon);
+        if (hideArtworkIcon)
+        {
+            normal = RemoveCommandArtworkIcon(normal);
+            active = RemoveCommandArtworkIcon(active);
+        }
+        button.Configure(normal, active, fitArtworkWidth: true);
         button.SetMeta("command_artwork", artwork);
         return true;
+    }
+
+    private static Texture2D RemoveCommandArtworkIcon(Texture2D texture)
+    {
+        var image = texture.GetImage();
+        if (image.IsEmpty()) return texture;
+
+        // 출전 원본(약 344x68)의 검 아이콘 영역만 양쪽 목재 픽셀로 행 단위 보간한다.
+        // 외곽 금장과 중앙 구분선은 건드리지 않아 사각 오버레이 경계가 생기지 않는다.
+        var left = Mathf.Clamp(Mathf.RoundToInt(image.GetWidth() * 0.12f), 1, image.GetWidth() - 2);
+        var right = Mathf.Clamp(Mathf.RoundToInt(image.GetWidth() * 0.35f), left + 1, image.GetWidth() - 2);
+        var top = Mathf.Clamp(Mathf.RoundToInt(image.GetHeight() * 0.11f), 1, image.GetHeight() - 2);
+        var bottom = Mathf.Clamp(Mathf.RoundToInt(image.GetHeight() * 0.89f), top + 1, image.GetHeight() - 2);
+        var leftSampleX = left - 1;
+        var rightSampleX = right + 1;
+        for (var y = top; y <= bottom; y++)
+        {
+            var from = image.GetPixel(leftSampleX, y);
+            var to = image.GetPixel(rightSampleX, y);
+            for (var x = left; x <= right; x++)
+            {
+                var weight = (x - left + 1f) / (right - left + 2f);
+                image.SetPixel(x, y, from.Lerp(to, weight));
+            }
+        }
+        return ImageTexture.CreateFromImage(image);
     }
 
     internal static bool ApplySubCommandArtwork(CommandPaletteButton button)
