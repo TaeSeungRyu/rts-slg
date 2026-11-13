@@ -265,7 +265,8 @@ public sealed class WorldEngine
     {
         var cities = state.Cities.Select(city =>
         {
-            if (city.IsGate) return city;
+            // 무소유 거점은 행정 주체가 없으므로 담당자 공석에 따른 치안 변동을 적용하지 않는다.
+            if (city.IsGate || city.Owner.Value == 0) return city;
             var security = ValidOfficer(state, city, city.SecurityOfficer, byId);
             var recruiter = ValidOfficer(state, city, city.RecruitmentOfficer, byId);
             var delta = security is null ? _commands.AutoSecurityNoOfficerDelta

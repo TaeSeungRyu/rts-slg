@@ -971,6 +971,21 @@ public class WorldEngineTests
     }
 
     [Fact]
+    public void v2_무소유_성은_담당자_공석으로_치안이_하락하지_않는다()
+    {
+        var city = new City(new CityId(1), "무소유성", new HexCoord(0, 0), new FactionId(0), 1000,
+            Security: 90);
+        var state = new GameState(1, 1, [], [city], []);
+        var engine = new WorldEngine(V2OnlyBalance, new CommandBalance { AutoOfficerSystemEnabled = true });
+
+        var after = engine.AdvanceDays(state, 7);
+
+        Assert.Equal(90, after.Cities.Single().Security);
+        Assert.DoesNotContain(engine.LastEvents, e => e.Kind == WorldEventKind.SecurityFactor
+            && e.City == city.Id);
+    }
+
+    [Fact]
     public void v2_월경계를_넘어도_모든담당효과는_매주_한번_정산된다()
     {
         var generals = new[] { V2Officer(1, might: 85), V2Officer(2, politics: 80),
