@@ -5965,7 +5965,7 @@ public sealed partial class CampaignMapScene : Node3D
         };
         subBackdrop.AddThemeStyleboxOverride("panel", new StyleBoxFlat
         {
-            BgColor = new Color("24150f", 0.97f),
+            BgColor = new Color(GameUiSkin.CommandSubmenuWood, 0.97f),
             CornerRadiusTopLeft = 10,
             CornerRadiusTopRight = 10,
             CornerRadiusBottomLeft = 10,
@@ -6031,6 +6031,7 @@ public sealed partial class CampaignMapScene : Node3D
             CustomMinimumSize = new Vector2(197, 39),
             MouseFilter = Control.MouseFilterEnum.Ignore,
         };
+        GameUiSkin.MatchCommandTailToMiddle(subTail);
         _cmdSubFrame.AddChild(subTail);
 
         BuildUnitMenu(layer);

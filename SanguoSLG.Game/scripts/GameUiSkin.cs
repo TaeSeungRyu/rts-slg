@@ -4,6 +4,8 @@ namespace SanguoSLG.Game;
 
 internal static class GameUiSkin
 {
+    // 서브메뉴 middle PNG의 실제 중앙 목재색(RGB 48, 23, 14).
+    internal static readonly Color CommandSubmenuWood = new("30170e");
     internal static readonly Color Ink = new("160d0b", 0.94f);
     internal static readonly Color InkRaised = new("261511", 0.96f);
     internal static readonly Color Bronze = new("6f4f2d");
@@ -160,6 +162,30 @@ internal static class GameUiSkin
         if (normal is null || active is null || disabled is null) return false;
         button.Configure(normal, active, disabled, 0.08f, 0.08f);
         return true;
+    }
+
+    internal static void MatchCommandTailToMiddle(TextureRect tail)
+    {
+        // tail PNG에는 중앙 프레임과 다른 붉은 바탕이 불투명하게 포함되어 있다.
+        // 금장 픽셀은 유지하고, 붉은 바탕 픽셀만 middle의 실제 목재색으로 통일한다.
+        var shader = new Shader
+        {
+            Code = """
+                shader_type canvas_item;
+                uniform vec3 wood_color : source_color;
+
+                void fragment() {
+                    vec4 source = texture(TEXTURE, UV);
+                    float green_ratio = source.g / max(source.r, 0.001);
+                    float gold = smoothstep(0.20, 0.34, green_ratio)
+                        * smoothstep(0.10, 0.32, source.r);
+                    COLOR = vec4(mix(wood_color, source.rgb, gold), source.a);
+                }
+                """,
+        };
+        var material = new ShaderMaterial { Shader = shader };
+        material.SetShaderParameter("wood_color", CommandSubmenuWood);
+        tail.Material = material;
     }
 
     internal static StyleBoxTexture? CommandFrameBox(string fileName, int horizontalMargin, int verticalMargin)
