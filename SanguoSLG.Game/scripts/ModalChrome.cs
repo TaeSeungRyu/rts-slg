@@ -37,7 +37,8 @@ public sealed partial class ModalChrome : PanelContainer
         var chromeWidth = contentWidth + HorizontalInset * 2f + 10f;
         _headerHeight = HeightForWidth(headerTexture, chromeWidth);
         _footerHeight = HeightForWidth(footerTexture, chromeWidth);
-        var headerContentInset = Mathf.Clamp(chromeWidth * 0.16f, 72f, 112f);
+        // 원본 용 장식이 좌우 약 21%를 차지한다. 제목과 닫기 버튼은 장식 안쪽 중앙 띠에 둔다.
+        var headerContentInset = Mathf.Clamp(chromeWidth * 0.22f, 96f, 300f);
 
         var rootStyle = new StyleBoxFlat
         {

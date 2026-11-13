@@ -17,19 +17,30 @@ public sealed partial class AdaptiveModalScaffold : PanelContainer
 
     private const float ViewportMargin = 24f;
     private const float HeightRatio = 0.82f;
+    // ModalChrome은 본문 폭 양쪽에 레일·패딩 21px씩을 더한다.
+    private const float ChromeHorizontalExtras = 42f;
 
-    public HBoxContainer Header { get; }
-    public ScrollContainer BodyScroll { get; }
-    public VBoxContainer Body { get; }
-    public HBoxContainer Footer { get; }
+    private ModalChrome? _chrome;
+
+    public HBoxContainer Header { get; private set; } = null!;
+    public ScrollContainer BodyScroll { get; private set; } = null!;
+    public VBoxContainer Body { get; private set; } = null!;
+    public HBoxContainer Footer { get; private set; } = null!;
     public Vector2 LayoutSize { get; private set; }
+    public bool UsesImageChrome => _chrome is not null;
+    public float BodyLayoutHeight => _chrome?.BodyHeightFor(LayoutSize.Y)
+        ?? Mathf.Max(120f, LayoutSize.Y - 104f);
 
     public AdaptiveModalScaffold()
     {
         Name = "AdaptiveModalScaffold";
         MouseFilter = MouseFilterEnum.Stop;
         SetMeta("modal_role", "scaffold");
+        AddThemeStyleboxOverride("panel", TransparentPanelStyle());
+    }
 
+    private void BuildLegacyRegions()
+    {
         var root = new VBoxContainer
         {
             Name = "ModalRegions",
@@ -93,14 +104,41 @@ public sealed partial class AdaptiveModalScaffold : PanelContainer
     {
         LayoutSize = CalculateLayoutSize(viewportSize, profile);
         CustomMinimumSize = LayoutSize;
+        if (Header is null)
+        {
+            if (ModalChrome.HasRequiredAssets)
+            {
+                _chrome = new ModalChrome(Mathf.Max(320f, LayoutSize.X - ChromeHorizontalExtras));
+                _chrome.Name = "AdaptiveModalChrome";
+                _chrome.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+                _chrome.SizeFlagsVertical = SizeFlags.ExpandFill;
+                AddChild(_chrome);
+                Header = _chrome.HeaderHost;
+                BodyScroll = _chrome.BodyScroll;
+                Body = _chrome.Body;
+                Footer = _chrome.FooterHost;
+                Body.AddThemeConstantOverride("separation", 12);
+                Header.SetMeta("modal_role", "header");
+                BodyScroll.SetMeta("modal_role", "body_scroll");
+                Body.SetMeta("modal_role", "body");
+                Footer.SetMeta("modal_role", "footer");
+                Footer.Visible = false;
+            }
+            else
+            {
+                BuildLegacyRegions();
+            }
+        }
         SetMeta("modal_profile", profile.ToString());
         SetMeta("modal_width", LayoutSize.X);
         SetMeta("modal_height", LayoutSize.Y);
+        SetMeta("modal_image_chrome", UsesImageChrome);
     }
 
     public void SetHeader(Control title, BaseButton closeButton, Control? separator = null)
     {
         title.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+        title.SizeFlagsVertical = SizeFlags.ShrinkCenter;
         title.SetMeta("modal_role", "title");
         Header.AddChild(title);
 
@@ -122,6 +160,7 @@ public sealed partial class AdaptiveModalScaffold : PanelContainer
     public void AddFooterControl(Control control)
     {
         Footer.Visible = true;
+        control.SizeFlagsVertical = SizeFlags.ShrinkCenter;
         control.SetMeta("modal_role", "footer_action");
         Footer.AddChild(control);
     }
@@ -146,4 +185,18 @@ public sealed partial class AdaptiveModalScaffold : PanelContainer
         var height = Mathf.Min(Mathf.Max(viewportSize.Y * HeightRatio, 420f), availableHeight);
         return new Vector2(Mathf.Round(width), Mathf.Round(height));
     }
+
+    private static StyleBoxFlat TransparentPanelStyle() => new()
+    {
+        BgColor = Colors.Transparent,
+        BorderColor = Colors.Transparent,
+        BorderWidthLeft = 0,
+        BorderWidthTop = 0,
+        BorderWidthRight = 0,
+        BorderWidthBottom = 0,
+        ContentMarginLeft = 0,
+        ContentMarginTop = 0,
+        ContentMarginRight = 0,
+        ContentMarginBottom = 0,
+    };
 }

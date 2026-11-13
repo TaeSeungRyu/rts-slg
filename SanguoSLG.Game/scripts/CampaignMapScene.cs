@@ -846,6 +846,8 @@ public sealed partial class CampaignMapScene : Node3D
         if (args.Contains("--maptestruinburstqa")) CallDeferred(nameof(RunRuinBurstQa));
         if (args.Contains("--maptestunitreturnconfirmqa")) CallDeferred(nameof(RunUnitReturnConfirmQa));
         if (args.Contains("--maptestmodalframeworkqa")) CallDeferred(nameof(RunAdaptiveModalFrameworkQa));
+        if (args.Any(argument => argument.StartsWith("--maptestadaptivecommandchromeqa", StringComparison.Ordinal)))
+            CallDeferred(nameof(RunAdaptiveCommandChromeQa));
         if (args.Contains("--maptestdoctrineperformanceqa")) CallDeferred(nameof(RunDoctrineModalPerformanceQa));
         if (args.Contains("--maptestofficertableqa")) CallDeferred(nameof(RunOfficerTableLayoutQa));
         if (args.Contains("--maptestcitydetailqa")) CallDeferred(nameof(RunCityDetailUiQa));
@@ -8185,7 +8187,8 @@ public sealed partial class CampaignMapScene : Node3D
             : AdaptiveModalScaffold.WidthProfile.Standard;
         var scaffold = new AdaptiveModalScaffold();
         scaffold.Configure(vp, modalProfile);
-        scaffold.AddThemeStyleboxOverride("panel", Frame(Ink, Gold, 2, 10, 14));
+        if (!scaffold.UsesImageChrome)
+            scaffold.AddThemeStyleboxOverride("panel", Frame(Ink, Gold, 2, 10, 14));
         scaffold.TextureFilter = CanvasItem.TextureFilterEnum.LinearWithMipmaps; // 고해상 아이콘 축소 시 선명
         center.AddChild(scaffold);
 

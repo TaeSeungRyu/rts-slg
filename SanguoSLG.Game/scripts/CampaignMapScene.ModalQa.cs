@@ -949,7 +949,8 @@ public sealed partial class CampaignMapScene
 
                 var scaffold = new AdaptiveModalScaffold();
                 scaffold.Configure(resolution, profile);
-                scaffold.AddThemeStyleboxOverride("panel", Frame(Ink, Gold, 2, 10, 14));
+                if (!scaffold.UsesImageChrome)
+                    scaffold.AddThemeStyleboxOverride("panel", Frame(Ink, Gold, 2, 10, 14));
                 center.AddChild(scaffold);
 
                 var title = MakeLabel($"{profile} 모달 QA", 20, Gold);
@@ -999,6 +1000,67 @@ public sealed partial class CampaignMapScene
         }
 
         GD.Print($"[modal-framework-qa] cases={checkedCases}/9 passed={passed}");
+        GetTree().Quit(passed ? 0 : 1);
+    }
+
+    /// <summary>AdaptiveModalScaffold를 사용하는 실제 명령 17종의 이미지 프레임과 대표 렌더를 검증한다.</summary>
+    private async void RunAdaptiveCommandChromeQa()
+    {
+        var argument = OS.GetCmdlineUserArgs().FirstOrDefault(value =>
+            value.StartsWith("--maptestadaptivecommandchromeqa=", System.StringComparison.Ordinal));
+        var resolution = argument?.EndsWith("1920x1080", System.StringComparison.Ordinal) == true
+            ? new Vector2I(1920, 1080) : new Vector2I(1600, 900);
+        GetWindow().Size = resolution;
+        for (var frame = 0; frame < 3; frame++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+
+        var city = _state.Cities.First(candidate => candidate.Owner == Player && !candidate.IsPort && !candidate.IsGate);
+        var port = _state.Cities.FirstOrDefault(candidate => candidate.Owner == Player && candidate.IsPort);
+        var cases = new (int Index, string Code, bool Port, bool Capture)[]
+        {
+            (6, "major", false, true), (9, "wall", false, false), (12, "stratagem", false, false),
+            (13, "alliance", false, true), (14, "break-alliance", false, false), (15, "war", false, false),
+            (16, "governor", false, true), (17, "strategist", false, false),
+            (18, "security", false, false), (19, "domestic", false, false),
+            (20, "recruitment", false, false), (21, "training", false, false),
+            (22, "hero", false, false), (25, "dismiss", false, false),
+            (26, "transfer", false, false), (23, "explore", false, true),
+            (5, "ship", true, true),
+        };
+        var passed = port is not null;
+        var verified = new List<string>();
+        var rootPath = new System.IO.DirectoryInfo(ProjectSettings.GlobalizePath("res://")).Parent?.FullName
+            ?? ProjectSettings.GlobalizePath("res://");
+
+        foreach (var item in cases)
+        {
+            SelectCity(item.Port ? port!.Id : city.Id);
+            OpenModal(item.Index);
+            for (var frame = 0; frame < 3; frame++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+            var scaffold = _modalLayer?.FindChild("AdaptiveModalScaffold", true, false) as AdaptiveModalScaffold;
+            var header = scaffold?.FindChild("ModalChromeHeaderImage", true, false) as TextureRect;
+            var footer = scaffold?.FindChild("ModalChromeFooterImage", true, false) as TextureRect;
+            var title = scaffold?.Header.FindChildren("*", "Label", true, false).OfType<Label>().FirstOrDefault();
+            var rect = scaffold?.GetGlobalRect() ?? default;
+            var viewport = GetViewport().GetVisibleRect();
+            var chromeOk = scaffold?.UsesImageChrome == true;
+            var texturesOk = header?.Texture is not null && footer?.Texture is not null;
+            var titleOk = title is not null;
+            var boundsOk = viewport.Encloses(rect);
+            var bodyOk = scaffold?.BodyScroll is not null;
+            var ok = chromeOk && texturesOk && titleOk && boundsOk && bodyOk;
+            passed &= ok;
+            verified.Add($"{item.Code}:{ok}[chrome={chromeOk},tex={texturesOk},title={titleOk},bounds={boundsOk},body={bodyOk},rect={rect}]" );
+            if (item.Capture && DisplayServer.GetName() != "headless")
+            {
+                var path = System.IO.Path.Combine(rootPath,
+                    $"shot_adaptive_modal_{item.Code}_{resolution.X}x{resolution.Y}.png");
+                passed &= GetViewport().GetTexture().GetImage().SavePng(path) == Error.Ok;
+            }
+            CloseModal();
+            await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        }
+
+        GD.Print($"[adaptive-command-chrome-qa] passed={passed} resolution={resolution.X}x{resolution.Y} verified={string.Join(',', verified)}");
         GetTree().Quit(passed ? 0 : 1);
     }
 

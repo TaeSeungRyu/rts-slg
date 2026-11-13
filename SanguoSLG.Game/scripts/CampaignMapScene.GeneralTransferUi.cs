@@ -42,7 +42,7 @@ public sealed partial class CampaignMapScene
         var table = new Tree { Name = "GeneralTransferOfficerTable",
             Columns = 6, ColumnTitlesVisible = true, HideRoot = true,
             SelectMode = Tree.SelectModeEnum.Row,
-            CustomMinimumSize = new Vector2(0, Mathf.Max(160, scaffold.LayoutSize.Y - 180f)),
+            CustomMinimumSize = new Vector2(0, Mathf.Max(160, scaffold.BodyLayoutHeight - 90f)),
             SizeFlagsVertical = Control.SizeFlags.ExpandFill,
             SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
             ScrollVerticalEnabled = true };
