@@ -3083,6 +3083,19 @@ public sealed partial class CampaignMapScene : Node3D
         {
             _terrainInfo.AddChild(productionButton);
         }
+        if (placement is not null
+            && _state.Cities.FirstOrDefault(c => c.Id == placement.City)?.Owner == Player
+            && !_advancing)
+        {
+            var upgrading = _state.Commands.Any(c => c.Kind == CommandKind.Upgrade
+                && c.City == placement.City && c.Plot == placement.Plot);
+            var upgradeButton = MakeButton(upgrading ? "업그레이드 진행중" : "▶ 업그레이드");
+            upgradeButton.AddThemeFontSizeOverride("font_size", 12);
+            upgradeButton.CustomMinimumSize = new Vector2(0, 30);
+            upgradeButton.Disabled = upgrading || FacilityHealth.NextTier(placement.HitPoints) is null;
+            upgradeButton.Pressed += () => OpenFacilityUpgradeModal(placement);
+            _terrainInfo.AddChild(upgradeButton);
+        }
 
         _terrainHex = h;
         _terrainCard.ResetSize();
