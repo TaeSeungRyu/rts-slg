@@ -14080,7 +14080,10 @@ public sealed partial class CampaignMapScene : Node3D
     private void CenterAndDrag(PanelContainer panel, Control handle, float mw, float mh, VBoxContainer box)
     {
         var vp = GetViewport().GetVisibleRect().Size;
-        var sz = new Vector2(mw + 28f, Mathf.Min(box.GetCombinedMinimumSize().Y + 28f, mh + 28f));
+        var contentHeight = panel is ModalChrome
+            ? panel.GetCombinedMinimumSize().Y
+            : box.GetCombinedMinimumSize().Y + 28f;
+        var sz = new Vector2(mw + 28f, Mathf.Min(contentHeight, mh + 28f));
         panel.Position = new Vector2(Mathf.Max(8f, (vp.X - sz.X) / 2f), Mathf.Max(8f, (vp.Y - sz.Y) / 2f));
 
         handle.MouseFilter = Control.MouseFilterEnum.Stop;
@@ -17321,9 +17324,15 @@ public sealed partial class CampaignMapScene : Node3D
         var vp = GetViewport().GetVisibleRect().Size;
         var mw = Mathf.Clamp(vp.X * 0.44f, 430f, 620f);
         var mh = Mathf.Clamp(vp.Y * 0.68f, 340f, 600f);
-        var box = DeployScaffold(mw, out var scroll, out var panel);
-        var titleRow = new HBoxContainer();
-        box.AddChild(titleRow);
+        var box = DeployScaffold(mw, out var scroll, out var panel, useModalChrome: true);
+        var chrome = panel as ModalChrome;
+        var titleRow = new HBoxContainer
+        {
+            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+            SizeFlagsVertical = Control.SizeFlags.ExpandFill,
+        };
+        if (chrome is not null) { chrome.HeaderHost.AddChild(titleRow); }
+        else { box.AddChild(titleRow); }
         var title = MakeLabel($"{FacilityName(placement.Code)} 업그레이드   《 {city.Name} 》  ⠿", 22, Gold);
         title.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
         title.MouseFilter = Control.MouseFilterEnum.Ignore;
@@ -17332,7 +17341,7 @@ public sealed partial class CampaignMapScene : Node3D
         close.CustomMinimumSize = new Vector2(40, 34);
         close.Pressed += CloseModal;
         titleRow.AddChild(close);
-        box.AddChild(GoldRule());
+        if (chrome is null) { box.AddChild(GoldRule()); }
 
         var next = FacilityHealth.NextTier(placement.HitPoints);
         var cost = FacilityBuildCost(placement.Code);
@@ -17347,7 +17356,8 @@ public sealed partial class CampaignMapScene : Node3D
         var holder = new VBoxContainer();
         box.AddChild(holder);
         BuildFacilityUpgradeOfficerCards(holder, placement);
-        scroll.CustomMinimumSize = new Vector2(mw, Mathf.Min(box.GetCombinedMinimumSize().Y, mh));
+        var bodyHeight = chrome?.BodyHeightFor(mh) ?? mh;
+        scroll.CustomMinimumSize = new Vector2(mw, Mathf.Min(box.GetCombinedMinimumSize().Y, bodyHeight));
         CenterAndDrag(panel, titleRow, mw, mh, box);
     }
 
