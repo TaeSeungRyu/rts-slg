@@ -187,8 +187,8 @@ public sealed class CampaignEngine
                 armies = FieldConstructionService.ReleaseCompleted(armies, work.Buildings, simulationDay).ToList();
                 work = work with
                 {
-                    FieldBuildings = work.Buildings.Select(x => x.BuilderUnit is { } builder
-                        && completedBuilders.Contains(builder) ? x with { BuilderUnit = null } : x).ToList(),
+                    FieldBuildings = FieldConstructionService.FinalizeCompleted(
+                        work.Buildings, _fieldBuildingDefinitions, simulationDay),
                 };
             }
             var constructionUnits = FieldConstructionService.ConstructionUnits(work, simulationDay);
@@ -595,8 +595,8 @@ public sealed class CampaignEngine
         return advanced with
         {
             FieldArmies = FieldConstructionService.ReleaseCompleted(advanced.Armies, advanced.Buildings, advanced.Day),
-            FieldBuildings = advanced.Buildings.Select(x => x.BuilderUnit is { } builder
-                && completedAtEnd.Contains(builder) ? x with { BuilderUnit = null } : x).ToList(),
+            FieldBuildings = FieldConstructionService.FinalizeCompleted(
+                advanced.Buildings, _fieldBuildingDefinitions, advanced.Day),
         };
     }
 

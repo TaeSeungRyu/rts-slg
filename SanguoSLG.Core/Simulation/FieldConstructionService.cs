@@ -103,6 +103,22 @@ public sealed class FieldConstructionService(
             : x).ToList();
     }
 
+    /// <summary>완공된 공격 가능 건축물의 내구를 최대치로 확정하고 건축 부대 연결을 해제한다.</summary>
+    public static IReadOnlyList<FieldBuilding> FinalizeCompleted(
+        IReadOnlyList<FieldBuilding> buildings, IReadOnlyList<FieldBuildingDefinition> definitions, int day)
+    {
+        var byCode = definitions.ToDictionary(x => x.Code, StringComparer.Ordinal);
+        return buildings.Select(building =>
+        {
+            if (building.BuilderUnit is null || !building.IsCompleted(day)) return building;
+            var hitPoints = byCode.TryGetValue(building.DefinitionCode, out var definition)
+                && definition.CanBeTargeted
+                ? definition.MaxHitPoints
+                : building.HitPoints;
+            return building with { HitPoints = hitPoints, BuilderUnit = null };
+        }).ToList();
+    }
+
     public CommandResult Demolish(GameState state, FactionId faction, FieldBuildingId buildingId)
     {
         var building = state.Buildings.FirstOrDefault(x => x.Id == buildingId && x.Owner == faction);

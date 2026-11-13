@@ -130,6 +130,22 @@ public sealed class FieldConstructionServiceTests
         Assert.Equal(UnitMode.Advance, next.Armies.Single().Field.Mode);
     }
 
+    [Theory]
+    [InlineData("palisade", 1000)]
+    [InlineData("watchtower", 1500)]
+    [InlineData("fort", 2500)]
+    [InlineData("formation", 2000)]
+    public void 공격가능_건축물은_완공되면_최대내구로_확정된다(string code, int maximum)
+    {
+        var building = new FieldBuilding(new(1), code, Player, new HexCoord(3, 2), maximum / 2,
+            1, 8, BuilderUnit: new UnitId(1));
+
+        var completed = Assert.Single(FieldConstructionService.FinalizeCompleted([building], Definitions, 8));
+
+        Assert.Equal(maximum, completed.HitPoints);
+        Assert.Null(completed.BuilderUnit);
+    }
+
     [Fact]
     public void 건축부대가_괴멸해_사라졌으면_미완성_공사장도_제거된다()
     {
