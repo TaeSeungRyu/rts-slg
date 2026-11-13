@@ -12,9 +12,10 @@ public sealed partial class ModalChrome : PanelContainer
     public const string HeaderTexturePath = "res://assets/ui/game/modals/modal_header.png";
     public const string FooterTexturePath = "res://assets/ui/game/modals/modal_footer.png";
 
-    private const float HeaderHeight = 72f;
-    private const float FooterHeight = 42f;
     private const float HorizontalInset = 16f;
+
+    private readonly float _headerHeight;
+    private readonly float _footerHeight;
 
     public static bool HasRequiredAssets =>
         ResourceLoader.Exists(HeaderTexturePath) && ResourceLoader.Exists(FooterTexturePath);
@@ -31,16 +32,23 @@ public sealed partial class ModalChrome : PanelContainer
         TextureFilter = TextureFilterEnum.LinearWithMipmaps;
         SetMeta("modal_chrome", true);
 
+        var headerTexture = GD.Load<Texture2D>(HeaderTexturePath);
+        var footerTexture = GD.Load<Texture2D>(FooterTexturePath);
+        var chromeWidth = contentWidth + HorizontalInset * 2f + 10f;
+        _headerHeight = HeightForWidth(headerTexture, chromeWidth);
+        _footerHeight = HeightForWidth(footerTexture, chromeWidth);
+        var headerContentInset = Mathf.Clamp(chromeWidth * 0.16f, 72f, 112f);
+
         var rootStyle = new StyleBoxFlat
         {
-            BgColor = new Color("160b09"),
-            BorderColor = new Color("d4aa58"),
-            BorderWidthLeft = 2,
-            BorderWidthRight = 2,
+            BgColor = Colors.Transparent,
+            BorderColor = Colors.Transparent,
+            BorderWidthLeft = 0,
+            BorderWidthRight = 0,
             BorderWidthTop = 0,
             BorderWidthBottom = 0,
-            ContentMarginLeft = 5,
-            ContentMarginRight = 5,
+            ContentMarginLeft = 0,
+            ContentMarginRight = 0,
             ContentMarginTop = 0,
             ContentMarginBottom = 0,
         };
@@ -55,16 +63,35 @@ public sealed partial class ModalChrome : PanelContainer
         regions.AddThemeConstantOverride("separation", 0);
         AddChild(regions);
 
-        HeaderHost = BuildImageRegion(regions, "ModalChromeHeader", HeaderTexturePath, HeaderHeight);
+        HeaderHost = BuildImageRegion(
+            regions, "ModalChromeHeader", headerTexture, _headerHeight, headerContentInset);
 
-        var bodyFrame = new PanelContainer
+        var bodyOuter = new PanelContainer
         {
-            Name = "ModalChromeBodyFrame",
+            Name = "ModalChromeBodyOuterRail",
             SizeFlagsHorizontal = SizeFlags.ExpandFill,
             SizeFlagsVertical = SizeFlags.ExpandFill,
         };
-        bodyFrame.AddThemeStyleboxOverride("panel", BuildBodyStyle());
-        regions.AddChild(bodyFrame);
+        bodyOuter.AddThemeStyleboxOverride("panel", BuildRailStyle(new Color("dda94d"), 2, 2, new Color("190d0b")));
+        regions.AddChild(bodyOuter);
+
+        var bodyMiddle = new PanelContainer
+        {
+            Name = "ModalChromeBodyMiddleRail",
+            SizeFlagsHorizontal = SizeFlags.ExpandFill,
+            SizeFlagsVertical = SizeFlags.ExpandFill,
+        };
+        bodyMiddle.AddThemeStyleboxOverride("panel", BuildRailStyle(new Color("593015"), 1, 2, Colors.Transparent));
+        bodyOuter.AddChild(bodyMiddle);
+
+        var bodyInner = new PanelContainer
+        {
+            Name = "ModalChromeBodyInnerRail",
+            SizeFlagsHorizontal = SizeFlags.ExpandFill,
+            SizeFlagsVertical = SizeFlags.ExpandFill,
+        };
+        bodyInner.AddThemeStyleboxOverride("panel", BuildBodyStyle());
+        bodyMiddle.AddChild(bodyInner);
 
         BodyScroll = new ScrollContainer
         {
@@ -75,7 +102,7 @@ public sealed partial class ModalChrome : PanelContainer
             SizeFlagsHorizontal = SizeFlags.ExpandFill,
             SizeFlagsVertical = SizeFlags.ExpandFill,
         };
-        bodyFrame.AddChild(BodyScroll);
+        bodyInner.AddChild(BodyScroll);
 
         Body = new VBoxContainer
         {
@@ -85,17 +112,19 @@ public sealed partial class ModalChrome : PanelContainer
         Body.AddThemeConstantOverride("separation", 8);
         BodyScroll.AddChild(Body);
 
-        FooterHost = BuildImageRegion(regions, "ModalChromeFooter", FooterTexturePath, FooterHeight);
+        FooterHost = BuildImageRegion(
+            regions, "ModalChromeFooter", footerTexture, _footerHeight, HorizontalInset);
     }
 
     public float BodyHeightFor(float totalContentHeight) =>
-        Mathf.Max(120f, totalContentHeight - HeaderHeight - FooterHeight);
+        Mathf.Max(120f, totalContentHeight - _headerHeight - _footerHeight);
 
     private static HBoxContainer BuildImageRegion(
         VBoxContainer parent,
         string name,
-        string texturePath,
-        float height)
+        Texture2D texture,
+        float height,
+        float contentInset)
     {
         var layer = new Control
         {
@@ -109,9 +138,9 @@ public sealed partial class ModalChrome : PanelContainer
         var image = new TextureRect
         {
             Name = name + "Image",
-            Texture = GD.Load<Texture2D>(texturePath),
+            Texture = texture,
             ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
-            StretchMode = TextureRect.StretchModeEnum.KeepAspectCovered,
+            StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
             MouseFilter = MouseFilterEnum.Ignore,
         };
         image.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
@@ -123,8 +152,8 @@ public sealed partial class ModalChrome : PanelContainer
             MouseFilter = MouseFilterEnum.Pass,
         };
         margin.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
-        margin.AddThemeConstantOverride("margin_left", (int)HorizontalInset);
-        margin.AddThemeConstantOverride("margin_right", (int)HorizontalInset);
+        margin.AddThemeConstantOverride("margin_left", Mathf.RoundToInt(contentInset));
+        margin.AddThemeConstantOverride("margin_right", Mathf.RoundToInt(contentInset));
         margin.AddThemeConstantOverride("margin_top", 8);
         margin.AddThemeConstantOverride("margin_bottom", 8);
         layer.AddChild(margin);
@@ -140,12 +169,32 @@ public sealed partial class ModalChrome : PanelContainer
         return host;
     }
 
+    private static float HeightForWidth(Texture2D texture, float width)
+    {
+        var size = texture.GetSize();
+        return size.X <= 0f ? 0f : Mathf.Ceil(width * size.Y / size.X);
+    }
+
+    private static StyleBoxFlat BuildRailStyle(Color border, int borderWidth, int inset, Color background) => new()
+    {
+        BgColor = background,
+        BorderColor = border,
+        BorderWidthLeft = borderWidth,
+        BorderWidthRight = borderWidth,
+        BorderWidthTop = 0,
+        BorderWidthBottom = 0,
+        ContentMarginLeft = inset,
+        ContentMarginRight = inset,
+        ContentMarginTop = 0,
+        ContentMarginBottom = 0,
+    };
+
     private static StyleBoxFlat BuildBodyStyle() => new()
     {
-        BgColor = new Color("190d0b"),
-        BorderColor = new Color("8e6a34"),
-        BorderWidthLeft = 3,
-        BorderWidthRight = 3,
+        BgColor = Colors.Transparent,
+        BorderColor = new Color("95632b"),
+        BorderWidthLeft = 1,
+        BorderWidthRight = 1,
         BorderWidthTop = 0,
         BorderWidthBottom = 0,
         ContentMarginLeft = HorizontalInset,
