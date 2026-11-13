@@ -6959,11 +6959,12 @@ public sealed partial class CampaignMapScene : Node3D
         g.AddChild(v);
     }
 
-    private void StyleCityArtworkActionButton(Button button, bool danger = false)
+    private void StyleCityArtworkActionButton(Button button, bool danger = false, float textOffsetUp = 0f)
     {
         button.Alignment = HorizontalAlignment.Center;
         foreach (var state in new[] { "normal", "hover", "pressed", "disabled", "focus" })
-            button.AddThemeStyleboxOverride(state, new StyleBoxEmpty());
+            button.AddThemeStyleboxOverride(state,
+                new StyleBoxEmpty { ContentMarginBottom = textOffsetUp });
         button.AddThemeColorOverride("font_color", danger ? new Color("efb08a") : GameUiSkin.Ivory);
         button.AddThemeColorOverride("font_hover_color", GameUiSkin.GoldBright);
         button.AddThemeColorOverride("font_pressed_color", danger ? new Color("d77b61") : GameUiSkin.Gold);
@@ -7146,7 +7147,8 @@ public sealed partial class CampaignMapScene : Node3D
         var cityTitle = MakeLabel(c.Name, 18, GameUiSkin.GoldBright);
         cityTitle.Name = "CityInfoTitle";
         cityTitle.AnchorRight = 1f;
-        cityTitle.OffsetBottom = 22f;
+        cityTitle.OffsetTop = !known ? -5f : 0f;
+        cityTitle.OffsetBottom = !known ? 17f : 22f;
         cityTitle.HorizontalAlignment = HorizontalAlignment.Center;
         cityTitle.VerticalAlignment = VerticalAlignment.Center;
         cityTitle.TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis;
@@ -7157,8 +7159,8 @@ public sealed partial class CampaignMapScene : Node3D
             new Color(GameUiSkin.Ivory, 0.76f));
         cityVision.Name = "CityInfoSubtitle";
         cityVision.AnchorRight = 1f;
-        cityVision.OffsetTop = 30f;
-        cityVision.OffsetBottom = 48f;
+        cityVision.OffsetTop = !known ? 25f : 30f;
+        cityVision.OffsetBottom = !known ? 43f : 48f;
         cityVision.HorizontalAlignment = HorizontalAlignment.Center;
         cityVision.VerticalAlignment = VerticalAlignment.Center;
         cityVision.TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis;
@@ -7175,9 +7177,9 @@ public sealed partial class CampaignMapScene : Node3D
             unknownPanel.AddThemeStyleboxOverride("panel", new StyleBoxEmpty
             {
                 ContentMarginLeft = 16f,
-                ContentMarginTop = 16f,
+                ContentMarginTop = 11f,
                 ContentMarginRight = 16f,
-                ContentMarginBottom = 16f,
+                ContentMarginBottom = 21f,
             });
             var unknownText = MakeLabel(
                 "시야 밖의 적 거점입니다.\n아군 시야에 들어오거나 정찰에 성공하면 정보를 확인할 수 있습니다.",
@@ -7200,7 +7202,7 @@ public sealed partial class CampaignMapScene : Node3D
             detailUnknown.AddThemeFontSizeOverride("font_size", 12);
             detailUnknown.CustomMinimumSize = new Vector2(0, 26);
             detailUnknown.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
-            StyleCityArtworkActionButton(detailUnknown);
+            StyleCityArtworkActionButton(detailUnknown, textOffsetUp: 5f);
             detailUnknown.Pressed += () => OpenCityInfoReadonly(id);
             enemyActions.AddChild(detailUnknown);
             if (!_advancing)
@@ -7208,7 +7210,7 @@ public sealed partial class CampaignMapScene : Node3D
                 var attack = MakeButton("공격", accent: true);
                 attack.CustomMinimumSize = new Vector2(0, 26);
                 attack.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
-                StyleCityArtworkActionButton(attack, danger: true);
+                StyleCityArtworkActionButton(attack, danger: true, textOffsetUp: 5f);
                 attack.Pressed += () => ShowAttackChoices(c.Position, c.Name);
                 enemyActions.AddChild(attack);
             }
