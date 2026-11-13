@@ -7147,7 +7147,7 @@ public sealed partial class CampaignMapScene : Node3D
         var cityTitle = MakeLabel(c.Name, 18, GameUiSkin.GoldBright);
         cityTitle.Name = "CityInfoTitle";
         cityTitle.AnchorRight = 1f;
-        var cityTextOffset = !known ? 5f : scoutedEnemy ? 3f : 0f;
+        var cityTextOffset = !known ? 8f : scoutedEnemy ? 3f : 0f;
         cityTitle.OffsetTop = -cityTextOffset;
         cityTitle.OffsetBottom = 22f - cityTextOffset;
         cityTitle.HorizontalAlignment = HorizontalAlignment.Center;
@@ -7178,9 +7178,9 @@ public sealed partial class CampaignMapScene : Node3D
             unknownPanel.AddThemeStyleboxOverride("panel", new StyleBoxEmpty
             {
                 ContentMarginLeft = 16f,
-                ContentMarginTop = 11f,
+                ContentMarginTop = 8f,
                 ContentMarginRight = 16f,
-                ContentMarginBottom = 21f,
+                ContentMarginBottom = 24f,
             });
             var unknownText = MakeLabel(
                 "시야 밖의 적 거점입니다.\n아군 시야에 들어오거나 정찰에 성공하면 정보를 확인할 수 있습니다.",
@@ -7203,7 +7203,7 @@ public sealed partial class CampaignMapScene : Node3D
             detailUnknown.AddThemeFontSizeOverride("font_size", 12);
             detailUnknown.CustomMinimumSize = new Vector2(0, 26);
             detailUnknown.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
-            StyleCityArtworkActionButton(detailUnknown, textOffsetUp: 5f);
+            StyleCityArtworkActionButton(detailUnknown, textOffsetUp: 8f);
             detailUnknown.Pressed += () => OpenCityInfoReadonly(id);
             enemyActions.AddChild(detailUnknown);
             if (!_advancing)
@@ -7211,7 +7211,7 @@ public sealed partial class CampaignMapScene : Node3D
                 var attack = MakeButton("공격", accent: true);
                 attack.CustomMinimumSize = new Vector2(0, 26);
                 attack.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
-                StyleCityArtworkActionButton(attack, danger: true, textOffsetUp: 5f);
+                StyleCityArtworkActionButton(attack, danger: true, textOffsetUp: 8f);
                 attack.Pressed += () => ShowAttackChoices(c.Position, c.Name);
                 enemyActions.AddChild(attack);
             }
