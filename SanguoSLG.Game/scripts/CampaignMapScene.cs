@@ -5894,7 +5894,7 @@ public sealed partial class CampaignMapScene : Node3D
             gbtn.ToggleMode = true;
             gbtn.AddThemeFontSizeOverride("font_size", 15);
             gbtn.Alignment = HorizontalAlignment.Center;
-            gbtn.CustomMinimumSize = new Vector2(184, 48);
+            gbtn.CustomMinimumSize = new Vector2(166, 48);
             gbtn.SizeFlagsHorizontal = Control.SizeFlags.ShrinkCenter;
             if (!GameUiSkin.ApplyMainCommandArtwork(gbtn, CmdGroups[gi].Group))
                 GameUiSkin.ApplyCommandButton(gbtn);
@@ -5920,7 +5920,7 @@ public sealed partial class CampaignMapScene : Node3D
         deployBtn.ToggleMode = true;
         deployBtn.AddThemeFontSizeOverride("font_size", 15);
         deployBtn.Alignment = HorizontalAlignment.Center;
-        deployBtn.CustomMinimumSize = new Vector2(184, 48);
+        deployBtn.CustomMinimumSize = new Vector2(166, 48);
         deployBtn.SizeFlagsHorizontal = Control.SizeFlags.ShrinkCenter;
         if (!GameUiSkin.ApplyMainCommandArtwork(deployBtn, "출전", accent: true))
             GameUiSkin.ApplyCommandButton(deployBtn, accent: true);
@@ -5932,7 +5932,7 @@ public sealed partial class CampaignMapScene : Node3D
         productionBtn.Name = "CityCommandProduction";
         productionBtn.AddThemeFontSizeOverride("font_size", 15);
         productionBtn.Alignment = HorizontalAlignment.Center;
-        productionBtn.CustomMinimumSize = new Vector2(184, 48);
+        productionBtn.CustomMinimumSize = new Vector2(166, 48);
         productionBtn.SizeFlagsHorizontal = Control.SizeFlags.ShrinkCenter;
         if (!GameUiSkin.ApplyMainCommandArtwork(productionBtn, "생산", accent: true))
             GameUiSkin.ApplyCommandButton(productionBtn, accent: true);
@@ -7371,7 +7371,7 @@ public sealed partial class CampaignMapScene : Node3D
         _selected = city.Id;
         var menusCompact = Cmds.All(command => !command.Label.Contains(' '));
         var mainButtons = _cmdList.GetChildren().OfType<Button>().ToList();
-        var mainSizing = mainButtons.All(button => Mathf.IsEqualApprox(button.CustomMinimumSize.X, 184f)
+        var mainSizing = mainButtons.All(button => Mathf.IsEqualApprox(button.CustomMinimumSize.X, 166f)
                 && Mathf.IsEqualApprox(button.CustomMinimumSize.Y, 48f)
                 && button.SizeFlagsHorizontal == Control.SizeFlags.ShrinkCenter)
             && _cmdList.GetThemeConstant("separation") == 6;
