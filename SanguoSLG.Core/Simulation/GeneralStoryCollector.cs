@@ -15,6 +15,8 @@ public static class GeneralStoryCollector
             .GroupBy(u => u.Id).ToDictionary(g => g.Key, g => g.First());
         foreach (var capture in captures.OrderBy(x => x.City.Value))
         {
+            // 관문에는 치안과 주민 행정이 없으므로 점령 직후 민심 안정 선택지를 만들지 않는다.
+            if (after.Cities.FirstOrDefault(city => city.Id == capture.City)?.IsGate == true) continue;
             var occupier = capture.OccupyingUnits.Select(id => armies.GetValueOrDefault(id))
                 .FirstOrDefault(u => u?.VanguardId is not null);
             if (occupier?.VanguardId is not { } speaker) continue;

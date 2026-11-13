@@ -8,6 +8,22 @@ using Xunit;
 public sealed class GeneralStoryCollectorTests
 {
     [Fact]
+    public void 관문_점령은_주민_민심_안정_대화를_생성하지_않는다()
+    {
+        var speaker = new General(new(1), "선봉", new Dictionary<TroopClass, AptitudeGrade>(), 80, 60, 50);
+        var gate = new City(new(7), "호뢰관", new HexCoord(3, 0), new(1), 100, Gate: GateSize.Small);
+        var field = new FieldUnit(new(9), new(1), gate.Position, 2, 2, 1,
+            MovementDomain.Land, UnitMode.Attack, null, 0);
+        var occupier = new CombatUnit(field, new CombatStats(1000, 10, 10), new TroopPool(1000, 0),
+            UnitCombatState.Create(60), 80, VanguardId: speaker.Id);
+        var state = new GameState(7, 190, [new Faction(new(1), "아군", speaker.Id, 0, "red")],
+            [gate], [speaker], FieldArmies: [occupier]);
+        var report = new CaptureReport(gate.Id, new(1), new(2), [], [], false, [occupier.Id]);
+
+        Assert.Empty(GeneralStoryCollector.Collect(state, state, [], [report], []));
+    }
+
+    [Fact]
     public void 동맹_대화는_상대_군주와_소재도시_참모를_선택한다()
     {
         var envoy = new General(new(1), "사절", new Dictionary<TroopClass, AptitudeGrade>(), 40, 50, 90);
