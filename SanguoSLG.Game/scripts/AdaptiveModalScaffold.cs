@@ -28,6 +28,16 @@ public sealed partial class AdaptiveModalScaffold : PanelContainer
         Mixed,
     }
 
+    public enum WorkspaceProfile
+    {
+        Default,
+        EmptyCompact,
+        CardSelection,
+        DenseResearch,
+        MixedCommand,
+        Recruitment,
+    }
+
     private const float ViewportMargin = 24f;
     private const float HeightRatio = 0.82f;
     // ModalChrome은 본문 폭 양쪽에 레일·패딩을 더한다.
@@ -38,6 +48,7 @@ public sealed partial class AdaptiveModalScaffold : PanelContainer
     private Vector2 _viewportSize;
     private WidthProfile _widthProfile;
     private ContentLayout _contentLayout = ContentLayout.Fixed;
+    private WorkspaceProfile _workspaceProfile = WorkspaceProfile.Default;
     private int _pendingFitPasses;
     private bool _fitQueued;
 
@@ -47,6 +58,8 @@ public sealed partial class AdaptiveModalScaffold : PanelContainer
     public HBoxContainer Footer { get; private set; } = null!;
     public Vector2 LayoutSize { get; private set; }
     public bool UsesImageChrome => _chrome is not null;
+    public float EstimatedBodyContentWidth => Mathf.Max(320f,
+        LayoutSize.X - ModalChrome.BodyHorizontalInset * 2f - 38f);
     public float BodyLayoutHeight => _chrome?.BodyHeightFor(LayoutSize.Y)
         ?? Mathf.Max(120f, LayoutSize.Y - 104f);
 
@@ -127,12 +140,14 @@ public sealed partial class AdaptiveModalScaffold : PanelContainer
     public void Configure(
         Vector2 viewportSize,
         WidthProfile profile,
-        ContentLayout contentLayout = ContentLayout.Fixed)
+        ContentLayout contentLayout = ContentLayout.Fixed,
+        WorkspaceProfile workspaceProfile = WorkspaceProfile.Default)
     {
         _viewportSize = viewportSize;
         _widthProfile = profile;
         _contentLayout = contentLayout;
-        LayoutSize = CalculateLayoutSize(viewportSize, profile, contentLayout);
+        _workspaceProfile = workspaceProfile;
+        LayoutSize = CalculateLayoutSize(viewportSize, profile, contentLayout, workspaceProfile);
         CustomMinimumSize = LayoutSize;
         if (Header is null)
         {
@@ -167,6 +182,7 @@ public sealed partial class AdaptiveModalScaffold : PanelContainer
         SetMeta("modal_height", LayoutSize.Y);
         SetMeta("modal_image_chrome", UsesImageChrome);
         SetMeta("modal_content_layout", contentLayout.ToString());
+        SetMeta("modal_workspace_profile", workspaceProfile.ToString());
         Body.MinimumSizeChanged += OnBodyMinimumSizeChanged;
         RequestContentFit();
     }
@@ -231,6 +247,14 @@ public sealed partial class AdaptiveModalScaffold : PanelContainer
             minimumBodyHeight,
             maximumBodyHeight);
         var desiredHeight = Mathf.Min(availableHeight, chromeHeight + desiredBodyHeight);
+        if (_workspaceProfile != WorkspaceProfile.Default)
+        {
+            var (minimumTotalHeight, maximumTotalHeight) = WorkspaceHeightRange(
+                _workspaceProfile, _viewportSize.Y);
+            desiredHeight = Mathf.Clamp(desiredHeight,
+                Mathf.Min(minimumTotalHeight, availableHeight),
+                Mathf.Min(maximumTotalHeight, availableHeight));
+        }
 
         LayoutSize = new Vector2(desiredWidth, Mathf.Round(desiredHeight));
         CustomMinimumSize = LayoutSize;
@@ -325,7 +349,8 @@ public sealed partial class AdaptiveModalScaffold : PanelContainer
     public static Vector2 CalculateLayoutSize(
         Vector2 viewportSize,
         WidthProfile profile,
-        ContentLayout contentLayout = ContentLayout.Fixed)
+        ContentLayout contentLayout = ContentLayout.Fixed,
+        WorkspaceProfile workspaceProfile = WorkspaceProfile.Default)
     {
         var availableWidth = Mathf.Max(320f, viewportSize.X - ViewportMargin * 2f);
         var availableHeight = Mathf.Max(320f, viewportSize.Y - ViewportMargin * 2f);
@@ -359,7 +384,30 @@ public sealed partial class AdaptiveModalScaffold : PanelContainer
         };
         var width = Mathf.Min(Mathf.Max(viewportSize.X * widthRatio, minimumWidth), availableWidth);
         var height = Mathf.Min(Mathf.Max(viewportSize.Y * HeightRatio, 420f), availableHeight);
+        if (workspaceProfile != WorkspaceProfile.Default)
+        {
+            var (minimumTotalHeight, maximumTotalHeight) = WorkspaceHeightRange(
+                workspaceProfile, viewportSize.Y);
+            height = Mathf.Clamp(height,
+                Mathf.Min(minimumTotalHeight, availableHeight),
+                Mathf.Min(maximumTotalHeight, availableHeight));
+        }
         return new Vector2(Mathf.Round(width), Mathf.Round(height));
+    }
+
+    private static (float Minimum, float Maximum) WorkspaceHeightRange(
+        WorkspaceProfile profile, float viewportHeight)
+    {
+        var largeViewportBonus = viewportHeight >= 1000f ? 40f : 0f;
+        return profile switch
+        {
+            WorkspaceProfile.EmptyCompact => (220f, 340f),
+            WorkspaceProfile.CardSelection => (580f, 740f + largeViewportBonus),
+            WorkspaceProfile.DenseResearch => (700f, 780f + largeViewportBonus),
+            WorkspaceProfile.MixedCommand => (640f, 780f + largeViewportBonus),
+            WorkspaceProfile.Recruitment => (680f, 780f + largeViewportBonus),
+            _ => (420f, Mathf.Max(420f, viewportHeight - ViewportMargin * 2f)),
+        };
     }
 
     private static StyleBoxFlat TransparentPanelStyle() => new()
