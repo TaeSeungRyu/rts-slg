@@ -13,7 +13,7 @@ public sealed partial class ModalChrome : PanelContainer
     public const string FooterTexturePath = "res://assets/ui/game/modals/modal_footer.png";
 
     private const float HorizontalInset = 16f;
-    public const float BodyHorizontalInset = 25f;
+    public const float BodyHorizontalInset = 35f;
     public const float RegionConnectionOverlap = 10f;
     // 바깥 프레임 폭은 기존 기준을 유지하고 본문만 추가로 안쪽에 배치한다.
     public const float HorizontalChromeExtras = HorizontalInset * 2f + 20f;
@@ -118,6 +118,18 @@ public sealed partial class ModalChrome : PanelContainer
         bodyInner.AddThemeStyleboxOverride("panel", BuildBodyStyle(bodyTopPadding, bodyBottomPadding));
         bodyMiddle.AddChild(bodyInner);
 
+        // ScrollContainer의 자식 최소 폭이 PanelContainer까지 전파되면 본문 인셋을
+        // 늘린 만큼 모달 외곽도 다시 커진다. 일반 Control을 레이아웃 경계로 두어
+        // 본문은 주어진 프레임 폭 안에서만 배치되도록 한다.
+        var bodyViewport = new Control
+        {
+            Name = "ModalChromeBodyViewport",
+            SizeFlagsHorizontal = SizeFlags.ExpandFill,
+            SizeFlagsVertical = SizeFlags.ExpandFill,
+            ClipContents = true,
+        };
+        bodyInner.AddChild(bodyViewport);
+
         BodyScroll = new ScrollContainer
         {
             Name = "ModalChromeBodyScroll",
@@ -130,7 +142,8 @@ public sealed partial class ModalChrome : PanelContainer
             SizeFlagsHorizontal = SizeFlags.ExpandFill,
             SizeFlagsVertical = SizeFlags.ExpandFill,
         };
-        bodyInner.AddChild(BodyScroll);
+        BodyScroll.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+        bodyViewport.AddChild(BodyScroll);
 
         Body = new VBoxContainer
         {
