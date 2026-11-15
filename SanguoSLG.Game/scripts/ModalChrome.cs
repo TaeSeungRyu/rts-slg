@@ -13,10 +13,10 @@ public sealed partial class ModalChrome : PanelContainer
     public const string FooterTexturePath = "res://assets/ui/game/modals/modal_footer.png";
 
     private const float HorizontalInset = 16f;
-    public const float BodyHorizontalInset = 5f;
+    public const float BodyHorizontalInset = 15f;
     public const float RegionConnectionOverlap = 6f;
-    public const float HorizontalChromeExtras = HorizontalInset * 2f + 10f
-        + BodyHorizontalInset * 2f;
+    // 바깥 프레임 폭은 기존 기준을 유지하고 본문만 추가로 안쪽에 배치한다.
+    public const float HorizontalChromeExtras = HorizontalInset * 2f + 20f;
 
     private readonly Texture2D _headerTexture;
     private readonly Texture2D _footerTexture;
