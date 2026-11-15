@@ -244,10 +244,11 @@ public sealed partial class AdaptiveModalScaffold : PanelContainer
     public void SetHeader(Control title, BaseButton closeButton, Control? separator = null)
     {
         const float closeButtonSize = 38f;
+        const float closeSlotSize = 50f;
         var titleBalance = new Control
         {
             Name = "ModalTitleBalance",
-            CustomMinimumSize = new Vector2(closeButtonSize, 0f),
+            CustomMinimumSize = new Vector2(closeSlotSize, 0f),
             MouseFilter = MouseFilterEnum.Ignore,
         };
         Header.AddChild(titleBalance);
@@ -268,7 +269,15 @@ public sealed partial class AdaptiveModalScaffold : PanelContainer
         closeButton.SizeFlagsHorizontal = SizeFlags.ShrinkEnd;
         closeButton.SizeFlagsVertical = SizeFlags.ShrinkCenter;
         closeButton.SetMeta("modal_role", "close");
-        Header.AddChild(closeButton);
+        var closeSafeArea = new CenterContainer
+        {
+            Name = "ModalCloseSafeArea",
+            CustomMinimumSize = new Vector2(closeSlotSize, 0f),
+            SizeFlagsVertical = SizeFlags.ExpandFill,
+            MouseFilter = MouseFilterEnum.Pass,
+        };
+        Header.AddChild(closeSafeArea);
+        closeSafeArea.AddChild(closeButton);
 
         if (separator is not null)
         {
