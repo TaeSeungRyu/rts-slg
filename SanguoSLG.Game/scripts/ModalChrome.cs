@@ -121,7 +121,10 @@ public sealed partial class ModalChrome : PanelContainer
         BodyScroll = new ScrollContainer
         {
             Name = "ModalChromeBodyScroll",
-            CustomMinimumSize = new Vector2(contentWidth, 0),
+            // 본문 폭은 바깥 프레임의 실제 가용 폭을 따른다. 여기서 contentWidth를
+            // 최소 폭으로 다시 강제하면 좌우 인셋만큼 모달 전체가 커져 본문이
+            // 시각적으로 줄어들지 않는다.
+            CustomMinimumSize = Vector2.Zero,
             HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled,
             VerticalScrollMode = ScrollContainer.ScrollMode.Auto,
             SizeFlagsHorizontal = SizeFlags.ExpandFill,
@@ -148,7 +151,7 @@ public sealed partial class ModalChrome : PanelContainer
         var chromeWidth = safeContentWidth + HorizontalChromeExtras;
         _headerHeight = HeightForWidth(_headerTexture, chromeWidth);
         _footerHeight = HeightForWidth(_footerTexture, chromeWidth);
-        BodyScroll.CustomMinimumSize = new Vector2(safeContentWidth, 0f);
+        BodyScroll.CustomMinimumSize = Vector2.Zero;
         _headerRegion.CustomMinimumSize = new Vector2(0f, _headerHeight);
         _footerRegion.CustomMinimumSize = new Vector2(0f, _footerHeight);
         var headerInset = Mathf.RoundToInt(HeaderContentInset(chromeWidth));
