@@ -228,6 +228,13 @@ public sealed partial class AdaptiveModalScaffold : PanelContainer
             bodyMinimum.X + ScrollBarAllowance);
         var desiredWidth = Mathf.Round(Mathf.Min(availableWidth,
             measuredContentWidth + ChromeHorizontalExtras));
+        if (_workspaceProfile != WorkspaceProfile.Default
+            && _workspaceProfile != WorkspaceProfile.EmptyCompact)
+        {
+            // 카드 열 수는 Configure 시점의 작업 폭으로 결정된다. 이후 측정 패스에서
+            // 폭을 다시 줄이면 마지막 열이 잘리므로 대상 작업공간은 최초 폭을 유지한다.
+            desiredWidth = Mathf.Min(availableWidth, LayoutSize.X);
+        }
         if (_chrome is not null)
             _chrome.SetContentWidth(desiredWidth - ChromeHorizontalExtras);
 

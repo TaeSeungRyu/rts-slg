@@ -8187,15 +8187,23 @@ public sealed partial class CampaignMapScene : Node3D
             ? AdaptiveModalScaffold.WidthProfile.Wide
             : AdaptiveModalScaffold.WidthProfile.Standard;
         var contentLayout = AdaptiveLayoutForCommand(cmd, selectedCityData);
+        var workspaceProfile = WorkspaceProfileForCommand(cmd);
         var scaffold = new AdaptiveModalScaffold();
-        scaffold.Configure(vp, modalProfile, contentLayout);
+        scaffold.Configure(vp, modalProfile, contentLayout, workspaceProfile);
         if (!scaffold.UsesImageChrome)
             scaffold.AddThemeStyleboxOverride("panel", Frame(Ink, Gold, 2, 10, 14));
         scaffold.TextureFilter = CanvasItem.TextureFilterEnum.LinearWithMipmaps; // 고해상 아이콘 축소 시 선명
         center.AddChild(scaffold);
 
-        var mw = scaffold.LayoutSize.X - 28f;
-        var colOpt = (int)Mathf.Clamp(Mathf.Floor((mw + 8f) / (wideDoctrineModal ? 186f : 146f)), 3, wideDoctrineModal ? 7 : 5);
+        var mw = workspaceProfile == AdaptiveModalScaffold.WorkspaceProfile.Default
+            ? scaffold.LayoutSize.X - 28f
+            : scaffold.EstimatedBodyContentWidth;
+        var optionCardWidth = cmd.Kind == CommandKind.Research
+            && cmd.Param is "troop" or "general" or "stratagem_research"
+            || cmd.Kind == CommandKind.AppointRecruitmentOfficer ? 186f : 148f;
+        var colOpt = workspaceProfile == AdaptiveModalScaffold.WorkspaceProfile.Default
+            ? (int)Mathf.Clamp(Mathf.Floor((mw + 8f) / (wideDoctrineModal ? 186f : 146f)), 3, wideDoctrineModal ? 7 : 5)
+            : (int)Mathf.Clamp(Mathf.Floor((mw + 10f) / (optionCardWidth + 10f)), 2, 6);
         var colOff = (int)Mathf.Clamp(Mathf.Floor((mw + 8f) / 169f), 2, 4);
         var cityName = _state.Cities.First(x => x.Id == city).Name;
         var gateAppointment = cmd.Kind == CommandKind.AppointGovernor
@@ -8524,6 +8532,9 @@ public sealed partial class CampaignMapScene : Node3D
         (string Label, CommandKind Kind, string Param) command,
         City city)
     {
+        if (command.Kind == CommandKind.Research && command.Param is "troop" or "general")
+            return AdaptiveModalScaffold.ContentLayout.Mixed;
+
         if (command.Param is "faction" or "war_city")
         {
             var hasTargets = command.Param == "war_city"
@@ -8551,6 +8562,18 @@ public sealed partial class CampaignMapScene : Node3D
             return AdaptiveModalScaffold.ContentLayout.Table;
 
         return AdaptiveModalScaffold.ContentLayout.Fixed;
+    }
+
+    private static AdaptiveModalScaffold.WorkspaceProfile WorkspaceProfileForCommand(
+        (string Label, CommandKind Kind, string Param) command)
+    {
+        if (command.Kind == CommandKind.SelectMajorTroop)
+            return AdaptiveModalScaffold.WorkspaceProfile.CardSelection;
+        if (command.Kind == CommandKind.Research && command.Param is "troop" or "general")
+            return AdaptiveModalScaffold.WorkspaceProfile.DenseResearch;
+        if (command.Kind == CommandKind.BreakAlliance)
+            return AdaptiveModalScaffold.WorkspaceProfile.EmptyCompact;
+        return AdaptiveModalScaffold.WorkspaceProfile.Default;
     }
 
     private void ApplyContinuousMovementPlayback()
