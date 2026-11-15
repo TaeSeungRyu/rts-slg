@@ -14,7 +14,7 @@ public sealed partial class ModalChrome : PanelContainer
 
     private const float HorizontalInset = 16f;
     public const float BodyHorizontalInset = 15f;
-    public const float RegionConnectionOverlap = 6f;
+    public const float RegionConnectionOverlap = 10f;
     // 바깥 프레임 폭은 기존 기준을 유지하고 본문만 추가로 안쪽에 배치한다.
     public const float HorizontalChromeExtras = HorizontalInset * 2f + 20f;
 
