@@ -8187,7 +8187,7 @@ public sealed partial class CampaignMapScene : Node3D
             ? AdaptiveModalScaffold.WidthProfile.Wide
             : AdaptiveModalScaffold.WidthProfile.Standard;
         var contentLayout = AdaptiveLayoutForCommand(cmd, selectedCityData);
-        var workspaceProfile = WorkspaceProfileForCommand(cmd);
+        var workspaceProfile = WorkspaceProfileForCommand(cmd, selectedCityData);
         var scaffold = new AdaptiveModalScaffold();
         scaffold.Configure(vp, modalProfile, contentLayout, workspaceProfile);
         if (!scaffold.UsesImageChrome)
@@ -8532,7 +8532,8 @@ public sealed partial class CampaignMapScene : Node3D
         (string Label, CommandKind Kind, string Param) command,
         City city)
     {
-        if (command.Kind == CommandKind.Research && command.Param is "troop" or "general")
+        if (command.Kind == CommandKind.Research
+            && command.Param is "troop" or "general" or "stratagem_research")
             return AdaptiveModalScaffold.ContentLayout.Mixed;
 
         if (command.Param is "faction" or "war_city")
@@ -8564,15 +8565,28 @@ public sealed partial class CampaignMapScene : Node3D
         return AdaptiveModalScaffold.ContentLayout.Fixed;
     }
 
-    private static AdaptiveModalScaffold.WorkspaceProfile WorkspaceProfileForCommand(
-        (string Label, CommandKind Kind, string Param) command)
+    private AdaptiveModalScaffold.WorkspaceProfile WorkspaceProfileForCommand(
+        (string Label, CommandKind Kind, string Param) command,
+        City city)
     {
         if (command.Kind == CommandKind.SelectMajorTroop)
             return AdaptiveModalScaffold.WorkspaceProfile.CardSelection;
-        if (command.Kind == CommandKind.Research && command.Param is "troop" or "general")
+        if (command.Kind == CommandKind.Research
+            && command.Param is "troop" or "general" or "stratagem_research")
             return AdaptiveModalScaffold.WorkspaceProfile.DenseResearch;
-        if (command.Kind == CommandKind.BreakAlliance)
-            return AdaptiveModalScaffold.WorkspaceProfile.EmptyCompact;
+        if (command.Param is "faction" or "war_city")
+        {
+            var hasTargets = command.Param == "war_city"
+                ? WarDeclarationTargets(city).Count > 0
+                : DiplomacyTargets(command.Kind, city).Count > 0;
+            return hasTargets
+                ? AdaptiveModalScaffold.WorkspaceProfile.MixedCommand
+                : AdaptiveModalScaffold.WorkspaceProfile.EmptyCompact;
+        }
+        if (command.Kind == CommandKind.CityStratagem)
+            return AdaptiveModalScaffold.WorkspaceProfile.MixedCommand;
+        if (command.Kind == CommandKind.AppointRecruitmentOfficer)
+            return AdaptiveModalScaffold.WorkspaceProfile.Recruitment;
         return AdaptiveModalScaffold.WorkspaceProfile.Default;
     }
 
