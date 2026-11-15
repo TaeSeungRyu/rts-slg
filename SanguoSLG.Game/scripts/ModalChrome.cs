@@ -13,7 +13,9 @@ public sealed partial class ModalChrome : PanelContainer
     public const string FooterTexturePath = "res://assets/ui/game/modals/modal_footer.png";
 
     private const float HorizontalInset = 16f;
-    public const float HorizontalChromeExtras = HorizontalInset * 2f + 10f;
+    public const float BodyHorizontalInset = 5f;
+    public const float HorizontalChromeExtras = HorizontalInset * 2f + 10f
+        + BodyHorizontalInset * 2f;
 
     private readonly Texture2D _headerTexture;
     private readonly Texture2D _footerTexture;
@@ -85,7 +87,16 @@ public sealed partial class ModalChrome : PanelContainer
             SizeFlagsVertical = SizeFlags.ExpandFill,
         };
         bodyOuter.AddThemeStyleboxOverride("panel", BuildRailStyle(new Color("dda94d"), 2, 2, new Color("190d0b")));
-        regions.AddChild(bodyOuter);
+        var bodyFrameMargin = new MarginContainer
+        {
+            Name = "ModalChromeBodyFrameMargin",
+            SizeFlagsHorizontal = SizeFlags.ExpandFill,
+            SizeFlagsVertical = SizeFlags.ExpandFill,
+        };
+        bodyFrameMargin.AddThemeConstantOverride("margin_left", Mathf.RoundToInt(BodyHorizontalInset));
+        bodyFrameMargin.AddThemeConstantOverride("margin_right", Mathf.RoundToInt(BodyHorizontalInset));
+        regions.AddChild(bodyFrameMargin);
+        bodyFrameMargin.AddChild(bodyOuter);
 
         var bodyMiddle = new PanelContainer
         {

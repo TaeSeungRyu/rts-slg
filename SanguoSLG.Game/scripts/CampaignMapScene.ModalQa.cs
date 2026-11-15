@@ -1055,6 +1055,11 @@ public sealed partial class CampaignMapScene
             var regionsConnected = headerRegion is not null && bodyRegion is not null && footerRegion is not null
                 && Mathf.Abs(headerRegion.GetGlobalRect().End.Y - bodyRegion.GetGlobalRect().Position.Y) <= 1f
                 && Mathf.Abs(bodyRegion.GetGlobalRect().End.Y - footerRegion.GetGlobalRect().Position.Y) <= 1f;
+            var bodyInsetOk = headerRegion is not null && bodyRegion is not null && footerRegion is not null
+                && bodyRegion.GetGlobalRect().Position.X >= headerRegion.GetGlobalRect().Position.X
+                    + ModalChrome.BodyHorizontalInset - 1f
+                && bodyRegion.GetGlobalRect().End.X <= footerRegion.GetGlobalRect().End.X
+                    - ModalChrome.BodyHorizontalInset + 1f;
             var emptyScrollOk = layout != AdaptiveModalScaffold.ContentLayout.Empty.ToString()
                 || scaffold?.BodyScroll.GetVScrollBar().Visible != true;
             var optionGrid = scaffold?.FindChild("CommandOptionGrid", true, false) as GridContainer;
@@ -1066,9 +1071,9 @@ public sealed partial class CampaignMapScene
                     && cardRect.End.X <= bodyRect.End.X + 1f;
             });
             var ok = chromeOk && texturesOk && titleOk && boundsOk && bodyOk && layoutOk
-                && regionsConnected && emptyScrollOk && cardsFit;
+                && regionsConnected && bodyInsetOk && emptyScrollOk && cardsFit;
             passed &= ok;
-            verified.Add($"{item.Code}:{ok}[layout={layout},chrome={chromeOk},connected={regionsConnected},emptyScroll={emptyScrollOk},cardsFit={cardsFit},tex={texturesOk},title={titleOk},bounds={boundsOk},body={bodyOk},rect={rect}]" );
+            verified.Add($"{item.Code}:{ok}[layout={layout},chrome={chromeOk},connected={regionsConnected},bodyInset={bodyInsetOk},emptyScroll={emptyScrollOk},cardsFit={cardsFit},tex={texturesOk},title={titleOk},bounds={boundsOk},body={bodyOk},rect={rect}]" );
             if (item.Capture && DisplayServer.GetName() != "headless")
             {
                 var path = System.IO.Path.Combine(rootPath,
