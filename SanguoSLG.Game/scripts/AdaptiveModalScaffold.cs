@@ -243,13 +243,28 @@ public sealed partial class AdaptiveModalScaffold : PanelContainer
 
     public void SetHeader(Control title, BaseButton closeButton, Control? separator = null)
     {
+        const float closeButtonSize = 38f;
+        var titleBalance = new Control
+        {
+            Name = "ModalTitleBalance",
+            CustomMinimumSize = new Vector2(closeButtonSize, 0f),
+            MouseFilter = MouseFilterEnum.Ignore,
+        };
+        Header.AddChild(titleBalance);
+
         title.SizeFlagsHorizontal = SizeFlags.ExpandFill;
         title.SizeFlagsVertical = SizeFlags.ShrinkCenter;
+        if (title is Label titleLabel)
+        {
+            titleLabel.HorizontalAlignment = HorizontalAlignment.Center;
+            titleLabel.VerticalAlignment = VerticalAlignment.Center;
+            titleLabel.TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis;
+        }
         title.SetMeta("modal_role", "title");
         Header.AddChild(title);
 
         closeButton.Name = "ModalCloseButton";
-        closeButton.CustomMinimumSize = new Vector2(38, 38);
+        closeButton.CustomMinimumSize = new Vector2(closeButtonSize, closeButtonSize);
         closeButton.SizeFlagsHorizontal = SizeFlags.ShrinkEnd;
         closeButton.SizeFlagsVertical = SizeFlags.ShrinkCenter;
         closeButton.SetMeta("modal_role", "close");
