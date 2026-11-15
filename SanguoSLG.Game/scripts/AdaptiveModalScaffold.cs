@@ -8,6 +8,10 @@ namespace SanguoSLG.Game;
 /// </summary>
 public sealed partial class AdaptiveModalScaffold : PanelContainer
 {
+    private const string CloseNormalTexturePath = "res://assets/ui/game/modals/modal_close_normal.png";
+    private const string CloseHoverTexturePath = "res://assets/ui/game/modals/modal_close_hover.png";
+    private const string ClosePressedTexturePath = "res://assets/ui/game/modals/modal_close_pressed.png";
+
     public enum WidthProfile
     {
         Compact,
@@ -243,8 +247,8 @@ public sealed partial class AdaptiveModalScaffold : PanelContainer
 
     public void SetHeader(Control title, BaseButton closeButton, Control? separator = null)
     {
-        const float closeButtonSize = 38f;
-        const float closeSlotSize = 50f;
+        const float closeButtonSize = 40f;
+        const float closeSlotSize = 52f;
         var titleBalance = new Control
         {
             Name = "ModalTitleBalance",
@@ -285,6 +289,29 @@ public sealed partial class AdaptiveModalScaffold : PanelContainer
             separator.SetMeta("modal_role", "header_separator");
             Body.AddChild(separator);
         }
+    }
+
+    public static BaseButton CreateCloseButton()
+    {
+        if (ResourceLoader.Exists(CloseNormalTexturePath)
+            && ResourceLoader.Exists(CloseHoverTexturePath)
+            && ResourceLoader.Exists(ClosePressedTexturePath))
+        {
+            return new TextureButton
+            {
+                Name = "ModalCloseButton",
+                TextureNormal = GD.Load<Texture2D>(CloseNormalTexturePath),
+                TextureHover = GD.Load<Texture2D>(CloseHoverTexturePath),
+                TexturePressed = GD.Load<Texture2D>(ClosePressedTexturePath),
+                TextureFocused = GD.Load<Texture2D>(CloseHoverTexturePath),
+                IgnoreTextureSize = true,
+                StretchMode = TextureButton.StretchModeEnum.KeepAspectCentered,
+                CustomMinimumSize = new Vector2(40f, 40f),
+                FocusMode = FocusModeEnum.All,
+            };
+        }
+
+        return new Button { Text = "✕" };
     }
 
     public void AddFooterControl(Control control)

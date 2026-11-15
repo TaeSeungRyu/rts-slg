@@ -8201,7 +8201,7 @@ public sealed partial class CampaignMapScene : Node3D
         var gateAppointment = cmd.Kind == CommandKind.AppointGovernor
             && _state.Cities.Any(candidate => candidate.Id == city && candidate.IsGate);
         var title = MakeLabel($"{(gateAppointment ? "관문장 임명" : cmd.Label)}   《 {cityName} 》", 26, Gold);
-        var close = MakeButton("✕");
+        var close = AdaptiveModalScaffold.CreateCloseButton();
         close.Pressed += CloseModal;
         scaffold.SetHeader(title, close, GoldRule());
         var box = scaffold.Body;
