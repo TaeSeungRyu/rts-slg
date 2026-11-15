@@ -81,6 +81,8 @@ public sealed partial class ModalChrome : PanelContainer
         HeaderHost = BuildImageRegion(
             regions, "ModalChromeHeader", _headerTexture, _headerHeight, headerContentInset,
             out _headerRegion, out _headerContentMargin);
+        _headerContentMargin.AddThemeConstantOverride(
+            "margin_top", Mathf.RoundToInt(HeaderContentTopInset(_headerHeight)));
 
         var bodyOuter = new PanelContainer
         {
@@ -170,6 +172,8 @@ public sealed partial class ModalChrome : PanelContainer
         var headerInset = Mathf.RoundToInt(HeaderContentInset(chromeWidth));
         _headerContentMargin.AddThemeConstantOverride("margin_left", headerInset);
         _headerContentMargin.AddThemeConstantOverride("margin_right", headerInset);
+        _headerContentMargin.AddThemeConstantOverride(
+            "margin_top", Mathf.RoundToInt(HeaderContentTopInset(_headerHeight)));
     }
 
     public float BodyHeightFor(float totalContentHeight) =>
@@ -236,6 +240,11 @@ public sealed partial class ModalChrome : PanelContainer
 
     private static float HeaderContentInset(float chromeWidth) =>
         Mathf.Clamp(chromeWidth * 0.22f, 96f, 300f);
+
+    // 제목과 닫기 버튼은 상단 장식 전체가 아니라 용 문양 아래 붉은 띠의
+    // 세로 중심에 놓는다. 헤더가 폭에 따라 함께 확대되므로 비율 기반으로 둔다.
+    private static float HeaderContentTopInset(float headerHeight) =>
+        Mathf.Clamp(headerHeight * 0.34f, 24f, 72f);
 
     private static StyleBoxFlat BuildRailStyle(Color border, int borderWidth, int inset, Color background) => new()
     {
