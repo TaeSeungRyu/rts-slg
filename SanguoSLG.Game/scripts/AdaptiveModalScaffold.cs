@@ -244,6 +244,7 @@ public sealed partial class AdaptiveModalScaffold : PanelContainer
         var widthRatio = contentLayout switch
         {
             ContentLayout.Empty => 0.46f,
+            ContentLayout.Table when profile == WidthProfile.Wide => 0.82f,
             ContentLayout.Table => 0.64f,
             ContentLayout.Cards => 0.72f,
             ContentLayout.Mixed => 0.82f,
@@ -257,6 +258,7 @@ public sealed partial class AdaptiveModalScaffold : PanelContainer
         var minimumWidth = contentLayout switch
         {
             ContentLayout.Empty => 520f,
+            ContentLayout.Table when profile == WidthProfile.Wide => 960f,
             ContentLayout.Table => 720f,
             ContentLayout.Cards => 820f,
             ContentLayout.Mixed => 960f,

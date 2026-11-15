@@ -1048,8 +1048,7 @@ public sealed partial class CampaignMapScene
             var boundsOk = viewport.Encloses(rect);
             var bodyOk = scaffold?.BodyScroll is not null;
             var layout = scaffold?.GetMeta("modal_content_layout").AsString() ?? "missing";
-            var representative = item.Index is 5 or 6 or 9 or 14 or 19;
-            var layoutOk = !representative || layout != AdaptiveModalScaffold.ContentLayout.Fixed.ToString();
+            var layoutOk = layout != AdaptiveModalScaffold.ContentLayout.Fixed.ToString();
             var ok = chromeOk && texturesOk && titleOk && boundsOk && bodyOk && layoutOk;
             passed &= ok;
             verified.Add($"{item.Code}:{ok}[layout={layout},chrome={chromeOk},tex={texturesOk},title={titleOk},bounds={boundsOk},body={bodyOk},rect={rect}]" );

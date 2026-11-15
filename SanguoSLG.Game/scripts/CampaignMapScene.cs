@@ -8186,7 +8186,7 @@ public sealed partial class CampaignMapScene : Node3D
         var modalProfile = wideDoctrineModal
             ? AdaptiveModalScaffold.WidthProfile.Wide
             : AdaptiveModalScaffold.WidthProfile.Standard;
-        var contentLayout = RepresentativeAdaptiveLayout(cmd, selectedCityData);
+        var contentLayout = AdaptiveLayoutForCommand(cmd, selectedCityData);
         var scaffold = new AdaptiveModalScaffold();
         scaffold.Configure(vp, modalProfile, contentLayout);
         if (!scaffold.UsesImageChrome)
@@ -8520,22 +8520,36 @@ public sealed partial class CampaignMapScene : Node3D
 
     }
 
-    private AdaptiveModalScaffold.ContentLayout RepresentativeAdaptiveLayout(
+    private AdaptiveModalScaffold.ContentLayout AdaptiveLayoutForCommand(
         (string Label, CommandKind Kind, string Param) command,
         City city)
     {
-        if (command.Kind == CommandKind.SelectMajorTroop)
+        if (command.Param is "faction" or "war_city")
+        {
+            var hasTargets = command.Param == "war_city"
+                ? WarDeclarationTargets(city).Count > 0
+                : DiplomacyTargets(command.Kind, city).Count > 0;
+            return hasTargets
+                ? AdaptiveModalScaffold.ContentLayout.Mixed
+                : AdaptiveModalScaffold.ContentLayout.Empty;
+        }
+
+        if (command.Kind == CommandKind.SelectMajorTroop
+            || command.Kind == CommandKind.RecruitHero && command.Param == "hero")
             return AdaptiveModalScaffold.ContentLayout.Cards;
-        if (command.Kind == CommandKind.Research && command.Param == "wall")
-            return AdaptiveModalScaffold.ContentLayout.Table;
-        if (command.Kind == CommandKind.BreakAlliance)
-            return DiplomacyTargets(command.Kind, city).Count == 0
-                ? AdaptiveModalScaffold.ContentLayout.Empty
-                : AdaptiveModalScaffold.ContentLayout.Mixed;
-        if (command.Kind == CommandKind.AppointDomesticOfficer)
-            return AdaptiveModalScaffold.ContentLayout.Table;
-        if (command.Kind == CommandKind.BuildShip)
+
+        if (command.Kind is CommandKind.BuildShip or CommandKind.CityStratagem
+            or CommandKind.AppointRecruitmentOfficer)
             return AdaptiveModalScaffold.ContentLayout.Mixed;
+
+        if (command.Kind == CommandKind.Research && command.Param == "wall"
+            || command.Kind is CommandKind.AppointGovernor or CommandKind.AppointStrategist
+                or CommandKind.AppointSecurityOfficer or CommandKind.AppointDomesticOfficer
+                or CommandKind.AppointTrainingOfficer or CommandKind.Explore
+                or CommandKind.TransferGeneral
+            || command.Param == "dismiss")
+            return AdaptiveModalScaffold.ContentLayout.Table;
+
         return AdaptiveModalScaffold.ContentLayout.Fixed;
     }
 
