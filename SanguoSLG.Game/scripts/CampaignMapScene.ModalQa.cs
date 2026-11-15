@@ -1053,8 +1053,10 @@ public sealed partial class CampaignMapScene
             var layout = scaffold?.GetMeta("modal_content_layout").AsString() ?? "missing";
             var layoutOk = layout != AdaptiveModalScaffold.ContentLayout.Fixed.ToString();
             var regionsConnected = headerRegion is not null && bodyRegion is not null && footerRegion is not null
-                && Mathf.Abs(headerRegion.GetGlobalRect().End.Y - bodyRegion.GetGlobalRect().Position.Y) <= 1f
-                && Mathf.Abs(bodyRegion.GetGlobalRect().End.Y - footerRegion.GetGlobalRect().Position.Y) <= 1f;
+                && Mathf.Abs(headerRegion.GetGlobalRect().End.Y - bodyRegion.GetGlobalRect().Position.Y
+                    - ModalChrome.RegionConnectionOverlap) <= 1f
+                && Mathf.Abs(bodyRegion.GetGlobalRect().End.Y - footerRegion.GetGlobalRect().Position.Y
+                    - ModalChrome.RegionConnectionOverlap) <= 1f;
             var bodyInsetOk = headerRegion is not null && bodyRegion is not null && footerRegion is not null
                 && bodyRegion.GetGlobalRect().Position.X >= headerRegion.GetGlobalRect().Position.X
                     + ModalChrome.BodyHorizontalInset - 1f

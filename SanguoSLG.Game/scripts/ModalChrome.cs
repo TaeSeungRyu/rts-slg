@@ -14,6 +14,7 @@ public sealed partial class ModalChrome : PanelContainer
 
     private const float HorizontalInset = 16f;
     public const float BodyHorizontalInset = 5f;
+    public const float RegionConnectionOverlap = 6f;
     public const float HorizontalChromeExtras = HorizontalInset * 2f + 10f
         + BodyHorizontalInset * 2f;
 
@@ -32,7 +33,8 @@ public sealed partial class ModalChrome : PanelContainer
     public ScrollContainer BodyScroll { get; }
     public VBoxContainer Body { get; }
     public HBoxContainer FooterHost { get; }
-    public float HeaderFooterHeight => _headerHeight + _footerHeight;
+    public float HeaderFooterHeight => _headerHeight + _footerHeight
+        - RegionConnectionOverlap * 2f;
 
     public ModalChrome(
         float contentWidth,
@@ -73,7 +75,7 @@ public sealed partial class ModalChrome : PanelContainer
             SizeFlagsHorizontal = SizeFlags.ExpandFill,
             SizeFlagsVertical = SizeFlags.ExpandFill,
         };
-        regions.AddThemeConstantOverride("separation", 0);
+        regions.AddThemeConstantOverride("separation", -Mathf.RoundToInt(RegionConnectionOverlap));
         AddChild(regions);
 
         HeaderHost = BuildImageRegion(
@@ -172,6 +174,7 @@ public sealed partial class ModalChrome : PanelContainer
             CustomMinimumSize = new Vector2(0, height),
             MouseFilter = MouseFilterEnum.Ignore,
             ClipContents = true,
+            ZIndex = 2,
         };
         parent.AddChild(layer);
 
