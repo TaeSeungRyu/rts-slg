@@ -15,12 +15,24 @@ public sealed partial class AdaptiveModalScaffold : PanelContainer
         Wide,
     }
 
+    public enum ContentLayout
+    {
+        Fixed,
+        Empty,
+        Table,
+        Cards,
+        Mixed,
+    }
+
     private const float ViewportMargin = 24f;
     private const float HeightRatio = 0.82f;
     // ModalChrome은 본문 폭 양쪽에 레일·패딩 21px씩을 더한다.
     private const float ChromeHorizontalExtras = 42f;
 
     private ModalChrome? _chrome;
+    private Vector2 _viewportSize;
+    private WidthProfile _widthProfile;
+    private ContentLayout _contentLayout = ContentLayout.Fixed;
 
     public HBoxContainer Header { get; private set; } = null!;
     public ScrollContainer BodyScroll { get; private set; } = null!;
@@ -37,6 +49,11 @@ public sealed partial class AdaptiveModalScaffold : PanelContainer
         MouseFilter = MouseFilterEnum.Stop;
         SetMeta("modal_role", "scaffold");
         AddThemeStyleboxOverride("panel", TransparentPanelStyle());
+    }
+
+    public override void _Ready()
+    {
+        RequestContentFit();
     }
 
     private void BuildLegacyRegions()
@@ -100,9 +117,15 @@ public sealed partial class AdaptiveModalScaffold : PanelContainer
         root.AddChild(Footer);
     }
 
-    public void Configure(Vector2 viewportSize, WidthProfile profile)
+    public void Configure(
+        Vector2 viewportSize,
+        WidthProfile profile,
+        ContentLayout contentLayout = ContentLayout.Fixed)
     {
-        LayoutSize = CalculateLayoutSize(viewportSize, profile);
+        _viewportSize = viewportSize;
+        _widthProfile = profile;
+        _contentLayout = contentLayout;
+        LayoutSize = CalculateLayoutSize(viewportSize, profile, contentLayout);
         CustomMinimumSize = LayoutSize;
         if (Header is null)
         {
@@ -133,6 +156,52 @@ public sealed partial class AdaptiveModalScaffold : PanelContainer
         SetMeta("modal_width", LayoutSize.X);
         SetMeta("modal_height", LayoutSize.Y);
         SetMeta("modal_image_chrome", UsesImageChrome);
+        SetMeta("modal_content_layout", contentLayout.ToString());
+        RequestContentFit();
+    }
+
+    public void SetContentLayout(ContentLayout contentLayout)
+    {
+        _contentLayout = contentLayout;
+        SetMeta("modal_content_layout", contentLayout.ToString());
+        RequestContentFit();
+    }
+
+    public void RequestContentFit()
+    {
+        if (_contentLayout == ContentLayout.Fixed || !IsInsideTree()) return;
+        CallDeferred(nameof(ApplyContentFit));
+    }
+
+    private void ApplyContentFit()
+    {
+        if (_contentLayout == ContentLayout.Fixed || Body is null) return;
+
+        var availableHeight = Mathf.Max(320f, _viewportSize.Y - ViewportMargin * 2f);
+        var chromeHeight = UsesImageChrome
+            ? Mathf.Max(0f, LayoutSize.Y - BodyLayoutHeight)
+            : 104f;
+        var bodyMinimum = Body.GetCombinedMinimumSize();
+        var minimumBodyHeight = _contentLayout switch
+        {
+            ContentLayout.Empty => 84f,
+            ContentLayout.Table => 176f,
+            ContentLayout.Cards => 190f,
+            ContentLayout.Mixed => 250f,
+            _ => 220f,
+        };
+        var maximumBodyHeight = Mathf.Max(minimumBodyHeight,
+            availableHeight - chromeHeight);
+        var desiredBodyHeight = Mathf.Clamp(
+            bodyMinimum.Y + 16f,
+            minimumBodyHeight,
+            maximumBodyHeight);
+        var desiredHeight = Mathf.Min(availableHeight, chromeHeight + desiredBodyHeight);
+
+        LayoutSize = new Vector2(LayoutSize.X, Mathf.Round(desiredHeight));
+        CustomMinimumSize = LayoutSize;
+        SetMeta("modal_height", LayoutSize.Y);
+        SetMeta("modal_measured_body_height", bodyMinimum.Y);
     }
 
     public void SetHeader(Control title, BaseButton closeButton, Control? separator = null)
@@ -165,21 +234,38 @@ public sealed partial class AdaptiveModalScaffold : PanelContainer
         Footer.AddChild(control);
     }
 
-    public static Vector2 CalculateLayoutSize(Vector2 viewportSize, WidthProfile profile)
+    public static Vector2 CalculateLayoutSize(
+        Vector2 viewportSize,
+        WidthProfile profile,
+        ContentLayout contentLayout = ContentLayout.Fixed)
     {
         var availableWidth = Mathf.Max(320f, viewportSize.X - ViewportMargin * 2f);
         var availableHeight = Mathf.Max(320f, viewportSize.Y - ViewportMargin * 2f);
-        var widthRatio = profile switch
+        var widthRatio = contentLayout switch
         {
-            WidthProfile.Compact => 0.52f,
-            WidthProfile.Standard => 0.73f,
-            _ => 0.90f,
+            ContentLayout.Empty => 0.46f,
+            ContentLayout.Table => 0.64f,
+            ContentLayout.Cards => 0.72f,
+            ContentLayout.Mixed => 0.82f,
+            _ => profile switch
+            {
+                WidthProfile.Compact => 0.52f,
+                WidthProfile.Standard => 0.73f,
+                _ => 0.90f,
+            },
         };
-        var minimumWidth = profile switch
+        var minimumWidth = contentLayout switch
         {
-            WidthProfile.Compact => 420f,
-            WidthProfile.Standard => 620f,
-            _ => 820f,
+            ContentLayout.Empty => 520f,
+            ContentLayout.Table => 720f,
+            ContentLayout.Cards => 820f,
+            ContentLayout.Mixed => 960f,
+            _ => profile switch
+            {
+                WidthProfile.Compact => 420f,
+                WidthProfile.Standard => 620f,
+                _ => 820f,
+            },
         };
         var width = Mathf.Min(Mathf.Max(viewportSize.X * widthRatio, minimumWidth), availableWidth);
         var height = Mathf.Min(Mathf.Max(viewportSize.Y * HeightRatio, 420f), availableHeight);
