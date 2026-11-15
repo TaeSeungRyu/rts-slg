@@ -1017,10 +1017,10 @@ public sealed partial class CampaignMapScene
         var port = _state.Cities.FirstOrDefault(candidate => candidate.Owner == Player && candidate.IsPort);
         var cases = new (int Index, string Code, bool Port, bool Capture)[]
         {
-            (6, "major", false, true), (9, "wall", false, false), (12, "stratagem", false, false),
-            (13, "alliance", false, true), (14, "break-alliance", false, false), (15, "war", false, false),
+            (6, "major", false, true), (9, "wall", false, true), (12, "stratagem", false, false),
+            (13, "alliance", false, false), (14, "break-alliance", false, true), (15, "war", false, false),
             (16, "governor", false, true), (17, "strategist", false, false),
-            (18, "security", false, false), (19, "domestic", false, false),
+            (18, "security", false, false), (19, "domestic", false, true),
             (20, "recruitment", false, false), (21, "training", false, false),
             (22, "hero", false, false), (25, "dismiss", false, false),
             (26, "transfer", false, false), (23, "explore", false, true),
@@ -1035,7 +1035,7 @@ public sealed partial class CampaignMapScene
         {
             SelectCity(item.Port ? port!.Id : city.Id);
             OpenModal(item.Index);
-            for (var frame = 0; frame < 3; frame++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+            for (var frame = 0; frame < 15; frame++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
             var scaffold = _modalLayer?.FindChild("AdaptiveModalScaffold", true, false) as AdaptiveModalScaffold;
             var header = scaffold?.FindChild("ModalChromeHeaderImage", true, false) as TextureRect;
             var footer = scaffold?.FindChild("ModalChromeFooterImage", true, false) as TextureRect;
@@ -1047,9 +1047,12 @@ public sealed partial class CampaignMapScene
             var titleOk = title is not null;
             var boundsOk = viewport.Encloses(rect);
             var bodyOk = scaffold?.BodyScroll is not null;
-            var ok = chromeOk && texturesOk && titleOk && boundsOk && bodyOk;
+            var layout = scaffold?.GetMeta("modal_content_layout").AsString() ?? "missing";
+            var representative = item.Index is 5 or 6 or 9 or 14 or 19;
+            var layoutOk = !representative || layout != AdaptiveModalScaffold.ContentLayout.Fixed.ToString();
+            var ok = chromeOk && texturesOk && titleOk && boundsOk && bodyOk && layoutOk;
             passed &= ok;
-            verified.Add($"{item.Code}:{ok}[chrome={chromeOk},tex={texturesOk},title={titleOk},bounds={boundsOk},body={bodyOk},rect={rect}]" );
+            verified.Add($"{item.Code}:{ok}[layout={layout},chrome={chromeOk},tex={texturesOk},title={titleOk},bounds={boundsOk},body={bodyOk},rect={rect}]" );
             if (item.Capture && DisplayServer.GetName() != "headless")
             {
                 var path = System.IO.Path.Combine(rootPath,
@@ -1057,7 +1060,8 @@ public sealed partial class CampaignMapScene
                 passed &= GetViewport().GetTexture().GetImage().SavePng(path) == Error.Ok;
             }
             CloseModal();
-            await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+            for (var frame = 0; frame < 15; frame++)
+                await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
         }
 
         GD.Print($"[adaptive-command-chrome-qa] passed={passed} resolution={resolution.X}x{resolution.Y} verified={string.Join(',', verified)}");

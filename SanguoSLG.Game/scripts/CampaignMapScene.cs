@@ -8179,14 +8179,16 @@ public sealed partial class CampaignMapScene : Node3D
         layer.AddChild(center);
 
         var vp = GetViewport().GetVisibleRect().Size;
+        var selectedCityData = _state.Cities.First(x => x.Id == city);
         var wideDoctrineModal = cmd.Kind == CommandKind.Research
             && cmd.Param is "troop" or "general" or "stratagem_research"
             || cmd.Param == "transfer";
         var modalProfile = wideDoctrineModal
             ? AdaptiveModalScaffold.WidthProfile.Wide
             : AdaptiveModalScaffold.WidthProfile.Standard;
+        var contentLayout = RepresentativeAdaptiveLayout(cmd, selectedCityData);
         var scaffold = new AdaptiveModalScaffold();
-        scaffold.Configure(vp, modalProfile);
+        scaffold.Configure(vp, modalProfile, contentLayout);
         if (!scaffold.UsesImageChrome)
             scaffold.AddThemeStyleboxOverride("panel", Frame(Ink, Gold, 2, 10, 14));
         scaffold.TextureFilter = CanvasItem.TextureFilterEnum.LinearWithMipmaps; // 고해상 아이콘 축소 시 선명
@@ -8243,7 +8245,7 @@ public sealed partial class CampaignMapScene : Node3D
         {
             box.AddChild(MakeLabel("대상 성 주변 4칸에 아군 부대가 없어야 합니다. 포고는 100일간 유효하며 시야 밖에서도 대상 성이 흐리게 보입니다. 포고 없이 점령하면 기존 치안의 20~40%를 잃습니다.", 15, Parchment));
         }
-        var cityData = _state.Cities.First(x => x.Id == city);
+        var cityData = selectedCityData;
         if (cmd.Kind == CommandKind.Explore)
         {
             var summary = new GridContainer { Name = "ExplorationSummary", Columns = 2 };
@@ -8393,6 +8395,7 @@ public sealed partial class CampaignMapScene : Node3D
             {
                 Name = "CommandOptionGrid",
                 Columns = System.Math.Min(colOpt, options.Count),
+                SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
             };
             grid.AddThemeConstantOverride("h_separation", 10);
             grid.AddThemeConstantOverride("v_separation", 10);
@@ -8402,6 +8405,7 @@ public sealed partial class CampaignMapScene : Node3D
                 var idx = i;
                 var disabled = _disabledOptions.Contains(idx);
                 var card = OptionCard(options[i], disabled);
+                card.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
                 if (cmd.Kind == CommandKind.AppointRecruitmentOfficer)
                 {
                     card.SetMeta("auto_recruit_troop_card", true);
@@ -8514,6 +8518,25 @@ public sealed partial class CampaignMapScene : Node3D
             else { PickOption(_modalParam, options[_modalParam]); }
         }
 
+    }
+
+    private AdaptiveModalScaffold.ContentLayout RepresentativeAdaptiveLayout(
+        (string Label, CommandKind Kind, string Param) command,
+        City city)
+    {
+        if (command.Kind == CommandKind.SelectMajorTroop)
+            return AdaptiveModalScaffold.ContentLayout.Cards;
+        if (command.Kind == CommandKind.Research && command.Param == "wall")
+            return AdaptiveModalScaffold.ContentLayout.Table;
+        if (command.Kind == CommandKind.BreakAlliance)
+            return DiplomacyTargets(command.Kind, city).Count == 0
+                ? AdaptiveModalScaffold.ContentLayout.Empty
+                : AdaptiveModalScaffold.ContentLayout.Mixed;
+        if (command.Kind == CommandKind.AppointDomesticOfficer)
+            return AdaptiveModalScaffold.ContentLayout.Table;
+        if (command.Kind == CommandKind.BuildShip)
+            return AdaptiveModalScaffold.ContentLayout.Mixed;
+        return AdaptiveModalScaffold.ContentLayout.Fixed;
     }
 
     private void ApplyContinuousMovementPlayback()
