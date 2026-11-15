@@ -26,13 +26,16 @@ public sealed partial class AdaptiveModalScaffold : PanelContainer
 
     private const float ViewportMargin = 24f;
     private const float HeightRatio = 0.82f;
-    // ModalChrome은 본문 폭 양쪽에 레일·패딩 21px씩을 더한다.
-    private const float ChromeHorizontalExtras = 42f;
+    // ModalChrome은 본문 폭 양쪽에 레일·패딩을 더한다.
+    private const float ChromeHorizontalExtras = ModalChrome.HorizontalChromeExtras;
+    private const float ScrollBarAllowance = 18f;
 
     private ModalChrome? _chrome;
     private Vector2 _viewportSize;
     private WidthProfile _widthProfile;
     private ContentLayout _contentLayout = ContentLayout.Fixed;
+    private int _pendingFitPasses;
+    private bool _fitQueued;
 
     public HBoxContainer Header { get; private set; } = null!;
     public ScrollContainer BodyScroll { get; private set; } = null!;
@@ -131,7 +134,10 @@ public sealed partial class AdaptiveModalScaffold : PanelContainer
         {
             if (ModalChrome.HasRequiredAssets)
             {
-                _chrome = new ModalChrome(Mathf.Max(320f, LayoutSize.X - ChromeHorizontalExtras));
+                _chrome = new ModalChrome(
+                    Mathf.Max(320f, LayoutSize.X - ChromeHorizontalExtras),
+                    bodyTopPadding: 4f,
+                    bodyBottomPadding: 20f);
                 _chrome.Name = "AdaptiveModalChrome";
                 _chrome.SizeFlagsHorizontal = SizeFlags.ExpandFill;
                 _chrome.SizeFlagsVertical = SizeFlags.ExpandFill;
@@ -157,6 +163,7 @@ public sealed partial class AdaptiveModalScaffold : PanelContainer
         SetMeta("modal_height", LayoutSize.Y);
         SetMeta("modal_image_chrome", UsesImageChrome);
         SetMeta("modal_content_layout", contentLayout.ToString());
+        Body.MinimumSizeChanged += OnBodyMinimumSizeChanged;
         RequestContentFit();
     }
 
@@ -170,18 +177,41 @@ public sealed partial class AdaptiveModalScaffold : PanelContainer
     public void RequestContentFit()
     {
         if (_contentLayout == ContentLayout.Fixed || !IsInsideTree()) return;
+        _pendingFitPasses = 2;
+        if (_fitQueued) return;
+        _fitQueued = true;
         CallDeferred(nameof(ApplyContentFit));
+    }
+
+    private void OnBodyMinimumSizeChanged()
+    {
+        RequestContentFit();
     }
 
     private void ApplyContentFit()
     {
+        _fitQueued = false;
         if (_contentLayout == ContentLayout.Fixed || Body is null) return;
 
+        var availableWidth = Mathf.Max(320f, _viewportSize.X - ViewportMargin * 2f);
         var availableHeight = Mathf.Max(320f, _viewportSize.Y - ViewportMargin * 2f);
-        var chromeHeight = UsesImageChrome
-            ? Mathf.Max(0f, LayoutSize.Y - BodyLayoutHeight)
-            : 104f;
         var bodyMinimum = Body.GetCombinedMinimumSize();
+        var minimumContentWidth = _contentLayout switch
+        {
+            ContentLayout.Empty => 520f,
+            ContentLayout.Table => _widthProfile == WidthProfile.Wide ? 920f : 700f,
+            ContentLayout.Cards => 780f,
+            ContentLayout.Mixed => 900f,
+            _ => 700f,
+        };
+        var measuredContentWidth = Mathf.Max(minimumContentWidth,
+            bodyMinimum.X + ScrollBarAllowance);
+        var desiredWidth = Mathf.Round(Mathf.Min(availableWidth,
+            measuredContentWidth + ChromeHorizontalExtras));
+        if (_chrome is not null)
+            _chrome.SetContentWidth(desiredWidth - ChromeHorizontalExtras);
+
+        var chromeHeight = _chrome?.HeaderFooterHeight ?? 104f;
         var minimumBodyHeight = _contentLayout switch
         {
             ContentLayout.Empty => 84f,
@@ -193,15 +223,22 @@ public sealed partial class AdaptiveModalScaffold : PanelContainer
         var maximumBodyHeight = Mathf.Max(minimumBodyHeight,
             availableHeight - chromeHeight);
         var desiredBodyHeight = Mathf.Clamp(
-            bodyMinimum.Y + 16f,
+            bodyMinimum.Y + 36f,
             minimumBodyHeight,
             maximumBodyHeight);
         var desiredHeight = Mathf.Min(availableHeight, chromeHeight + desiredBodyHeight);
 
-        LayoutSize = new Vector2(LayoutSize.X, Mathf.Round(desiredHeight));
+        LayoutSize = new Vector2(desiredWidth, Mathf.Round(desiredHeight));
         CustomMinimumSize = LayoutSize;
+        SetMeta("modal_width", LayoutSize.X);
         SetMeta("modal_height", LayoutSize.Y);
         SetMeta("modal_measured_body_height", bodyMinimum.Y);
+        SetMeta("modal_measured_body_width", bodyMinimum.X);
+        if (_pendingFitPasses-- > 0)
+        {
+            _fitQueued = true;
+            CallDeferred(nameof(ApplyContentFit));
+        }
     }
 
     public void SetHeader(Control title, BaseButton closeButton, Control? separator = null)

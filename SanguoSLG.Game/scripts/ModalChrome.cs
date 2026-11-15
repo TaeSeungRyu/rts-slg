@@ -13,9 +13,15 @@ public sealed partial class ModalChrome : PanelContainer
     public const string FooterTexturePath = "res://assets/ui/game/modals/modal_footer.png";
 
     private const float HorizontalInset = 16f;
+    public const float HorizontalChromeExtras = HorizontalInset * 2f + 10f;
 
-    private readonly float _headerHeight;
-    private readonly float _footerHeight;
+    private readonly Texture2D _headerTexture;
+    private readonly Texture2D _footerTexture;
+    private readonly Control _headerRegion;
+    private readonly Control _footerRegion;
+    private readonly MarginContainer _headerContentMargin;
+    private float _headerHeight;
+    private float _footerHeight;
 
     public static bool HasRequiredAssets =>
         ResourceLoader.Exists(HeaderTexturePath) && ResourceLoader.Exists(FooterTexturePath);
@@ -24,21 +30,25 @@ public sealed partial class ModalChrome : PanelContainer
     public ScrollContainer BodyScroll { get; }
     public VBoxContainer Body { get; }
     public HBoxContainer FooterHost { get; }
+    public float HeaderFooterHeight => _headerHeight + _footerHeight;
 
-    public ModalChrome(float contentWidth)
+    public ModalChrome(
+        float contentWidth,
+        float bodyTopPadding = 8f,
+        float bodyBottomPadding = 8f)
     {
         Name = "ModalChrome";
         MouseFilter = MouseFilterEnum.Stop;
         TextureFilter = TextureFilterEnum.LinearWithMipmaps;
         SetMeta("modal_chrome", true);
 
-        var headerTexture = GD.Load<Texture2D>(HeaderTexturePath);
-        var footerTexture = GD.Load<Texture2D>(FooterTexturePath);
-        var chromeWidth = contentWidth + HorizontalInset * 2f + 10f;
-        _headerHeight = HeightForWidth(headerTexture, chromeWidth);
-        _footerHeight = HeightForWidth(footerTexture, chromeWidth);
+        _headerTexture = GD.Load<Texture2D>(HeaderTexturePath);
+        _footerTexture = GD.Load<Texture2D>(FooterTexturePath);
+        var chromeWidth = contentWidth + HorizontalChromeExtras;
+        _headerHeight = HeightForWidth(_headerTexture, chromeWidth);
+        _footerHeight = HeightForWidth(_footerTexture, chromeWidth);
         // 원본 용 장식이 좌우 약 21%를 차지한다. 제목과 닫기 버튼은 장식 안쪽 중앙 띠에 둔다.
-        var headerContentInset = Mathf.Clamp(chromeWidth * 0.22f, 96f, 300f);
+        var headerContentInset = HeaderContentInset(chromeWidth);
 
         var rootStyle = new StyleBoxFlat
         {
@@ -65,7 +75,8 @@ public sealed partial class ModalChrome : PanelContainer
         AddChild(regions);
 
         HeaderHost = BuildImageRegion(
-            regions, "ModalChromeHeader", headerTexture, _headerHeight, headerContentInset);
+            regions, "ModalChromeHeader", _headerTexture, _headerHeight, headerContentInset,
+            out _headerRegion, out _headerContentMargin);
 
         var bodyOuter = new PanelContainer
         {
@@ -91,7 +102,7 @@ public sealed partial class ModalChrome : PanelContainer
             SizeFlagsHorizontal = SizeFlags.ExpandFill,
             SizeFlagsVertical = SizeFlags.ExpandFill,
         };
-        bodyInner.AddThemeStyleboxOverride("panel", BuildBodyStyle());
+        bodyInner.AddThemeStyleboxOverride("panel", BuildBodyStyle(bodyTopPadding, bodyBottomPadding));
         bodyMiddle.AddChild(bodyInner);
 
         BodyScroll = new ScrollContainer
@@ -114,7 +125,22 @@ public sealed partial class ModalChrome : PanelContainer
         BodyScroll.AddChild(Body);
 
         FooterHost = BuildImageRegion(
-            regions, "ModalChromeFooter", footerTexture, _footerHeight, HorizontalInset);
+            regions, "ModalChromeFooter", _footerTexture, _footerHeight, HorizontalInset,
+            out _footerRegion, out _);
+    }
+
+    public void SetContentWidth(float contentWidth)
+    {
+        var safeContentWidth = Mathf.Max(320f, contentWidth);
+        var chromeWidth = safeContentWidth + HorizontalChromeExtras;
+        _headerHeight = HeightForWidth(_headerTexture, chromeWidth);
+        _footerHeight = HeightForWidth(_footerTexture, chromeWidth);
+        BodyScroll.CustomMinimumSize = new Vector2(safeContentWidth, 0f);
+        _headerRegion.CustomMinimumSize = new Vector2(0f, _headerHeight);
+        _footerRegion.CustomMinimumSize = new Vector2(0f, _footerHeight);
+        var headerInset = Mathf.RoundToInt(HeaderContentInset(chromeWidth));
+        _headerContentMargin.AddThemeConstantOverride("margin_left", headerInset);
+        _headerContentMargin.AddThemeConstantOverride("margin_right", headerInset);
     }
 
     public float BodyHeightFor(float totalContentHeight) =>
@@ -125,9 +151,11 @@ public sealed partial class ModalChrome : PanelContainer
         string name,
         Texture2D texture,
         float height,
-        float contentInset)
+        float contentInset,
+        out Control layer,
+        out MarginContainer margin)
     {
-        var layer = new Control
+        layer = new Control
         {
             Name = name,
             CustomMinimumSize = new Vector2(0, height),
@@ -147,7 +175,7 @@ public sealed partial class ModalChrome : PanelContainer
         image.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
         layer.AddChild(image);
 
-        var margin = new MarginContainer
+        margin = new MarginContainer
         {
             Name = name + "ContentMargin",
             MouseFilter = MouseFilterEnum.Pass,
@@ -176,6 +204,9 @@ public sealed partial class ModalChrome : PanelContainer
         return size.X <= 0f ? 0f : Mathf.Ceil(width * size.Y / size.X);
     }
 
+    private static float HeaderContentInset(float chromeWidth) =>
+        Mathf.Clamp(chromeWidth * 0.22f, 96f, 300f);
+
     private static StyleBoxFlat BuildRailStyle(Color border, int borderWidth, int inset, Color background) => new()
     {
         BgColor = background,
@@ -190,7 +221,7 @@ public sealed partial class ModalChrome : PanelContainer
         ContentMarginBottom = 0,
     };
 
-    private static StyleBoxFlat BuildBodyStyle() => new()
+    private static StyleBoxFlat BuildBodyStyle(float topPadding, float bottomPadding) => new()
     {
         BgColor = Colors.Transparent,
         BorderColor = new Color("95632b"),
@@ -200,7 +231,7 @@ public sealed partial class ModalChrome : PanelContainer
         BorderWidthBottom = 0,
         ContentMarginLeft = HorizontalInset,
         ContentMarginRight = HorizontalInset,
-        ContentMarginTop = 8,
-        ContentMarginBottom = 8,
+        ContentMarginTop = topPadding,
+        ContentMarginBottom = bottomPadding,
     };
 }

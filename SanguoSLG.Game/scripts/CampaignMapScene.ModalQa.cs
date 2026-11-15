@@ -1040,6 +1040,9 @@ public sealed partial class CampaignMapScene
             var header = scaffold?.FindChild("ModalChromeHeaderImage", true, false) as TextureRect;
             var footer = scaffold?.FindChild("ModalChromeFooterImage", true, false) as TextureRect;
             var title = scaffold?.Header.FindChildren("*", "Label", true, false).OfType<Label>().FirstOrDefault();
+            var headerRegion = scaffold?.FindChild("ModalChromeHeader", true, false) as Control;
+            var bodyRegion = scaffold?.FindChild("ModalChromeBodyOuterRail", true, false) as Control;
+            var footerRegion = scaffold?.FindChild("ModalChromeFooter", true, false) as Control;
             var rect = scaffold?.GetGlobalRect() ?? default;
             var viewport = GetViewport().GetVisibleRect();
             var chromeOk = scaffold?.UsesImageChrome == true;
@@ -1049,9 +1052,23 @@ public sealed partial class CampaignMapScene
             var bodyOk = scaffold?.BodyScroll is not null;
             var layout = scaffold?.GetMeta("modal_content_layout").AsString() ?? "missing";
             var layoutOk = layout != AdaptiveModalScaffold.ContentLayout.Fixed.ToString();
-            var ok = chromeOk && texturesOk && titleOk && boundsOk && bodyOk && layoutOk;
+            var regionsConnected = headerRegion is not null && bodyRegion is not null && footerRegion is not null
+                && Mathf.Abs(headerRegion.GetGlobalRect().End.Y - bodyRegion.GetGlobalRect().Position.Y) <= 1f
+                && Mathf.Abs(bodyRegion.GetGlobalRect().End.Y - footerRegion.GetGlobalRect().Position.Y) <= 1f;
+            var emptyScrollOk = layout != AdaptiveModalScaffold.ContentLayout.Empty.ToString()
+                || scaffold?.BodyScroll.GetVScrollBar().Visible != true;
+            var optionGrid = scaffold?.FindChild("CommandOptionGrid", true, false) as GridContainer;
+            var bodyRect = scaffold?.BodyScroll.GetGlobalRect() ?? default;
+            var cardsFit = optionGrid is null || optionGrid.GetChildren().OfType<Control>().All(card =>
+            {
+                var cardRect = card.GetGlobalRect();
+                return cardRect.Position.X >= bodyRect.Position.X - 1f
+                    && cardRect.End.X <= bodyRect.End.X + 1f;
+            });
+            var ok = chromeOk && texturesOk && titleOk && boundsOk && bodyOk && layoutOk
+                && regionsConnected && emptyScrollOk && cardsFit;
             passed &= ok;
-            verified.Add($"{item.Code}:{ok}[layout={layout},chrome={chromeOk},tex={texturesOk},title={titleOk},bounds={boundsOk},body={bodyOk},rect={rect}]" );
+            verified.Add($"{item.Code}:{ok}[layout={layout},chrome={chromeOk},connected={regionsConnected},emptyScroll={emptyScrollOk},cardsFit={cardsFit},tex={texturesOk},title={titleOk},bounds={boundsOk},body={bodyOk},rect={rect}]" );
             if (item.Capture && DisplayServer.GetName() != "headless")
             {
                 var path = System.IO.Path.Combine(rootPath,
