@@ -1101,7 +1101,7 @@ public sealed partial class CampaignMapScene
             var workflow = scaffold?.FindChild("CommandModalWorkflowHost", true, false) as CommandModalWorkflowHost;
             var expectedWorkflowSteps = item.Index switch
             {
-                7 or 8 or 24 => 3,
+                8 or 24 => 3,
                 13 or 15 or 20 when layout != AdaptiveModalScaffold.ContentLayout.Empty.ToString() => 2,
                 _ => 0,
             };
@@ -1142,11 +1142,33 @@ public sealed partial class CampaignMapScene
                     await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
                 }
             }
+            var doctrineWorkspace = scaffold?.FindChild("DoctrineResearchWorkspace", true, false) as DoctrineResearchWorkspace;
+            var doctrineWorkspaceOk = item.Index != 7 || doctrineWorkspace is not null
+                && workflow is null
+                && doctrineWorkspace.DoctrineList.FindChild("CommandOptionGrid", true, false) is GridContainer
+                && doctrineWorkspace.FundingSummary.Text.Contains("개 도시", System.StringComparison.Ordinal)
+                && doctrineWorkspace.StartButton.Disabled;
+            if (item.Index == 7 && doctrineWorkspace is not null)
+            {
+                var fundingBefore = _researchFundingRatios.ToDictionary(pair => pair.Key, pair => pair.Value.Value);
+                doctrineWorkspace.FundingChangeButton.EmitSignal(BaseButton.SignalName.Pressed);
+                await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+                doctrineWorkspaceOk &= _doctrinePickerLayer is not null
+                    && _doctrinePickerLayer.FindChild("DoctrineFundingSearch", true, false) is LineEdit
+                    && _doctrinePickerLayer.FindChild("DoctrineFundingTableScroll", true, false) is ScrollContainer
+                    && _doctrinePickerLayer.FindChildren("*", "Button", true, false).OfType<Button>()
+                        .Any(button => button.Text == "적용")
+                    && _doctrinePickerLayer.FindChildren("*", "Button", true, false).OfType<Button>()
+                        .Any(button => button.Text == "취소");
+                CloseDoctrinePicker();
+                doctrineWorkspaceOk &= fundingBefore.All(pair => _researchFundingRatios.TryGetValue(pair.Key, out var ratio)
+                    && Mathf.IsEqualApprox((float)ratio.Value, (float)pair.Value));
+            }
             var ok = chromeOk && texturesOk && titleOk && boundsOk && bodyOk && layoutOk
                 && regionsConnected && bodyInsetOk && emptyScrollOk && cardsFit && tabsOk && workflowOk
-                && workflowLayoutOk;
+                && workflowLayoutOk && doctrineWorkspaceOk;
             passed &= ok;
-            verified.Add($"{item.Code}:{ok}[layout={layout},chrome={chromeOk},connected={regionsConnected},bodyInset={bodyInsetOk},emptyScroll={emptyScrollOk},cardsFit={cardsFit},tabs={tabsOk}:{tabs?.TabCount ?? 0},workflow={workflowOk}:{workflow?.StepCount ?? 0},workflowLayout={workflowLayoutOk},tex={texturesOk},title={titleOk},bounds={boundsOk},body={bodyOk},rect={rect}]" );
+            verified.Add($"{item.Code}:{ok}[layout={layout},chrome={chromeOk},connected={regionsConnected},bodyInset={bodyInsetOk},emptyScroll={emptyScrollOk},cardsFit={cardsFit},tabs={tabsOk}:{tabs?.TabCount ?? 0},workflow={workflowOk}:{workflow?.StepCount ?? 0},workflowLayout={workflowLayoutOk},doctrineWorkspace={doctrineWorkspaceOk},tex={texturesOk},title={titleOk},bounds={boundsOk},body={bodyOk},rect={rect}]" );
             if (item.Capture && DisplayServer.GetName() != "headless")
             {
                 var path = System.IO.Path.Combine(rootPath,

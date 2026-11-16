@@ -8220,6 +8220,11 @@ public sealed partial class CampaignMapScene : Node3D
         var close = AdaptiveModalScaffold.CreateCloseButton();
         close.Pressed += CloseModal;
         scaffold.SetHeader(title, close, GoldRule());
+        if (cmd.Kind == CommandKind.Research && cmd.Param == "troop")
+        {
+            BuildDoctrineResearchWorkspace(scaffold, selectedCityData, cmdIndex);
+            return;
+        }
         var box = scaffold.Body;
         var fundingBox = box;
         var officerBox = box;
@@ -8720,6 +8725,9 @@ public sealed partial class CampaignMapScene : Node3D
         var dismissAction = _modalDismissAction;
         _modalDismissAction = null;
         _openCityDetailCity = null;
+        CloseDoctrinePicker();
+        _doctrineWorkspace = null;
+        _doctrineOfficer = null;
         if (_modalLayer is not null)
         {
             FadeOutModal(_modalLayer);
