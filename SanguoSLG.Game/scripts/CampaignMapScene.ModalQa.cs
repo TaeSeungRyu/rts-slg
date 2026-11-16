@@ -1017,6 +1017,8 @@ public sealed partial class CampaignMapScene
         var port = _state.Cities.FirstOrDefault(candidate => candidate.Owner == Player && candidate.IsPort);
         var cases = new (int Index, string Code, bool Port, bool Capture)[]
         {
+            (7, "doctrine-tabs", false, false), (8, "general-research-tabs", false, false),
+            (24, "stratagem-research-tabs", false, false),
             (6, "major", false, true), (9, "wall", false, true), (12, "stratagem", false, false),
             (13, "alliance", false, false), (14, "break-alliance", false, true), (15, "war", false, false),
             (16, "governor", false, true), (17, "strategist", false, false),
@@ -1072,10 +1074,36 @@ public sealed partial class CampaignMapScene
                 return cardRect.Position.X >= bodyRect.Position.X - 1f
                     && cardRect.End.X <= bodyRect.End.X + 1f;
             });
+            var tabs = scaffold?.FindChild("CommandModalTabHost", true, false) as CommandModalTabHost;
+            var expectedTabs = item.Index switch
+            {
+                7 or 8 or 24 => 3,
+                13 or 15 or 20 when layout != AdaptiveModalScaffold.ContentLayout.Empty.ToString() => 2,
+                _ => 0,
+            };
+            var tabsOk = expectedTabs == 0
+                ? tabs is null
+                : tabs?.TabCount == expectedTabs
+                    && tabs.FindChildren("CommandModalTabScroll_*", "ScrollContainer", true, false)
+                        .OfType<ScrollContainer>().Count(page => page.Visible) == 1;
+            if (expectedTabs > 0 && tabs is not null)
+            {
+                var selectedOption = _modalParam;
+                var selectedMulti = _modalMultiParams.OrderBy(value => value).ToArray();
+                var selectedRate = _autoRecruitRateParam;
+                tabs.SelectTab(expectedTabs - 1);
+                await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+                tabs.SelectTab(0);
+                await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+                tabsOk &= tabs.SelectedTab == 0
+                    && _modalParam == selectedOption
+                    && _modalMultiParams.OrderBy(value => value).SequenceEqual(selectedMulti)
+                    && _autoRecruitRateParam == selectedRate;
+            }
             var ok = chromeOk && texturesOk && titleOk && boundsOk && bodyOk && layoutOk
-                && regionsConnected && bodyInsetOk && emptyScrollOk && cardsFit;
+                && regionsConnected && bodyInsetOk && emptyScrollOk && cardsFit && tabsOk;
             passed &= ok;
-            verified.Add($"{item.Code}:{ok}[layout={layout},chrome={chromeOk},connected={regionsConnected},bodyInset={bodyInsetOk},emptyScroll={emptyScrollOk},cardsFit={cardsFit},tex={texturesOk},title={titleOk},bounds={boundsOk},body={bodyOk},rect={rect}]" );
+            verified.Add($"{item.Code}:{ok}[layout={layout},chrome={chromeOk},connected={regionsConnected},bodyInset={bodyInsetOk},emptyScroll={emptyScrollOk},cardsFit={cardsFit},tabs={tabsOk}:{tabs?.TabCount ?? 0},tex={texturesOk},title={titleOk},bounds={boundsOk},body={bodyOk},rect={rect}]" );
             if (item.Capture && DisplayServer.GetName() != "headless")
             {
                 var path = System.IO.Path.Combine(rootPath,

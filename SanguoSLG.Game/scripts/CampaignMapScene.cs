@@ -8215,11 +8215,26 @@ public sealed partial class CampaignMapScene : Node3D
         var box = scaffold.Body;
         var fundingBox = box;
         var officerBox = box;
-        if (cmd.Kind == CommandKind.Research && cmd.Param == "stratagem_research")
+        if (cmd.Kind == CommandKind.Research
+            && cmd.Param is "troop" or "general" or "stratagem_research")
         {
             var tabs = scaffold.EnableTabbedBody();
-            box = tabs.AddPage("연구 선택", "selection");
+            var selectionTitle = cmd.Param == "troop" ? "교리 선택" : "연구 선택";
+            box = tabs.AddPage(selectionTitle, "selection");
             fundingBox = tabs.AddPage("도시 분담", "funding");
+            officerBox = tabs.AddPage("수행 장수", "officers");
+        }
+        else if (cmd.Kind is CommandKind.FormAlliance or CommandKind.DeclareWar
+                 && contentLayout != AdaptiveModalScaffold.ContentLayout.Empty)
+        {
+            var tabs = scaffold.EnableTabbedBody();
+            box = tabs.AddPage("대상 선택", "targets");
+            officerBox = tabs.AddPage("수행 장수", "officers");
+        }
+        else if (cmd.Kind == CommandKind.AppointRecruitmentOfficer)
+        {
+            var tabs = scaffold.EnableTabbedBody();
+            box = tabs.AddPage("병종 설정", "troops");
             officerBox = tabs.AddPage("수행 장수", "officers");
         }
         if (IsAutoOfficerCommand(cmd.Kind))
