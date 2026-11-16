@@ -8243,6 +8243,8 @@ public sealed partial class CampaignMapScene : Node3D
             introBox = selectionStep.Detail;
             fundingBox = fundingStep.List;
             officerBox = officerStep.List;
+            if (doctrine)
+                workflow.ApplyGameScrollStyleDeferred();
         }
         else if (cmd.Kind is CommandKind.FormAlliance or CommandKind.DeclareWar
                  && contentLayout != AdaptiveModalScaffold.ContentLayout.Empty)

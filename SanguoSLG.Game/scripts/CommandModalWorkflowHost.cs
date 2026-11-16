@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using Godot;
 
 namespace SanguoSLG.Game;
@@ -26,6 +27,19 @@ public sealed partial class CommandModalWorkflowHost : VBoxContainer
 
     public int SelectedStep { get; private set; }
     public int StepCount => _stepButtons.Count;
+
+    public void ApplyGameScrollStyleDeferred()
+    {
+        SetMeta("workflow_scroll_style", "game");
+        CallDeferred(nameof(ApplyGameScrollStyle));
+    }
+
+    public void ApplyGameScrollStyle()
+    {
+        foreach (var scroll in FindChildren("*", "ScrollContainer", true, false)
+                     .OfType<ScrollContainer>())
+            GameUiSkin.ApplyQuickListScroll(scroll);
+    }
 
     public CommandModalWorkflowHost()
     {
