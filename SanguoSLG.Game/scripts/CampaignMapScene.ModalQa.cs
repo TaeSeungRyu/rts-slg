@@ -1143,9 +1143,13 @@ public sealed partial class CampaignMapScene
                 }
             }
             var doctrineWorkspace = scaffold?.FindChild("DoctrineResearchWorkspace", true, false) as DoctrineResearchWorkspace;
+            var doctrineGrid = doctrineWorkspace?.DoctrineList.FindChild("CommandOptionGrid", true, false) as GridContainer;
+            var doctrineScroll = doctrineWorkspace?.FindChild("DoctrineResearchListScroll", true, false) as ScrollContainer;
             var doctrineWorkspaceOk = item.Index != 7 || doctrineWorkspace is not null
                 && workflow is null
-                && doctrineWorkspace.DoctrineList.FindChild("CommandOptionGrid", true, false) is GridContainer { Columns: 3 }
+                && doctrineGrid is { Columns: 3 }
+                && doctrineScroll is not null
+                && doctrineGrid.GetGlobalRect().End.X <= doctrineScroll.GetVScrollBar().GetGlobalRect().Position.X - 4f
                 && doctrineWorkspace.FundingSummary.Text.Contains("개 도시", System.StringComparison.Ordinal)
                 && doctrineWorkspace.StartButton.Disabled
                 && doctrineWorkspace.Size.Y >= scaffold!.BodyLayoutHeight - 2f

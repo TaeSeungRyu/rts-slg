@@ -48,8 +48,12 @@ public sealed partial class DoctrineResearchWorkspace : VBoxContainer
         };
         GameUiSkin.ApplyQuickListScroll(listScroll);
         listMargin.AddChild(listScroll);
+        var listContentMargin = Margin(0);
+        listContentMargin.Name = "DoctrineResearchListContentMargin";
+        listContentMargin.AddThemeConstantOverride("margin_right", 16);
+        listScroll.AddChild(listContentMargin);
         DoctrineList = Box("DoctrineResearchList");
-        listScroll.AddChild(DoctrineList);
+        listContentMargin.AddChild(DoctrineList);
 
         var right = Box("DoctrineResearchSummaryColumn");
         right.SizeFlagsStretchRatio = 1f;
