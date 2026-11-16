@@ -12,6 +12,9 @@ public sealed partial class CampaignMapScene
 
     private void BuildDoctrineResearchWorkspace(AdaptiveModalScaffold scaffold, City city, int cmdIndex)
     {
+        scaffold.BodyScroll.VerticalScrollMode = ScrollContainer.ScrollMode.Disabled;
+        scaffold.Body.SizeFlagsVertical = Control.SizeFlags.ExpandFill;
+        scaffold.Body.CustomMinimumSize = new Vector2(0f, scaffold.BodyLayoutHeight);
         _optionCards.Clear();
         _disabledOptions.Clear();
         _modalMultiParams.Clear();

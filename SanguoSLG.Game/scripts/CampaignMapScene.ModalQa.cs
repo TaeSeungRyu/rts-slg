@@ -1147,7 +1147,9 @@ public sealed partial class CampaignMapScene
                 && workflow is null
                 && doctrineWorkspace.DoctrineList.FindChild("CommandOptionGrid", true, false) is GridContainer
                 && doctrineWorkspace.FundingSummary.Text.Contains("개 도시", System.StringComparison.Ordinal)
-                && doctrineWorkspace.StartButton.Disabled;
+                && doctrineWorkspace.StartButton.Disabled
+                && doctrineWorkspace.Size.Y >= scaffold!.BodyLayoutHeight - 2f
+                && scaffold.BodyScroll.VerticalScrollMode == ScrollContainer.ScrollMode.Disabled;
             if (item.Index == 7 && doctrineWorkspace is not null)
             {
                 var fundingBefore = _researchFundingRatios.ToDictionary(pair => pair.Key, pair => pair.Value.Value);
