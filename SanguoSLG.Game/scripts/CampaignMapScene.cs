@@ -8201,7 +8201,10 @@ public sealed partial class CampaignMapScene : Node3D
         var optionCardWidth = cmd.Kind == CommandKind.Research
             && cmd.Param is "troop" or "general" or "stratagem_research"
             || cmd.Kind == CommandKind.AppointRecruitmentOfficer ? 186f : 148f;
-        var colOpt = workspaceProfile == AdaptiveModalScaffold.WorkspaceProfile.Default
+        var usesDoctrineWorkflow = cmd.Kind == CommandKind.Research && cmd.Param == "troop";
+        var colOpt = usesDoctrineWorkflow
+            ? (int)Mathf.Clamp(Mathf.Floor((mw * 0.67f + 10f) / (optionCardWidth + 10f)), 2, 4)
+            : workspaceProfile == AdaptiveModalScaffold.WorkspaceProfile.Default
             ? (int)Mathf.Clamp(Mathf.Floor((mw + 8f) / (wideDoctrineModal ? 186f : 146f)), 3, wideDoctrineModal ? 7 : 5)
             : (int)Mathf.Clamp(Mathf.Floor((mw + 10f) / (optionCardWidth + 10f)), 2, 6);
         var colOff = (int)Mathf.Clamp(Mathf.Floor((mw + 8f) / 169f), 2, 4);
@@ -8215,8 +8218,25 @@ public sealed partial class CampaignMapScene : Node3D
         var box = scaffold.Body;
         var fundingBox = box;
         var officerBox = box;
-        if (cmd.Kind == CommandKind.Research
-            && cmd.Param is "troop" or "general" or "stratagem_research")
+        var detailBox = box;
+        var introBox = box;
+        if (cmd.Kind == CommandKind.Research && cmd.Param == "troop")
+        {
+            var workflow = scaffold.EnableWorkflowBody();
+            var selectionStep = workflow.AddStep("교리 선택", "selection",
+                "연구할 전투교리 카드를 선택하고 현재 효과와 다음 레벨 효과를 확인합니다.");
+            var fundingStep = workflow.AddStep("도시 분담", "funding",
+                "연구비를 부담할 도시와 분담 비율을 설정합니다.");
+            var officerStep = workflow.AddStep("수행 장수", "officers",
+                "수행 장수를 선택하면 기존 명령 확인 절차가 시작됩니다.");
+            box = selectionStep.List;
+            detailBox = selectionStep.Detail;
+            introBox = selectionStep.Detail;
+            fundingBox = fundingStep.List;
+            officerBox = officerStep.List;
+        }
+        else if (cmd.Kind == CommandKind.Research
+                 && cmd.Param is "general" or "stratagem_research")
         {
             var tabs = scaffold.EnableTabbedBody();
             var selectionTitle = cmd.Param == "troop" ? "교리 선택" : "연구 선택";
@@ -8247,7 +8267,9 @@ public sealed partial class CampaignMapScene : Node3D
         }
         else if (cmd.Kind == CommandKind.Research && cmd.Param == "troop")
         {
-            box.AddChild(MakeLabel("전투교리는 세력 병종의 공격과 방어 보정을 올립니다. 일반 병종은 Lv.7, 주력병종은 Lv.10까지 연구할 수 있습니다.", 15, Parchment));
+            var doctrineIntro = MakeLabel("전투교리는 세력 병종의 공격과 방어 보정을 올립니다. 일반 병종은 Lv.7, 주력병종은 Lv.10까지 연구할 수 있습니다.", 15, Parchment);
+            doctrineIntro.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+            introBox.AddChild(doctrineIntro);
         }
         else if (cmd.Kind == CommandKind.Research && cmd.Param == "general")
         {
@@ -8474,7 +8496,7 @@ public sealed partial class CampaignMapScene : Node3D
         }
         else if (hasDoctrineResearchDetail)
         {
-            AddDoctrineResearchSelectionDetail(box);
+            AddDoctrineResearchSelectionDetail(detailBox);
         }
         else if (hasStratagemResearchDetail)
         {
@@ -8502,8 +8524,8 @@ public sealed partial class CampaignMapScene : Node3D
             && cmd.Kind != CommandKind.Explore)
         {
             _modalDetail = MakeLabel("", 17, Parchment);
-            box.AddChild(_modalDetail);
-            box.AddChild(GoldRule());
+            detailBox.AddChild(_modalDetail);
+            detailBox.AddChild(GoldRule());
         }
 
         if (cmd.Kind == CommandKind.SelectMajorTroop)
@@ -15782,6 +15804,7 @@ public sealed partial class CampaignMapScene : Node3D
     private void PickOption(int idx, (string Name, ImageTexture Icon, string Detail) o)
     {
         _modalParam = idx;
+        ActiveCommandWorkflow()?.SetStepResult(0, o.Name);
         for (var i = 0; i < _optionCards.Count; i++)
         {
             _optionCards[i].AddThemeStyleboxOverride("panel", CardBox(i == idx));
@@ -15800,6 +15823,9 @@ public sealed partial class CampaignMapScene : Node3D
 
         RefreshResearchFundingPreview();
     }
+
+    private CommandModalWorkflowHost? ActiveCommandWorkflow() =>
+        _modalLayer?.FindChild("CommandModalWorkflowHost", true, false) as CommandModalWorkflowHost;
 
     private void AddGeneralResearchSelectionDetail(VBoxContainer box)
     {
@@ -16194,6 +16220,7 @@ public sealed partial class CampaignMapScene : Node3D
         {
             _researchFundingPreview!.Text = "※ 최소 1개 도시의 분담 비율이 필요합니다.";
             _researchFundingPreview.Modulate = Red;
+            ActiveCommandWorkflow()?.SetStepResult(1, "분담 도시를 선택하세요");
             return;
         }
 
@@ -16202,11 +16229,13 @@ public sealed partial class CampaignMapScene : Node3D
         {
             _researchFundingPreview!.Text = $"※ {sc.Name} 금 부족: {shortage.Amount}금 필요 / 보유 {sc.Gold}금";
             _researchFundingPreview.Modulate = Red;
+            ActiveCommandWorkflow()?.SetStepResult(1, $"{sc.Name} 금 부족");
             return;
         }
 
         _researchFundingPreview!.Text = $"총 연구비 {cost}금 · 분담 비율 합계 {shares.Sum(s => s.Ratio)}";
         _researchFundingPreview.Modulate = Parchment;
+        ActiveCommandWorkflow()?.SetStepResult(1, $"{shares.Count}개 도시 · 총 {cost}금");
     }
 
     private static List<(CityId City, int Amount)> AllocateResearchFunding(int cost, IReadOnlyList<ResearchFundingShare> shares)

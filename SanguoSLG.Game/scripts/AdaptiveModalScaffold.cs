@@ -74,6 +74,17 @@ public sealed partial class AdaptiveModalScaffold : PanelContainer
         return tabs;
     }
 
+    public CommandModalWorkflowHost EnableWorkflowBody()
+    {
+        BodyScroll.VerticalScrollMode = ScrollContainer.ScrollMode.Disabled;
+        Body.SizeFlagsVertical = SizeFlags.ExpandFill;
+        Body.CustomMinimumSize = new Vector2(0f, Mathf.Max(440f, BodyLayoutHeight));
+        var workflow = new CommandModalWorkflowHost();
+        Body.AddChild(workflow);
+        SetMeta("modal_workflow_body", true);
+        return workflow;
+    }
+
     public AdaptiveModalScaffold()
     {
         Name = "AdaptiveModalScaffold";

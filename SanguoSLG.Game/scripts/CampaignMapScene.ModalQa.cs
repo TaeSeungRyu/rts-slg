@@ -1077,7 +1077,7 @@ public sealed partial class CampaignMapScene
             var tabs = scaffold?.FindChild("CommandModalTabHost", true, false) as CommandModalTabHost;
             var expectedTabs = item.Index switch
             {
-                7 or 8 or 24 => 3,
+                8 or 24 => 3,
                 13 or 15 or 20 when layout != AdaptiveModalScaffold.ContentLayout.Empty.ToString() => 2,
                 _ => 0,
             };
@@ -1100,10 +1100,24 @@ public sealed partial class CampaignMapScene
                     && _modalMultiParams.OrderBy(value => value).SequenceEqual(selectedMulti)
                     && _autoRecruitRateParam == selectedRate;
             }
+            var workflow = scaffold?.FindChild("CommandModalWorkflowHost", true, false) as CommandModalWorkflowHost;
+            var expectedWorkflowSteps = item.Index == 7 ? 3 : 0;
+            var workflowOk = expectedWorkflowSteps == 0
+                ? workflow is null
+                : workflow?.StepCount == expectedWorkflowSteps;
+            if (expectedWorkflowSteps > 0 && workflow is not null)
+            {
+                var selectedOption = _modalParam;
+                workflow.SelectStep(expectedWorkflowSteps - 1);
+                await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+                workflow.SelectStep(0);
+                await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+                workflowOk &= workflow.SelectedStep == 0 && _modalParam == selectedOption;
+            }
             var ok = chromeOk && texturesOk && titleOk && boundsOk && bodyOk && layoutOk
-                && regionsConnected && bodyInsetOk && emptyScrollOk && cardsFit && tabsOk;
+                && regionsConnected && bodyInsetOk && emptyScrollOk && cardsFit && tabsOk && workflowOk;
             passed &= ok;
-            verified.Add($"{item.Code}:{ok}[layout={layout},chrome={chromeOk},connected={regionsConnected},bodyInset={bodyInsetOk},emptyScroll={emptyScrollOk},cardsFit={cardsFit},tabs={tabsOk}:{tabs?.TabCount ?? 0},tex={texturesOk},title={titleOk},bounds={boundsOk},body={bodyOk},rect={rect}]" );
+            verified.Add($"{item.Code}:{ok}[layout={layout},chrome={chromeOk},connected={regionsConnected},bodyInset={bodyInsetOk},emptyScroll={emptyScrollOk},cardsFit={cardsFit},tabs={tabsOk}:{tabs?.TabCount ?? 0},workflow={workflowOk}:{workflow?.StepCount ?? 0},tex={texturesOk},title={titleOk},bounds={boundsOk},body={bodyOk},rect={rect}]" );
             if (item.Capture && DisplayServer.GetName() != "headless")
             {
                 var path = System.IO.Path.Combine(rootPath,
