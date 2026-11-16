@@ -53,7 +53,7 @@ public sealed partial class CampaignMapScene
         var grid = new GridContainer
         {
             Name = "CommandOptionGrid",
-            Columns = 2,
+            Columns = 3,
             SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
         };
         grid.AddThemeConstantOverride("h_separation", 10);

@@ -1145,7 +1145,7 @@ public sealed partial class CampaignMapScene
             var doctrineWorkspace = scaffold?.FindChild("DoctrineResearchWorkspace", true, false) as DoctrineResearchWorkspace;
             var doctrineWorkspaceOk = item.Index != 7 || doctrineWorkspace is not null
                 && workflow is null
-                && doctrineWorkspace.DoctrineList.FindChild("CommandOptionGrid", true, false) is GridContainer
+                && doctrineWorkspace.DoctrineList.FindChild("CommandOptionGrid", true, false) is GridContainer { Columns: 3 }
                 && doctrineWorkspace.FundingSummary.Text.Contains("개 도시", System.StringComparison.Ordinal)
                 && doctrineWorkspace.StartButton.Disabled
                 && doctrineWorkspace.Size.Y >= scaffold!.BodyLayoutHeight - 2f
