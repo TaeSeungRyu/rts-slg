@@ -33,6 +33,7 @@ public sealed partial class AdaptiveModalScaffold : PanelContainer
         Default,
         EmptyCompact,
         CardSelection,
+        DoctrineWorkflow,
         DenseResearch,
         MixedCommand,
         Recruitment,
@@ -432,6 +433,7 @@ public sealed partial class AdaptiveModalScaffold : PanelContainer
         {
             WorkspaceProfile.EmptyCompact => (220f, 340f),
             WorkspaceProfile.CardSelection => (580f, 740f + largeViewportBonus),
+            WorkspaceProfile.DoctrineWorkflow => (808f, 860f + largeViewportBonus),
             WorkspaceProfile.DenseResearch => (700f, 780f + largeViewportBonus),
             WorkspaceProfile.MixedCommand => (640f, 780f + largeViewportBonus),
             WorkspaceProfile.Recruitment => (680f, 780f + largeViewportBonus),

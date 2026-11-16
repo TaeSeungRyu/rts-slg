@@ -8635,8 +8635,10 @@ public sealed partial class CampaignMapScene : Node3D
     {
         if (command.Kind == CommandKind.SelectMajorTroop)
             return AdaptiveModalScaffold.WorkspaceProfile.CardSelection;
+        if (command.Kind == CommandKind.Research && command.Param == "troop")
+            return AdaptiveModalScaffold.WorkspaceProfile.DoctrineWorkflow;
         if (command.Kind == CommandKind.Research
-            && command.Param is "troop" or "general" or "stratagem_research")
+            && command.Param is "general" or "stratagem_research")
             return AdaptiveModalScaffold.WorkspaceProfile.DenseResearch;
         if (command.Param is "faction" or "war_city")
         {
