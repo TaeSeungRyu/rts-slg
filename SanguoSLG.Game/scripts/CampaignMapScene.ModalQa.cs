@@ -1108,6 +1108,7 @@ public sealed partial class CampaignMapScene
             var workflowOk = expectedWorkflowSteps == 0
                 ? workflow is null
                 : workflow?.StepCount == expectedWorkflowSteps;
+            var workflowLayoutOk = true;
             if (expectedWorkflowSteps > 0 && workflow is not null)
             {
                 var selectedOption = _modalParam;
@@ -1121,11 +1122,31 @@ public sealed partial class CampaignMapScene
                     && _modalParam == selectedOption
                     && _modalMultiParams.OrderBy(value => value).SequenceEqual(selectedMulti)
                     && _autoRecruitRateParam == selectedRate;
+                if (item.Index == 7)
+                {
+                    workflow.SelectStep(1);
+                    await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+                    var fundingGrid = workflow.FindChild("ResearchFundingCardGrid", true, false) as GridContainer;
+                    var fundingScroll = workflow.FindChild("ResearchFundingScroll", true, false) as ScrollContainer;
+                    var fundingPage = workflow.FindChild("CommandModalWorkflowPage_funding", true, false) as Control;
+                    var fundingList = workflow.FindChild("CommandModalWorkflowListPanel_funding", true, false) as Control;
+                    var fundingDetail = workflow.FindChild("CommandModalWorkflowDetailPanel_funding", true, false) as Control;
+                    var pageRect = fundingPage?.GetGlobalRect() ?? default;
+                    workflowLayoutOk = fundingGrid?.Columns == 3
+                        && fundingScroll?.VerticalScrollMode == ScrollContainer.ScrollMode.Disabled
+                        && fundingList is not null && fundingDetail is not null
+                        && pageRect.Encloses(fundingList.GetGlobalRect())
+                        && pageRect.Encloses(fundingDetail.GetGlobalRect())
+                        && fundingDetail.Size.X >= 299f;
+                    workflow.SelectStep(0);
+                    await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+                }
             }
             var ok = chromeOk && texturesOk && titleOk && boundsOk && bodyOk && layoutOk
-                && regionsConnected && bodyInsetOk && emptyScrollOk && cardsFit && tabsOk && workflowOk;
+                && regionsConnected && bodyInsetOk && emptyScrollOk && cardsFit && tabsOk && workflowOk
+                && workflowLayoutOk;
             passed &= ok;
-            verified.Add($"{item.Code}:{ok}[layout={layout},chrome={chromeOk},connected={regionsConnected},bodyInset={bodyInsetOk},emptyScroll={emptyScrollOk},cardsFit={cardsFit},tabs={tabsOk}:{tabs?.TabCount ?? 0},workflow={workflowOk}:{workflow?.StepCount ?? 0},tex={texturesOk},title={titleOk},bounds={boundsOk},body={bodyOk},rect={rect}]" );
+            verified.Add($"{item.Code}:{ok}[layout={layout},chrome={chromeOk},connected={regionsConnected},bodyInset={bodyInsetOk},emptyScroll={emptyScrollOk},cardsFit={cardsFit},tabs={tabsOk}:{tabs?.TabCount ?? 0},workflow={workflowOk}:{workflow?.StepCount ?? 0},workflowLayout={workflowLayoutOk},tex={texturesOk},title={titleOk},bounds={boundsOk},body={bodyOk},rect={rect}]" );
             if (item.Capture && DisplayServer.GetName() != "headless")
             {
                 var path = System.IO.Path.Combine(rootPath,

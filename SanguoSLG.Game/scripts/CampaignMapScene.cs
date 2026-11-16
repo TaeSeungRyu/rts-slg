@@ -16005,15 +16005,26 @@ public sealed partial class CampaignMapScene : Node3D
         fundingPanel.AddThemeStyleboxOverride("panel", Frame(new Color(0.055f, 0.045f, 0.038f, 0.96f), new Color(Gold, 0.78f), 1, 8, 8));
         box.AddChild(fundingPanel);
 
-        var columns = ResearchFundingColumnCount(cities.Count, GetViewport().GetVisibleRect().Size.X);
+        var doctrineWorkflowFunding = ActiveCommandWorkflow() is not null
+            && Cmds[_cmdIndex].Kind == CommandKind.Research
+            && Cmds[_cmdIndex].Param == "troop";
+        // The doctrine funding picker lives in the workflow's left column, not in the
+        // full viewport. Five viewport-derived columns exceed that column and push the
+        // detail panel outside the clipped page. Keep the cards inside the available
+        // workflow width and let the outer styled workflow scroll own vertical paging.
+        var columns = doctrineWorkflowFunding
+            ? System.Math.Min(System.Math.Max(1, cities.Count), 3)
+            : ResearchFundingColumnCount(cities.Count, GetViewport().GetVisibleRect().Size.X);
         var rows = (int)Math.Ceiling(cities.Count / (double)columns);
         var fundingScroll = new ScrollContainer
         {
             Name = "ResearchFundingScroll",
-            CustomMinimumSize = new Vector2(0, Mathf.Min(196, rows * 96)),
+            CustomMinimumSize = new Vector2(0, doctrineWorkflowFunding ? rows * 96 : Mathf.Min(196, rows * 96)),
             SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
             HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled,
-            VerticalScrollMode = rows > 2 ? ScrollContainer.ScrollMode.Auto : ScrollContainer.ScrollMode.Disabled,
+            VerticalScrollMode = doctrineWorkflowFunding
+                ? ScrollContainer.ScrollMode.Disabled
+                : rows > 2 ? ScrollContainer.ScrollMode.Auto : ScrollContainer.ScrollMode.Disabled,
             MouseFilter = Control.MouseFilterEnum.Stop,
             MouseForcePassScrollEvents = true,
         };
