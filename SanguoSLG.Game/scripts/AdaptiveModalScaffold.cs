@@ -63,6 +63,17 @@ public sealed partial class AdaptiveModalScaffold : PanelContainer
     public float BodyLayoutHeight => _chrome?.BodyHeightFor(LayoutSize.Y)
         ?? Mathf.Max(120f, LayoutSize.Y - 104f);
 
+    public CommandModalTabHost EnableTabbedBody()
+    {
+        BodyScroll.VerticalScrollMode = ScrollContainer.ScrollMode.Disabled;
+        Body.SizeFlagsVertical = SizeFlags.ExpandFill;
+        Body.CustomMinimumSize = new Vector2(0f, Mathf.Max(320f, BodyLayoutHeight));
+        var tabs = new CommandModalTabHost();
+        Body.AddChild(tabs);
+        SetMeta("modal_tabbed_body", true);
+        return tabs;
+    }
+
     public AdaptiveModalScaffold()
     {
         Name = "AdaptiveModalScaffold";

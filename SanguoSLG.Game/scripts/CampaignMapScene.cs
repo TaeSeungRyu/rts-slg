@@ -8213,6 +8213,15 @@ public sealed partial class CampaignMapScene : Node3D
         close.Pressed += CloseModal;
         scaffold.SetHeader(title, close, GoldRule());
         var box = scaffold.Body;
+        var fundingBox = box;
+        var officerBox = box;
+        if (cmd.Kind == CommandKind.Research && cmd.Param == "stratagem_research")
+        {
+            var tabs = scaffold.EnableTabbedBody();
+            box = tabs.AddPage("연구 선택", "selection");
+            fundingBox = tabs.AddPage("도시 분담", "funding");
+            officerBox = tabs.AddPage("수행 장수", "officers");
+        }
         if (IsAutoOfficerCommand(cmd.Kind))
         {
             box.AddChild(MakeLabel(OfficerRoleDescription(cmd.Kind), 15, Parchment));
@@ -8461,17 +8470,17 @@ public sealed partial class CampaignMapScene : Node3D
         {
             if (cmd.Param == "troop")
             {
-                AddSectionDivider(box, "DoctrineFundingDivider");
+                AddSectionDivider(fundingBox, "DoctrineFundingDivider");
             }
             else if (cmd.Param == "general")
             {
-                AddSectionDivider(box, "GeneralResearchFundingDivider");
+                AddSectionDivider(fundingBox, "GeneralResearchFundingDivider");
             }
             else
             {
-                AddSectionDivider(box, "StratagemResearchFundingDivider");
+                AddSectionDivider(fundingBox, "StratagemResearchFundingDivider");
             }
-            AddResearchFundingPicker(box, cityData);
+            AddResearchFundingPicker(fundingBox, cityData);
         }
 
         if (!hasGeneralResearchDetail && !hasDoctrineResearchDetail && !hasStratagemResearchDetail
@@ -8501,23 +8510,23 @@ public sealed partial class CampaignMapScene : Node3D
 
         if (cmd.Kind == CommandKind.Research && cmd.Param == "general")
         {
-            AddSectionDivider(box, "GeneralResearchOfficerDivider");
+            AddSectionDivider(officerBox, "GeneralResearchOfficerDivider");
         }
         else if (cmd.Kind == CommandKind.Research && cmd.Param == "troop")
         {
-            AddSectionDivider(box, "DoctrineResearchOfficerDivider");
+            AddSectionDivider(officerBox, "DoctrineResearchOfficerDivider");
         }
         else if (cmd.Kind == CommandKind.Research && cmd.Param == "stratagem_research")
         {
-            AddSectionDivider(box, "StratagemResearchOfficerDivider");
+            AddSectionDivider(officerBox, "StratagemResearchOfficerDivider");
         }
         var officerSectionTitle = MakeLabel("수행 장수", 19, GoldBright);
         officerSectionTitle.Name = "CommandOfficerSectionTitle";
-        box.AddChild(officerSectionTitle);
+        officerBox.AddChild(officerSectionTitle);
         _offSortCol = -1;
         _offSortAsc = false;
         _modalOfficers = new VBoxContainer();
-        box.AddChild(_modalOfficers);
+        officerBox.AddChild(_modalOfficers);
         BuildOfficerCards(city, cmdIndex);
 
         if (options.Count > 0)
