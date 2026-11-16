@@ -1163,6 +1163,48 @@ public sealed partial class CampaignMapScene
                 CloseDoctrinePicker();
                 doctrineWorkspaceOk &= fundingBefore.All(pair => _researchFundingRatios.TryGetValue(pair.Key, out var ratio)
                     && Mathf.IsEqualApprox((float)ratio.Value, (float)pair.Value));
+                doctrineWorkspace.FundingChangeButton.EmitSignal(BaseButton.SignalName.Pressed);
+                await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+                var draftRatio = _doctrinePickerLayer?.FindChildren("*", "SpinBox", true, false)
+                    .OfType<SpinBox>().FirstOrDefault();
+                var fundingApply = _doctrinePickerLayer?.FindChildren("*", "Button", true, false)
+                    .OfType<Button>().FirstOrDefault(button => button.Text == "적용");
+                if (draftRatio is not null) draftRatio.Value = 2;
+                fundingApply?.EmitSignal(BaseButton.SignalName.Pressed);
+                await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+                doctrineWorkspaceOk &= draftRatio is not null && fundingApply is not null
+                    && _researchFundingRatios.Values.Any(ratio => Mathf.IsEqualApprox((float)ratio.Value, 2f));
+                foreach (var pair in fundingBefore) _researchFundingRatios[pair.Key].Value = pair.Value;
+                RefreshDoctrineResearchWorkspace(city);
+
+                doctrineWorkspace.OfficerChangeButton.EmitSignal(BaseButton.SignalName.Pressed);
+                await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+                var officerSearch = _doctrinePickerLayer?.FindChild("DoctrineOfficerSearch", true, false) as LineEdit;
+                var officerTable = _doctrinePickerLayer?.FindChild("DoctrineOfficerTable", true, false) as Tree;
+                var officerApply = _doctrinePickerLayer?.FindChild("DoctrineOfficerApply", true, false) as Button;
+                var officerItem = officerTable?.GetRoot()?.GetFirstChild();
+                doctrineWorkspaceOk &= officerSearch is not null && officerTable is not null
+                    && officerApply is not null && officerItem is not null;
+                if (officerTable is not null && officerItem is not null)
+                {
+                    officerTable.SetSelected(officerItem, 1);
+                    officerTable.EmitSignal(Tree.SignalName.ItemSelected);
+                    officerApply?.EmitSignal(BaseButton.SignalName.Pressed);
+                    await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+                }
+                doctrineWorkspaceOk &= _doctrineOfficer is not null
+                    && doctrineWorkspace.OfficerSummary.Text != "수행 장수를 선택하세요."
+                    && !doctrineWorkspace.StartButton.Disabled;
+                doctrineWorkspace.StartButton.EmitSignal(BaseButton.SignalName.Pressed);
+                await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+                doctrineWorkspaceOk &= _confirmLayer is not null
+                    && _confirmLayer.FindChildren("*", "TextureRect", true, false).OfType<TextureRect>()
+                        .Any(texture => texture.Texture is not null);
+                if (_confirmLayer is not null)
+                {
+                    FadeOutModal(_confirmLayer);
+                    _confirmLayer = null;
+                }
             }
             var ok = chromeOk && texturesOk && titleOk && boundsOk && bodyOk && layoutOk
                 && regionsConnected && bodyInsetOk && emptyScrollOk && cardsFit && tabsOk && workflowOk

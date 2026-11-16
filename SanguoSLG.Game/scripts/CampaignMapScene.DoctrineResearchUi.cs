@@ -128,6 +128,7 @@ public sealed partial class CampaignMapScene
         var query = "";
         var sortColumn = 0;
         var ascending = true;
+        var amountLabels = new Dictionary<int, Label>();
         var layer = CreateDoctrinePickerLayer("연구 도시 선택", out var body, out var close);
         _doctrinePickerLayer = layer;
         close.Pressed += CloseDoctrinePicker;
@@ -176,6 +177,7 @@ public sealed partial class CampaignMapScene
         void Rebuild()
         {
             Clear(list);
+            amountLabels.Clear();
             IEnumerable<City> cities = _state.Cities.Where(candidate => candidate.Owner == city.Owner)
                 .Where(candidate => string.IsNullOrWhiteSpace(query)
                     || candidate.Name.Contains(query, System.StringComparison.OrdinalIgnoreCase));
@@ -206,20 +208,27 @@ public sealed partial class CampaignMapScene
                 });
                 row.AddChild(ratio);
                 var amount = Cell($"{FundingAmount(fundingCity.Id):N0}", 1.5f);
+                amountLabels[fundingCity.Id.Value] = amount;
                 row.AddChild(amount);
                 selected.Toggled += enabled =>
                 {
                     draft[fundingCity.Id.Value] = enabled ? (int)ratio.Value : 0;
                     ratio.Editable = enabled;
-                    amount.Text = $"{FundingAmount(fundingCity.Id):N0}";
+                    RefreshAmounts();
                 };
                 ratio.ValueChanged += value =>
                 {
                     if (selected.ButtonPressed) draft[fundingCity.Id.Value] = (int)value;
-                    amount.Text = $"{FundingAmount(fundingCity.Id):N0}";
+                    RefreshAmounts();
                 };
                 list.AddChild(row);
             }
+        }
+
+        void RefreshAmounts()
+        {
+            foreach (var pair in amountLabels)
+                pair.Value.Text = $"{FundingAmount(new CityId(pair.Key)):N0}";
         }
 
         int FundingAmount(CityId id)
