@@ -94,6 +94,7 @@ public sealed partial class CommandModalWorkflowHost : VBoxContainer
             Text = StepText(index),
             ToggleMode = true,
             ButtonGroup = _group,
+            TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis,
             SizeFlagsHorizontal = SizeFlags.ExpandFill,
             CustomMinimumSize = new Vector2(150f, 50f),
         };
@@ -170,6 +171,7 @@ public sealed partial class CommandModalWorkflowHost : VBoxContainer
         if (index < 0 || index >= _stepButtons.Count) return;
         _stepResults[index] = result;
         _stepButtons[index].Text = StepText(index);
+        _stepButtons[index].TooltipText = result;
         if (index == SelectedStep)
             _summary.Text = string.IsNullOrWhiteSpace(result) ? "선택 내용을 확인하세요." : result;
     }
@@ -197,6 +199,10 @@ public sealed partial class CommandModalWorkflowHost : VBoxContainer
     {
         _previous.Visible = SelectedStep > 0;
         _next.Visible = SelectedStep < _stepPages.Count - 1;
+        _previous.Text = "이전";
+        _next.Text = "다음 단계";
+        _previous.QueueRedraw();
+        _next.QueueRedraw();
     }
 
     private string StepText(int index) => string.IsNullOrWhiteSpace(_stepResults[index])

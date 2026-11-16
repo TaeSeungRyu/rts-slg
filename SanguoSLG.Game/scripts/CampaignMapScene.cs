@@ -8201,9 +8201,14 @@ public sealed partial class CampaignMapScene : Node3D
         var optionCardWidth = cmd.Kind == CommandKind.Research
             && cmd.Param is "troop" or "general" or "stratagem_research"
             || cmd.Kind == CommandKind.AppointRecruitmentOfficer ? 186f : 148f;
-        var usesDoctrineWorkflow = cmd.Kind == CommandKind.Research && cmd.Param == "troop";
-        var colOpt = usesDoctrineWorkflow
-            ? (int)Mathf.Clamp(Mathf.Floor((mw * 0.67f + 10f) / (optionCardWidth + 10f)), 2, 4)
+        var usesCommandWorkflow = cmd.Kind == CommandKind.Research
+                && cmd.Param is "troop" or "general" or "stratagem_research"
+            || cmd.Kind is CommandKind.FormAlliance or CommandKind.DeclareWar
+                && contentLayout != AdaptiveModalScaffold.ContentLayout.Empty
+            || cmd.Kind == CommandKind.AppointRecruitmentOfficer;
+        var workflowMaxColumns = optionCardWidth >= 180f ? 4 : 5;
+        var colOpt = usesCommandWorkflow
+            ? (int)Mathf.Clamp(Mathf.Floor((mw * 0.67f + 10f) / (optionCardWidth + 10f)), 2, workflowMaxColumns)
             : workspaceProfile == AdaptiveModalScaffold.WorkspaceProfile.Default
             ? (int)Mathf.Clamp(Mathf.Floor((mw + 8f) / (wideDoctrineModal ? 186f : 146f)), 3, wideDoctrineModal ? 7 : 5)
             : (int)Mathf.Clamp(Mathf.Floor((mw + 10f) / (optionCardWidth + 10f)), 2, 6);
@@ -8220,11 +8225,15 @@ public sealed partial class CampaignMapScene : Node3D
         var officerBox = box;
         var detailBox = box;
         var introBox = box;
-        if (cmd.Kind == CommandKind.Research && cmd.Param == "troop")
+        if (cmd.Kind == CommandKind.Research
+            && cmd.Param is "troop" or "general" or "stratagem_research")
         {
             var workflow = scaffold.EnableWorkflowBody();
-            var selectionStep = workflow.AddStep("교리 선택", "selection",
-                "연구할 전투교리 카드를 선택하고 현재 효과와 다음 레벨 효과를 확인합니다.");
+            var doctrine = cmd.Param == "troop";
+            var selectionStep = workflow.AddStep(doctrine ? "교리 선택" : "연구 선택", "selection",
+                doctrine
+                    ? "연구할 전투교리 카드를 선택하고 현재 효과와 다음 레벨 효과를 확인합니다."
+                    : "연구할 항목을 선택하고 현재 효과와 다음 레벨 효과를 확인합니다.");
             var fundingStep = workflow.AddStep("도시 분담", "funding",
                 "연구비를 부담할 도시와 분담 비율을 설정합니다.");
             var officerStep = workflow.AddStep("수행 장수", "officers",
@@ -8235,31 +8244,42 @@ public sealed partial class CampaignMapScene : Node3D
             fundingBox = fundingStep.List;
             officerBox = officerStep.List;
         }
-        else if (cmd.Kind == CommandKind.Research
-                 && cmd.Param is "general" or "stratagem_research")
-        {
-            var tabs = scaffold.EnableTabbedBody();
-            var selectionTitle = cmd.Param == "troop" ? "교리 선택" : "연구 선택";
-            box = tabs.AddPage(selectionTitle, "selection");
-            fundingBox = tabs.AddPage("도시 분담", "funding");
-            officerBox = tabs.AddPage("수행 장수", "officers");
-        }
         else if (cmd.Kind is CommandKind.FormAlliance or CommandKind.DeclareWar
                  && contentLayout != AdaptiveModalScaffold.ContentLayout.Empty)
         {
-            var tabs = scaffold.EnableTabbedBody();
-            box = tabs.AddPage("대상 선택", "targets");
-            officerBox = tabs.AddPage("수행 장수", "officers");
+            var workflow = scaffold.EnableWorkflowBody();
+            var targetStep = workflow.AddStep("대상 선택", "targets",
+                cmd.Kind == CommandKind.FormAlliance
+                    ? "동맹을 제안할 세력과 이동 거리·예상 일수를 확인합니다."
+                    : "선전포고할 성과 점령 전 치안 조건을 확인합니다.");
+            var officerStep = workflow.AddStep("수행 장수", "officers",
+                "수행 장수를 선택하면 기존 명령 확인 절차가 시작됩니다.");
+            box = targetStep.List;
+            detailBox = targetStep.Detail;
+            introBox = targetStep.Detail;
+            officerBox = officerStep.List;
         }
         else if (cmd.Kind == CommandKind.AppointRecruitmentOfficer)
         {
-            var tabs = scaffold.EnableTabbedBody();
-            box = tabs.AddPage("병종 설정", "troops");
-            officerBox = tabs.AddPage("수행 장수", "officers");
+            var workflow = scaffold.EnableWorkflowBody();
+            var troopStep = workflow.AddStep("병종 설정", "troops",
+                "자동 생산할 병종과 생산 비율을 선택합니다.");
+            var officerStep = workflow.AddStep("수행 장수", "officers",
+                "담당 장수를 선택하면 기존 임명 확인 절차가 시작됩니다.");
+            box = troopStep.List;
+            detailBox = troopStep.Detail;
+            introBox = troopStep.Detail;
+            officerBox = officerStep.List;
+        }
+        void AddIntroText(string text)
+        {
+            var label = MakeLabel(text, 15, Parchment);
+            label.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+            introBox.AddChild(label);
         }
         if (IsAutoOfficerCommand(cmd.Kind))
         {
-            box.AddChild(MakeLabel(OfficerRoleDescription(cmd.Kind), 15, Parchment));
+            AddIntroText(OfficerRoleDescription(cmd.Kind));
         }
         else if (cmd.Kind == CommandKind.Research && cmd.Param == "wall")
         {
@@ -8267,17 +8287,15 @@ public sealed partial class CampaignMapScene : Node3D
         }
         else if (cmd.Kind == CommandKind.Research && cmd.Param == "troop")
         {
-            var doctrineIntro = MakeLabel("전투교리는 세력 병종의 공격과 방어 보정을 올립니다. 일반 병종은 Lv.7, 주력병종은 Lv.10까지 연구할 수 있습니다.", 15, Parchment);
-            doctrineIntro.AutowrapMode = TextServer.AutowrapMode.WordSmart;
-            introBox.AddChild(doctrineIntro);
+            AddIntroText("전투교리는 세력 병종의 공격과 방어 보정을 올립니다. 일반 병종은 Lv.7, 주력병종은 Lv.10까지 연구할 수 있습니다.");
         }
         else if (cmd.Kind == CommandKind.Research && cmd.Param == "general")
         {
-            box.AddChild(MakeLabel("세력 전체에 적용되는 8개 분야를 Lv.10까지 연구합니다. 전투교리와 병행할 수 있습니다.", 15, Parchment));
+            AddIntroText("세력 전체에 적용되는 8개 분야를 Lv.10까지 연구합니다. 전투교리와 병행할 수 있습니다.");
         }
         else if (cmd.Kind == CommandKind.Research && cmd.Param == "stratagem_research")
         {
-            box.AddChild(MakeLabel("도시 계략 5종의 성공률을 연구합니다. 레벨마다 +2%p, 최대 Lv.10까지 적용됩니다.", 15, Parchment));
+            AddIntroText("도시 계략 5종의 성공률을 연구합니다. 레벨마다 +2%p, 최대 Lv.10까지 적용됩니다.");
         }
         else if (cmd.Kind == CommandKind.SelectMajorTroop)
         {
@@ -8289,7 +8307,7 @@ public sealed partial class CampaignMapScene : Node3D
         }
         else if (cmd.Kind == CommandKind.FormAlliance)
         {
-            box.AddChild(MakeLabel($"대상 세력에 사절을 보내 동맹을 제안합니다. 비용 {_cb.AllianceGoldCost}금, 성공 확률은 수행 장수 정치로 정합니다.", 15, Parchment));
+            AddIntroText($"대상 세력에 사절을 보내 동맹을 제안합니다. 비용 {_cb.AllianceGoldCost}금, 성공 확률은 수행 장수 정치로 정합니다.");
         }
         else if (cmd.Kind == CommandKind.BreakAlliance)
         {
@@ -8297,7 +8315,7 @@ public sealed partial class CampaignMapScene : Node3D
         }
         else if (cmd.Kind == CommandKind.DeclareWar)
         {
-            box.AddChild(MakeLabel("대상 성 주변 4칸에 아군 부대가 없어야 합니다. 포고는 100일간 유효하며 시야 밖에서도 대상 성이 흐리게 보입니다. 포고 없이 점령하면 기존 치안의 20~40%를 잃습니다.", 15, Parchment));
+            AddIntroText("대상 성 주변 4칸에 아군 부대가 없어야 합니다. 포고는 100일간 유효하며 시야 밖에서도 대상 성이 흐리게 보입니다. 포고 없이 점령하면 기존 치안의 20~40%를 잃습니다.");
         }
         var cityData = selectedCityData;
         if (cmd.Kind == CommandKind.Explore)
@@ -8492,7 +8510,7 @@ public sealed partial class CampaignMapScene : Node3D
         var hasStratagemResearchDetail = cmd.Kind == CommandKind.Research && cmd.Param == "stratagem_research";
         if (hasGeneralResearchDetail)
         {
-            AddGeneralResearchSelectionDetail(box);
+            AddGeneralResearchSelectionDetail(detailBox);
         }
         else if (hasDoctrineResearchDetail)
         {
@@ -8500,7 +8518,7 @@ public sealed partial class CampaignMapScene : Node3D
         }
         else if (hasStratagemResearchDetail)
         {
-            AddStratagemResearchSelectionDetail(box);
+            AddStratagemResearchSelectionDetail(detailBox);
         }
 
         if (cmd.Kind == CommandKind.Research && cmd.Param is "troop" or "general" or "stratagem_research")
@@ -16347,6 +16365,8 @@ public sealed partial class CampaignMapScene : Node3D
         {
             _modalDetail!.Text = selected.Count == 0 ? "▶  선택 없음" : $"▶  {label}: {string.Join(", ", selected)}{rate}";
         }
+        ActiveCommandWorkflow()?.SetStepResult(0,
+            selected.Count == 0 ? "선택 없음" : $"{string.Join(", ", selected)}{rate}");
     }
 
     private static string PlainUiText(string value)

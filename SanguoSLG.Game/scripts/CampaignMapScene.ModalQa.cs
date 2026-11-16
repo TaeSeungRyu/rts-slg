@@ -1077,8 +1077,6 @@ public sealed partial class CampaignMapScene
             var tabs = scaffold?.FindChild("CommandModalTabHost", true, false) as CommandModalTabHost;
             var expectedTabs = item.Index switch
             {
-                8 or 24 => 3,
-                13 or 15 or 20 when layout != AdaptiveModalScaffold.ContentLayout.Empty.ToString() => 2,
                 _ => 0,
             };
             var tabsOk = expectedTabs == 0
@@ -1101,18 +1099,28 @@ public sealed partial class CampaignMapScene
                     && _autoRecruitRateParam == selectedRate;
             }
             var workflow = scaffold?.FindChild("CommandModalWorkflowHost", true, false) as CommandModalWorkflowHost;
-            var expectedWorkflowSteps = item.Index == 7 ? 3 : 0;
+            var expectedWorkflowSteps = item.Index switch
+            {
+                7 or 8 or 24 => 3,
+                13 or 15 or 20 when layout != AdaptiveModalScaffold.ContentLayout.Empty.ToString() => 2,
+                _ => 0,
+            };
             var workflowOk = expectedWorkflowSteps == 0
                 ? workflow is null
                 : workflow?.StepCount == expectedWorkflowSteps;
             if (expectedWorkflowSteps > 0 && workflow is not null)
             {
                 var selectedOption = _modalParam;
+                var selectedMulti = _modalMultiParams.OrderBy(value => value).ToArray();
+                var selectedRate = _autoRecruitRateParam;
                 workflow.SelectStep(expectedWorkflowSteps - 1);
                 await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
                 workflow.SelectStep(0);
                 await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
-                workflowOk &= workflow.SelectedStep == 0 && _modalParam == selectedOption;
+                workflowOk &= workflow.SelectedStep == 0
+                    && _modalParam == selectedOption
+                    && _modalMultiParams.OrderBy(value => value).SequenceEqual(selectedMulti)
+                    && _autoRecruitRateParam == selectedRate;
             }
             var ok = chromeOk && texturesOk && titleOk && boundsOk && bodyOk && layoutOk
                 && regionsConnected && bodyInsetOk && emptyScrollOk && cardsFit && tabsOk && workflowOk;
