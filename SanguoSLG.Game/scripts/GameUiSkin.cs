@@ -304,6 +304,28 @@ internal static class GameUiSkin
             new Color("d9b66e"), 1, 3, 0));
     }
 
+    internal static void ApplyCommandTable(Tree tree)
+    {
+        tree.SetMeta("game_command_table_style", true);
+        tree.AddThemeStyleboxOverride("panel", FlatBox(new Color("100908"), new Color(Gold, 0.72f), 1, 6, 4));
+        tree.AddThemeStyleboxOverride("focus", new StyleBoxEmpty());
+        tree.AddThemeStyleboxOverride("selected", FlatBox(new Color("4b2717"), GoldBright, 2, 4, 4));
+        tree.AddThemeStyleboxOverride("selected_focus", FlatBox(new Color("5b2d19"), GoldBright, 2, 4, 4));
+        tree.AddThemeStyleboxOverride("cursor", FlatBox(new Color("2f1b13"), new Color(GoldBright, 0.78f), 1, 4, 4));
+        tree.AddThemeStyleboxOverride("cursor_unfocused", FlatBox(new Color("21130f"), new Color(Gold, 0.55f), 1, 4, 4));
+        tree.AddThemeStyleboxOverride("title_button_normal", FlatBox(new Color("29140f"), Gold, 1, 3, 6));
+        tree.AddThemeStyleboxOverride("title_button_hover", FlatBox(new Color("3b1e15"), GoldBright, 1, 3, 6));
+        tree.AddThemeStyleboxOverride("title_button_pressed", FlatBox(new Color("1b0d0a"), GoldBright, 2, 3, 6));
+        tree.AddThemeColorOverride("font_color", Ivory);
+        tree.AddThemeColorOverride("font_selected_color", new Color("fff0bf"));
+        tree.AddThemeColorOverride("title_button_color", GoldBright);
+        tree.AddThemeColorOverride("title_button_hover_color", Colors.White);
+        tree.AddThemeColorOverride("guide_color", new Color(Gold, 0.24f));
+        tree.AddThemeConstantOverride("h_separation", 8);
+        tree.AddThemeConstantOverride("v_separation", 5);
+        tree.AddThemeConstantOverride("item_margin", 8);
+    }
+
     internal static void ApplyCommandButton(Button button, bool accent = false)
     {
         // Accent marks the two primary actions (deploy/production); pressed state alone marks selection.

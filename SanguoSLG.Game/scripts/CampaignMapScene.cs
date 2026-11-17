@@ -16518,6 +16518,8 @@ public sealed partial class CampaignMapScene : Node3D
         tree.AddThemeFontOverride("title_button_font", _font);
         tree.AddThemeFontSizeOverride("title_button_font_size", 14);
         tree.AddThemeConstantOverride("item_margin", 6);
+        var wallResearchTable = cmd.Kind == CommandKind.Research && cmd.Param == "wall";
+        if (wallResearchTable) GameUiSkin.ApplyCommandTable(tree);
         tree.SetColumnTitle(0, "");
         tree.SetColumnExpand(0, false);
         tree.SetColumnCustomMinimumWidth(0, 54);

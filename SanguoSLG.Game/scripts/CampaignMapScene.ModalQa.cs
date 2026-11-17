@@ -1099,6 +1099,13 @@ public sealed partial class CampaignMapScene
                     && _autoRecruitRateParam == selectedRate;
             }
             var workflow = scaffold?.FindChild("CommandModalWorkflowHost", true, false) as CommandModalWorkflowHost;
+            var wallTable = item.Index == 9
+                ? scaffold?.FindChild("CommandOfficerTable", true, false) as Tree
+                : null;
+            var wallTableStyleOk = item.Index != 9 || wallTable is not null
+                && wallTable.GetMeta("game_command_table_style").AsBool()
+                && wallTable.HasThemeStyleboxOverride("selected")
+                && wallTable.HasThemeStyleboxOverride("title_button_normal");
             var expectedWorkflowSteps = item.Index switch
             {
                 _ => 0,
@@ -1229,7 +1236,7 @@ public sealed partial class CampaignMapScene
                     _confirmLayer = null;
                 }
             }
-            var ok = chromeOk && texturesOk && titleOk && boundsOk && bodyOk && layoutOk
+            var ok = chromeOk && texturesOk && titleOk && boundsOk && bodyOk && layoutOk && wallTableStyleOk
                 && regionsConnected && bodyInsetOk && emptyScrollOk && cardsFit && tabsOk && workflowOk
                 && workflowLayoutOk && doctrineWorkspaceOk;
             passed &= ok;
