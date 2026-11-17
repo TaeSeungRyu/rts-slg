@@ -1166,6 +1166,9 @@ public sealed partial class CampaignMapScene
                 doctrineWorkspaceOk &= _doctrinePickerLayer is not null
                     && _doctrinePickerLayer.FindChild("DoctrineFundingSearch", true, false) is LineEdit
                     && _doctrinePickerLayer.FindChild("DoctrineFundingTableScroll", true, false) is ScrollContainer
+                    && _doctrinePickerLayer.FindChildren("*", "SpinBox", true, false).Count == 0
+                    && _doctrinePickerLayer.FindChildren("DoctrineFundingRatio_*", "Label", true, false).Count
+                        == _researchFundingRatios.Count
                     && _doctrinePickerLayer.FindChildren("*", "Button", true, false).OfType<Button>()
                         .Any(button => button.Text == "적용")
                     && _doctrinePickerLayer.FindChildren("*", "Button", true, false).OfType<Button>()
@@ -1175,15 +1178,16 @@ public sealed partial class CampaignMapScene
                     && Mathf.IsEqualApprox((float)ratio.Value, (float)pair.Value));
                 doctrineWorkspace.FundingChangeButton.EmitSignal(BaseButton.SignalName.Pressed);
                 await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
-                var draftRatio = _doctrinePickerLayer?.FindChildren("*", "SpinBox", true, false)
-                    .OfType<SpinBox>().FirstOrDefault();
+                var draftSelection = _doctrinePickerLayer?.FindChildren("*", "CheckButton", true, false)
+                    .OfType<CheckButton>().FirstOrDefault(button => button.ButtonPressed);
                 var fundingApply = _doctrinePickerLayer?.FindChildren("*", "Button", true, false)
                     .OfType<Button>().FirstOrDefault(button => button.Text == "적용");
-                if (draftRatio is not null) draftRatio.Value = 2;
+                if (draftSelection is not null) draftSelection.ButtonPressed = false;
                 fundingApply?.EmitSignal(BaseButton.SignalName.Pressed);
                 await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
-                doctrineWorkspaceOk &= draftRatio is not null && fundingApply is not null
-                    && _researchFundingRatios.Values.Any(ratio => Mathf.IsEqualApprox((float)ratio.Value, 2f));
+                doctrineWorkspaceOk &= draftSelection is not null && fundingApply is not null
+                    && _researchFundingRatios.Values.Any(ratio => Mathf.IsEqualApprox((float)ratio.Value, 0f))
+                    && _researchFundingRatios.Values.All(ratio => ratio.Value is 0 or 1);
                 foreach (var pair in fundingBefore) _researchFundingRatios[pair.Key].Value = pair.Value;
                 RefreshDoctrineResearchWorkspace(city);
 

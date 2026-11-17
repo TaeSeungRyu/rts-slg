@@ -132,6 +132,7 @@ public sealed partial class CampaignMapScene
         var sortColumn = 0;
         var ascending = true;
         var amountLabels = new Dictionary<int, Label>();
+        var ratioLabels = new Dictionary<int, Label>();
         var layer = CreateDoctrinePickerLayer("연구 도시 선택", out var body, out var close);
         _doctrinePickerLayer = layer;
         close.Pressed += CloseDoctrinePicker;
@@ -181,6 +182,7 @@ public sealed partial class CampaignMapScene
         {
             Clear(list);
             amountLabels.Clear();
+            ratioLabels.Clear();
             IEnumerable<City> cities = _state.Cities.Where(candidate => candidate.Owner == city.Owner)
                 .Where(candidate => string.IsNullOrWhiteSpace(query)
                     || candidate.Name.Contains(query, System.StringComparison.OrdinalIgnoreCase));
@@ -199,37 +201,30 @@ public sealed partial class CampaignMapScene
                 row.AddChild(Cell($"{fundingCity.Gold:N0}", 1.4f));
                 var selected = new CheckButton { ButtonPressed = draft[fundingCity.Id.Value] > 0, SizeFlagsHorizontal = Control.SizeFlags.ExpandFill, SizeFlagsStretchRatio = 0.8f };
                 row.AddChild(selected);
-                var ratio = ApplyNumberInputStyle(new SpinBox
-                {
-                    MinValue = 1,
-                    MaxValue = 10,
-                    Step = 1,
-                    Value = System.Math.Max(1, draft[fundingCity.Id.Value]),
-                    Editable = selected.ButtonPressed,
-                    SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
-                    SizeFlagsStretchRatio = 1.4f,
-                });
+                var ratio = Cell("-", 1.4f);
+                ratio.Name = $"DoctrineFundingRatio_{fundingCity.Id.Value}";
+                ratio.HorizontalAlignment = HorizontalAlignment.Center;
+                ratioLabels[fundingCity.Id.Value] = ratio;
                 row.AddChild(ratio);
                 var amount = Cell($"{FundingAmount(fundingCity.Id):N0}", 1.5f);
+                amount.Name = $"DoctrineFundingAmount_{fundingCity.Id.Value}";
                 amountLabels[fundingCity.Id.Value] = amount;
                 row.AddChild(amount);
                 selected.Toggled += enabled =>
                 {
-                    draft[fundingCity.Id.Value] = enabled ? (int)ratio.Value : 0;
-                    ratio.Editable = enabled;
-                    RefreshAmounts();
-                };
-                ratio.ValueChanged += value =>
-                {
-                    if (selected.ButtonPressed) draft[fundingCity.Id.Value] = (int)value;
-                    RefreshAmounts();
+                    draft[fundingCity.Id.Value] = enabled ? 1 : 0;
+                    RefreshAutomaticShares();
                 };
                 list.AddChild(row);
             }
+            RefreshAutomaticShares();
         }
 
-        void RefreshAmounts()
+        void RefreshAutomaticShares()
         {
+            var selectedCount = draft.Count(pair => pair.Value > 0);
+            foreach (var pair in ratioLabels)
+                pair.Value.Text = draft[pair.Key] > 0 ? $"1 / {selectedCount}" : "-";
             foreach (var pair in amountLabels)
                 pair.Value.Text = $"{FundingAmount(new CityId(pair.Key)):N0}";
         }
