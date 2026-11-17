@@ -8220,7 +8220,7 @@ public sealed partial class CampaignMapScene : Node3D
         var close = AdaptiveModalScaffold.CreateCloseButton();
         close.Pressed += CloseModal;
         scaffold.SetHeader(title, close, GoldRule());
-        if (cmd.Kind == CommandKind.Research && cmd.Param is "troop" or "general")
+        if (cmd.Kind == CommandKind.Research && cmd.Param is "troop" or "general" or "stratagem_research")
         {
             BuildIntegratedResearchWorkspace(scaffold, selectedCityData, cmdIndex);
             return;

@@ -36,6 +36,7 @@ public sealed partial class CampaignMapScene
         scaffold.Body.AddChild(workspace);
         var command = Cmds[cmdIndex];
         var doctrine = command.Param == "troop";
+        var stratagem = command.Param == "stratagem_research";
         workspace.Configure("연구 도시", true, "수행 장수", "연구 시작");
         workspace.FundingChangeButton.Pressed += () => OpenDoctrineFundingPicker(city);
         workspace.OfficerChangeButton.Pressed += () => OpenDoctrineOfficerPicker(city.Id, cmdIndex);
@@ -45,15 +46,18 @@ public sealed partial class CampaignMapScene
                 AskExecute(city.Id, cmdIndex, officer, _modalParam);
         };
 
-        workspace.DetailHost.AddChild(MakeLabel(doctrine ? "선택 교리 상세" : "선택 연구 상세", 18, GoldBright));
-        _modalDetail = MakeLabel(doctrine ? "전투교리 대상을 선택하세요." : "일반연구 대상을 선택하세요.", 14, Parchment);
-        _modalDetail.Name = doctrine ? "DoctrineResearchDetailText" : "GeneralResearchDetailText";
+        workspace.DetailHost.AddChild(MakeLabel(doctrine ? "선택 교리 상세"
+            : stratagem ? "선택 계략연구 상세" : "선택 연구 상세", 18, GoldBright));
+        _modalDetail = MakeLabel(doctrine ? "전투교리 대상을 선택하세요."
+            : stratagem ? "계략연구 대상을 선택하세요." : "일반연구 대상을 선택하세요.", 14, Parchment);
+        _modalDetail.Name = doctrine ? "DoctrineResearchDetailText"
+            : stratagem ? "StratagemResearchDetailText" : "GeneralResearchDetailText";
         _modalDetail.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         workspace.DetailHost.AddChild(_modalDetail);
 
         workspace.DoctrineList.AddChild(MakeLabel(doctrine
             ? "연구할 전투교리를 선택하세요"
-            : "연구할 일반연구를 선택하세요", 18, GoldBright));
+            : stratagem ? "연구할 계략을 선택하세요" : "연구할 일반연구를 선택하세요", 18, GoldBright));
         var options = OptionList(Cmds[cmdIndex], city);
         var grid = new GridContainer
         {
