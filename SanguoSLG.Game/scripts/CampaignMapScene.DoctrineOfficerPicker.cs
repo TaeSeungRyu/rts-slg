@@ -72,7 +72,7 @@ public sealed partial class CampaignMapScene
             _doctrineOfficer = selected;
             CloseDoctrinePicker();
             var selectedCity = _state.Cities.First(candidate => candidate.Id == city);
-            RefreshDoctrineResearchWorkspace(selectedCity);
+            RefreshIntegratedCommandWorkspace(selectedCity);
         };
         actions.AddChild(apply);
         body.AddChild(actions);

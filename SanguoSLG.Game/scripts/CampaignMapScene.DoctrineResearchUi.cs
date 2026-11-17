@@ -10,7 +10,7 @@ public sealed partial class CampaignMapScene
     private DoctrineResearchWorkspace? _doctrineWorkspace;
     private GeneralId? _doctrineOfficer;
 
-    private void BuildDoctrineResearchWorkspace(AdaptiveModalScaffold scaffold, City city, int cmdIndex)
+    private void BuildIntegratedResearchWorkspace(AdaptiveModalScaffold scaffold, City city, int cmdIndex)
     {
         scaffold.BodyScroll.VerticalScrollMode = ScrollContainer.ScrollMode.Disabled;
         scaffold.Body.SizeFlagsVertical = Control.SizeFlags.ExpandFill;
@@ -34,6 +34,9 @@ public sealed partial class CampaignMapScene
         var workspace = new DoctrineResearchWorkspace();
         _doctrineWorkspace = workspace;
         scaffold.Body.AddChild(workspace);
+        var command = Cmds[cmdIndex];
+        var doctrine = command.Param == "troop";
+        workspace.Configure("연구 도시", true, "수행 장수", "연구 시작");
         workspace.FundingChangeButton.Pressed += () => OpenDoctrineFundingPicker(city);
         workspace.OfficerChangeButton.Pressed += () => OpenDoctrineOfficerPicker(city.Id, cmdIndex);
         workspace.StartButton.Pressed += () =>
@@ -42,13 +45,15 @@ public sealed partial class CampaignMapScene
                 AskExecute(city.Id, cmdIndex, officer, _modalParam);
         };
 
-        workspace.DetailHost.AddChild(MakeLabel("선택 교리 상세", 18, GoldBright));
-        _modalDetail = MakeLabel("전투교리 대상을 선택하세요.", 14, Parchment);
-        _modalDetail.Name = "DoctrineResearchDetailText";
+        workspace.DetailHost.AddChild(MakeLabel(doctrine ? "선택 교리 상세" : "선택 연구 상세", 18, GoldBright));
+        _modalDetail = MakeLabel(doctrine ? "전투교리 대상을 선택하세요." : "일반연구 대상을 선택하세요.", 14, Parchment);
+        _modalDetail.Name = doctrine ? "DoctrineResearchDetailText" : "GeneralResearchDetailText";
         _modalDetail.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         workspace.DetailHost.AddChild(_modalDetail);
 
-        workspace.DoctrineList.AddChild(MakeLabel("연구할 전투교리를 선택하세요", 18, GoldBright));
+        workspace.DoctrineList.AddChild(MakeLabel(doctrine
+            ? "연구할 전투교리를 선택하세요"
+            : "연구할 일반연구를 선택하세요", 18, GoldBright));
         var options = OptionList(Cmds[cmdIndex], city);
         var grid = new GridContainer
         {
@@ -60,7 +65,7 @@ public sealed partial class CampaignMapScene
         grid.AddThemeConstantOverride("v_separation", 10);
         workspace.DoctrineList.AddChild(grid);
 
-        for (var i = 0; i < _troops.Count; i++)
+        for (var i = 0; doctrine && i < _troops.Count; i++)
         {
             if (!FactionTroopUnlock.CheckResearch(_state, city.Owner, _troops[i].Code).Allowed)
                 _disabledOptions.Add(i + 2);
@@ -79,7 +84,7 @@ public sealed partial class CampaignMapScene
                 {
                     if (input is not InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left }) return;
                     PickOption(index, options[index]);
-                    RefreshDoctrineResearchWorkspace(city);
+                    RefreshIntegratedCommandWorkspace(city);
                 };
             }
             grid.AddChild(card);
@@ -87,10 +92,10 @@ public sealed partial class CampaignMapScene
 
         _modalParam = Enumerable.Range(0, options.Count).FirstOrDefault(index => !_disabledOptions.Contains(index));
         if (options.Count > 0) PickOption(_modalParam, options[_modalParam]);
-        RefreshDoctrineResearchWorkspace(city);
+        RefreshIntegratedCommandWorkspace(city);
     }
 
-    private void RefreshDoctrineResearchWorkspace(City city)
+    private void RefreshIntegratedCommandWorkspace(City city)
     {
         if (!GodotObject.IsInstanceValid(_doctrineWorkspace)) return;
         var cost = CurrentResearchCost(city);
@@ -116,6 +121,8 @@ public sealed partial class CampaignMapScene
         _doctrineWorkspace.StartButton.Disabled = _doctrineOfficer is null
             || shares.Count == 0 || shortage.City.Value != 0 || _disabledOptions.Contains(_modalParam);
     }
+
+    private void RefreshDoctrineResearchWorkspace(City city) => RefreshIntegratedCommandWorkspace(city);
 
     private string OfficerSummaryText(GeneralId id)
     {
@@ -248,7 +255,7 @@ public sealed partial class CampaignMapScene
         {
             foreach (var pair in draft) _researchFundingRatios[pair.Key].Value = pair.Value;
             CloseDoctrinePicker();
-            RefreshDoctrineResearchWorkspace(city);
+            RefreshIntegratedCommandWorkspace(city);
         };
         actions.AddChild(apply);
         body.AddChild(actions);

@@ -1101,7 +1101,7 @@ public sealed partial class CampaignMapScene
             var workflow = scaffold?.FindChild("CommandModalWorkflowHost", true, false) as CommandModalWorkflowHost;
             var expectedWorkflowSteps = item.Index switch
             {
-                8 or 24 => 3,
+                24 => 3,
                 13 or 15 or 20 when layout != AdaptiveModalScaffold.ContentLayout.Empty.ToString() => 2,
                 _ => 0,
             };
@@ -1149,7 +1149,8 @@ public sealed partial class CampaignMapScene
             var doctrineSummary = doctrineWorkspace?.FindChild("DoctrineResearchSummaryColumn", true, false) as Control;
             var doctrineColumns = doctrineWorkspace?.FindChild("DoctrineResearchColumns", true, false) as Control;
             var doctrineFooter = doctrineWorkspace?.FindChild("DoctrineResearchFooter", true, false) as Control;
-            var doctrineWorkspaceOk = item.Index != 7 || doctrineWorkspace is not null
+            var usesIntegratedResearchWorkspace = item.Index is 7 or 8;
+            var doctrineWorkspaceOk = !usesIntegratedResearchWorkspace || doctrineWorkspace is not null
                 && workflow is null
                 && doctrineGrid is { Columns: 3 }
                 && doctrineScroll is not null
@@ -1163,7 +1164,7 @@ public sealed partial class CampaignMapScene
                 && doctrineColumns.Size.Y > doctrineFooter.Size.Y * 5f
                 && doctrineWorkspace.Size.Y >= scaffold!.BodyLayoutHeight - 2f
                 && scaffold.BodyScroll.VerticalScrollMode == ScrollContainer.ScrollMode.Disabled;
-            if (item.Index == 7 && doctrineWorkspace is not null)
+            if (usesIntegratedResearchWorkspace && doctrineWorkspace is not null)
             {
                 var fundingBefore = _researchFundingRatios.ToDictionary(pair => pair.Key, pair => pair.Value.Value);
                 doctrineWorkspace.FundingChangeButton.EmitSignal(BaseButton.SignalName.Pressed);

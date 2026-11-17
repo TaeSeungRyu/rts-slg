@@ -13,6 +13,9 @@ public sealed partial class DoctrineResearchWorkspace : VBoxContainer
     public Label FundingSummary { get; }
     public Label OfficerSummary { get; }
     public Label TotalCost { get; }
+    public Label FundingTitle { get; }
+    public Label OfficerTitle { get; }
+    public PanelContainer FundingPanel { get; }
     public Button FundingChangeButton { get; }
     public Button OfficerChangeButton { get; }
     public Button StartButton { get; }
@@ -68,11 +71,16 @@ public sealed partial class DoctrineResearchWorkspace : VBoxContainer
         DetailHost = Box("DoctrineResearchDetailHost");
         detailMargin.AddChild(DetailHost);
 
-        var funding = SummaryPanel("연구 도시", "DoctrineResearchFundingPanel", out var fundingSummary, out var fundingChange);
+        var funding = SummaryPanel("연구 도시", "DoctrineResearchFundingPanel", out var fundingTitle,
+            out var fundingSummary, out var fundingChange);
+        FundingPanel = funding;
+        FundingTitle = fundingTitle;
         FundingSummary = fundingSummary;
         FundingChangeButton = fundingChange;
         right.AddChild(funding);
-        var officer = SummaryPanel("수행 장수", "DoctrineResearchOfficerPanel", out var officerSummary, out var officerChange);
+        var officer = SummaryPanel("수행 장수", "DoctrineResearchOfficerPanel", out var officerTitle,
+            out var officerSummary, out var officerChange);
+        OfficerTitle = officerTitle;
         OfficerSummary = officerSummary;
         OfficerChangeButton = officerChange;
         right.AddChild(officer);
@@ -94,13 +102,23 @@ public sealed partial class DoctrineResearchWorkspace : VBoxContainer
         footerRow.AddChild(StartButton);
     }
 
-    private static PanelContainer SummaryPanel(string title, string name, out Label summary, out Button change)
+    public void Configure(string fundingTitle, bool showFunding, string officerTitle, string actionText)
+    {
+        FundingPanel.Visible = showFunding;
+        FundingTitle.Text = fundingTitle;
+        OfficerTitle.Text = officerTitle;
+        StartButton.Text = actionText;
+    }
+
+    private static PanelContainer SummaryPanel(string title, string name, out Label titleLabel,
+        out Label summary, out Button change)
     {
         var panel = Panel(name, new Color("1b0e0c"), new Color("725029"));
         var box = Box(name + "Content");
         panel.AddChild(box);
         var header = new HBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        header.AddChild(Label(title, 16, GoldBright, true));
+        titleLabel = Label(title, 16, GoldBright, true);
+        header.AddChild(titleLabel);
         change = ActionButton("변경", false);
         change.CustomMinimumSize = new Vector2(76f, 32f);
         header.AddChild(change);
