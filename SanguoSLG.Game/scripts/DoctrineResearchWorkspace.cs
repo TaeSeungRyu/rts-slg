@@ -78,7 +78,8 @@ public sealed partial class DoctrineResearchWorkspace : VBoxContainer
         right.AddChild(officer);
 
         var footer = Panel("DoctrineResearchFooter", new Color("24120f"), Gold);
-        footer.CustomMinimumSize = new Vector2(0f, 58f);
+        footer.CustomMinimumSize = new Vector2(0f, 70f);
+        footer.SizeFlagsVertical = SizeFlags.ShrinkBegin;
         AddChild(footer);
         var footerRow = new HBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
         footerRow.AddThemeConstantOverride("separation", 12);

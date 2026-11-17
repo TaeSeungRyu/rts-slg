@@ -1147,6 +1147,8 @@ public sealed partial class CampaignMapScene
             var doctrineScroll = doctrineWorkspace?.FindChild("DoctrineResearchListScroll", true, false) as ScrollContainer;
             var doctrineListPanel = doctrineWorkspace?.FindChild("DoctrineResearchListPanel", true, false) as Control;
             var doctrineSummary = doctrineWorkspace?.FindChild("DoctrineResearchSummaryColumn", true, false) as Control;
+            var doctrineColumns = doctrineWorkspace?.FindChild("DoctrineResearchColumns", true, false) as Control;
+            var doctrineFooter = doctrineWorkspace?.FindChild("DoctrineResearchFooter", true, false) as Control;
             var doctrineWorkspaceOk = item.Index != 7 || doctrineWorkspace is not null
                 && workflow is null
                 && doctrineGrid is { Columns: 3 }
@@ -1156,6 +1158,9 @@ public sealed partial class CampaignMapScene
                 && doctrineListPanel.Size.X >= doctrineSummary.Size.X * 1.8f
                 && doctrineWorkspace.FundingSummary.Text.Contains("개 도시", System.StringComparison.Ordinal)
                 && doctrineWorkspace.StartButton.Disabled
+                && doctrineColumns is not null && doctrineFooter is not null
+                && Mathf.Abs(doctrineFooter.Size.Y - 70f) <= 1f
+                && doctrineColumns.Size.Y > doctrineFooter.Size.Y * 5f
                 && doctrineWorkspace.Size.Y >= scaffold!.BodyLayoutHeight - 2f
                 && scaffold.BodyScroll.VerticalScrollMode == ScrollContainer.ScrollMode.Disabled;
             if (item.Index == 7 && doctrineWorkspace is not null)
