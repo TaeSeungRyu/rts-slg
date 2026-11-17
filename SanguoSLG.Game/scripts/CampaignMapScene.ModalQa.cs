@@ -1102,6 +1102,12 @@ public sealed partial class CampaignMapScene
             var wallTable = item.Index == 9
                 ? scaffold?.FindChild("CommandOfficerTable", true, false) as Tree
                 : null;
+            var wallDescriptionMargin = item.Index == 9
+                ? scaffold?.FindChild("WallResearchDescriptionMargin", true, false) as MarginContainer
+                : null;
+            var wallDescription = item.Index == 9
+                ? scaffold?.FindChild("WallResearchDescription", true, false) as Label
+                : null;
             var wallFirstRow = wallTable?.GetRoot()?.GetFirstChild();
             if (wallTable is not null && wallFirstRow is not null)
             {
@@ -1110,6 +1116,8 @@ public sealed partial class CampaignMapScene
             }
             var wallRows = wallTable?.GetRoot()?.GetChildCount() ?? 0;
             var wallTableStyleOk = item.Index != 9 || wallTable is not null
+                && wallDescriptionMargin is not null && wallDescription is not null
+                && wallDescriptionMargin.Size.Y <= wallDescription.Size.Y + 11f
                 && wallTable.GetMeta("game_command_table_style").AsBool()
                 && wallTable.GetMeta("wall_hover_rows").AsBool()
                 && wallTable.GetMeta("wall_internal_scroll_threshold").AsInt32() == 6
