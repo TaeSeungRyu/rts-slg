@@ -16450,7 +16450,7 @@ public sealed partial class CampaignMapScene : Node3D
             or CommandKind.AppointDomesticOfficer or CommandKind.AppointTrainingOfficer
             or CommandKind.AppointGovernor or CommandKind.AppointStrategist;
         var officerTableHeight = fillsModalBottom ? 220f : scrollableOfficerTableHeight;
-        var showAllOfficerRows = free.Count <= compactOfficerRowLimit
+        var showAllOfficerRows = free.Count <= (wallResearchTable ? 6 : compactOfficerRowLimit)
             || cmd.Kind is CommandKind.Explore or CommandKind.FormAlliance or CommandKind.BreakAlliance or CommandKind.DeclareWar;
         var officerRowHeight = wallResearchTable ? 60 : 46;
         var tree = new Tree
@@ -16615,6 +16615,7 @@ public sealed partial class CampaignMapScene : Node3D
             }
 
             item.SetMetadata(0, g.Id.Value);
+            if (wallResearchTable) item.SetMetadata(1, rowIndex);
             item.SetTextAlignment(0, HorizontalAlignment.Center);
             for (var col = 2; col <= 4; col++) { item.SetTextAlignment(col, HorizontalAlignment.Center); }
             if (IsAutoOfficerCommand(cmd.Kind))
@@ -16632,6 +16633,37 @@ public sealed partial class CampaignMapScene : Node3D
                 child.SetChecked(0, child == selected);
                 child = child.GetNext();
             }
+        }
+
+        void PaintWallHover(TreeItem item, bool hovered)
+        {
+            if (!wallResearchTable || item == tree.GetSelected()) return;
+            var rowIndex = item.GetMetadata(1).AsInt32();
+            var color = hovered
+                ? new Color(GoldBright, 0.16f)
+                : rowIndex % 2 == 1 ? new Color(Gold, 0.055f) : Colors.Transparent;
+            for (var column = 0; column < tree.Columns; column++) item.SetCustomBgColor(column, color);
+        }
+
+        TreeItem? hoveredWallRow = null;
+        if (wallResearchTable)
+        {
+            tree.GuiInput += input =>
+            {
+                if (input is not InputEventMouseMotion motion) return;
+                var next = tree.GetItemAtPosition(motion.Position);
+                if (next == hoveredWallRow) return;
+                if (hoveredWallRow is not null) PaintWallHover(hoveredWallRow, false);
+                hoveredWallRow = next;
+                if (hoveredWallRow is not null) PaintWallHover(hoveredWallRow, true);
+            };
+            tree.MouseExited += () =>
+            {
+                if (hoveredWallRow is not null) PaintWallHover(hoveredWallRow, false);
+                hoveredWallRow = null;
+            };
+            tree.SetMeta("wall_hover_rows", true);
+            tree.SetMeta("wall_internal_scroll_threshold", 6);
         }
 
         tree.ItemSelected += () =>

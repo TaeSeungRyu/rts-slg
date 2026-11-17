@@ -1102,17 +1102,29 @@ public sealed partial class CampaignMapScene
             var wallTable = item.Index == 9
                 ? scaffold?.FindChild("CommandOfficerTable", true, false) as Tree
                 : null;
+            var wallFirstRow = wallTable?.GetRoot()?.GetFirstChild();
+            if (wallTable is not null && wallFirstRow is not null)
+            {
+                wallTable.SetSelected(wallFirstRow, 1);
+                wallTable.EmitSignal(Tree.SignalName.ItemSelected);
+            }
+            var wallRows = wallTable?.GetRoot()?.GetChildCount() ?? 0;
             var wallTableStyleOk = item.Index != 9 || wallTable is not null
                 && wallTable.GetMeta("game_command_table_style").AsBool()
+                && wallTable.GetMeta("wall_hover_rows").AsBool()
+                && wallTable.GetMeta("wall_internal_scroll_threshold").AsInt32() == 6
                 && wallTable.HasThemeStyleboxOverride("selected")
                 && wallTable.HasThemeStyleboxOverride("title_button_normal")
                 && wallTable.Columns == 5
                 && wallTable.GetColumnTitle(0) == "선택"
                 && wallTable.GetColumnTitle(1).Contains("현재 담당 업무", System.StringComparison.Ordinal)
-                && wallTable.GetRoot()?.GetFirstChild() is { } wallFirstRow
+                && wallFirstRow is not null
                 && wallFirstRow.GetCellMode(0) == TreeItem.TreeCellMode.Check
+                && wallFirstRow.IsChecked(0)
                 && wallFirstRow.GetIcon(1) is not null
-                && wallFirstRow.GetText(1).Contains('\n');
+                && wallFirstRow.GetText(1).Contains('\n')
+                && (wallRows <= 6 && !wallTable.ScrollVerticalEnabled
+                    || wallRows > 6 && wallTable.ScrollVerticalEnabled && wallTable.CustomMinimumSize.Y <= 330f);
             var expectedWorkflowSteps = item.Index switch
             {
                 _ => 0,
