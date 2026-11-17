@@ -42,7 +42,9 @@ public sealed partial class CampaignMapScene
         var doctrine = command.Param == "troop";
         var stratagem = command.Param == "stratagem_research";
         var alliance = command.Kind == CommandKind.FormAlliance;
-        workspace.Configure("연구 도시", research, "수행 장수", alliance ? "동맹 제안" : "연구 시작");
+        var declareWar = command.Kind == CommandKind.DeclareWar;
+        workspace.Configure("연구 도시", research, "수행 장수",
+            alliance ? "동맹 제안" : declareWar ? "선전포고" : "연구 시작");
         if (research) workspace.FundingChangeButton.Pressed += () => OpenDoctrineFundingPicker(city);
         workspace.OfficerChangeButton.Pressed += () => OpenDoctrineOfficerPicker(city.Id, cmdIndex);
         workspace.StartButton.Pressed += () =>
@@ -52,10 +54,11 @@ public sealed partial class CampaignMapScene
         };
 
         workspace.DetailHost.AddChild(MakeLabel(doctrine ? "선택 교리 상세"
-            : stratagem ? "선택 계략연구 상세" : alliance ? "선택 세력 상세" : "선택 연구 상세", 18, GoldBright));
+            : stratagem ? "선택 계략연구 상세" : alliance ? "선택 세력 상세"
+                : declareWar ? "선택 성 상세" : "선택 연구 상세", 18, GoldBright));
         _modalDetail = MakeLabel(doctrine ? "전투교리 대상을 선택하세요."
             : stratagem ? "계략연구 대상을 선택하세요." : alliance ? "동맹을 제안할 세력을 선택하세요."
-                : "일반연구 대상을 선택하세요.", 14, Parchment);
+                : declareWar ? "선전포고할 성을 선택하세요." : "일반연구 대상을 선택하세요.", 14, Parchment);
         _modalDetail.Name = doctrine ? "DoctrineResearchDetailText"
             : stratagem ? "StratagemResearchDetailText" : "GeneralResearchDetailText";
         _modalDetail.AutowrapMode = TextServer.AutowrapMode.WordSmart;
@@ -64,7 +67,7 @@ public sealed partial class CampaignMapScene
         workspace.DoctrineList.AddChild(MakeLabel(doctrine
             ? "연구할 전투교리를 선택하세요"
             : stratagem ? "연구할 계략을 선택하세요" : alliance ? "동맹을 제안할 세력을 선택하세요"
-                : "연구할 일반연구를 선택하세요", 18, GoldBright));
+                : declareWar ? "선전포고할 성을 선택하세요" : "연구할 일반연구를 선택하세요", 18, GoldBright));
         var options = OptionList(Cmds[cmdIndex], city);
         var grid = new GridContainer
         {
@@ -133,7 +136,8 @@ public sealed partial class CampaignMapScene
             : "수행 장수를 선택하세요.";
         _doctrineWorkspace.TotalCost.Text = research
             ? $"총 연구비 {cost:N0}금"
-            : command.Kind == CommandKind.FormAlliance ? $"사절 비용 {_cb.AllianceGoldCost:N0}금" : "";
+            : command.Kind == CommandKind.FormAlliance ? $"사절 비용 {_cb.AllianceGoldCost:N0}금"
+            : command.Kind == CommandKind.DeclareWar ? "선전포고 유효 기간 100일" : "";
         _doctrineWorkspace.StartButton.Disabled = _doctrineOfficer is null || _optionCards.Count == 0
             || _disabledOptions.Contains(_modalParam)
             || research && (shares.Count == 0 || shortage.City.Value != 0);
@@ -144,7 +148,7 @@ public sealed partial class CampaignMapScene
     private string OfficerSummaryText(GeneralId id, CommandKind kind = CommandKind.Research)
     {
         var general = _state.Generals.First(candidate => candidate.Id == id);
-        var ability = kind == CommandKind.FormAlliance ? $"정치 {general.Politics}"
+        var ability = kind is CommandKind.FormAlliance or CommandKind.DeclareWar ? $"정치 {general.Politics}"
             : kind == CommandKind.AppointRecruitmentOfficer ? $"무력 {general.Might}" : $"지력 {general.Intellect}";
         return $"{general.Name} · {ability} · {CurrentDuty(id)}";
     }
