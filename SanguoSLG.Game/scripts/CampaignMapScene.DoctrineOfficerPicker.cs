@@ -8,9 +8,10 @@ public sealed partial class CampaignMapScene
     partial void OpenDoctrineOfficerPicker(CityId city, int cmdIndex)
     {
         CloseDoctrinePicker();
+        var command = Cmds[cmdIndex];
         var selected = _doctrineOfficer;
         var query = "";
-        var sortColumn = 3;
+        var sortColumn = command.Kind == CommandKind.AppointRecruitmentOfficer ? 2 : 3;
         var ascending = false;
         var layer = CreateDoctrinePickerLayer("수행 장수 선택", out var body, out var close);
         _doctrinePickerLayer = layer;
@@ -81,8 +82,9 @@ public sealed partial class CampaignMapScene
         {
             tree.Clear();
             var root = tree.CreateItem();
+            var appointment = command.Kind == CommandKind.AppointRecruitmentOfficer;
             IEnumerable<General> generals = _state.GeneralsAt(city)
-                .Where(id => !OfficerUnavailable(id) && !_state.IsGeneralInField(id))
+                .Where(id => appointment || !OfficerUnavailable(id) && !_state.IsGeneralInField(id))
                 .Select(id => _state.Generals.First(general => general.Id == id))
                 .Where(general => string.IsNullOrWhiteSpace(query)
                     || general.Name.Contains(query, System.StringComparison.OrdinalIgnoreCase));

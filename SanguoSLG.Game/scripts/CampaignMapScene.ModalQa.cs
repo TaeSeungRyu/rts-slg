@@ -1101,7 +1101,6 @@ public sealed partial class CampaignMapScene
             var workflow = scaffold?.FindChild("CommandModalWorkflowHost", true, false) as CommandModalWorkflowHost;
             var expectedWorkflowSteps = item.Index switch
             {
-                20 when layout != AdaptiveModalScaffold.ContentLayout.Empty.ToString() => 2,
                 _ => 0,
             };
             var workflowOk = expectedWorkflowSteps == 0
@@ -1148,7 +1147,7 @@ public sealed partial class CampaignMapScene
             var doctrineSummary = doctrineWorkspace?.FindChild("DoctrineResearchSummaryColumn", true, false) as Control;
             var doctrineColumns = doctrineWorkspace?.FindChild("DoctrineResearchColumns", true, false) as Control;
             var doctrineFooter = doctrineWorkspace?.FindChild("DoctrineResearchFooter", true, false) as Control;
-            var usesIntegratedWorkspace = item.Index is 7 or 8 or 13 or 15 or 24;
+            var usesIntegratedWorkspace = item.Index is 7 or 8 or 13 or 15 or 20 or 24;
             var usesIntegratedResearchWorkspace = item.Index is 7 or 8 or 24;
             var doctrineWorkspaceOk = !usesIntegratedWorkspace || doctrineWorkspace is not null
                 && workflow is null

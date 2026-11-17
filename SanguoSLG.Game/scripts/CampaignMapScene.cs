@@ -8221,7 +8221,7 @@ public sealed partial class CampaignMapScene : Node3D
         close.Pressed += CloseModal;
         scaffold.SetHeader(title, close, GoldRule());
         if (cmd.Kind == CommandKind.Research && cmd.Param is "troop" or "general" or "stratagem_research"
-            || cmd.Kind is CommandKind.FormAlliance or CommandKind.DeclareWar)
+            || cmd.Kind is CommandKind.FormAlliance or CommandKind.DeclareWar or CommandKind.AppointRecruitmentOfficer)
         {
             BuildIntegratedCommandWorkspace(scaffold, selectedCityData, cmdIndex);
             return;

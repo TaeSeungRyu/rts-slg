@@ -43,8 +43,9 @@ public sealed partial class CampaignMapScene
         var stratagem = command.Param == "stratagem_research";
         var alliance = command.Kind == CommandKind.FormAlliance;
         var declareWar = command.Kind == CommandKind.DeclareWar;
+        var recruitment = command.Kind == CommandKind.AppointRecruitmentOfficer;
         workspace.Configure("연구 도시", research, "수행 장수",
-            alliance ? "동맹 제안" : declareWar ? "선전포고" : "연구 시작");
+            alliance ? "동맹 제안" : declareWar ? "선전포고" : recruitment ? "병력담당 임명" : "연구 시작");
         if (research) workspace.FundingChangeButton.Pressed += () => OpenDoctrineFundingPicker(city);
         workspace.OfficerChangeButton.Pressed += () => OpenDoctrineOfficerPicker(city.Id, cmdIndex);
         workspace.StartButton.Pressed += () =>
@@ -55,10 +56,11 @@ public sealed partial class CampaignMapScene
 
         workspace.DetailHost.AddChild(MakeLabel(doctrine ? "선택 교리 상세"
             : stratagem ? "선택 계략연구 상세" : alliance ? "선택 세력 상세"
-                : declareWar ? "선택 성 상세" : "선택 연구 상세", 18, GoldBright));
+                : declareWar ? "선택 성 상세" : recruitment ? "자동 생산 설정" : "선택 연구 상세", 18, GoldBright));
         _modalDetail = MakeLabel(doctrine ? "전투교리 대상을 선택하세요."
             : stratagem ? "계략연구 대상을 선택하세요." : alliance ? "동맹을 제안할 세력을 선택하세요."
-                : declareWar ? "선전포고할 성을 선택하세요." : "일반연구 대상을 선택하세요.", 14, Parchment);
+                : declareWar ? "선전포고할 성을 선택하세요." : recruitment ? "자동 생산 병종을 선택하세요."
+                    : "일반연구 대상을 선택하세요.", 14, Parchment);
         _modalDetail.Name = doctrine ? "DoctrineResearchDetailText"
             : stratagem ? "StratagemResearchDetailText" : "GeneralResearchDetailText";
         _modalDetail.AutowrapMode = TextServer.AutowrapMode.WordSmart;
@@ -67,7 +69,8 @@ public sealed partial class CampaignMapScene
         workspace.DoctrineList.AddChild(MakeLabel(doctrine
             ? "연구할 전투교리를 선택하세요"
             : stratagem ? "연구할 계략을 선택하세요" : alliance ? "동맹을 제안할 세력을 선택하세요"
-                : declareWar ? "선전포고할 성을 선택하세요" : "연구할 일반연구를 선택하세요", 18, GoldBright));
+                : declareWar ? "선전포고할 성을 선택하세요" : recruitment ? "자동 생산 병종을 선택하세요"
+                    : "연구할 일반연구를 선택하세요", 18, GoldBright));
         var options = OptionList(Cmds[cmdIndex], city);
         var grid = new GridContainer
         {
@@ -84,6 +87,28 @@ public sealed partial class CampaignMapScene
             if (!FactionTroopUnlock.CheckResearch(_state, city.Owner, _troops[i].Code).Allowed)
                 _disabledOptions.Add(i + 2);
         }
+        if (recruitment)
+        {
+            _autoRecruitRateParam = city.RecruitmentOfficer is null
+                ? 1 : System.Math.Clamp(city.AutoRecruitRate <= 0 ? 1 : city.AutoRecruitRate, 1, 3);
+            var autoOptions = AutoRecruitTroopOptions();
+            for (var i = 0; i < autoOptions.Count; i++)
+            {
+                if (!FactionTroopUnlock.Check(_state, city.Owner, autoOptions[i].Code).Allowed)
+                    _disabledOptions.Add(i);
+            }
+            var current = CurrentAutoRecruitTroopCodes(city).ToHashSet(System.StringComparer.Ordinal);
+            for (var i = 0; i < autoOptions.Count; i++)
+            {
+                if (current.Contains(autoOptions[i].Code) && !_disabledOptions.Contains(i))
+                    _modalMultiParams.Add(i);
+            }
+            if (_modalMultiParams.Count == 0)
+            {
+                var first = Enumerable.Range(0, options.Count).FirstOrDefault(index => !_disabledOptions.Contains(index));
+                if (options.Count > 0 && !_disabledOptions.Contains(first)) _modalMultiParams.Add(first);
+            }
+        }
 
         for (var i = 0; i < options.Count; i++)
         {
@@ -97,7 +122,8 @@ public sealed partial class CampaignMapScene
                 card.GuiInput += input =>
                 {
                     if (input is not InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left }) return;
-                    PickOption(index, options[index]);
+                    if (recruitment) ToggleMultiOption(index, options[index]);
+                    else PickOption(index, options[index]);
                     RefreshIntegratedCommandWorkspace(city);
                 };
             }
@@ -105,7 +131,12 @@ public sealed partial class CampaignMapScene
         }
 
         _modalParam = Enumerable.Range(0, options.Count).FirstOrDefault(index => !_disabledOptions.Contains(index));
-        if (options.Count > 0) PickOption(_modalParam, options[_modalParam]);
+        if (recruitment)
+        {
+            AddAutoRecruitRatePicker(workspace.DoctrineList, options);
+            RefreshMultiOptionCards(options);
+        }
+        else if (options.Count > 0) PickOption(_modalParam, options[_modalParam]);
         else workspace.DoctrineList.AddChild(MakeLabel("선택할 수 있는 대상이 없습니다.", 16, Parchment));
         RefreshIntegratedCommandWorkspace(city);
     }
@@ -137,8 +168,11 @@ public sealed partial class CampaignMapScene
         _doctrineWorkspace.TotalCost.Text = research
             ? $"총 연구비 {cost:N0}금"
             : command.Kind == CommandKind.FormAlliance ? $"사절 비용 {_cb.AllianceGoldCost:N0}금"
-            : command.Kind == CommandKind.DeclareWar ? "선전포고 유효 기간 100일" : "";
+            : command.Kind == CommandKind.DeclareWar ? "선전포고 유효 기간 100일"
+            : command.Kind == CommandKind.AppointRecruitmentOfficer
+                ? $"자동 생산 {_modalMultiParams.Count}개 병종 · {_autoRecruitRateParam}배" : "";
         _doctrineWorkspace.StartButton.Disabled = _doctrineOfficer is null || _optionCards.Count == 0
+            || command.Kind == CommandKind.AppointRecruitmentOfficer && _modalMultiParams.Count == 0
             || _disabledOptions.Contains(_modalParam)
             || research && (shares.Count == 0 || shortage.City.Value != 0);
     }
