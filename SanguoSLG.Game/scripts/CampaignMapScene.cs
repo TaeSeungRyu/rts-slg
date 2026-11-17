@@ -316,6 +316,7 @@ public sealed partial class CampaignMapScene : Node3D
     private CityId? _stratTarget; // 도시 계략 대상 도시(선택 UI)
     private int _offSortCol = -1; // -1 = 명령 관련 능력치 내림차순(기본)
     private bool _offSortAsc;
+    private int _wallResearchOfficerPage;
     private int _generalRosterSortCol;
     private bool _generalRosterSortAsc = true;
     private int _generalRosterGeneration;
@@ -8601,6 +8602,7 @@ public sealed partial class CampaignMapScene : Node3D
         officerBox.AddChild(officerSectionTitle);
         _offSortCol = -1;
         _offSortAsc = false;
+        _wallResearchOfficerPage = 0;
         _modalOfficers = new VBoxContainer();
         officerBox.AddChild(_modalOfficers);
         BuildOfficerCards(city, cmdIndex);
@@ -16463,9 +16465,10 @@ public sealed partial class CampaignMapScene : Node3D
             or CommandKind.AppointDomesticOfficer or CommandKind.AppointTrainingOfficer
             or CommandKind.AppointGovernor or CommandKind.AppointStrategist;
         var officerTableHeight = fillsModalBottom ? 220f : scrollableOfficerTableHeight;
-        var showAllOfficerRows = free.Count <= (wallResearchTable ? 6 : compactOfficerRowLimit)
+        var showAllOfficerRows = wallResearchTable || free.Count <= compactOfficerRowLimit
             || cmd.Kind is CommandKind.Explore or CommandKind.FormAlliance or CommandKind.BreakAlliance or CommandKind.DeclareWar;
         var officerRowHeight = wallResearchTable ? 60 : 46;
+        var visibleRowCapacity = wallResearchTable ? System.Math.Min(6, free.Count) : free.Count;
         var tree = new Tree
         {
             Name = "CommandOfficerTable",
@@ -16475,7 +16478,7 @@ public sealed partial class CampaignMapScene : Node3D
             SelectMode = Tree.SelectModeEnum.Row,
             // 소규모 목록과 탐색·외교는 행 전체를 보이고, 9명 이상인 목록만 표 내부 스크롤을 쓴다.
             CustomMinimumSize = new Vector2(0, showAllOfficerRows
-                ? 48 + free.Count * officerRowHeight
+                ? 48 + visibleRowCapacity * officerRowHeight
                 : Mathf.Min(48 + free.Count * officerRowHeight, officerTableHeight)),
             ScrollVerticalEnabled = !showAllOfficerRows,
             MouseFilter = Control.MouseFilterEnum.Stop,
@@ -16574,11 +16577,25 @@ public sealed partial class CampaignMapScene : Node3D
         };
         gens.Sort(cmp);
         if (_offSortCol >= 0 && !_offSortAsc) { gens.Reverse(); }
+        const int wallPageSize = 6;
+        var wallPageCount = wallResearchTable
+            ? System.Math.Max(1, (int)System.Math.Ceiling(gens.Count / (double)wallPageSize))
+            : 1;
+        _wallResearchOfficerPage = System.Math.Clamp(_wallResearchOfficerPage, 0, wallPageCount - 1);
+        var visibleGens = wallResearchTable
+            ? gens.Skip(_wallResearchOfficerPage * wallPageSize).Take(wallPageSize).ToList()
+            : gens;
+        if (wallResearchTable)
+        {
+            tree.SetMeta("wall_page", _wallResearchOfficerPage);
+            tree.SetMeta("wall_page_count", wallPageCount);
+            tree.SetMeta("wall_page_size", wallPageSize);
+        }
 
         var root = tree.CreateItem();
-        for (var rowIndex = 0; rowIndex < gens.Count; rowIndex++)
+        for (var rowIndex = 0; rowIndex < visibleGens.Count; rowIndex++)
         {
-            var g = gens[rowIndex];
+            var g = visibleGens[rowIndex];
             var item = tree.CreateItem(root);
             var home = g.Region.Length > 0 && g.Region == cityData.Region ? " · 연고지" : "";
             var roleMark = IsAutoOfficerCommand(cmd.Kind) ? "" : cmd.Kind switch
@@ -16714,9 +16731,45 @@ public sealed partial class CampaignMapScene : Node3D
             if (c == 0) { return; }
             if (_offSortCol == c) { _offSortAsc = !_offSortAsc; }
             else { _offSortCol = c; _offSortAsc = c == 1; } // 이름은 오름차순, 능력치는 내림차순부터
+            if (wallResearchTable) _wallResearchOfficerPage = 0;
             BuildOfficerCards(city, cmdIndex);
         };
         _modalOfficers.AddChild(tree);
+        if (wallResearchTable && wallPageCount > 1)
+        {
+            var pager = new HBoxContainer
+            {
+                Name = "WallResearchOfficerPager",
+                Alignment = BoxContainer.AlignmentMode.Center,
+                SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+            };
+            pager.AddThemeConstantOverride("separation", 10);
+            var previous = MakeButton("이전");
+            previous.Name = "WallResearchOfficerPrevious";
+            previous.Disabled = _wallResearchOfficerPage == 0;
+            previous.Pressed += () =>
+            {
+                _wallResearchOfficerPage = System.Math.Max(0, _wallResearchOfficerPage - 1);
+                BuildOfficerCards(city, cmdIndex);
+            };
+            pager.AddChild(previous);
+            var pageLabel = MakeLabel($"{_wallResearchOfficerPage + 1} / {wallPageCount}", 14, GoldBright);
+            pageLabel.Name = "WallResearchOfficerPageLabel";
+            pageLabel.CustomMinimumSize = new Vector2(72, 34);
+            pageLabel.HorizontalAlignment = HorizontalAlignment.Center;
+            pageLabel.VerticalAlignment = VerticalAlignment.Center;
+            pager.AddChild(pageLabel);
+            var next = MakeButton("다음");
+            next.Name = "WallResearchOfficerNext";
+            next.Disabled = _wallResearchOfficerPage >= wallPageCount - 1;
+            next.Pressed += () =>
+            {
+                _wallResearchOfficerPage = System.Math.Min(wallPageCount - 1, _wallResearchOfficerPage + 1);
+                BuildOfficerCards(city, cmdIndex);
+            };
+            pager.AddChild(next);
+            _modalOfficers.AddChild(pager);
+        }
         if (fillsModalBottom)
         {
             Callable.From(() => FitOfficerTableToModalBottom(tree)).CallDeferred();

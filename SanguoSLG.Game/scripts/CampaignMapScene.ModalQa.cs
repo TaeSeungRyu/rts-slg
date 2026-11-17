@@ -1115,6 +1115,12 @@ public sealed partial class CampaignMapScene
                 wallTable.EmitSignal(Tree.SignalName.ItemSelected);
             }
             var wallRows = wallTable?.GetRoot()?.GetChildCount() ?? 0;
+            var wallPager = item.Index == 9
+                ? scaffold?.FindChild("WallResearchOfficerPager", true, false) as HBoxContainer
+                : null;
+            var wallPageLabel = item.Index == 9
+                ? scaffold?.FindChild("WallResearchOfficerPageLabel", true, false) as Label
+                : null;
             var wallHeaderStyle = wallTable?.GetThemeStylebox("title_button_normal") as StyleBoxFlat;
             var wallTableStyleOk = item.Index != 9 || wallTable is not null
                 && wallDescriptionMargin is not null && wallDescription is not null
@@ -1123,6 +1129,11 @@ public sealed partial class CampaignMapScene
                 && wallTable.GetMeta("wall_hover_rows").AsBool()
                 && wallTable.GetMeta("wall_internal_scroll_threshold").AsInt32() == 6
                 && wallTable.GetMeta("wall_portrait_text_gap").AsInt32() == 13
+                && wallTable.GetMeta("wall_page_size").AsInt32() == 6
+                && wallTable.GetMeta("wall_page").AsInt32() == 0
+                && wallRows <= 6
+                && (wallTable.GetMeta("wall_page_count").AsInt32() <= 1
+                    || wallPager is not null && wallPageLabel?.Text.StartsWith("1 / ", System.StringComparison.Ordinal) == true)
                 && wallTable.GetThemeConstant("h_separation") == 13
                 && wallTable.HasThemeStyleboxOverride("selected")
                 && wallTable.HasThemeStyleboxOverride("title_button_normal")
@@ -1137,8 +1148,19 @@ public sealed partial class CampaignMapScene
                 && wallFirstRow.IsChecked(0)
                 && wallFirstRow.GetIcon(1) is not null
                 && wallFirstRow.GetText(1).Contains('\n')
-                && (wallRows <= 6 && !wallTable.ScrollVerticalEnabled
-                    || wallRows > 6 && wallTable.ScrollVerticalEnabled && wallTable.CustomMinimumSize.Y <= 330f);
+                && !wallTable.ScrollVerticalEnabled;
+            var wallPagingOk = true;
+            if (item.Index == 9 && wallTable?.GetMeta("wall_page_count").AsInt32() > 1)
+            {
+                var nextPage = scaffold?.FindChild("WallResearchOfficerNext", true, false) as Button;
+                nextPage?.EmitSignal(BaseButton.SignalName.Pressed);
+                await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+                var pageTwoLabel = scaffold?.FindChildren("WallResearchOfficerPageLabel", "", true, false)
+                    .OfType<Label>().FirstOrDefault(candidate => !candidate.IsQueuedForDeletion()
+                        && candidate.Text.StartsWith("2 / ", System.StringComparison.Ordinal));
+                wallPagingOk = nextPage is not null && _wallResearchOfficerPage == 1
+                    && pageTwoLabel?.Text.StartsWith("2 / ", System.StringComparison.Ordinal) == true;
+            }
             var expectedWorkflowSteps = item.Index switch
             {
                 _ => 0,
@@ -1269,11 +1291,12 @@ public sealed partial class CampaignMapScene
                     _confirmLayer = null;
                 }
             }
-            var ok = chromeOk && texturesOk && titleOk && boundsOk && bodyOk && layoutOk && wallTableStyleOk
+            var ok = chromeOk && texturesOk && titleOk && boundsOk && bodyOk && layoutOk
+                && wallTableStyleOk && wallPagingOk
                 && regionsConnected && bodyInsetOk && emptyScrollOk && cardsFit && tabsOk && workflowOk
                 && workflowLayoutOk && doctrineWorkspaceOk;
             passed &= ok;
-            verified.Add($"{item.Code}:{ok}[layout={layout},chrome={chromeOk},connected={regionsConnected},bodyInset={bodyInsetOk},emptyScroll={emptyScrollOk},cardsFit={cardsFit},tabs={tabsOk}:{tabs?.TabCount ?? 0},workflow={workflowOk}:{workflow?.StepCount ?? 0},workflowLayout={workflowLayoutOk},doctrineWorkspace={doctrineWorkspaceOk},tex={texturesOk},title={titleOk},bounds={boundsOk},body={bodyOk},rect={rect}]" );
+            verified.Add($"{item.Code}:{ok}[layout={layout},chrome={chromeOk},connected={regionsConnected},bodyInset={bodyInsetOk},emptyScroll={emptyScrollOk},cardsFit={cardsFit},tabs={tabsOk}:{tabs?.TabCount ?? 0},workflow={workflowOk}:{workflow?.StepCount ?? 0},workflowLayout={workflowLayoutOk},doctrineWorkspace={doctrineWorkspaceOk},wallTable={wallTableStyleOk}:{wallPagingOk},tex={texturesOk},title={titleOk},bounds={boundsOk},body={bodyOk},rect={rect}]" );
             if (item.Capture && DisplayServer.GetName() != "headless")
             {
                 var path = System.IO.Path.Combine(rootPath,
