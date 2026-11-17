@@ -1122,11 +1122,14 @@ public sealed partial class CampaignMapScene
                 ? scaffold?.FindChild("WallResearchOfficerPageLabel", true, false) as Label
                 : null;
             var wallHeaderStyle = wallTable?.GetThemeStylebox("title_button_normal") as StyleBoxFlat;
+            var wallSelectedStyle = wallTable?.GetThemeStylebox("selected") as StyleBoxFlat;
             var wallTableStyleOk = item.Index != 9 || wallTable is not null
                 && wallDescriptionMargin is not null && wallDescription is not null
                 && wallDescriptionMargin.Size.Y <= wallDescription.Size.Y + 11f
                 && wallTable.GetMeta("game_command_table_style").AsBool()
                 && wallTable.GetMeta("wall_hover_rows").AsBool()
+                && wallTable.GetMeta("wall_hover_tone").AsString() == "muted_bronze"
+                && wallTable.GetMeta("wall_selected_tone").AsString() == "crimson_gold"
                 && wallTable.GetMeta("wall_internal_scroll_threshold").AsInt32() == 6
                 && wallTable.GetMeta("wall_portrait_text_gap").AsInt32() == 13
                 && wallTable.GetMeta("wall_page_size").AsInt32() == 6
@@ -1136,6 +1139,8 @@ public sealed partial class CampaignMapScene
                     || wallPager is not null && wallPageLabel?.Text.StartsWith("1 / ", System.StringComparison.Ordinal) == true)
                 && wallTable.GetThemeConstant("h_separation") == 13
                 && wallTable.HasThemeStyleboxOverride("selected")
+                && wallSelectedStyle is not null && wallSelectedStyle.BorderWidthLeft == 3
+                && wallSelectedStyle.BgColor.R > wallSelectedStyle.BgColor.G * 2f
                 && wallTable.HasThemeStyleboxOverride("title_button_normal")
                 && wallHeaderStyle is not null
                 && wallHeaderStyle.CornerRadiusTopLeft == 0 && wallHeaderStyle.CornerRadiusTopRight == 0

@@ -16675,7 +16675,7 @@ public sealed partial class CampaignMapScene : Node3D
             if (!wallResearchTable || item == tree.GetSelected()) return;
             var rowIndex = item.GetMetadata(1).AsInt32();
             var color = hovered
-                ? new Color(GoldBright, 0.16f)
+                ? new Color("3a2b21", 0.82f)
                 : rowIndex % 2 == 1 ? new Color(Gold, 0.055f) : Colors.Transparent;
             for (var column = 0; column < tree.Columns; column++) item.SetCustomBgColor(column, color);
         }
@@ -16698,6 +16698,8 @@ public sealed partial class CampaignMapScene : Node3D
                 hoveredWallRow = null;
             };
             tree.SetMeta("wall_hover_rows", true);
+            tree.SetMeta("wall_hover_tone", "muted_bronze");
+            tree.SetMeta("wall_selected_tone", "crimson_gold");
             tree.SetMeta("wall_internal_scroll_threshold", 6);
         }
 
