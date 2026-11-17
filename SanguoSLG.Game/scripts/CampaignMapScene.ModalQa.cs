@@ -1115,6 +1115,7 @@ public sealed partial class CampaignMapScene
                 wallTable.EmitSignal(Tree.SignalName.ItemSelected);
             }
             var wallRows = wallTable?.GetRoot()?.GetChildCount() ?? 0;
+            var wallHeaderStyle = wallTable?.GetThemeStylebox("title_button_normal") as StyleBoxFlat;
             var wallTableStyleOk = item.Index != 9 || wallTable is not null
                 && wallDescriptionMargin is not null && wallDescription is not null
                 && wallDescriptionMargin.Size.Y <= wallDescription.Size.Y + 11f
@@ -1123,6 +1124,9 @@ public sealed partial class CampaignMapScene
                 && wallTable.GetMeta("wall_internal_scroll_threshold").AsInt32() == 6
                 && wallTable.HasThemeStyleboxOverride("selected")
                 && wallTable.HasThemeStyleboxOverride("title_button_normal")
+                && wallHeaderStyle is not null
+                && wallHeaderStyle.CornerRadiusTopLeft == 0 && wallHeaderStyle.CornerRadiusTopRight == 0
+                && wallHeaderStyle.CornerRadiusBottomLeft == 0 && wallHeaderStyle.CornerRadiusBottomRight == 0
                 && wallTable.Columns == 5
                 && wallTable.GetColumnTitle(0) == "선택"
                 && wallTable.GetColumnTitle(1).Contains("현재 담당 업무", System.StringComparison.Ordinal)
