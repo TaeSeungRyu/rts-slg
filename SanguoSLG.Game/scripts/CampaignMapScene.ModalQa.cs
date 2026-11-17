@@ -1101,7 +1101,7 @@ public sealed partial class CampaignMapScene
             var workflow = scaffold?.FindChild("CommandModalWorkflowHost", true, false) as CommandModalWorkflowHost;
             var expectedWorkflowSteps = item.Index switch
             {
-                13 or 15 or 20 when layout != AdaptiveModalScaffold.ContentLayout.Empty.ToString() => 2,
+                15 or 20 when layout != AdaptiveModalScaffold.ContentLayout.Empty.ToString() => 2,
                 _ => 0,
             };
             var workflowOk = expectedWorkflowSteps == 0
@@ -1148,15 +1148,17 @@ public sealed partial class CampaignMapScene
             var doctrineSummary = doctrineWorkspace?.FindChild("DoctrineResearchSummaryColumn", true, false) as Control;
             var doctrineColumns = doctrineWorkspace?.FindChild("DoctrineResearchColumns", true, false) as Control;
             var doctrineFooter = doctrineWorkspace?.FindChild("DoctrineResearchFooter", true, false) as Control;
+            var usesIntegratedWorkspace = item.Index is 7 or 8 or 13 or 24;
             var usesIntegratedResearchWorkspace = item.Index is 7 or 8 or 24;
-            var doctrineWorkspaceOk = !usesIntegratedResearchWorkspace || doctrineWorkspace is not null
+            var doctrineWorkspaceOk = !usesIntegratedWorkspace || doctrineWorkspace is not null
                 && workflow is null
                 && doctrineGrid is { Columns: 3 }
                 && doctrineScroll is not null
                 && doctrineGrid.GetGlobalRect().End.X <= doctrineScroll.GetVScrollBar().GetGlobalRect().Position.X - 4f
                 && doctrineListPanel is not null && doctrineSummary is not null
                 && doctrineListPanel.Size.X >= doctrineSummary.Size.X * 1.8f
-                && doctrineWorkspace.FundingSummary.Text.Contains("개 도시", System.StringComparison.Ordinal)
+                && (!usesIntegratedResearchWorkspace
+                    || doctrineWorkspace.FundingSummary.Text.Contains("개 도시", System.StringComparison.Ordinal))
                 && doctrineWorkspace.StartButton.Disabled
                 && doctrineColumns is not null && doctrineFooter is not null
                 && Mathf.Abs(doctrineFooter.Size.Y - 70f) <= 1f
@@ -1166,9 +1168,11 @@ public sealed partial class CampaignMapScene
             if (usesIntegratedResearchWorkspace && doctrineWorkspace is not null)
             {
                 var fundingBefore = _researchFundingRatios.ToDictionary(pair => pair.Key, pair => pair.Value.Value);
-                doctrineWorkspace.FundingChangeButton.EmitSignal(BaseButton.SignalName.Pressed);
-                await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
-                doctrineWorkspaceOk &= _doctrinePickerLayer is not null
+                if (usesIntegratedResearchWorkspace)
+                {
+                    doctrineWorkspace.FundingChangeButton.EmitSignal(BaseButton.SignalName.Pressed);
+                    await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+                    doctrineWorkspaceOk &= _doctrinePickerLayer is not null
                     && _doctrinePickerLayer.FindChild("DoctrineFundingSearch", true, false) is LineEdit
                     && _doctrinePickerLayer.FindChild("DoctrineFundingTableScroll", true, false) is ScrollContainer
                     && _doctrinePickerLayer.FindChildren("*", "SpinBox", true, false).Count == 0
@@ -1178,12 +1182,12 @@ public sealed partial class CampaignMapScene
                         .Any(button => button.Text == "적용")
                     && _doctrinePickerLayer.FindChildren("*", "Button", true, false).OfType<Button>()
                         .Any(button => button.Text == "취소");
-                CloseDoctrinePicker();
-                doctrineWorkspaceOk &= fundingBefore.All(pair => _researchFundingRatios.TryGetValue(pair.Key, out var ratio)
+                    CloseDoctrinePicker();
+                    doctrineWorkspaceOk &= fundingBefore.All(pair => _researchFundingRatios.TryGetValue(pair.Key, out var ratio)
                     && Mathf.IsEqualApprox((float)ratio.Value, (float)pair.Value));
-                doctrineWorkspace.FundingChangeButton.EmitSignal(BaseButton.SignalName.Pressed);
-                await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
-                var draftSelection = _doctrinePickerLayer?.FindChildren("*", "CheckButton", true, false)
+                    doctrineWorkspace.FundingChangeButton.EmitSignal(BaseButton.SignalName.Pressed);
+                    await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+                    var draftSelection = _doctrinePickerLayer?.FindChildren("*", "CheckButton", true, false)
                     .OfType<CheckButton>().FirstOrDefault(button => button.ButtonPressed);
                 var fundingApply = _doctrinePickerLayer?.FindChildren("*", "Button", true, false)
                     .OfType<Button>().FirstOrDefault(button => button.Text == "적용");
@@ -1193,8 +1197,9 @@ public sealed partial class CampaignMapScene
                 doctrineWorkspaceOk &= draftSelection is not null && fundingApply is not null
                     && _researchFundingRatios.Values.Any(ratio => Mathf.IsEqualApprox((float)ratio.Value, 0f))
                     && _researchFundingRatios.Values.All(ratio => ratio.Value is 0 or 1);
-                foreach (var pair in fundingBefore) _researchFundingRatios[pair.Key].Value = pair.Value;
-                RefreshDoctrineResearchWorkspace(city);
+                    foreach (var pair in fundingBefore) _researchFundingRatios[pair.Key].Value = pair.Value;
+                    RefreshDoctrineResearchWorkspace(city);
+                }
 
                 doctrineWorkspace.OfficerChangeButton.EmitSignal(BaseButton.SignalName.Pressed);
                 await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
