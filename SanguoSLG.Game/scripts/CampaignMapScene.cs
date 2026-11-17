@@ -16441,6 +16441,7 @@ public sealed partial class CampaignMapScene : Node3D
         var relevant = cmd.Kind is CommandKind.Research or CommandKind.CityStratagem or CommandKind.AppointStrategist ? 2
             : cmd.Kind is CommandKind.Train or CommandKind.AppointSecurityOfficer
                 or CommandKind.AppointRecruitmentOfficer or CommandKind.AppointTrainingOfficer ? 1 : 3;
+        var wallResearchTable = cmd.Kind == CommandKind.Research && cmd.Param == "wall";
 
         const int compactOfficerRowLimit = 8;
         const int scrollableOfficerTableHeight = 330;
@@ -16451,11 +16452,11 @@ public sealed partial class CampaignMapScene : Node3D
         var officerTableHeight = fillsModalBottom ? 220f : scrollableOfficerTableHeight;
         var showAllOfficerRows = free.Count <= compactOfficerRowLimit
             || cmd.Kind is CommandKind.Explore or CommandKind.FormAlliance or CommandKind.BreakAlliance or CommandKind.DeclareWar;
-        const int officerRowHeight = 46;
+        var officerRowHeight = wallResearchTable ? 60 : 46;
         var tree = new Tree
         {
             Name = "CommandOfficerTable",
-            Columns = IsAutoOfficerCommand(cmd.Kind) ? 7 : 6,
+            Columns = wallResearchTable ? 5 : IsAutoOfficerCommand(cmd.Kind) ? 7 : 6,
             ColumnTitlesVisible = true,
             HideRoot = true,
             SelectMode = Tree.SelectModeEnum.Row,
@@ -16518,23 +16519,25 @@ public sealed partial class CampaignMapScene : Node3D
         tree.AddThemeFontOverride("title_button_font", _font);
         tree.AddThemeFontSizeOverride("title_button_font_size", 14);
         tree.AddThemeConstantOverride("item_margin", 6);
-        var wallResearchTable = cmd.Kind == CommandKind.Research && cmd.Param == "wall";
         if (wallResearchTable) GameUiSkin.ApplyCommandTable(tree);
-        tree.SetColumnTitle(0, "");
+        tree.SetColumnTitle(0, wallResearchTable ? "선택" : "");
         tree.SetColumnExpand(0, false);
-        tree.SetColumnCustomMinimumWidth(0, 54);
-        tree.SetColumnTitle(1, "이름");
+        tree.SetColumnCustomMinimumWidth(0, wallResearchTable ? 52 : 54);
+        tree.SetColumnTitle(1, wallResearchTable ? "장수 / 현재 담당 업무" : "이름");
         tree.SetColumnExpand(1, true);
-        tree.SetColumnExpandRatio(1, 3);
+        tree.SetColumnExpandRatio(1, wallResearchTable ? 5 : 3);
         foreach (var (col, t, stat) in new[] { (2, "무", 1), (3, "지", 2), (4, "정", 3) })
         {
             tree.SetColumnTitle(col, stat == relevant ? t + "★" : t);
             tree.SetColumnExpand(col, false);
             tree.SetColumnCustomMinimumWidth(col, 52);
         }
-        tree.SetColumnTitle(5, "현재 담당업무");
-        tree.SetColumnExpand(5, true);
-        tree.SetColumnExpandRatio(5, 3);
+        if (!wallResearchTable)
+        {
+            tree.SetColumnTitle(5, "현재 담당업무");
+            tree.SetColumnExpand(5, true);
+            tree.SetColumnExpandRatio(5, 3);
+        }
         if (IsAutoOfficerCommand(cmd.Kind))
         {
             tree.SetColumnTitle(6, "주 예상 효과");
@@ -16566,9 +16569,21 @@ public sealed partial class CampaignMapScene : Node3D
                 CommandKind.AppointStrategist when cityData.Strategist == g.Id => " ◆현군사",
                 _ => "",
             };
-            ApplyGeneralTreePortrait(item, 0, g.Id, 40, goldBorder: true);
-            item.SetTooltipText(0, g.Name);
-            item.SetText(1, g.Name + home + roleMark);
+            var portraitColumn = wallResearchTable ? 1 : 0;
+            ApplyGeneralTreePortrait(item, portraitColumn, g.Id, wallResearchTable ? 46 : 40, goldBorder: true);
+            item.SetTooltipText(portraitColumn, g.Name);
+            if (wallResearchTable)
+            {
+                item.SetCellMode(0, TreeItem.TreeCellMode.Check);
+                item.SetChecked(0, false);
+                item.SetEditable(0, false);
+                item.SetText(1, $"{g.Name}{home}{roleMark}\n{CurrentDuty(g.Id)}");
+                item.SetTooltipText(1, $"{g.Name} · {CurrentDuty(g.Id)}");
+            }
+            else
+            {
+                item.SetText(1, g.Name + home + roleMark);
+            }
             item.SetCustomColor(1, GoldBright);
             item.SetText(2, g.Might.ToString());
             item.SetText(3, g.Intellect.ToString());
@@ -16577,8 +16592,11 @@ public sealed partial class CampaignMapScene : Node3D
             {
                 item.SetText(6, OfficerWeeklyEffect(cmd.Kind, g, cityData));
             }
-            item.SetText(5, CurrentDuty(g.Id));
-            item.SetTooltipText(5, CurrentDuty(g.Id));
+            if (!wallResearchTable)
+            {
+                item.SetText(5, CurrentDuty(g.Id));
+                item.SetTooltipText(5, CurrentDuty(g.Id));
+            }
             if (rowIndex % 2 == 1)
             {
                 for (var column = 0; column < tree.Columns; column++)
@@ -16606,15 +16624,40 @@ public sealed partial class CampaignMapScene : Node3D
             }
         }
 
+        void SelectWallRow(TreeItem selected)
+        {
+            var child = root.GetFirstChild();
+            while (child is not null)
+            {
+                child.SetChecked(0, child == selected);
+                child = child.GetNext();
+            }
+        }
+
         tree.ItemSelected += () =>
         {
             var it = tree.GetSelected();
             if (it is null) { return; }
+            if (wallResearchTable)
+            {
+                SelectWallRow(it);
+                return;
+            }
             var gid = new GeneralId(it.GetMetadata(0).AsInt32());
             tree.CallDeferred(Tree.MethodName.DeselectAll); // 컨펌 취소 후 같은 행 재클릭 가능하게
             if (cmd.Param == "stratagem") BeginStratagemMapTargeting(city, cmdIndex, gid, _modalParam);
             else AskExecute(city, cmdIndex, gid, _modalParam);
         };
+        if (wallResearchTable)
+        {
+            tree.ItemMouseSelected += (_, button) =>
+            {
+                if ((MouseButton)button != MouseButton.Left || tree.GetSelected() is not { } selected) return;
+                SelectWallRow(selected);
+                var gid = new GeneralId(selected.GetMetadata(0).AsInt32());
+                AskExecute(city, cmdIndex, gid, _modalParam);
+            };
+        }
         tree.ColumnTitleClicked += (col, _) =>
         {
             var c = (int)col;

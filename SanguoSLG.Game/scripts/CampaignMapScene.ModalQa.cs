@@ -1105,7 +1105,14 @@ public sealed partial class CampaignMapScene
             var wallTableStyleOk = item.Index != 9 || wallTable is not null
                 && wallTable.GetMeta("game_command_table_style").AsBool()
                 && wallTable.HasThemeStyleboxOverride("selected")
-                && wallTable.HasThemeStyleboxOverride("title_button_normal");
+                && wallTable.HasThemeStyleboxOverride("title_button_normal")
+                && wallTable.Columns == 5
+                && wallTable.GetColumnTitle(0) == "선택"
+                && wallTable.GetColumnTitle(1).Contains("현재 담당 업무", System.StringComparison.Ordinal)
+                && wallTable.GetRoot()?.GetFirstChild() is { } wallFirstRow
+                && wallFirstRow.GetCellMode(0) == TreeItem.TreeCellMode.Check
+                && wallFirstRow.GetIcon(1) is not null
+                && wallFirstRow.GetText(1).Contains('\n');
             var expectedWorkflowSteps = item.Index switch
             {
                 _ => 0,
