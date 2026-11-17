@@ -1145,11 +1145,15 @@ public sealed partial class CampaignMapScene
             var doctrineWorkspace = scaffold?.FindChild("DoctrineResearchWorkspace", true, false) as DoctrineResearchWorkspace;
             var doctrineGrid = doctrineWorkspace?.DoctrineList.FindChild("CommandOptionGrid", true, false) as GridContainer;
             var doctrineScroll = doctrineWorkspace?.FindChild("DoctrineResearchListScroll", true, false) as ScrollContainer;
+            var doctrineListPanel = doctrineWorkspace?.FindChild("DoctrineResearchListPanel", true, false) as Control;
+            var doctrineSummary = doctrineWorkspace?.FindChild("DoctrineResearchSummaryColumn", true, false) as Control;
             var doctrineWorkspaceOk = item.Index != 7 || doctrineWorkspace is not null
                 && workflow is null
                 && doctrineGrid is { Columns: 3 }
                 && doctrineScroll is not null
                 && doctrineGrid.GetGlobalRect().End.X <= doctrineScroll.GetVScrollBar().GetGlobalRect().Position.X - 4f
+                && doctrineListPanel is not null && doctrineSummary is not null
+                && doctrineListPanel.Size.X >= doctrineSummary.Size.X * 1.8f
                 && doctrineWorkspace.FundingSummary.Text.Contains("개 도시", System.StringComparison.Ordinal)
                 && doctrineWorkspace.StartButton.Disabled
                 && doctrineWorkspace.Size.Y >= scaffold!.BodyLayoutHeight - 2f

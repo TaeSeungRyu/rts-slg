@@ -34,7 +34,7 @@ public sealed partial class DoctrineResearchWorkspace : VBoxContainer
         AddChild(columns);
 
         var listPanel = Panel("DoctrineResearchListPanel", new Color("100908"), new Color("765024"));
-        listPanel.SizeFlagsStretchRatio = 1.7f;
+        listPanel.SizeFlagsStretchRatio = 2.05f;
         columns.AddChild(listPanel);
         var listMargin = Margin(10);
         listPanel.AddChild(listMargin);
@@ -56,8 +56,8 @@ public sealed partial class DoctrineResearchWorkspace : VBoxContainer
         listContentMargin.AddChild(DoctrineList);
 
         var right = Box("DoctrineResearchSummaryColumn");
-        right.SizeFlagsStretchRatio = 1f;
-        right.CustomMinimumSize = new Vector2(360f, 0f);
+        right.SizeFlagsStretchRatio = 0.78f;
+        right.CustomMinimumSize = new Vector2(330f, 0f);
         columns.AddChild(right);
 
         var detailPanel = Panel("DoctrineResearchDetailPanel", new Color("1c0e0c"), Gold);
