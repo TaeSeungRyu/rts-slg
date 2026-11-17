@@ -1122,6 +1122,8 @@ public sealed partial class CampaignMapScene
                 && wallTable.GetMeta("game_command_table_style").AsBool()
                 && wallTable.GetMeta("wall_hover_rows").AsBool()
                 && wallTable.GetMeta("wall_internal_scroll_threshold").AsInt32() == 6
+                && wallTable.GetMeta("wall_portrait_text_gap").AsInt32() == 13
+                && wallTable.GetThemeConstant("h_separation") == 13
                 && wallTable.HasThemeStyleboxOverride("selected")
                 && wallTable.HasThemeStyleboxOverride("title_button_normal")
                 && wallHeaderStyle is not null

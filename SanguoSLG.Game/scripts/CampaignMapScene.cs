@@ -16532,7 +16532,12 @@ public sealed partial class CampaignMapScene : Node3D
         tree.AddThemeFontOverride("title_button_font", _font);
         tree.AddThemeFontSizeOverride("title_button_font_size", 14);
         tree.AddThemeConstantOverride("item_margin", 6);
-        if (wallResearchTable) GameUiSkin.ApplyCommandTable(tree);
+        if (wallResearchTable)
+        {
+            GameUiSkin.ApplyCommandTable(tree);
+            tree.AddThemeConstantOverride("h_separation", 13);
+            tree.SetMeta("wall_portrait_text_gap", 13);
+        }
         tree.SetColumnTitle(0, wallResearchTable ? "선택" : "");
         tree.SetColumnExpand(0, false);
         tree.SetColumnCustomMinimumWidth(0, wallResearchTable ? 52 : 54);
