@@ -166,18 +166,50 @@ public sealed partial class CampaignMapScene
         };
         GameUiSkin.ApplyQuickListScroll(listScroll);
         left.AddChild(listScroll);
-        var list = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+        var list = new VBoxContainer 
+        { 
+            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+            // 부대가 없을 때를 대비해 기본적으로 세로 공간을 채우고 중앙 정렬을 준비합니다
+            SizeFlagsVertical = Control.SizeFlags.ExpandFill,
+            Alignment = mine.Count == 0 ? BoxContainer.AlignmentMode.Center : BoxContainer.AlignmentMode.Begin
+        };
         list.AddThemeConstantOverride("separation", 8);
         listScroll.AddChild(list);
+
         foreach (var index in mine) list.AddChild(BuildDeployCommandCard(index));
+
         if (mine.Count == 0)
         {
             var empty = MakeLabel("예약된 부대가 없습니다.\n신규 편성으로 부대를 추가하세요.", 15, Parchment);
             empty.HorizontalAlignment = HorizontalAlignment.Center;
             empty.VerticalAlignment = VerticalAlignment.Center;
-            empty.SizeFlagsVertical = Control.SizeFlags.ExpandFill;
             list.AddChild(empty);
         }
+
+        // --- 👇 [여기에 세로 구분선 추가] ---
+        // 1. 세로선을 감쌀 마진 컨테이너 생성
+        var separatorMargin = new MarginContainer
+        {
+            SizeFlagsVertical = Control.SizeFlags.ExpandFill,
+            MouseFilter = Control.MouseFilterEnum.Ignore
+        };
+        // 위아래로 줄이고 싶은 만큼 수치 조절 (예: 각각 15픽셀씩 안쪽으로 줄이기)
+        //separatorMargin.AddThemeConstantOverride("margin_top", 15);
+        separatorMargin.AddThemeConstantOverride("margin_bottom", 36);
+
+        // 2. 기존 세로선 생성
+        var separator = new Panel
+        {
+            CustomMinimumSize = new Vector2(1, 0),
+            SizeFlagsVertical = Control.SizeFlags.ExpandFill,
+            MouseFilter = Control.MouseFilterEnum.Ignore
+        };
+        separator.AddThemeStyleboxOverride("panel", Frame(Gold, Colors.Transparent, 0, 0, 0));
+
+        // 3. 마진 컨테이너에 선을 넣고, content에 추가
+        separatorMargin.AddChild(separator);
+        content.AddChild(separatorMargin);
+        // ---------------------------------        
 
         var right = CommandCenterSection("선택 부대 정보");
         right.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
@@ -190,7 +222,7 @@ public sealed partial class CampaignMapScene
         // summary.AddChild(MakeLabel(DeployCommandSummary(), 14, GoldBright));
         // bottomRegion.AddChild(summary);
 
-var actions = new HBoxContainer { CustomMinimumSize = new Vector2(0, 46) };
+        var actions = new HBoxContainer { CustomMinimumSize = new Vector2(0, 46) };
         actions.AddThemeConstantOverride("separation", 8);
         if (_depSelectedUnit >= 0 && _depSelectedUnit < _pendingDeploys.Count)
         {
@@ -345,10 +377,27 @@ private void BuildDeployCommandDetails(VBoxContainer parent, SanguoSLG.Core.Doma
         officers.AddChild(MakeLabel(officerText, 14, Parchment));
         parent.AddChild(officers);
 
+        // 부대 병력(request.Troops)과 1만 명당 소모량 기준을 직접 반영
+        // 1. 설정에서 1만 명당 하루 군량 소모량 가져오기 (프로젝트 내 보유 중인 state나 매니저 변수명 활용)
+        var _balanced = new BalanceConfig(MonthlyTaxPerCity: 100);
+        int provPer10k = _balanced.ProvisionsPer10kPerDay; // _state 구조에 Balance가 있는 경우; // _state의 실제 변수명에 맞춰 조정
+        // 2. 현재 부대 병력 기준 1일 소모량 및 10일치 등 계산에 활용
+        var troopCount = request.Troops;
+
+        // (참고) 만약 '휴대 군량으로 버틸 수 있는 총 일수'를 구하는 거라면:
+        int supplyDays = (troopCount > 0 && provPer10k > 0) 
+            ? Mathf.RoundToInt((request.Provisions * 10000f) / (troopCount * provPer10k)) 
+            : 0;
+
         var supply = new PanelContainer();
         supply.AddThemeStyleboxOverride("panel", Frame(Colors.Transparent, Gold, 1, 5, 10));
-        supply.AddChild(MakeLabel($"보급 현황\n휴대 군량 {request.Provisions:N0} · 약 {SupplyProvisionDaysFromAmount(request.Provisions)}일\n휴대 금 {request.Gold:N0}", 14, Parchment));
-        parent.AddChild(supply);
+        supply.AddChild(MakeLabel($"보급 현황\n휴대 군량 {request.Provisions:N0} · 약 {supplyDays}일\n휴대 금 {request.Gold:N0}", 14, Parchment));
+        parent.AddChild(supply);     
+
+        // var supply = new PanelContainer();
+        // supply.AddThemeStyleboxOverride("panel", Frame(Colors.Transparent, Gold, 1, 5, 10));
+        // supply.AddChild(MakeLabel($"보급 현황\n휴대 군량 {request.Provisions:N0} · 약 {SupplyProvisionDaysFromAmount(request.Provisions)}일\n휴대 금 {request.Gold:N0}", 14, Parchment));
+        // parent.AddChild(supply);
 
         // 1. "출전 명령" 영역의 높이 확장(ExpandFill)을 제거하여 영역을 줄임
         var command = new PanelContainer();
