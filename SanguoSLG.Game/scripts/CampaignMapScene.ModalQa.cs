@@ -1110,7 +1110,7 @@ public sealed partial class CampaignMapScene
                     && _autoRecruitRateParam == selectedRate;
             }
             var workflow = scaffold?.FindChild("CommandModalWorkflowHost", true, false) as CommandModalWorkflowHost;
-            var usesWallTableStyle = item.Index is 9 or 10;
+            var usesWallTableStyle = item.Index is 9 or 10 or 16;
             var wallTable = usesWallTableStyle
                 ? scaffold?.FindChild("CommandOfficerTable", true, false) as Tree
                 : null;
@@ -1135,7 +1135,7 @@ public sealed partial class CampaignMapScene
                 : null;
             var wallHeaderStyle = wallTable?.GetThemeStylebox("title_button_normal") as StyleBoxFlat;
             var wallSelectedStyle = wallTable?.GetThemeStylebox("selected") as StyleBoxFlat;
-            var wallTableStyleOk = item.Index == 10
+            var wallTableStyleOk = usesWallTableStyle && item.Index != 9
                 ? wallTable is not null
                     && wallTable.GetMeta("game_command_table_style").AsBool()
                     && wallTable.Columns == 5

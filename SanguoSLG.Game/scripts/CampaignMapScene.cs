@@ -8684,7 +8684,8 @@ public sealed partial class CampaignMapScene : Node3D
 
     private static bool UsesWallTableModalStyle((string Label, CommandKind Kind, string Param) command)
         => command.Kind == CommandKind.Research && command.Param == "wall"
-            || command.Kind == CommandKind.Repair && command.Param == "wall";
+            || command.Kind == CommandKind.Repair && command.Param == "wall"
+            || command.Kind == CommandKind.AppointGovernor;
 
     private void ApplyContinuousMovementPlayback()
     {
