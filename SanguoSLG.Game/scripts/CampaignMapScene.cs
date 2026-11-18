@@ -4560,9 +4560,14 @@ public sealed partial class CampaignMapScene : Node3D
         if (deploys > 0)
         {
             msg += $"\n출전 예약 {deploys}부대가 일괄 편성됩니다.";
-            if (untargeted > 0) { msg += $"\n⚠ 목표 미지정 {untargeted}부대는 출구가 비면 성 앞에 나와 대기합니다."; }
+            if (untargeted > 0) { msg += $"\n⚠ 목표 미지정 {untargeted}부대는 계속 대기 합니다."; }
         }
-
+        if (untargeted > 0)
+        {
+            //여기여기!!
+            ShowNotice("목표 미지정", "목표가 지정되지 않은 부대가 있습니다. 확인해 주세요.");
+            return;
+        }
         ShowConfirm("진행 확인", msg + "\n\n진행하시겠습니까?", StartAdvance);
     }
 

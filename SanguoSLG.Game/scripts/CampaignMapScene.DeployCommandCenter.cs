@@ -52,7 +52,7 @@ public sealed partial class CampaignMapScene
         margin.AddThemeConstantOverride("margin_left", 45);
         margin.AddThemeConstantOverride("margin_right", 45);
         margin.AddThemeConstantOverride("margin_top", 13);
-        margin.AddThemeConstantOverride("margin_bottom", 12);
+        margin.AddThemeConstantOverride("margin_bottom", 24);
         panel.AddChild(margin);
         var root = new VBoxContainer { Name = "DeployCommandCenterContent" };
         root.AddThemeConstantOverride("separation", 0);
@@ -71,7 +71,7 @@ public sealed partial class CampaignMapScene
         var bottomRegion = new VBoxContainer
         {
             Name = "DeployCommandBottomRegion",
-            CustomMinimumSize = new Vector2(0, 112),
+            CustomMinimumSize = new Vector2(0, 56),
         };
         bottomRegion.AddThemeConstantOverride("separation", 6);
         root.AddChild(topRegion);
@@ -209,7 +209,7 @@ var actions = new HBoxContainer { CustomMinimumSize = new Vector2(0, 46) };
             actions.AddChild(edit);
         }
         actions.AddChild(new Control { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill });
-        var done = CommandCenterButton("출전 예약 확인", true, new Vector2(190, 42));
+        var done = CommandCenterButton("확인", true, new Vector2(190, 42));
         done.Pressed += () => { CloseModal(); SelectCity(cityId); };
         actions.AddChild(done);
         
