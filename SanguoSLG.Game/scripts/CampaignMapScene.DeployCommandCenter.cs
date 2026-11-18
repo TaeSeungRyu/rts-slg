@@ -109,7 +109,10 @@ public sealed partial class CampaignMapScene
         close.AddThemeStyleboxOverride("pressed", Frame(new Color("35100d"), GoldBright, 1, 4, 2));
         close.AddThemeStyleboxOverride("focus", new StyleBoxEmpty());
         close.Pressed += () => { CloseModal(); SelectCity(cityId); };
-        header.AddChild(close);
+        var closeAlign = new MarginContainer { SizeFlagsVertical = Control.SizeFlags.ExpandFill };
+        closeAlign.AddThemeConstantOverride("margin_bottom", 8);
+        closeAlign.AddChild(close);
+        header.AddChild(closeAlign);
         topRegion.AddChild(header);
 
         var status = new HBoxContainer { CustomMinimumSize = new Vector2(0, 44) };
