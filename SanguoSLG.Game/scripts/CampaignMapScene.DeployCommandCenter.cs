@@ -55,8 +55,28 @@ public sealed partial class CampaignMapScene
         margin.AddThemeConstantOverride("margin_bottom", 24);
         panel.AddChild(margin);
         var root = new VBoxContainer { Name = "DeployCommandCenterContent" };
-        root.AddThemeConstantOverride("separation", 8);
+        root.AddThemeConstantOverride("separation", 0);
         margin.AddChild(root);
+        var topRegion = new VBoxContainer
+        {
+            Name = "DeployCommandTopRegion",
+            CustomMinimumSize = new Vector2(0, 88),
+        };
+        var middleRegion = new VBoxContainer
+        {
+            Name = "DeployCommandMiddleRegion",
+            SizeFlagsVertical = Control.SizeFlags.ExpandFill,
+        };
+        middleRegion.AddThemeConstantOverride("separation", 8);
+        var bottomRegion = new VBoxContainer
+        {
+            Name = "DeployCommandBottomRegion",
+            CustomMinimumSize = new Vector2(0, 96),
+        };
+        bottomRegion.AddThemeConstantOverride("separation", 6);
+        root.AddChild(topRegion);
+        root.AddChild(middleRegion);
+        root.AddChild(bottomRegion);
 
         var mine = Enumerable.Range(0, _pendingDeploys.Count)
             .Where(index => _pendingDeploys[index].Req.City == cityId).ToList();
@@ -75,7 +95,7 @@ public sealed partial class CampaignMapScene
         var close = CommandCenterButton("✕", false, new Vector2(52, 44));
         close.Pressed += () => { CloseModal(); SelectCity(cityId); };
         header.AddChild(close);
-        root.AddChild(header);
+        topRegion.AddChild(header);
 
         var status = new HBoxContainer { CustomMinimumSize = new Vector2(0, 44) };
         status.AddThemeConstantOverride("separation", 18);
@@ -88,7 +108,7 @@ public sealed partial class CampaignMapScene
         add.Name = "DeployCommandNewUnit";
         add.Pressed += () => OpenDeployCompose(-1);
         status.AddChild(add);
-        root.AddChild(status);
+        middleRegion.AddChild(status);
 
         var content = new HBoxContainer
         {
@@ -97,7 +117,7 @@ public sealed partial class CampaignMapScene
             SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
         };
         content.AddThemeConstantOverride("separation", 10);
-        root.AddChild(content);
+        middleRegion.AddChild(content);
 
         var left = CommandCenterSection("예약 부대 목록");
         left.CustomMinimumSize = new Vector2(modalWidth * 0.39f, 0);
@@ -133,7 +153,7 @@ public sealed partial class CampaignMapScene
         var summary = new PanelContainer { CustomMinimumSize = new Vector2(0, 50) };
         summary.AddThemeStyleboxOverride("panel", Frame(Colors.Transparent, Gold, 1, 4, 10));
         summary.AddChild(MakeLabel(DeployCommandSummary(), 14, GoldBright));
-        root.AddChild(summary);
+        bottomRegion.AddChild(summary);
 
         var actions = new HBoxContainer { CustomMinimumSize = new Vector2(0, 46) };
         actions.AddThemeConstantOverride("separation", 8);
@@ -157,7 +177,7 @@ public sealed partial class CampaignMapScene
         var done = CommandCenterButton("출전 예약 확인", true, new Vector2(190, 42));
         done.Pressed += () => { CloseModal(); SelectCity(cityId); };
         actions.AddChild(done);
-        root.AddChild(actions);
+        bottomRegion.AddChild(actions);
 
         CenterAndDrag(panel, header, modalWidth, modalHeight, root);
         panel.Size = new Vector2(modalWidth, modalHeight);
