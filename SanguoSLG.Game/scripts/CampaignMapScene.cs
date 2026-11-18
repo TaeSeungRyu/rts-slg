@@ -8687,7 +8687,7 @@ public sealed partial class CampaignMapScene : Node3D
             || command.Kind == CommandKind.Repair && command.Param == "wall"
             || command.Kind is CommandKind.AppointGovernor or CommandKind.AppointStrategist
                 or CommandKind.AppointSecurityOfficer or CommandKind.AppointDomesticOfficer
-                or CommandKind.AppointTrainingOfficer;
+                or CommandKind.AppointTrainingOfficer or CommandKind.Explore;
 
     private void ApplyContinuousMovementPlayback()
     {
