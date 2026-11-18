@@ -235,7 +235,7 @@ public sealed partial class CampaignMapScene
         => new() { Texture = texture, ContentMarginLeft = 12, ContentMarginRight = 12,
             ContentMarginTop = 5, ContentMarginBottom = 5 };
 
-    private Control BuildDeployCommandCard(int index)
+private Control BuildDeployCommandCard(int index)
     {
         var request = _pendingDeploys[index].Req;
         var troop = _troops.FirstOrDefault(item => item.Code == request.TroopCode);
@@ -263,11 +263,22 @@ public sealed partial class CampaignMapScene
         var row = new HBoxContainer { MouseFilter = Control.MouseFilterEnum.Ignore };
         row.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect, Control.LayoutPresetMode.Minsize, 18);
         row.AddThemeConstantOverride("separation", 10);
-        var art = FixedIcon(UnitCard(request.TroopCode, troop?.Class), 76);
-        art.CustomMinimumSize = new Vector2(76, 76);
+
+        // [핵심 해결] art를 품고 있는 전용 컨테이너를 만들어서, 이 컨테이너 자체에 왼쪽 여백(Margin)을 줍니다.
+        var artHolder = new MarginContainer { MouseFilter = Control.MouseFilterEnum.Ignore };
+        artHolder.AddThemeConstantOverride("margin_left", 30); // 이 숫자를 조절하면 이미지만 오른쪽으로 확실하게 이동합니다!
+        artHolder.AddThemeConstantOverride("margin_top", 0);
+        artHolder.AddThemeConstantOverride("margin_right", 0);
+        artHolder.AddThemeConstantOverride("margin_bottom", 0);
+
+        var art = FixedIcon(UnitCard(request.TroopCode, troop?.Class), 68);
+        art.CustomMinimumSize = new Vector2(68, 68);
         art.SizeFlagsVertical = Control.SizeFlags.ShrinkCenter;
         art.MouseFilter = Control.MouseFilterEnum.Ignore;
-        row.AddChild(art);
+        
+        artHolder.AddChild(art);
+        row.AddChild(artHolder); // 기존 art 대신 여백이 적용된 artHolder를 추가
+
         var info = new VBoxContainer { MouseFilter = Control.MouseFilterEnum.Ignore,
             SizeFlagsHorizontal = Control.SizeFlags.ExpandFill, Alignment = BoxContainer.AlignmentMode.Center };
         info.AddChild(MakeLabel($"{troop?.Name ?? request.TroopCode}  {request.Troops:N0}명", 17, GoldBright));
