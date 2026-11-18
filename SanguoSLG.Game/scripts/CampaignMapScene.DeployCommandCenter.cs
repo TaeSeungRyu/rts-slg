@@ -256,7 +256,9 @@ public sealed partial class CampaignMapScene
         var row = new HBoxContainer { MouseFilter = Control.MouseFilterEnum.Ignore };
         row.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect, Control.LayoutPresetMode.Minsize, 10);
         row.AddThemeConstantOverride("separation", 10);
-        var art = DeployUnitArtwork(UnitCard(request.TroopCode, troop?.Class), 66);
+        var art = FixedIcon(UnitCard(request.TroopCode, troop?.Class), 76);
+        art.CustomMinimumSize = new Vector2(76, 76);
+        art.SizeFlagsVertical = Control.SizeFlags.ShrinkCenter;
         art.MouseFilter = Control.MouseFilterEnum.Ignore;
         row.AddChild(art);
         var info = new VBoxContainer { MouseFilter = Control.MouseFilterEnum.Ignore,
