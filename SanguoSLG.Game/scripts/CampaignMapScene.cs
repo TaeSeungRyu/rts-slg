@@ -860,6 +860,8 @@ public sealed partial class CampaignMapScene : Node3D
         if (args.Contains("--maptestdeploylayoutqa")) CallDeferred(nameof(RunDeployComposeLayoutQa));
         if (args.Contains("--maptestdeploygoldqa")) CallDeferred(nameof(RunDeployGoldUiQa));
         if (args.Contains("--maptestdeployimageqa")) CallDeferred(nameof(RunDeployImageStyleQa));
+        if (args.Any(argument => argument.StartsWith("--maptestdeploycommandcenterqa", StringComparison.Ordinal)))
+            CallDeferred(nameof(RunDeployCommandCenterQa));
         if (args.Contains("--maptestmodalcamerablockqa")) CallDeferred(nameof(RunModalCameraBlockQa));
         if (args.Contains("--maptestunitmenuqa")) CallDeferred(nameof(RunUnitMenuQa));
         if (args.Contains("--maptestplaybackstateqa")) CallDeferred(nameof(RunPlaybackStateQa));
@@ -12077,7 +12079,7 @@ public sealed partial class CampaignMapScene : Node3D
     }
 
     // ── 허브: 이 성의 출전 예약 목록(수정/삭제) + 부대 추가 ──
-    private void OpenDeployHub()
+    private void OpenDeployHubLegacy()
     {
         var city = _depModalCity;
         if (_modalLayer is not null) { FadeOutModal(_modalLayer); _modalLayer = null; }
