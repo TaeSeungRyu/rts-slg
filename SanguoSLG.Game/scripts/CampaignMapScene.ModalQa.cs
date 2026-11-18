@@ -1194,6 +1194,15 @@ public sealed partial class CampaignMapScene
                 && scaffold.FindChild("DismissGeneralPager", true, false) is HBoxContainer
                 && Mathf.Abs(scaffold.LayoutSize.X - 752f) <= 1f
                 && scaffold.LayoutSize.Y >= 715f;
+            var transferTableOk = item.Index != 26
+                || scaffold?.FindChild("GeneralTransferOfficerTable", true, false) is Tree transferTable
+                && transferTable.GetMeta("game_command_table_style").AsBool()
+                && transferTable.Columns == 5
+                && transferTable.GetColumnTitle(1).Contains("현재 담당 업무", System.StringComparison.Ordinal)
+                && transferTable.GetRoot()?.GetFirstChild() is { } transferFirst
+                && transferFirst.GetIcon(1) is not null && transferFirst.GetText(1).Contains('\n')
+                && Mathf.Abs(scaffold.LayoutSize.X - 752f) <= 1f
+                && scaffold.LayoutSize.Y >= 715f;
             var expectedWorkflowSteps = item.Index switch
             {
                 _ => 0,
@@ -1325,7 +1334,7 @@ public sealed partial class CampaignMapScene
                 }
             }
             var ok = chromeOk && texturesOk && titleOk && boundsOk && bodyOk && layoutOk
-                && wallTableStyleOk && wallPagingOk && dismissTableOk
+                && wallTableStyleOk && wallPagingOk && dismissTableOk && transferTableOk
                 && regionsConnected && bodyInsetOk && emptyScrollOk && cardsFit && tabsOk && workflowOk
                 && workflowLayoutOk && doctrineWorkspaceOk;
             passed &= ok;

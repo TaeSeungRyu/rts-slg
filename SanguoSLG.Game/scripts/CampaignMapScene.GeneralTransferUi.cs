@@ -40,9 +40,10 @@ public sealed partial class CampaignMapScene
         box.AddChild(search);
         NativeTextInputDialog.Attach(search);
         var table = new Tree { Name = "GeneralTransferOfficerTable",
-            Columns = 6, ColumnTitlesVisible = true, HideRoot = true,
+            Columns = 5, ColumnTitlesVisible = true, HideRoot = true,
             SelectMode = Tree.SelectModeEnum.Row,
-            CustomMinimumSize = new Vector2(0, Mathf.Max(160, scaffold.BodyLayoutHeight - 90f)),
+            CustomMinimumSize = new Vector2(0, Mathf.Max(160,
+                Mathf.Max(scaffold.BodyLayoutHeight - 90f, scaffold.LayoutSize.Y * 0.65f))),
             SizeFlagsVertical = Control.SizeFlags.ExpandFill,
             SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
             ScrollVerticalEnabled = true };
@@ -50,12 +51,10 @@ public sealed partial class CampaignMapScene
         table.AddThemeFontSizeOverride("font_size", 14);
         table.AddThemeFontOverride("title_button_font", _font);
         table.AddThemeFontSizeOverride("title_button_font_size", 13);
-        var hover = new StyleBoxFlat { BgColor = new Color(Gold, .2f) };
-        hover.SetCornerRadiusAll(4);
-        table.AddThemeStyleboxOverride("hovered", hover);
-        table.AddThemeStyleboxOverride("hovered_dimmed", hover);
-        foreach (var (column, title) in new[] { (0, "선택"), (1, "이름"), (2, "무"),
-            (3, "지"), (4, "정"), (5, "현재 담당업무") })
+        GameUiSkin.ApplyCommandTable(table);
+        table.AddThemeConstantOverride("h_separation", 13);
+        foreach (var (column, title) in new[] { (0, "선택"), (1, "장수 / 현재 담당 업무"), (2, "무"),
+            (3, "지"), (4, "정") })
             table.SetColumnTitle(column, title);
         foreach (var column in new[] { 0, 2, 3, 4 })
         {
@@ -63,9 +62,7 @@ public sealed partial class CampaignMapScene
             table.SetColumnCustomMinimumWidth(column, column == 0 ? 60 : 46);
         }
         table.SetColumnExpand(1, true);
-        table.SetColumnExpandRatio(1, 2);
-        table.SetColumnExpand(5, true);
-        table.SetColumnExpandRatio(5, 2);
+        table.SetColumnExpandRatio(1, 5);
         box.AddChild(table);
         var root = table.CreateItem();
         var renderedRows = new List<(TreeItem Row, string Name)>();
@@ -78,12 +75,13 @@ public sealed partial class CampaignMapScene
             row.SetEditable(0, true);
             row.SetChecked(0, false);
             var role = city.Governor == officer.Id ? "태수" : city.Strategist == officer.Id ? "군사" : "대기";
-            row.SetText(1, officer.Name);
-            ApplyGeneralTreePortrait(row, 1, officer.Id, goldBorder: true);
+            row.SetText(1, $"{officer.Name}\n{role}");
+            row.SetCustomColor(1, GoldBright);
+            ApplyGeneralTreePortrait(row, 1, officer.Id, 46, goldBorder: true);
             row.SetText(2, officer.Might.ToString());
             row.SetText(3, officer.Intellect.ToString());
             row.SetText(4, officer.Politics.ToString());
-            row.SetText(5, role);
+            for (var column = 2; column <= 4; column++) row.SetTextAlignment(column, HorizontalAlignment.Center);
             for (var column = 0; column < table.Columns; column++) row.SetSelectable(column, true);
             renderedRows.Add((row, officer.Name));
         }

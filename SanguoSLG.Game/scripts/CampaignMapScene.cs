@@ -8182,8 +8182,7 @@ public sealed partial class CampaignMapScene : Node3D
         var vp = GetViewport().GetVisibleRect().Size;
         var selectedCityData = _state.Cities.First(x => x.Id == city);
         var wideDoctrineModal = cmd.Kind == CommandKind.Research
-            && cmd.Param is "troop" or "general" or "stratagem_research"
-            || cmd.Param == "transfer";
+            && cmd.Param is "troop" or "general" or "stratagem_research";
         var modalProfile = wideDoctrineModal
             ? AdaptiveModalScaffold.WidthProfile.Wide
             : AdaptiveModalScaffold.WidthProfile.Standard;
@@ -8688,7 +8687,7 @@ public sealed partial class CampaignMapScene : Node3D
             || command.Kind is CommandKind.AppointGovernor or CommandKind.AppointStrategist
                 or CommandKind.AppointSecurityOfficer or CommandKind.AppointDomesticOfficer
                 or CommandKind.AppointTrainingOfficer or CommandKind.Explore
-            || command.Param == "dismiss";
+            || command.Param is "dismiss" or "transfer";
 
     private void ApplyContinuousMovementPlayback()
     {
@@ -16609,7 +16608,7 @@ public sealed partial class CampaignMapScene : Node3D
             tree.SetColumnExpand(5, true);
             tree.SetColumnExpandRatio(5, 3);
         }
-        if (IsAutoOfficerCommand(cmd.Kind))
+        if (IsAutoOfficerCommand(cmd.Kind) && !wallResearchTable)
         {
             tree.SetColumnTitle(6, "주 예상 효과");
             tree.SetColumnExpand(6, true);
@@ -16673,7 +16672,7 @@ public sealed partial class CampaignMapScene : Node3D
             item.SetText(2, g.Might.ToString());
             item.SetText(3, g.Intellect.ToString());
             item.SetText(4, g.Politics.ToString());
-            if (IsAutoOfficerCommand(cmd.Kind))
+            if (IsAutoOfficerCommand(cmd.Kind) && !wallResearchTable)
             {
                 item.SetText(6, OfficerWeeklyEffect(cmd.Kind, g, cityData));
             }
@@ -16703,7 +16702,7 @@ public sealed partial class CampaignMapScene : Node3D
             if (wallResearchTable) item.SetMetadata(1, rowIndex);
             item.SetTextAlignment(0, HorizontalAlignment.Center);
             for (var col = 2; col <= 4; col++) { item.SetTextAlignment(col, HorizontalAlignment.Center); }
-            if (IsAutoOfficerCommand(cmd.Kind))
+            if (IsAutoOfficerCommand(cmd.Kind) && !wallResearchTable)
             {
                 item.SetTextAlignment(5, HorizontalAlignment.Center);
                 item.SetTextAlignment(6, HorizontalAlignment.Center);
