@@ -134,7 +134,7 @@ public sealed partial class CampaignMapScene
         middleRegion.AddChild(content);
 
         var left = CommandCenterSection("예약 부대 목록");
-        left.CustomMinimumSize = new Vector2(modalWidth * 0.39f, 0);
+        left.CustomMinimumSize = new Vector2(405, 0);
         left.SizeFlagsVertical = Control.SizeFlags.ExpandFill;
         content.AddChild(left);
         var listScroll = new ScrollContainer
@@ -242,8 +242,8 @@ public sealed partial class CampaignMapScene
             Text = "",
             FocusMode = Control.FocusModeEnum.None,
             SelfModulate = Colors.White,
-            CustomMinimumSize = new Vector2(0, 112),
-            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+            CustomMinimumSize = new Vector2(377, 112),
+            SizeFlagsHorizontal = Control.SizeFlags.ShrinkCenter,
         };
         var normal = GD.Load<Texture2D>(DeployCommandAssetRoot + (selected ? "troop_hover_active.png" : "troop_normal.png"));
         var active = GD.Load<Texture2D>(DeployCommandAssetRoot + "troop_hover_active.png");
