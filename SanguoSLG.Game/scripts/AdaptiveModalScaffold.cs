@@ -37,6 +37,7 @@ public sealed partial class AdaptiveModalScaffold : PanelContainer
         DenseResearch,
         MixedCommand,
         Recruitment,
+        CommandTable,
     }
 
     private const float ViewportMargin = 24f;
@@ -252,7 +253,8 @@ public sealed partial class AdaptiveModalScaffold : PanelContainer
         var desiredWidth = Mathf.Round(Mathf.Min(availableWidth,
             measuredContentWidth + ChromeHorizontalExtras));
         if (_workspaceProfile != WorkspaceProfile.Default
-            && _workspaceProfile != WorkspaceProfile.EmptyCompact)
+            && _workspaceProfile != WorkspaceProfile.EmptyCompact
+            && _workspaceProfile != WorkspaceProfile.CommandTable)
         {
             // 카드 열 수는 Configure 시점의 작업 폭으로 결정된다. 이후 측정 패스에서
             // 폭을 다시 줄이면 마지막 열이 잘리므로 대상 작업공간은 최초 폭을 유지한다.
@@ -437,6 +439,7 @@ public sealed partial class AdaptiveModalScaffold : PanelContainer
             WorkspaceProfile.DenseResearch => (700f, 780f + largeViewportBonus),
             WorkspaceProfile.MixedCommand => (640f, 780f + largeViewportBonus),
             WorkspaceProfile.Recruitment => (680f, 780f + largeViewportBonus),
+            WorkspaceProfile.CommandTable => (715f + largeViewportBonus, 715f + largeViewportBonus),
             _ => (420f, Mathf.Max(420f, viewportHeight - ViewportMargin * 2f)),
         };
     }

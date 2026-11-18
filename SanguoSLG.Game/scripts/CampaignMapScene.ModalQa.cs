@@ -1019,7 +1019,8 @@ public sealed partial class CampaignMapScene
         {
             (7, "doctrine-tabs", false, false), (8, "general-research-tabs", false, false),
             (24, "stratagem-research-tabs", false, false),
-            (6, "major", false, true), (9, "wall", false, true), (12, "stratagem", false, false),
+            (6, "major", false, true), (9, "wall", false, true), (10, "wall-repair", false, false),
+            (12, "stratagem", false, false),
             (13, "alliance", false, false), (14, "break-alliance", false, true), (15, "war", false, false),
             (16, "governor", false, true), (17, "strategist", false, false),
             (18, "security", false, false), (19, "domestic", false, true),
@@ -1035,6 +1036,16 @@ public sealed partial class CampaignMapScene
 
         foreach (var item in cases)
         {
+            var stateBeforeCase = _state;
+            if (item.Index == 10)
+            {
+                _state = _state with
+                {
+                    Cities = _state.Cities.Select(candidate => candidate.Id == city.Id
+                        ? candidate with { Wall = System.Math.Max(0, candidate.Wall - 100) }
+                        : candidate).ToArray(),
+                };
+            }
             SelectCity(item.Port ? port!.Id : city.Id);
             OpenModal(item.Index);
             for (var frame = 0; frame < 15; frame++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
@@ -1099,7 +1110,8 @@ public sealed partial class CampaignMapScene
                     && _autoRecruitRateParam == selectedRate;
             }
             var workflow = scaffold?.FindChild("CommandModalWorkflowHost", true, false) as CommandModalWorkflowHost;
-            var wallTable = item.Index == 9
+            var usesWallTableStyle = item.Index is 9 or 10;
+            var wallTable = usesWallTableStyle
                 ? scaffold?.FindChild("CommandOfficerTable", true, false) as Tree
                 : null;
             var wallDescriptionMargin = item.Index == 9
@@ -1123,9 +1135,15 @@ public sealed partial class CampaignMapScene
                 : null;
             var wallHeaderStyle = wallTable?.GetThemeStylebox("title_button_normal") as StyleBoxFlat;
             var wallSelectedStyle = wallTable?.GetThemeStylebox("selected") as StyleBoxFlat;
-            var wallTableStyleOk = item.Index != 9 || wallTable is not null
-                && wallDescriptionMargin is not null && wallDescription is not null
-                && wallDescriptionMargin.Size.Y <= wallDescription.Size.Y + 9f
+            var wallTableStyleOk = item.Index == 10
+                ? wallTable is not null
+                    && wallTable.GetMeta("game_command_table_style").AsBool()
+                    && wallTable.Columns == 5
+                    && Mathf.Abs(scaffold?.LayoutSize.X - 752f ?? 999f) <= 1f
+                    && scaffold?.LayoutSize.Y >= 715f
+                : item.Index != 9 || wallTable is not null
+                && (item.Index != 9 || wallDescriptionMargin is not null && wallDescription is not null
+                    && wallDescriptionMargin.Size.Y <= wallDescription.Size.Y + 9f)
                 && wallTable.GetMeta("game_command_table_style").AsBool()
                 && wallTable.GetMeta("wall_hover_rows").AsBool()
                 && wallTable.GetMeta("wall_hover_tone").AsString() == "muted_bronze"
@@ -1157,7 +1175,7 @@ public sealed partial class CampaignMapScene
                 && wallFirstRow.GetText(1).Contains('\n')
                 && !wallTable.ScrollVerticalEnabled;
             var wallPagingOk = true;
-            if (item.Index == 9 && wallTable?.GetMeta("wall_page_count").AsInt32() > 1)
+            if (usesWallTableStyle && wallTable?.GetMeta("wall_page_count").AsInt32() > 1)
             {
                 var nextPage = scaffold?.FindChild("WallResearchOfficerNext", true, false) as Button;
                 nextPage?.EmitSignal(BaseButton.SignalName.Pressed);
@@ -1311,6 +1329,7 @@ public sealed partial class CampaignMapScene
                 passed &= GetViewport().GetTexture().GetImage().SavePng(path) == Error.Ok;
             }
             CloseModal();
+            _state = stateBeforeCase;
             for (var frame = 0; frame < 15; frame++)
                 await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
         }

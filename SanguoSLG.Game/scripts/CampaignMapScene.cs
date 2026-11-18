@@ -8642,6 +8642,7 @@ public sealed partial class CampaignMapScene : Node3D
             return AdaptiveModalScaffold.ContentLayout.Mixed;
 
         if (command.Kind == CommandKind.Research && command.Param == "wall"
+            || command.Kind == CommandKind.Repair && command.Param == "wall"
             || command.Kind is CommandKind.AppointGovernor or CommandKind.AppointStrategist
                 or CommandKind.AppointSecurityOfficer or CommandKind.AppointDomesticOfficer
                 or CommandKind.AppointTrainingOfficer or CommandKind.Explore
@@ -8656,6 +8657,8 @@ public sealed partial class CampaignMapScene : Node3D
         (string Label, CommandKind Kind, string Param) command,
         City city)
     {
+        if (UsesWallTableModalStyle(command))
+            return AdaptiveModalScaffold.WorkspaceProfile.CommandTable;
         if (command.Kind == CommandKind.SelectMajorTroop)
             return AdaptiveModalScaffold.WorkspaceProfile.CardSelection;
         if (command.Kind == CommandKind.Research && command.Param == "troop")
@@ -8678,6 +8681,10 @@ public sealed partial class CampaignMapScene : Node3D
             return AdaptiveModalScaffold.WorkspaceProfile.Recruitment;
         return AdaptiveModalScaffold.WorkspaceProfile.Default;
     }
+
+    private static bool UsesWallTableModalStyle((string Label, CommandKind Kind, string Param) command)
+        => command.Kind == CommandKind.Research && command.Param == "wall"
+            || command.Kind == CommandKind.Repair && command.Param == "wall";
 
     private void ApplyContinuousMovementPlayback()
     {
@@ -16456,7 +16463,7 @@ public sealed partial class CampaignMapScene : Node3D
         var relevant = cmd.Kind is CommandKind.Research or CommandKind.CityStratagem or CommandKind.AppointStrategist ? 2
             : cmd.Kind is CommandKind.Train or CommandKind.AppointSecurityOfficer
                 or CommandKind.AppointRecruitmentOfficer or CommandKind.AppointTrainingOfficer ? 1 : 3;
-        var wallResearchTable = cmd.Kind == CommandKind.Research && cmd.Param == "wall";
+        var wallResearchTable = UsesWallTableModalStyle(cmd);
 
         const int compactOfficerRowLimit = 8;
         const int scrollableOfficerTableHeight = 330;
