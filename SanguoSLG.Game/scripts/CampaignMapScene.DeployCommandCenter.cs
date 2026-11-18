@@ -91,6 +91,7 @@ public sealed partial class CampaignMapScene
             SizeFlagsVertical = Control.SizeFlags.ExpandFill,
         };
         header.AddThemeConstantOverride("separation", 10);
+        header.AddChild(new Control { CustomMinimumSize = new Vector2(48, 0), MouseFilter = Control.MouseFilterEnum.Ignore });
         var title = MakeLabel($"출전 지휘소  《 {city.Name} 》", 27, GoldBright);
         title.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
         title.SizeFlagsVertical = Control.SizeFlags.ExpandFill;
