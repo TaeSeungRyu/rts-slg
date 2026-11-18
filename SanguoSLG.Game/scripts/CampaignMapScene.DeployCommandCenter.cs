@@ -91,13 +91,30 @@ public sealed partial class CampaignMapScene
             SizeFlagsVertical = Control.SizeFlags.ExpandFill,
         };
         header.AddThemeConstantOverride("separation", 10);
-        header.AddChild(new Control { CustomMinimumSize = new Vector2(48, 0), MouseFilter = Control.MouseFilterEnum.Ignore });
+        header.AddChild(new Control { CustomMinimumSize = new Vector2(30, 0), MouseFilter = Control.MouseFilterEnum.Ignore });
+
+
         var title = MakeLabel($"출전 지휘소  《 {city.Name} 》", 27, GoldBright);
         title.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
         title.SizeFlagsVertical = Control.SizeFlags.ExpandFill;
         title.VerticalAlignment = VerticalAlignment.Center;
         title.MouseFilter = Control.MouseFilterEnum.Ignore;
-        header.AddChild(title);
+
+        // 2. 위로 이동: MarginContainer를 감싸고 margin_top에 음수(-8)를 주어 위로 올림
+        var titleMargin = new MarginContainer 
+        { 
+            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill, 
+            SizeFlagsVertical = Control.SizeFlags.ExpandFill,
+            MouseFilter = Control.MouseFilterEnum.Ignore
+        };
+        titleMargin.AddThemeConstantOverride("margin_top", -15); // 값이 클수록(절대값 기준) 더 위로 올라갑니다 (-5, -10 등 조절)
+        titleMargin.AddChild(title);
+        
+        header.AddChild(titleMargin);
+
+
+
+
         var close = MakeButton("×");
         close.Name = "DeployCommandClose";
         close.CustomMinimumSize = new Vector2(30, 30);
