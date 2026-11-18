@@ -210,7 +210,7 @@ public sealed partial class CampaignMapScene
     {
         var section = new VBoxContainer();
         section.AddThemeConstantOverride("separation", 7);
-        var label = MakeLabel("◆ " + heading, 17, GoldBright);
+        var label = MakeLabel(heading, 17, GoldBright);
         section.AddChild(label);
         return section;
     }
