@@ -97,7 +97,16 @@ public sealed partial class CampaignMapScene
         title.VerticalAlignment = VerticalAlignment.Center;
         title.MouseFilter = Control.MouseFilterEnum.Ignore;
         header.AddChild(title);
-        var close = CommandCenterButton("✕", false, new Vector2(52, 44));
+        var close = MakeButton("×");
+        close.Name = "DeployCommandClose";
+        close.CustomMinimumSize = new Vector2(30, 30);
+        close.SizeFlagsHorizontal = Control.SizeFlags.ShrinkCenter;
+        close.SizeFlagsVertical = Control.SizeFlags.ShrinkCenter;
+        close.AddThemeFontSizeOverride("font_size", 18);
+        close.AddThemeStyleboxOverride("normal", Frame(Colors.Transparent, Gold, 1, 4, 2));
+        close.AddThemeStyleboxOverride("hover", Frame(new Color("5b1712"), GoldBright, 1, 4, 2));
+        close.AddThemeStyleboxOverride("pressed", Frame(new Color("35100d"), GoldBright, 1, 4, 2));
+        close.AddThemeStyleboxOverride("focus", new StyleBoxEmpty());
         close.Pressed += () => { CloseModal(); SelectCity(cityId); };
         header.AddChild(close);
         topRegion.AddChild(header);
