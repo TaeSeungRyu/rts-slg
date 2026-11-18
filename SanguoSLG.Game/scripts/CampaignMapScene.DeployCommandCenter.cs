@@ -258,7 +258,7 @@ public sealed partial class CampaignMapScene
         button.Pressed += () => { _depSelectedUnit = index; OpenDeployHub(); };
 
         var row = new HBoxContainer { MouseFilter = Control.MouseFilterEnum.Ignore };
-        row.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect, Control.LayoutPresetMode.Minsize, 10);
+        row.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect, Control.LayoutPresetMode.Minsize, 18);
         row.AddThemeConstantOverride("separation", 10);
         var art = FixedIcon(UnitCard(request.TroopCode, troop?.Class), 76);
         art.CustomMinimumSize = new Vector2(76, 76);
