@@ -8298,7 +8298,7 @@ public sealed partial class CampaignMapScene : Node3D
                 SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
             };
             descriptionMargin.AddThemeConstantOverride("margin_top", 5);
-            descriptionMargin.AddThemeConstantOverride("margin_bottom", 5);
+            descriptionMargin.AddThemeConstantOverride("margin_bottom", 3);
             var description = MakeLabel("성벽강화는 병종 전투교리가 아니라 해당 도시의 최대 성벽을 올리는 방어 연구입니다.", 15, Parchment);
             description.Name = "WallResearchDescription";
             description.AutowrapMode = TextServer.AutowrapMode.WordSmart;

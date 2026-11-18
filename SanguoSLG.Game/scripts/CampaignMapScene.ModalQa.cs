@@ -1125,7 +1125,7 @@ public sealed partial class CampaignMapScene
             var wallSelectedStyle = wallTable?.GetThemeStylebox("selected") as StyleBoxFlat;
             var wallTableStyleOk = item.Index != 9 || wallTable is not null
                 && wallDescriptionMargin is not null && wallDescription is not null
-                && wallDescriptionMargin.Size.Y <= wallDescription.Size.Y + 11f
+                && wallDescriptionMargin.Size.Y <= wallDescription.Size.Y + 9f
                 && wallTable.GetMeta("game_command_table_style").AsBool()
                 && wallTable.GetMeta("wall_hover_rows").AsBool()
                 && wallTable.GetMeta("wall_hover_tone").AsString() == "muted_bronze"
