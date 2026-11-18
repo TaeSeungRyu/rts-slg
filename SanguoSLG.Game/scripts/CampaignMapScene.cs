@@ -8687,7 +8687,8 @@ public sealed partial class CampaignMapScene : Node3D
             || command.Kind == CommandKind.Repair && command.Param == "wall"
             || command.Kind is CommandKind.AppointGovernor or CommandKind.AppointStrategist
                 or CommandKind.AppointSecurityOfficer or CommandKind.AppointDomesticOfficer
-                or CommandKind.AppointTrainingOfficer or CommandKind.Explore;
+                or CommandKind.AppointTrainingOfficer or CommandKind.Explore
+            || command.Param == "dismiss";
 
     private void ApplyContinuousMovementPlayback()
     {
@@ -15437,36 +15438,75 @@ public sealed partial class CampaignMapScene : Node3D
             box.AddChild(MakeLabel("이 도시에서 해고할 수 있는 장수가 없습니다.", 15, Parchment));
             return;
         }
-        var scroll = new ScrollContainer
+        var search = new LineEdit { Name = "DismissGeneralSearch", PlaceholderText = "장수명 검색", ClearButtonEnabled = true };
+        search.CustomMinimumSize = new Vector2(0, 38);
+        box.AddChild(search);
+        var table = new Tree
         {
-            CustomMinimumSize = new Vector2(0, Mathf.Clamp(GetViewport().GetVisibleRect().Size.Y * 0.60f, 330f, 590f)),
-            SizeFlagsVertical = Control.SizeFlags.ExpandFill,
+            Name = "DismissGeneralTable", Columns = 5, ColumnTitlesVisible = true, HideRoot = true,
+            SelectMode = Tree.SelectModeEnum.Row, CustomMinimumSize = new Vector2(0, 408),
+            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill, ScrollVerticalEnabled = false,
         };
-        box.AddChild(scroll);
-        var list = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
-        scroll.AddChild(list);
-        foreach (var general in candidates)
+        table.AddThemeFontOverride("font", _font);
+        table.AddThemeFontSizeOverride("font_size", 15);
+        table.AddThemeFontOverride("title_button_font", _font);
+        GameUiSkin.ApplyCommandTable(table);
+        table.AddThemeConstantOverride("h_separation", 13);
+        table.SetColumnTitle(0, "선택");
+        table.SetColumnTitle(1, "장수 / 현재 담당 업무");
+        table.SetColumnTitle(2, "무"); table.SetColumnTitle(3, "지"); table.SetColumnTitle(4, "정");
+        table.SetColumnExpand(0, false); table.SetColumnCustomMinimumWidth(0, 52);
+        table.SetColumnExpand(1, true); table.SetColumnExpandRatio(1, 5);
+        for (var column = 2; column <= 4; column++) { table.SetColumnExpand(column, false); table.SetColumnCustomMinimumWidth(column, 52); }
+        box.AddChild(table);
+        var pager = new HBoxContainer { Name = "DismissGeneralPager", Alignment = BoxContainer.AlignmentMode.Center };
+        pager.AddThemeConstantOverride("separation", 10);
+        box.AddChild(pager);
+        var previous = MakeButton("이전");
+        var pageLabel = MakeLabel("", 14, GoldBright);
+        pageLabel.CustomMinimumSize = new Vector2(72, 34);
+        pageLabel.HorizontalAlignment = HorizontalAlignment.Center;
+        var next = MakeButton("다음");
+        pager.AddChild(previous); pager.AddChild(pageLabel); pager.AddChild(next);
+        const int pageSize = 6;
+        var page = 0;
+        var query = "";
+        void Render()
         {
-            var officer = general!;
-            var card = new PanelContainer { Name = $"DismissGeneral_{officer.Id.Value}", MouseFilter = Control.MouseFilterEnum.Pass };
-            var normal = Frame(InkSoft, new Color(Gold, 0.35f), 1, 6, 6);
-            var hovered = Frame(InkHover, GoldBright, 1, 6, 6);
-            card.AddThemeStyleboxOverride("panel", normal);
-            card.MouseEntered += () => card.AddThemeStyleboxOverride("panel", hovered);
-            card.MouseExited += () => card.AddThemeStyleboxOverride("panel", normal);
-            list.AddChild(card);
-            var row = new HBoxContainer { CustomMinimumSize = new Vector2(0, 54) };
-            row.AddThemeConstantOverride("separation", 12);
-            card.AddChild(row);
-            row.AddChild(new TextureRect { Texture = CircularPortraitFor(officer.Id), CustomMinimumSize = new Vector2(48, 48),
-                StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered, ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize });
-            var label = MakeLabel(officer.Name, 16, Parchment);
-            label.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
-            row.AddChild(label);
-            var button = MakeButton("해고");
-            row.AddChild(button);
-            button.Pressed += () => ConfirmDismissGeneral(city, officer);
+            var filtered = candidates.Where(g => string.IsNullOrWhiteSpace(query)
+                || g!.Name.Contains(query, System.StringComparison.OrdinalIgnoreCase)).ToList();
+            var pages = System.Math.Max(1, (int)System.Math.Ceiling(filtered.Count / (double)pageSize));
+            page = System.Math.Clamp(page, 0, pages - 1);
+            table.Clear();
+            var root = table.CreateItem();
+            foreach (var officer in filtered.Skip(page * pageSize).Take(pageSize).Select(g => g!))
+            {
+                var row = table.CreateItem(root);
+                row.SetMetadata(0, officer.Id.Value);
+                row.SetCellMode(0, TreeItem.TreeCellMode.Check);
+                row.SetChecked(0, false);
+                ApplyGeneralTreePortrait(row, 1, officer.Id, 46, goldBorder: true);
+                row.SetText(1, $"{officer.Name}\n{CurrentDuty(officer.Id)}");
+                row.SetCustomColor(1, GoldBright);
+                row.SetText(2, officer.Might.ToString()); row.SetText(3, officer.Intellect.ToString()); row.SetText(4, officer.Politics.ToString());
+                for (var column = 2; column <= 4; column++) row.SetTextAlignment(column, HorizontalAlignment.Center);
+            }
+            pageLabel.Text = $"{page + 1} / {pages}";
+            previous.Disabled = page == 0;
+            next.Disabled = page >= pages - 1;
         }
+        table.ItemSelected += () =>
+        {
+            var row = table.GetSelected();
+            if (row is null) return;
+            row.SetChecked(0, true);
+            var officer = candidates.First(g => g!.Id.Value == row.GetMetadata(0).AsInt32())!;
+            ConfirmDismissGeneral(city, officer);
+        };
+        previous.Pressed += () => { page--; Render(); };
+        next.Pressed += () => { page++; Render(); };
+        search.TextChanged += value => { query = value.Trim(); page = 0; Render(); };
+        Render();
     }
 
     private void ConfirmDismissGeneral(City city, General general)

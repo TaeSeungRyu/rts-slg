@@ -1186,6 +1186,14 @@ public sealed partial class CampaignMapScene
                 wallPagingOk = nextPage is not null && _wallResearchOfficerPage == 1
                     && pageTwoLabel?.Text.StartsWith("2 / ", System.StringComparison.Ordinal) == true;
             }
+            var dismissTableOk = item.Index != 25
+                || scaffold?.FindChild("DismissGeneralTable", true, false) is Tree dismissTable
+                && dismissTable.GetMeta("game_command_table_style").AsBool()
+                && dismissTable.Columns == 5
+                && dismissTable.GetRoot()?.GetChildCount() is > 0 and <= 6
+                && scaffold.FindChild("DismissGeneralPager", true, false) is HBoxContainer
+                && Mathf.Abs(scaffold.LayoutSize.X - 752f) <= 1f
+                && scaffold.LayoutSize.Y >= 715f;
             var expectedWorkflowSteps = item.Index switch
             {
                 _ => 0,
@@ -1317,7 +1325,7 @@ public sealed partial class CampaignMapScene
                 }
             }
             var ok = chromeOk && texturesOk && titleOk && boundsOk && bodyOk && layoutOk
-                && wallTableStyleOk && wallPagingOk
+                && wallTableStyleOk && wallPagingOk && dismissTableOk
                 && regionsConnected && bodyInsetOk && emptyScrollOk && cardsFit && tabsOk && workflowOk
                 && workflowLayoutOk && doctrineWorkspaceOk;
             passed &= ok;

@@ -311,6 +311,8 @@ internal static class GameUiSkin
         tree.AddThemeStyleboxOverride("focus", new StyleBoxEmpty());
         tree.AddThemeStyleboxOverride("selected", FlatBox(new Color("6b1f16"), GoldBright, 3, 4, 4));
         tree.AddThemeStyleboxOverride("selected_focus", FlatBox(new Color("7b261b"), new Color("ffe29a"), 3, 4, 4));
+        tree.AddThemeStyleboxOverride("hovered", FlatBox(new Color("3a2b21", 0.82f), Colors.Transparent, 0, 0, 4));
+        tree.AddThemeStyleboxOverride("hovered_dimmed", FlatBox(new Color("30241d", 0.72f), Colors.Transparent, 0, 0, 4));
         tree.AddThemeStyleboxOverride("cursor", FlatBox(new Color("2f1b13"), new Color(GoldBright, 0.78f), 1, 4, 4));
         tree.AddThemeStyleboxOverride("cursor_unfocused", FlatBox(new Color("21130f"), new Color(Gold, 0.55f), 1, 4, 4));
         tree.AddThemeStyleboxOverride("title_button_normal", FlatBox(new Color("0d0a0a"), Colors.Transparent, 0, 0, 6));
