@@ -1143,6 +1143,8 @@ public sealed partial class CampaignMapScene
                 && wallSelectedStyle.BgColor.R > wallSelectedStyle.BgColor.G * 2f
                 && wallTable.HasThemeStyleboxOverride("title_button_normal")
                 && wallHeaderStyle is not null
+                && wallHeaderStyle.BorderWidthLeft == 0
+                && wallHeaderStyle.BgColor.R < 0.08f
                 && wallHeaderStyle.CornerRadiusTopLeft == 0 && wallHeaderStyle.CornerRadiusTopRight == 0
                 && wallHeaderStyle.CornerRadiusBottomLeft == 0 && wallHeaderStyle.CornerRadiusBottomRight == 0
                 && wallTable.Columns == 5
