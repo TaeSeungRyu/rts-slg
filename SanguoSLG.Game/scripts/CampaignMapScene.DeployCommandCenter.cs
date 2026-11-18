@@ -52,7 +52,7 @@ public sealed partial class CampaignMapScene
         margin.AddThemeConstantOverride("margin_left", 45);
         margin.AddThemeConstantOverride("margin_right", 45);
         margin.AddThemeConstantOverride("margin_top", 13);
-        margin.AddThemeConstantOverride("margin_bottom", 24);
+        margin.AddThemeConstantOverride("margin_bottom", 12);
         panel.AddChild(margin);
         var root = new VBoxContainer { Name = "DeployCommandCenterContent" };
         root.AddThemeConstantOverride("separation", 0);
@@ -91,7 +91,7 @@ public sealed partial class CampaignMapScene
             SizeFlagsVertical = Control.SizeFlags.ExpandFill,
         };
         header.AddThemeConstantOverride("separation", 10);
-        header.AddChild(new Control { CustomMinimumSize = new Vector2(30, 0), MouseFilter = Control.MouseFilterEnum.Ignore });
+        header.AddChild(new Control { CustomMinimumSize = new Vector2(28, 0), MouseFilter = Control.MouseFilterEnum.Ignore });
 
 
         var title = MakeLabel($"출전 지휘소  《 {city.Name} 》", 27, GoldBright);
@@ -111,9 +111,6 @@ public sealed partial class CampaignMapScene
         titleMargin.AddChild(title);
         
         header.AddChild(titleMargin);
-
-
-
 
         var close = MakeButton("×");
         close.Name = "DeployCommandClose";
@@ -188,12 +185,12 @@ public sealed partial class CampaignMapScene
         content.AddChild(right);
         BuildDeployCommandDetails(right, cityId);
 
-        var summary = new PanelContainer { CustomMinimumSize = new Vector2(0, 50) };
-        summary.AddThemeStyleboxOverride("panel", Frame(Colors.Transparent, Gold, 1, 4, 10));
-        summary.AddChild(MakeLabel(DeployCommandSummary(), 14, GoldBright));
-        bottomRegion.AddChild(summary);
+        // var summary = new PanelContainer { CustomMinimumSize = new Vector2(0, 50) };
+        // summary.AddThemeStyleboxOverride("panel", Frame(Colors.Transparent, Gold, 1, 4, 10));
+        // summary.AddChild(MakeLabel(DeployCommandSummary(), 14, GoldBright));
+        // bottomRegion.AddChild(summary);
 
-        var actions = new HBoxContainer { CustomMinimumSize = new Vector2(0, 46) };
+var actions = new HBoxContainer { CustomMinimumSize = new Vector2(0, 46) };
         actions.AddThemeConstantOverride("separation", 8);
         if (_depSelectedUnit >= 0 && _depSelectedUnit < _pendingDeploys.Count)
         {
@@ -215,6 +212,8 @@ public sealed partial class CampaignMapScene
         var done = CommandCenterButton("출전 예약 확인", true, new Vector2(190, 42));
         done.Pressed += () => { CloseModal(); SelectCity(cityId); };
         actions.AddChild(done);
+        
+        // bottomRegion에는 actions만 추가
         bottomRegion.AddChild(actions);
 
         CenterAndDrag(panel, header, modalWidth, modalHeight, root);
@@ -309,8 +308,7 @@ private Control BuildDeployCommandCard(int index)
         button.AddChild(row);
         return button;
     }
-
-    private void BuildDeployCommandDetails(VBoxContainer parent, SanguoSLG.Core.Domain.CityId cityId)
+private void BuildDeployCommandDetails(VBoxContainer parent, SanguoSLG.Core.Domain.CityId cityId)
     {
         if (_depSelectedUnit < 0 || _depSelectedUnit >= _pendingDeploys.Count)
         {
@@ -352,11 +350,13 @@ private Control BuildDeployCommandCard(int index)
         supply.AddChild(MakeLabel($"보급 현황\n휴대 군량 {request.Provisions:N0} · 약 {SupplyProvisionDaysFromAmount(request.Provisions)}일\n휴대 금 {request.Gold:N0}", 14, Parchment));
         parent.AddChild(supply);
 
-        var command = new PanelContainer { SizeFlagsVertical = Control.SizeFlags.ExpandFill };
+        // 1. "출전 명령" 영역의 높이 확장(ExpandFill)을 제거하여 영역을 줄임
+        var command = new PanelContainer();
         command.AddThemeStyleboxOverride("panel", Frame(Colors.Transparent, Gold, 1, 5, 10));
         var commandBox = new VBoxContainer();
-        commandBox.AddThemeConstantOverride("separation", 8);
+        commandBox.AddThemeConstantOverride("separation", 6); // 내부 간격도 살짝 줄임
         commandBox.AddChild(MakeLabel("출전 명령", 16, GoldBright));
+        
         var modeRow = new HBoxContainer();
         modeRow.AddThemeConstantOverride("separation", 7);
         foreach (var (label, mode) in new[] { ("행군", UnitMode.March), ("전진", UnitMode.Advance), ("공격", UnitMode.Attack) })
@@ -371,6 +371,7 @@ private Control BuildDeployCommandCard(int index)
             modeRow.AddChild(modeButton);
         }
         commandBox.AddChild(modeRow);
+        
         var delayRow = new HBoxContainer();
         delayRow.AddChild(MakeLabel("출전 시점", 14, Parchment));
         var delay = new OptionButton { Name = "DeployCommandDelay", CustomMinimumSize = new Vector2(160, 36),
@@ -386,6 +387,7 @@ private Control BuildDeployCommandCard(int index)
         };
         delayRow.AddChild(delay);
         commandBox.AddChild(delayRow);
+        
         var targetRow = new HBoxContainer();
         var targetText = request.Target is { } target
             ? _state.Cities.FirstOrDefault(candidate => candidate.Position == target)?.Name ?? $"({target.Q},{target.R})"
@@ -397,10 +399,20 @@ private Control BuildDeployCommandCard(int index)
         targetButton.Pressed += () => BeginTargeting(index);
         targetRow.AddChild(targetButton);
         commandBox.AddChild(targetRow);
+        
         command.AddChild(commandBox);
         parent.AddChild(command);
-    }
 
+        // 2. "출전 명령"과 "편성 요약" 사이에 간격을 주기 위해 MarginContainer 추가
+        var summarySpacer = new Control { CustomMinimumSize = new Vector2(0, 8) }; // 간격 크기 (8px)
+        parent.AddChild(summarySpacer);
+
+        // 3. "편성 요약"을 중간 영역(parent) 내부의 맨 아래로 이동
+        var summary = new PanelContainer { CustomMinimumSize = new Vector2(0, 42) };
+        summary.AddThemeStyleboxOverride("panel", Frame(Colors.Transparent, Gold, 1, 4, 10));
+        summary.AddChild(MakeLabel(DeployCommandSummary(), 14, GoldBright));
+        parent.AddChild(summary);
+    }
     private string DeployCommandSummary()
     {
         if (_depSelectedUnit < 0 || _depSelectedUnit >= _pendingDeploys.Count) return "편성 요약  ·  선택된 예약 부대 없음";
