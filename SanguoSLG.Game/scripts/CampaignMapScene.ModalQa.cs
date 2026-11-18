@@ -1110,7 +1110,7 @@ public sealed partial class CampaignMapScene
                     && _autoRecruitRateParam == selectedRate;
             }
             var workflow = scaffold?.FindChild("CommandModalWorkflowHost", true, false) as CommandModalWorkflowHost;
-            var usesWallTableStyle = item.Index is 9 or 10 or 16 or 17 or 18;
+            var usesWallTableStyle = item.Index is 9 or 10 or 16 or 17 or 18 or 19;
             var wallTable = usesWallTableStyle
                 ? scaffold?.FindChild("CommandOfficerTable", true, false) as Tree
                 : null;
