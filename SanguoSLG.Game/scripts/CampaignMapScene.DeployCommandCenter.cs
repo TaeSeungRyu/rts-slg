@@ -240,6 +240,8 @@ public sealed partial class CampaignMapScene
         {
             Name = $"DeployCommandUnitCard{index}",
             Text = "",
+            FocusMode = Control.FocusModeEnum.None,
+            SelfModulate = Colors.White,
             CustomMinimumSize = new Vector2(0, 112),
             SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
         };
