@@ -125,7 +125,10 @@ public sealed partial class CampaignMapScene
         var add = CommandCenterButton("＋ 신규 편성", true, new Vector2(170, 42));
         add.Name = "DeployCommandNewUnit";
         add.Pressed += () => OpenDeployCompose(-1);
-        status.AddChild(add);
+        var addOffset = new MarginContainer();
+        addOffset.AddThemeConstantOverride("margin_top", 5);
+        addOffset.AddChild(add);
+        status.AddChild(addOffset);
         middleRegion.AddChild(status);
 
         var content = new HBoxContainer
