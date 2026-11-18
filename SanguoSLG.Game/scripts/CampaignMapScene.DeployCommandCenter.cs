@@ -131,7 +131,7 @@ public sealed partial class CampaignMapScene
         BuildDeployCommandDetails(right, cityId);
 
         var summary = new PanelContainer { CustomMinimumSize = new Vector2(0, 50) };
-        summary.AddThemeStyleboxOverride("panel", Frame(new Color("1c100c"), Gold, 1, 4, 10));
+        summary.AddThemeStyleboxOverride("panel", Frame(Colors.Transparent, Gold, 1, 4, 10));
         summary.AddChild(MakeLabel(DeployCommandSummary(), 14, GoldBright));
         root.AddChild(summary);
 
@@ -256,7 +256,7 @@ public sealed partial class CampaignMapScene
             ? _state.Generals.FirstOrDefault(general => general.Id == adj) : null;
 
         var overview = new PanelContainer();
-        overview.AddThemeStyleboxOverride("panel", Frame(new Color("21130e"), Gold, 1, 5, 10));
+        overview.AddThemeStyleboxOverride("panel", Frame(Colors.Transparent, Gold, 1, 5, 10));
         var overviewRow = new HBoxContainer();
         overviewRow.AddThemeConstantOverride("separation", 12);
         overviewRow.AddChild(DeployUnitArtwork(UnitCard(request.TroopCode, troop?.Class), 76));
@@ -268,19 +268,19 @@ public sealed partial class CampaignMapScene
         parent.AddChild(overview);
 
         var officers = new PanelContainer();
-        officers.AddThemeStyleboxOverride("panel", Frame(new Color("180e0b"), Gold, 1, 5, 10));
+        officers.AddThemeStyleboxOverride("panel", Frame(Colors.Transparent, Gold, 1, 5, 10));
         var officerText = $"편성 장수\n선봉  {vanguard.Name}   무 {vanguard.Might} · 지 {vanguard.Intellect} · 정 {vanguard.Politics}";
         if (adjutant is not null) officerText += $"\n부장  {adjutant.Name}   무 {adjutant.Might} · 지 {adjutant.Intellect} · 정 {adjutant.Politics}";
         officers.AddChild(MakeLabel(officerText, 14, Parchment));
         parent.AddChild(officers);
 
         var supply = new PanelContainer();
-        supply.AddThemeStyleboxOverride("panel", Frame(new Color("180e0b"), Gold, 1, 5, 10));
+        supply.AddThemeStyleboxOverride("panel", Frame(Colors.Transparent, Gold, 1, 5, 10));
         supply.AddChild(MakeLabel($"보급 현황\n휴대 군량 {request.Provisions:N0} · 약 {SupplyProvisionDaysFromAmount(request.Provisions)}일\n휴대 금 {request.Gold:N0}", 14, Parchment));
         parent.AddChild(supply);
 
         var command = new PanelContainer { SizeFlagsVertical = Control.SizeFlags.ExpandFill };
-        command.AddThemeStyleboxOverride("panel", Frame(new Color("180e0b"), Gold, 1, 5, 10));
+        command.AddThemeStyleboxOverride("panel", Frame(Colors.Transparent, Gold, 1, 5, 10));
         var commandBox = new VBoxContainer();
         commandBox.AddThemeConstantOverride("separation", 8);
         commandBox.AddChild(MakeLabel("출전 명령", 16, GoldBright));
