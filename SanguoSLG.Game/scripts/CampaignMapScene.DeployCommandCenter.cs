@@ -85,10 +85,15 @@ public sealed partial class CampaignMapScene
             .ThenBy(unit => unit.Id.Value).ToList();
         if (!mine.Contains(_depSelectedUnit)) _depSelectedUnit = mine.FirstOrDefault(-1);
 
-        var header = new HBoxContainer { CustomMinimumSize = new Vector2(0, 76) };
+        var header = new HBoxContainer
+        {
+            CustomMinimumSize = new Vector2(0, 76),
+            SizeFlagsVertical = Control.SizeFlags.ExpandFill,
+        };
         header.AddThemeConstantOverride("separation", 10);
-        var title = MakeLabel($"⚑  출전 지휘소  《 {city.Name} 》", 27, GoldBright);
+        var title = MakeLabel($"출전 지휘소  《 {city.Name} 》", 27, GoldBright);
         title.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+        title.SizeFlagsVertical = Control.SizeFlags.ExpandFill;
         title.VerticalAlignment = VerticalAlignment.Center;
         title.MouseFilter = Control.MouseFilterEnum.Ignore;
         header.AddChild(title);
