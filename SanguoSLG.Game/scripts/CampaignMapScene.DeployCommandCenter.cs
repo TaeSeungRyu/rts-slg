@@ -71,7 +71,7 @@ public sealed partial class CampaignMapScene
         var bottomRegion = new VBoxContainer
         {
             Name = "DeployCommandBottomRegion",
-            CustomMinimumSize = new Vector2(0, 96),
+            CustomMinimumSize = new Vector2(0, 112),
         };
         bottomRegion.AddThemeConstantOverride("separation", 6);
         root.AddChild(topRegion);
