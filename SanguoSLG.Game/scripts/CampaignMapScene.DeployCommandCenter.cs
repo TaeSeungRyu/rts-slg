@@ -49,8 +49,8 @@ public sealed partial class CampaignMapScene
 
         var margin = new MarginContainer();
         margin.SetAnchorsPreset(Control.LayoutPreset.FullRect);
-        margin.AddThemeConstantOverride("margin_left", 35);
-        margin.AddThemeConstantOverride("margin_right", 35);
+        margin.AddThemeConstantOverride("margin_left", 45);
+        margin.AddThemeConstantOverride("margin_right", 45);
         margin.AddThemeConstantOverride("margin_top", 13);
         margin.AddThemeConstantOverride("margin_bottom", 24);
         panel.AddChild(margin);
@@ -126,7 +126,7 @@ public sealed partial class CampaignMapScene
         add.Name = "DeployCommandNewUnit";
         add.Pressed += () => OpenDeployCompose(-1);
         var addOffset = new MarginContainer();
-        addOffset.AddThemeConstantOverride("margin_top", 5);
+        addOffset.AddThemeConstantOverride("margin_top", 14);
         addOffset.AddChild(add);
         status.AddChild(addOffset);
         middleRegion.AddChild(status);
