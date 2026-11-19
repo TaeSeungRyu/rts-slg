@@ -372,20 +372,30 @@ public sealed partial class CampaignMapScene
         // portrait.MouseFilter = Control.MouseFilterEnum.Ignore;
         // row.AddChild(portrait);
 
-        // 장수 초상화 (82 × 82 정사각형)
+        const int portraitSize = 74;
+        const int borderSize = 1;
+
+        // 장수 초상화
         var portrait = new TextureRect
         {
             Texture = OfficerPortrait(id),
-            CustomMinimumSize = new Vector2(78, 78),
+            CustomMinimumSize = new Vector2(portraitSize, portraitSize),
             ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
             StretchMode = TextureRect.StretchModeEnum.KeepAspectCovered,
+            SizeFlagsHorizontal = Control.SizeFlags.ShrinkCenter,
+            SizeFlagsVertical = Control.SizeFlags.ShrinkCenter,
             MouseFilter = Control.MouseFilterEnum.Ignore,
         };
 
-        // 금색 테두리
+        // 테두리 컨테이너
         var portraitFrame = new PanelContainer
         {
-            CustomMinimumSize = new Vector2(82, 82),
+            CustomMinimumSize = new Vector2(
+                portraitSize + borderSize * 2,
+                portraitSize + borderSize * 2
+            ),
+            SizeFlagsHorizontal = Control.SizeFlags.ShrinkBegin,
+            SizeFlagsVertical = Control.SizeFlags.ShrinkCenter,
             MouseFilter = Control.MouseFilterEnum.Ignore,
         };
 
@@ -393,23 +403,25 @@ public sealed partial class CampaignMapScene
         {
             BgColor = new Color("#17120E"),
             BorderColor = new Color("#B89452"),
-            BorderWidthLeft = 1,
-            BorderWidthRight = 1,
-            BorderWidthTop = 1,
-            BorderWidthBottom = 1,
-            CornerRadiusBottomLeft = 3,
-            CornerRadiusBottomRight = 3,
-            CornerRadiusTopLeft = 3,
-            CornerRadiusTopRight = 3
+            BorderWidthLeft = borderSize,
+            BorderWidthRight = borderSize,
+            BorderWidthTop = borderSize,
+            BorderWidthBottom = borderSize,
+            CornerRadiusTopLeft = 2,
+            CornerRadiusTopRight = 2,
+            CornerRadiusBottomLeft = 2,
+            CornerRadiusBottomRight = 2,
+            ContentMarginLeft = borderSize,
+            ContentMarginRight = borderSize,
+            ContentMarginTop = borderSize,
+            ContentMarginBottom = borderSize,
         };
 
         portraitFrame.AddThemeStyleboxOverride("panel", frameStyle);
         portraitFrame.AddChild(portrait);
 
         row.AddChild(portraitFrame);        
-
-
-
+  
 
         var text = new VBoxContainer { Alignment = BoxContainer.AlignmentMode.Center,
             SizeFlagsHorizontal = Control.SizeFlags.ExpandFill, MouseFilter = Control.MouseFilterEnum.Ignore };

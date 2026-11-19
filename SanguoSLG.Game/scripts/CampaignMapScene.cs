@@ -2793,10 +2793,17 @@ public sealed partial class CampaignMapScene : Node3D
         row.AddThemeConstantOverride("separation", 6);
         card.AddChild(row);
 
-        var badgeSize = artworkLayout ? 18 : 28;
-        var badge = new PanelContainer { CustomMinimumSize = new Vector2(badgeSize, badgeSize), MouseFilter = Control.MouseFilterEnum.Ignore };
+        var badgeSize = artworkLayout ? 16 : 28;
+
+        var badge = new PanelContainer
+        {
+            CustomMinimumSize = new Vector2(badgeSize, badgeSize),
+            SizeFlagsHorizontal = Control.SizeFlags.ShrinkCenter,
+            SizeFlagsVertical = Control.SizeFlags.ShrinkCenter,
+            MouseFilter = Control.MouseFilterEnum.Ignore
+        };
         badge.AddThemeStyleboxOverride("panel", Frame(new Color(accent, 0.14f), accent, 1, badgeSize / 2, 1));
-        var badgeText = MakeLabel(primary ? "先" : "副", artworkLayout ? 9 : 12, accent);
+        var badgeText = MakeLabel(primary ? "先" : "副", artworkLayout ? 9 : 9, accent);
         badgeText.HorizontalAlignment = HorizontalAlignment.Center;
         badgeText.VerticalAlignment = VerticalAlignment.Center;
         badge.AddChild(badgeText);
