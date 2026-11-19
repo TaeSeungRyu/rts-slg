@@ -738,4 +738,56 @@ private void BuildDeployCommandDetails(VBoxContainer parent, SanguoSLG.Core.Doma
         CloseModal();
         GetTree().Quit(passed ? 0 : 1);
     }
+
+    private async void RunSupplyComposeRenewalQa()
+    {
+        var sizeArgument = OS.GetCmdlineUserArgs().FirstOrDefault(argument =>
+            argument.StartsWith("--maptestsupplycomposerenewalqa=", System.StringComparison.Ordinal));
+        if (sizeArgument is not null)
+        {
+            var dimensions = sizeArgument.Split('=', 2)[1].Split('x', 2);
+            if (dimensions.Length == 2 && int.TryParse(dimensions[0], out var width)
+                && int.TryParse(dimensions[1], out var height)) GetWindow().Size = new Vector2I(width, height);
+        }
+
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        var city = _state.Cities.First(candidate => candidate.Owner == Player
+            && _state.Garrisons.Any(garrison => garrison.City == candidate.Id && garrison.Troops > 0 && !garrison.Trainee)
+            && _state.GeneralsAt(candidate.Id).Any(id => !_state.IsGeneralBusy(id)));
+        _depModalCity = city.Id;
+        OpenSupplyCompose(-1);
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+
+        var modal = _modalLayer?.FindChild("SupplyComposeModal", true, false) as SupplyComposeModal;
+        var background = _modalLayer?.FindChild("SupplyComposeBackground", true, false) as TextureRect;
+        var safeArea = _modalLayer?.FindChild("SupplyComposeSafeArea", true, false) as MarginContainer;
+        var columns = _modalLayer?.FindChild("SupplyComposeColumns", true, false) as HBoxContainer;
+        var leftScroll = _modalLayer?.FindChild("SupplyComposeResourcesScroll", true, false) as ScrollContainer;
+        var table = _modalLayer?.FindChild("ComposeOfficerTable", true, false) as Tree;
+        var footer = _modalLayer?.FindChild("SupplyComposeFooter", true, false) as VBoxContainer;
+        var delay = _modalLayer?.FindChild("DeploymentDelaySelector", true, false) as OptionButton;
+        var buttons = _modalLayer?.FindChildren("*", "Button", true, false).OfType<Button>().ToArray() ?? [];
+        var labels = _modalLayer?.FindChildren("*", "Label", true, false).OfType<Label>()
+            .Select(label => label.Text).ToArray() ?? [];
+
+        var structureOk = modal is not null && safeArea is not null
+            && modal.GetGlobalRect().Encloses(safeArea.GetGlobalRect())
+            && background?.Texture?.ResourcePath.EndsWith("deploy_command_panel.png",
+                System.StringComparison.Ordinal) == true
+            && columns?.GetChildCount() == 2
+            && leftScroll?.VerticalScrollMode == ScrollContainer.ScrollMode.Auto
+            && table?.Columns == 7 && table.ScrollVerticalEnabled
+            && footer is not null;
+        var contentOk = labels.Any(text => text.Contains("보급 병력 선택", System.StringComparison.Ordinal))
+            && labels.Any(text => text.Contains("주장 선택", System.StringComparison.Ordinal))
+            && buttons.Any(button => button.Text.Contains("확인", System.StringComparison.Ordinal))
+            && delay?.ItemCount == DeployService.MaxDeploymentDelayDays + 1;
+        var viewportRect = GetViewport().GetVisibleRect();
+        var boundsOk = modal is not null && viewportRect.Encloses(modal.GetGlobalRect());
+        var passed = structureOk && contentOk && boundsOk;
+        GD.Print($"[supply-compose-renewal-qa] passed={passed} structure={structureOk} content={contentOk} bounds={boundsOk} size={modal?.Size}");
+        CloseModal();
+        GetTree().Quit(passed ? 0 : 1);
+    }
 }
