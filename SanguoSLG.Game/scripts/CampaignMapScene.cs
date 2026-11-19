@@ -9081,7 +9081,7 @@ public sealed partial class CampaignMapScene : Node3D
 
         var supplyTroopTitle = MakeLabel(
             $"보급 병력 선택 (총원 최대 {_cb.SupplyMaxTroops}명)",
-            13,
+            15,
             GoldBright
         );
 
@@ -9396,7 +9396,7 @@ public sealed partial class CampaignMapScene : Node3D
             ColumnTitlesVisible = true,
             HideRoot = true,
             SelectMode = Tree.SelectModeEnum.Row,
-            CustomMinimumSize = new Vector2(0, 360),
+            CustomMinimumSize = new Vector2(0, 330),
             SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
             SizeFlagsVertical = Control.SizeFlags.ExpandFill,
             ScrollVerticalEnabled = true,
@@ -9488,12 +9488,27 @@ public sealed partial class CampaignMapScene : Node3D
         // footerBox.AddChild(_depPreview);
 
         var save = MakeButton("▶ 확인", accent: true);
-        save.CustomMinimumSize = new Vector2(0, 34);
 
         ApplyDeployComposeButtonTexture(save, true);
-        save.Pressed += SaveSupplyCompose;
 
-        footerBox.AddChild(save);
+        // 버튼 크기
+        save.CustomMinimumSize = new Vector2(120, 34);
+
+        // 가로 확장 방지 + 가운데 정렬
+        save.SizeFlagsHorizontal = Control.SizeFlags.ShrinkCenter;
+        save.SizeFlagsVertical = Control.SizeFlags.ShrinkCenter;
+
+        save.Pressed += SaveSupplyCompose;
+        var saveWrap = new MarginContainer
+        {
+            SizeFlagsHorizontal = Control.SizeFlags.ShrinkCenter,
+        };
+
+        saveWrap.AddThemeConstantOverride("margin_top", 10);
+
+        saveWrap.AddChild(save);
+        footerBox.AddChild(saveWrap);
+
         UpdateSupplyPreview();
 
         CenterAndDrag(
