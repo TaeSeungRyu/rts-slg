@@ -296,6 +296,25 @@ public sealed partial class CampaignMapScene
         button.AddThemeColorOverride("font_color", GoldBright);
     }
 
+    private Control DeployComposeResourceHeading(string iconFile, string text)
+    {
+        var row = new HBoxContainer();
+        row.AddThemeConstantOverride("separation", 7);
+        var icon = new TextureRect
+        {
+            Texture = GD.Load<Texture2D>(DeployCommandAssetRoot + iconFile),
+            CustomMinimumSize = new Vector2(28, 28),
+            ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
+            StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
+            MouseFilter = Control.MouseFilterEnum.Ignore,
+        };
+        row.AddChild(icon);
+        var label = MakeLabel(text, 13, GoldBright);
+        label.VerticalAlignment = VerticalAlignment.Center;
+        row.AddChild(label);
+        return row;
+    }
+
     private void RefreshDeployComposeHeroCards()
     {
         if (_deployComposeHeroCards is null || !GodotObject.IsInstanceValid(_deployComposeHeroCards)) return;

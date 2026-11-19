@@ -13902,7 +13902,7 @@ public sealed partial class CampaignMapScene : Node3D
         box.AddChild(amtRow);
 
         // 2-a) 군량 절대량 — 병력 변화에 따라 슬라이더 최대치도 같이 갱신한다.
-        box.AddChild(MakeLabel("휴대 군량", 13, GoldBright));
+        box.AddChild(DeployComposeResourceHeading("food.png", "휴대 군량"));
         var provRow = new HBoxContainer();
         provRow.AddThemeConstantOverride("separation", 10);
         _depProvSlider = ApplySliderStyle(new HSlider
@@ -13921,7 +13921,8 @@ public sealed partial class CampaignMapScene : Node3D
         _depProvLabel.CustomMinimumSize = new Vector2(220, 0);
         provRow.AddChild(_depProvLabel);
         box.AddChild(provRow);
-        _depGoldSpin = AddGoldCargoSelector(box, city, _depGold, value => { _depGold = value; UpdateDepPreview(); });
+        _depGoldSpin = AddGoldCargoSelector(box, city, _depGold,
+            value => { _depGold = value; UpdateDepPreview(); }, "money.png");
         var deployDelayOption = AddDeploymentDelaySelector(box, _depDelayDays, value => _depDelayDays = value);
 
         // 2-b) 이동 모드(행군/전진/공격)
@@ -13976,6 +13977,8 @@ public sealed partial class CampaignMapScene : Node3D
         _vanTree.AddThemeFontSizeOverride("font_size", 13);
         _vanTree.AddThemeFontOverride("title_button_font", _font);
         _vanTree.AddThemeFontSizeOverride("title_button_font_size", 12);
+        GameUiSkin.ApplyCommandTable(_vanTree);
+        _vanTree.AddThemeConstantOverride("h_separation", 12);
         foreach (var (col, t) in new[] { (0, "선봉"), (1, "부관") })
         {
             _vanTree.SetColumnTitle(col, t);
@@ -14054,6 +14057,8 @@ public sealed partial class CampaignMapScene : Node3D
         UpdateProvLabel();
         UpdateDepPreview();
         ApplyHorizontalComposeLayout(box, deployTroopTitle, deployRosterRule, deployFooterRule, scroll, mw, mh, disableLeftScroll: false);
+        if (box.FindChild("ComposeResourcesScroll", true, false) is ScrollContainer resourceScroll)
+            GameUiSkin.ApplyQuickListScroll(resourceScroll);
         CenterAndDrag(panel, titleRow, mw, mh, box);
     }
 
@@ -14232,10 +14237,13 @@ public sealed partial class CampaignMapScene : Node3D
         outerScroll.SetMeta("compose_outer_scroll_disabled", true);
     }
 
-    private SpinBox AddGoldCargoSelector(Control parent, CityId cityId, int initialValue, System.Action<int> changed)
+    private SpinBox AddGoldCargoSelector(Control parent, CityId cityId, int initialValue,
+        System.Action<int> changed, string? iconFile = null)
     {
         var city = _state.Cities.First(c => c.Id == cityId);
-        parent.AddChild(MakeLabel($"휴대 금 (보유 {city.Gold:N0})", 13, GoldBright));
+        parent.AddChild(iconFile is null
+            ? MakeLabel($"휴대 금 (보유 {city.Gold:N0})", 13, GoldBright)
+            : DeployComposeResourceHeading(iconFile, $"휴대 금 (보유 {city.Gold:N0})"));
         var row = new HBoxContainer { Name = "DeployGoldSelector", SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
         row.SetMeta("deploy_gold_selector", true);
         row.AddThemeConstantOverride("separation", 8);
