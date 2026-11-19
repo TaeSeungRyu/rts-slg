@@ -13968,7 +13968,7 @@ public sealed partial class CampaignMapScene : Node3D
             ColumnTitlesVisible = true,
             HideRoot = true,
             SelectMode = Tree.SelectModeEnum.Row,
-            CustomMinimumSize = new Vector2(0, 360),
+            CustomMinimumSize = new Vector2(0, 340),
             SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
             SizeFlagsVertical = Control.SizeFlags.ExpandFill,
             ScrollVerticalEnabled = true,
@@ -14015,19 +14015,31 @@ public sealed partial class CampaignMapScene : Node3D
         PopulateVanTree();
 
         // 5) 미리보기 + 확인
-        var deployFooterRule = GoldRule();
-        footerBox.AddChild(deployFooterRule);
+        // var deployFooterRule = GoldRule();
+        // footerBox.AddChild(deployFooterRule);
         _depPreview = MakeLabel("", 12, Parchment);
         _depPreview.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         _depPreview.CustomMinimumSize = new Vector2(mw - 60f, 0);
         footerBox.AddChild(_depPreview);
+        // var save = MakeButton("▶ 확인", accent: true);
+        // save.CustomMinimumSize = new Vector2(140, 34);
+        // save.SizeFlagsHorizontal = Control.SizeFlags.ShrinkCenter;
+        // ApplyDeployComposeButtonTexture(save, true);
+        // save.SizeFlagsHorizontal = Control.SizeFlags.ShrinkCenter; // 텍스처 적용 후에도 유지되도록 보장
+        // save.Pressed += SaveCompose;
+        // footerBox.AddChild(save);
         var save = MakeButton("▶ 확인", accent: true);
         save.CustomMinimumSize = new Vector2(140, 34);
-        save.SizeFlagsHorizontal = Control.SizeFlags.ShrinkCenter;
         ApplyDeployComposeButtonTexture(save, true);
-        save.SizeFlagsHorizontal = Control.SizeFlags.ShrinkCenter; // 텍스처 적용 후에도 유지되도록 보장
         save.Pressed += SaveCompose;
-        footerBox.AddChild(save);
+
+        var saveWrap = new MarginContainer
+        {
+            SizeFlagsHorizontal = Control.SizeFlags.ShrinkCenter,
+        };
+        saveWrap.AddThemeConstantOverride("margin_top", -5); // 버튼만 위로 5px 이동
+        saveWrap.AddChild(save);
+        footerBox.AddChild(saveWrap);        
 
         // 수정이면 기존 값 프리필.
         if (editIndex >= 0 && editIndex < _pendingDeploys.Count)
