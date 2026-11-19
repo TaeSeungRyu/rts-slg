@@ -870,6 +870,8 @@ public sealed partial class CampaignMapScene : Node3D
             CallDeferred(nameof(RunSupplyCommandCenterQa));
         if (args.Any(argument => argument.StartsWith("--maptesttransportcommandcenterqa", StringComparison.Ordinal)))
             CallDeferred(nameof(RunTransportCommandCenterQa));
+        if (args.Any(argument => argument.StartsWith("--maptestarmygroupcommandcenterqa", StringComparison.Ordinal)))
+            CallDeferred(nameof(RunArmyGroupCommandCenterQa));
         if (args.Contains("--maptestmodalcamerablockqa")) CallDeferred(nameof(RunModalCameraBlockQa));
         if (args.Contains("--maptestunitmenuqa")) CallDeferred(nameof(RunUnitMenuQa));
         if (args.Contains("--maptestplaybackstateqa")) CallDeferred(nameof(RunPlaybackStateQa));
@@ -13732,7 +13734,7 @@ public sealed partial class CampaignMapScene : Node3D
         return $"{source}→{dest} · {leader} · {lineText} · 금 {req.Gold} · 군량 {req.Provisions} · {DelayLabel(req.DelayDays)}";
     }
 
-    private void OpenArmyGroupHub(CityId city)
+    private void OpenArmyGroupHubLegacy(CityId city)
     {
         _depModalCity = city;
         if (_modalLayer is not null) { FadeOutModal(_modalLayer); _modalLayer = null; }
