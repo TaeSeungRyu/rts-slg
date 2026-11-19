@@ -564,7 +564,8 @@ private void BuildDeployCommandDetails(VBoxContainer parent, SanguoSLG.Core.Doma
             modeButton.Pressed += () =>
             {
                 _pendingDeploys[index] = (_pendingDeploys[index].Req with { Mode = mode }, _pendingDeploys[index].Label);
-                OpenDeployHub();
+                foreach (var child in modeRow.GetChildren().OfType<Button>())
+                    ApplyDeployComposeButtonTexture(child, child == modeButton);
             };
             modeRow.AddChild(modeButton);
         }
@@ -581,7 +582,6 @@ private void BuildDeployCommandDetails(VBoxContainer parent, SanguoSLG.Core.Doma
         delay.ItemSelected += selected =>
         {
             _pendingDeploys[index] = (_pendingDeploys[index].Req with { DelayDays = (int)selected }, _pendingDeploys[index].Label);
-            OpenDeployHub();
         };
         delayRow.AddChild(delay);
         commandBox.AddChild(delayRow);
