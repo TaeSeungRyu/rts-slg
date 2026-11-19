@@ -866,6 +866,8 @@ public sealed partial class CampaignMapScene : Node3D
             CallDeferred(nameof(RunDeployComposeRenewalQa));
         if (args.Any(argument => argument.StartsWith("--maptestsupplycomposerenewalqa", StringComparison.Ordinal)))
             CallDeferred(nameof(RunSupplyComposeRenewalQa));
+        if (args.Any(argument => argument.StartsWith("--maptestsupplycommandcenterqa", StringComparison.Ordinal)))
+            CallDeferred(nameof(RunSupplyCommandCenterQa));
         if (args.Contains("--maptestmodalcamerablockqa")) CallDeferred(nameof(RunModalCameraBlockQa));
         if (args.Contains("--maptestunitmenuqa")) CallDeferred(nameof(RunUnitMenuQa));
         if (args.Contains("--maptestplaybackstateqa")) CallDeferred(nameof(RunPlaybackStateQa));
@@ -8831,7 +8833,7 @@ public sealed partial class CampaignMapScene : Node3D
         OpenDeployHub();
     }
 
-    private void OpenSupplyHub(CityId city)
+    private void OpenSupplyHubLegacy(CityId city)
     {
         _depModalCity = city;
         if (_modalLayer is not null) { FadeOutModal(_modalLayer); _modalLayer = null; }
