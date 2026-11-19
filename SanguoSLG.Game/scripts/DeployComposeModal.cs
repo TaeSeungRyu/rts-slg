@@ -10,14 +10,14 @@ public sealed partial class DeployComposeModal : PanelContainer
 {
     public readonly record struct LayoutMetrics(
         // 전체 모달 안전 영역
-        int SafeLeft = 33,
-        int SafeRight = 33,
-        int SafeTop = 18,
-        int SafeBottom = 28,
+        int SafeLeft = 45,
+        int SafeRight = 45,
+        int SafeTop = 17,
+        int SafeBottom = 15,
         int RootSeparation = 7,
         // 헤더 영역
-        float HeaderMinHeight = 72f,
-        float HeaderLeadingSpacerWidth = 46f,
+        float HeaderMinHeight = 60f,
+        float HeaderLeadingSpacerWidth = 1f,
         int HeaderSeparation = 10,
         int HeaderMarginLeft = 0,
         int HeaderMarginRight = 0,
@@ -40,7 +40,38 @@ public sealed partial class DeployComposeModal : PanelContainer
         int FooterMarginRight = 0,
         int FooterMarginTop = 0,
         int FooterMarginBottom = 0
-    );
+    )
+    {
+        public static LayoutMetrics Default => new(  //여기값을 수정해야함.......
+            SafeLeft: 50,
+            SafeRight: 50,
+            SafeTop: 15,
+            SafeBottom: 15,
+            RootSeparation: 7,
+            HeaderMinHeight: 50f,
+            HeaderLeadingSpacerWidth: 46f,
+            HeaderSeparation: 10,
+            HeaderMarginLeft: 2,
+            HeaderMarginRight: 0,
+            HeaderMarginTop: 0,
+            HeaderMarginBottom: 0,
+            BodySeparation: 12,
+            BodyMarginLeft: 0,
+            BodyMarginRight: 0,
+            BodyMarginTop: 15,
+            BodyMarginBottom: 0,
+            LeftStretchRatio: 0.92f,
+            RightStretchRatio: 1.5f,
+            LeftContentSeparation: 8,
+            RightContentSeparation: 8,
+            FooterMinHeight: 68f,
+            FooterContentSeparation: 5,
+            FooterMarginLeft: 12,
+            FooterMarginRight: 0,
+            FooterMarginTop: 0,
+            FooterMarginBottom: 0
+        );
+    }
 
     public HBoxContainer Header { get; }
     public Button BackButton { get; }
@@ -64,8 +95,10 @@ public sealed partial class DeployComposeModal : PanelContainer
         Texture2D backgroundTexture,
         Font font,
         string title,
-        LayoutMetrics metrics = default)
+        LayoutMetrics? metrics = null)
     {
+        var resolvedMetrics = metrics ?? LayoutMetrics.Default;
+
         Name = "DeployComposeModal";
         var height = Mathf.Min(viewport.Y - 24f, 848f);
         var width = Mathf.Min(viewport.X - 24f, height * 1.5f);
@@ -88,6 +121,7 @@ public sealed partial class DeployComposeModal : PanelContainer
         AddChild(background);
 
         _safeArea = new MarginContainer { Name = "DeployComposeSafeArea" };
+        _safeArea.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
         AddChild(_safeArea);
 
         Root = new VBoxContainer
@@ -110,7 +144,7 @@ public sealed partial class DeployComposeModal : PanelContainer
         (_footerContainer, FooterContent) = BuildFooterSection();
         Root.AddChild(_footerContainer);
 
-        ApplyLayoutMetrics(metrics);
+        ApplyLayoutMetrics(resolvedMetrics);
     }
 
     public void ApplyLayoutMetrics(LayoutMetrics metrics)
@@ -285,10 +319,10 @@ public sealed partial class DeployComposeModal : PanelContainer
         {
             BgColor = Colors.Transparent,
             BorderColor = new Color("b68632"),
-            BorderWidthLeft = 1,
-            BorderWidthTop = 1,
-            BorderWidthRight = 1,
-            BorderWidthBottom = 1,
+            BorderWidthLeft = 0,
+            BorderWidthTop = 0,
+            BorderWidthRight = 0,
+            BorderWidthBottom = 0,
             CornerRadiusTopLeft = 6,
             CornerRadiusTopRight = 6,
             CornerRadiusBottomLeft = 6,

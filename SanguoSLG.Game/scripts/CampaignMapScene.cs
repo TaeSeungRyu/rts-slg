@@ -13949,8 +13949,8 @@ public sealed partial class CampaignMapScene : Node3D
 
         // 3) 장수 편성 표 — 선봉·부관 체크 컬럼 + 정렬(고정 높이·내부 스크롤).
         _composeFree = _state.GeneralsAt(city).Where(g => !_state.IsGeneralBusy(g) && !usedGens.Contains(g)).OrderBy(g => g.Value).ToList();
-        var deployRosterRule = GoldRule();
-        officerBox.AddChild(deployRosterRule);
+        // var deployRosterRule = GoldRule();
+        // officerBox.AddChild(deployRosterRule);
         officerBox.AddChild(MakeLabel("편성 장수 (선봉 1명 · 부관 1명)", 15, GoldBright));
         _deployComposeHeroCards = new HBoxContainer
         {
@@ -14022,8 +14022,10 @@ public sealed partial class CampaignMapScene : Node3D
         _depPreview.CustomMinimumSize = new Vector2(mw - 60f, 0);
         footerBox.AddChild(_depPreview);
         var save = MakeButton("▶ 확인", accent: true);
-        save.CustomMinimumSize = new Vector2(0, 34);
+        save.CustomMinimumSize = new Vector2(140, 34);
+        save.SizeFlagsHorizontal = Control.SizeFlags.ShrinkCenter;
         ApplyDeployComposeButtonTexture(save, true);
+        save.SizeFlagsHorizontal = Control.SizeFlags.ShrinkCenter; // 텍스처 적용 후에도 유지되도록 보장
         save.Pressed += SaveCompose;
         footerBox.AddChild(save);
 
