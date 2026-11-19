@@ -13807,28 +13807,32 @@ public sealed partial class CampaignMapScene : Node3D
         var vp = GetViewport().GetVisibleRect().Size;
         var mw = Mathf.Clamp(vp.X * 0.9f, 900f, 1180f);
         var mh = Mathf.Clamp(vp.Y * 0.9f, 360f, 820f); // 표가 고정 높이라, 모달은 내용에 맞춰 스크롤 없이 담기게
-        var box = DeployComposeScaffold(mw, mh, out var scroll, out var panel);
-        box.SetMeta("combat_compose_renewal", true);
-
         var cityName = _state.Cities.First(x => x.Id == city).Name;
-        var titleRow = new HBoxContainer
+        var layer = new CanvasLayer { Layer = 20 };
+        AddChild(layer);
+        _modalLayer = layer;
+        var backdrop = new ColorRect
         {
-            CustomMinimumSize = new Vector2(0, 72),
-            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+            Name = "ModalBackdrop",
+            Color = new Color(0, 0, 0, 0.68f),
+            MouseFilter = Control.MouseFilterEnum.Stop,
         };
-        box.AddChild(titleRow);
-        var title = MakeLabel($"{(editIndex >= 0 ? "부대 수정" : "부대 편성")}   《 {cityName} 》", 24, GoldBright);
-        title.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
-        title.VerticalAlignment = VerticalAlignment.Center;
-        title.MouseFilter = Control.MouseFilterEnum.Ignore;
-        titleRow.AddChild(title);
-        var back = MakeButton("◀ 목록");
-        back.CustomMinimumSize = new Vector2(60, 32);
-        back.SizeFlagsVertical = Control.SizeFlags.ShrinkCenter;
-        ApplyDeployComposeButtonTexture(back, false);
-        back.Pressed += OpenDeployHub;
-        titleRow.AddChild(back);
-        box.AddChild(GoldRule());
+        backdrop.SetAnchorsPreset(Control.LayoutPreset.FullRect);
+        backdrop.GuiInput += input =>
+        {
+            if (input is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left }) CloseModal();
+        };
+        layer.AddChild(backdrop);
+        var composeModal = new DeployComposeModal(vp,
+            GD.Load<Texture2D>(DeployCommandAssetRoot + "deploy_command_panel.png"), _font,
+            $"{(editIndex >= 0 ? "부대 수정" : "부대 편성")}  《 {cityName} 》");
+        layer.AddChild(composeModal);
+        var box = composeModal.LeftContent;
+        var officerBox = composeModal.RightContent;
+        var footerBox = composeModal.FooterContent;
+        ApplyDeployComposeButtonTexture(composeModal.BackButton, false);
+        composeModal.BackButton.Pressed += OpenDeployHub;
+        GameUiSkin.ApplyQuickListScroll(composeModal.LeftScroll);
 
         const int cols = 2;
 
@@ -13946,8 +13950,8 @@ public sealed partial class CampaignMapScene : Node3D
         // 3) 장수 편성 표 — 선봉·부관 체크 컬럼 + 정렬(고정 높이·내부 스크롤).
         _composeFree = _state.GeneralsAt(city).Where(g => !_state.IsGeneralBusy(g) && !usedGens.Contains(g)).OrderBy(g => g.Value).ToList();
         var deployRosterRule = GoldRule();
-        box.AddChild(deployRosterRule);
-        box.AddChild(MakeLabel("편성 장수 (선봉 1명 · 부관 1명)", 15, GoldBright));
+        officerBox.AddChild(deployRosterRule);
+        officerBox.AddChild(MakeLabel("편성 장수 (선봉 1명 · 부관 1명)", 15, GoldBright));
         _deployComposeHeroCards = new HBoxContainer
         {
             Name = "DeployComposeHeroCards",
@@ -13955,8 +13959,8 @@ public sealed partial class CampaignMapScene : Node3D
             SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
         };
         _deployComposeHeroCards.AddThemeConstantOverride("separation", 8);
-        box.AddChild(_deployComposeHeroCards);
-        box.AddChild(MakeLabel("장수 편성 (선봉 필수 · 부관 선택)", 13, GoldBright));
+        officerBox.AddChild(_deployComposeHeroCards);
+        officerBox.AddChild(MakeLabel("장수 편성 (선봉 필수 · 부관 선택)", 13, GoldBright));
         _vanTree = new Tree
         {
             Name = "ComposeOfficerTable",
@@ -14007,21 +14011,21 @@ public sealed partial class CampaignMapScene : Node3D
             else { _vanSortCol = c; _vanSortAsc = true; }
             PopulateVanTree();
         };
-        box.AddChild(_vanTree);
+        officerBox.AddChild(_vanTree);
         PopulateVanTree();
 
         // 5) 미리보기 + 확인
         var deployFooterRule = GoldRule();
-        box.AddChild(deployFooterRule);
+        footerBox.AddChild(deployFooterRule);
         _depPreview = MakeLabel("", 12, Parchment);
         _depPreview.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         _depPreview.CustomMinimumSize = new Vector2(mw - 60f, 0);
-        box.AddChild(_depPreview);
+        footerBox.AddChild(_depPreview);
         var save = MakeButton("▶ 확인", accent: true);
         save.CustomMinimumSize = new Vector2(0, 34);
         ApplyDeployComposeButtonTexture(save, true);
         save.Pressed += SaveCompose;
-        box.AddChild(save);
+        footerBox.AddChild(save);
 
         // 수정이면 기존 값 프리필.
         if (editIndex >= 0 && editIndex < _pendingDeploys.Count)
@@ -14053,11 +14057,8 @@ public sealed partial class CampaignMapScene : Node3D
         RefreshDeployComposeHeroCards();
         UpdateProvLabel();
         UpdateDepPreview();
-        ApplyHorizontalComposeLayout(box, deployTroopTitle, deployRosterRule, deployFooterRule, scroll, mw, mh, disableLeftScroll: false);
-        if (box.FindChild("ComposeResourcesScroll", true, false) is ScrollContainer resourceScroll)
-            GameUiSkin.ApplyQuickListScroll(resourceScroll);
-        CenterAndDrag(panel, titleRow, mw, mh, box);
-        panel.Position = (GetViewport().GetVisibleRect().Size - panel.Size) / 2f;
+        CenterAndDrag(composeModal, composeModal.Header, mw, mh, composeModal.Root);
+        composeModal.Position = (vp - composeModal.Size) / 2f;
     }
 
     // 자유 배치 패널(드래그 가능). panel은 레이어에 직접 얹혀 Position으로 움직인다.
