@@ -8999,19 +8999,32 @@ public sealed partial class CampaignMapScene : Node3D
         var vp = GetViewport().GetVisibleRect().Size;
         var mw = Mathf.Clamp(vp.X * 0.88f, 820f, 1120f);
         var mh = Mathf.Clamp(vp.Y * 0.86f, 560f, 760f);
-        var box = DeployScaffold(mw, out var scroll, out var panel);
         var cityName = _state.Cities.First(x => x.Id == city).Name;
-        var titleRow = new HBoxContainer();
-        box.AddChild(titleRow);
-        var title = MakeLabel($"{(editIndex >= 0 ? "보급부대 수정" : "보급부대 추가")}   《 {cityName} 》  ⠿", 18, Gold);
-        title.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
-        title.MouseFilter = Control.MouseFilterEnum.Ignore;
-        titleRow.AddChild(title);
-        var back = MakeButton("◀ 목록");
-        back.CustomMinimumSize = new Vector2(60, 32);
-        back.Pressed += () => OpenSupplyHub(city);
-        titleRow.AddChild(back);
-        box.AddChild(GoldRule());
+        var layer = new CanvasLayer { Layer = 20 };
+        AddChild(layer);
+        _modalLayer = layer;
+        var backdrop = new ColorRect
+        {
+            Name = "ModalBackdrop",
+            Color = new Color(0, 0, 0, 0.68f),
+            MouseFilter = Control.MouseFilterEnum.Stop,
+        };
+        backdrop.SetAnchorsPreset(Control.LayoutPreset.FullRect);
+        backdrop.GuiInput += input =>
+        {
+            if (input is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left }) CloseModal();
+        };
+        layer.AddChild(backdrop);
+        var supplyModal = new SupplyComposeModal(vp,
+            GD.Load<Texture2D>(DeployCommandAssetRoot + "deploy_command_panel.png"), _font,
+            $"{(editIndex >= 0 ? "보급부대 수정" : "보급부대 편성")}  《 {cityName} 》");
+        layer.AddChild(supplyModal);
+        var box = supplyModal.LeftContent;
+        var officerBox = supplyModal.RightContent;
+        var footerBox = supplyModal.FooterContent;
+        ApplyDeployComposeButtonTexture(supplyModal.BackButton, false);
+        supplyModal.BackButton.Pressed += () => OpenSupplyHub(city);
+        GameUiSkin.ApplyQuickListScroll(supplyModal.LeftScroll);
 
         var supplyTroopTitle = MakeLabel($"보급 병력 선택 (총원 최대 {_cb.SupplyMaxTroops}명)", 13, GoldBright);
         box.AddChild(supplyTroopTitle);
@@ -9094,6 +9107,7 @@ public sealed partial class CampaignMapScene : Node3D
         _supplyProvisionGuide.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         box.AddChild(_supplyProvisionGuide);
         var supportPreset = MakeButton("2만 명 · 60일 지원 군량 자동 선택");
+        ApplyDeployComposeButtonTexture(supportPreset, false);
         supportPreset.Pressed += () =>
         {
             var daily = SupplyDraftDailyConsumption();
@@ -9110,8 +9124,8 @@ public sealed partial class CampaignMapScene : Node3D
         AddDeploymentDelaySelector(box, _depDelayDays, value => _depDelayDays = value);
 
         var supplyRosterRule = GoldRule();
-        box.AddChild(supplyRosterRule);
-        box.AddChild(MakeLabel("주장 선택 (보급부대는 부관 없음)", 13, GoldBright));
+        officerBox.AddChild(supplyRosterRule);
+        officerBox.AddChild(MakeLabel("주장 선택 (보급부대는 부관 없음)", 15, GoldBright));
         _composeFree = _state.GeneralsAt(city)
             .Where(g => !_state.IsGeneralBusy(g) && !usedGens.Contains(g))
             .OrderBy(g => g.Value)
@@ -9163,22 +9177,24 @@ public sealed partial class CampaignMapScene : Node3D
             SyncSupplyProvisionSlider();
             UpdateSupplyPreview();
         };
-        box.AddChild(_vanTree);
+        officerBox.AddChild(_vanTree);
         PopulateSupplyGeneralTree();
 
         var supplyFooterRule = GoldRule();
-        box.AddChild(supplyFooterRule);
+        footerBox.AddChild(supplyFooterRule);
         _depPreview = MakeLabel("", 12, Parchment);
         _depPreview.AutowrapMode = TextServer.AutowrapMode.WordSmart;
-        box.AddChild(_depPreview);
+        _depPreview.CustomMinimumSize = new Vector2(mw - 60f, 0);
+        footerBox.AddChild(_depPreview);
         var save = MakeButton("▶ 확인", accent: true);
         save.CustomMinimumSize = new Vector2(0, 34);
+        ApplyDeployComposeButtonTexture(save, true);
         save.Pressed += SaveSupplyCompose;
-        box.AddChild(save);
+        footerBox.AddChild(save);
         UpdateSupplyPreview();
 
-        ApplyHorizontalComposeLayout(box, supplyTroopTitle, supplyRosterRule, supplyFooterRule, scroll, mw, mh);
-        CenterAndDrag(panel, titleRow, mw, mh, box);
+        CenterAndDrag(supplyModal, supplyModal.Header, mw, mh, supplyModal.Root);
+        supplyModal.Position = (vp - supplyModal.Size) / 2f;
     }
 
     // 병종 코드 → 한글 이름(성벽 연구 코드 포함).
