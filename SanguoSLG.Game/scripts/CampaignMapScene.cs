@@ -9065,7 +9065,7 @@ public sealed partial class CampaignMapScene : Node3D
         // 보급 병력 선택
         // =====================================================
 
-        const int troopAreaWidth = 510;
+        const int troopAreaWidth = 550;
         const int troopListHeight = 180;
 
         var troopBox = new VBoxContainer
@@ -9132,7 +9132,12 @@ public sealed partial class CampaignMapScene : Node3D
         };
 
         troopList.AddThemeConstantOverride("separation", 8);
-        troopScroll.AddChild(troopList);
+        var listMargin = new MarginContainer();
+
+        listMargin.AddThemeConstantOverride("margin_right", 5);
+
+        troopScroll.AddChild(listMargin);
+        listMargin.AddChild(troopList);
 
         // =====================================================
         // ★ 반복되는 병종은 troopList에만 추가
@@ -9173,12 +9178,16 @@ public sealed partial class CampaignMapScene : Node3D
                 Parchment
             );
 
+            name.CustomMinimumSize = new Vector2(0, 0);
             name.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+            name.SizeFlagsStretchRatio = 1.5f;
+
             row.AddChild(name);
 
             var amountRow = new HBoxContainer
             {
                 SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+                SizeFlagsStretchRatio = 1.5f,
             };
 
             amountRow.AddThemeConstantOverride("separation", 8);
@@ -9186,13 +9195,11 @@ public sealed partial class CampaignMapScene : Node3D
             var slider = ApplySliderStyle(new HSlider
             {
                 MinValue = 0,
-                MaxValue = System.Math.Min(
-                    available, _cb.SupplyMaxTroops),
+                MaxValue = System.Math.Min(available, _cb.SupplyMaxTroops),
                 Step = 100,
                 Value = System.Math.Min(
                     available,
-                    _supplyDraft.GetValueOrDefault(
-                        gar.TroopCode, 0)
+                    _supplyDraft.GetValueOrDefault(gar.TroopCode, 0)
                 ),
                 CustomMinimumSize = new Vector2(100, 24),
                 SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
@@ -9306,6 +9313,13 @@ public sealed partial class CampaignMapScene : Node3D
 
         ApplyDeployComposeButtonTexture(supportPreset, false);
 
+        // 버튼을 텍스트 크기에 맞게 표시
+        supportPreset.SizeFlagsHorizontal = Control.SizeFlags.ShrinkBegin;
+        supportPreset.SizeFlagsVertical = Control.SizeFlags.ShrinkCenter;
+
+        // 버튼 높이
+        supportPreset.CustomMinimumSize = new Vector2(0, 32);
+
         supportPreset.Pressed += () =>
         {
             var daily = SupplyDraftDailyConsumption();
@@ -9359,8 +9373,8 @@ public sealed partial class CampaignMapScene : Node3D
         // 주장 선택
         // =====================================================
 
-        var supplyRosterRule = GoldRule();
-        officerBox.AddChild(supplyRosterRule);
+        // var supplyRosterRule = GoldRule();
+        // officerBox.AddChild(supplyRosterRule);
 
         officerBox.AddChild(MakeLabel(
             "주장 선택 (보급부대는 부관 없음)",
@@ -9461,8 +9475,8 @@ public sealed partial class CampaignMapScene : Node3D
         // 하단 미리보기 및 확인
         // =====================================================
 
-        var supplyFooterRule = GoldRule();
-        footerBox.AddChild(supplyFooterRule);
+        // var supplyFooterRule = GoldRule();
+        // footerBox.AddChild(supplyFooterRule);
 
         _depPreview = MakeLabel("", 12, Parchment);
         _depPreview.AutowrapMode =
@@ -9471,7 +9485,7 @@ public sealed partial class CampaignMapScene : Node3D
         _depPreview.CustomMinimumSize =
             new Vector2(mw - 60f, 0);
 
-        footerBox.AddChild(_depPreview);
+        // footerBox.AddChild(_depPreview);
 
         var save = MakeButton("▶ 확인", accent: true);
         save.CustomMinimumSize = new Vector2(0, 34);
