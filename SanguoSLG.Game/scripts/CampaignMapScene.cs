@@ -862,6 +862,8 @@ public sealed partial class CampaignMapScene : Node3D
         if (args.Contains("--maptestdeployimageqa")) CallDeferred(nameof(RunDeployImageStyleQa));
         if (args.Any(argument => argument.StartsWith("--maptestdeploycommandcenterqa", StringComparison.Ordinal)))
             CallDeferred(nameof(RunDeployCommandCenterQa));
+        if (args.Any(argument => argument.StartsWith("--maptestdeploycomposerenewalqa", StringComparison.Ordinal)))
+            CallDeferred(nameof(RunDeployComposeRenewalQa));
         if (args.Contains("--maptestmodalcamerablockqa")) CallDeferred(nameof(RunModalCameraBlockQa));
         if (args.Contains("--maptestunitmenuqa")) CallDeferred(nameof(RunUnitMenuQa));
         if (args.Contains("--maptestplaybackstateqa")) CallDeferred(nameof(RunPlaybackStateQa));
@@ -13842,7 +13844,7 @@ public sealed partial class CampaignMapScene : Node3D
         // 1) 병종
         var deployTroopTitle = MakeLabel("병종 (대기 병력)", 13, GoldBright);
         box.AddChild(deployTroopTitle);
-        var tg = new GridContainer { Columns = cols };
+        var tg = new GridContainer { Name = "DeployComposeTroopGrid", Columns = cols };
         tg.AddThemeConstantOverride("h_separation", 8);
         tg.AddThemeConstantOverride("v_separation", 8);
         box.AddChild(tg);
@@ -14185,7 +14187,10 @@ public sealed partial class CampaignMapScene : Node3D
                 SizeFlagsStretchRatio = ratio,
                 SizeFlagsVertical = Control.SizeFlags.ExpandFill,
             };
-            frame.AddThemeStyleboxOverride("panel", Frame(new Color("16120e"), new Color("685735"), 1, 6, 8));
+            var combatCompose = root.GetMeta("combat_compose_renewal", false).AsBool();
+            frame.AddThemeStyleboxOverride("panel", combatCompose
+                ? Frame(Colors.Transparent, Gold, 1, 6, 8)
+                : Frame(new Color("16120e"), new Color("685735"), 1, 6, 8));
             var paneScroll = new ScrollContainer
             {
                 Name = name + "Scroll",

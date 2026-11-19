@@ -318,7 +318,11 @@ public sealed partial class CampaignMapScene
     private void RefreshDeployComposeHeroCards()
     {
         if (_deployComposeHeroCards is null || !GodotObject.IsInstanceValid(_deployComposeHeroCards)) return;
-        foreach (var child in _deployComposeHeroCards.GetChildren()) child.QueueFree();
+        foreach (var child in _deployComposeHeroCards.GetChildren())
+        {
+            _deployComposeHeroCards.RemoveChild(child);
+            child.QueueFree();
+        }
         _deployComposeHeroCards.AddChild(BuildDeployComposeHeroCard("선봉", _depVan));
         _deployComposeHeroCards.AddChild(BuildDeployComposeHeroCard("부관", _depAdj));
     }
@@ -619,6 +623,59 @@ private void BuildDeployCommandDetails(VBoxContainer parent, SanguoSLG.Core.Doma
         var passed = textureOk && layoutOk && contentOk && delayOk;
         GD.Print($"[deploy-command-center-qa] passed={passed} texture={textureOk} layout={layoutOk} content={contentOk} delay={delayOk} size={centerSize}");
         while (_pendingDeploys.Count > originalCount) _pendingDeploys.RemoveAt(_pendingDeploys.Count - 1);
+        CloseModal();
+        GetTree().Quit(passed ? 0 : 1);
+    }
+
+    private async void RunDeployComposeRenewalQa()
+    {
+        var sizeArgument = OS.GetCmdlineUserArgs().FirstOrDefault(argument =>
+            argument.StartsWith("--maptestdeploycomposerenewalqa=", System.StringComparison.Ordinal));
+        if (sizeArgument is not null)
+        {
+            var dimensions = sizeArgument.Split('=', 2)[1].Split('x', 2);
+            if (dimensions.Length == 2 && int.TryParse(dimensions[0], out var width)
+                && int.TryParse(dimensions[1], out var height)) GetWindow().Size = new Vector2I(width, height);
+        }
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        var city = _state.Cities.First(candidate => candidate.Owner == Player
+            && _state.Garrisons.Any(garrison => garrison.City == candidate.Id && garrison.Troops > 0 && !garrison.Trainee)
+            && _state.GeneralsAt(candidate.Id).Any(id => !_state.IsGeneralBusy(id)));
+        _depModalCity = city.Id;
+        OpenDeployCompose(-1);
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        var background = _modalLayer?.FindChild("DeployComposeBackground", true, false) as TextureRect;
+        var columns = _modalLayer?.FindChild("DeployComposeColumns", true, false) as HBoxContainer;
+        var troopGrid = _modalLayer?.FindChild("DeployComposeTroopGrid", true, false) as GridContainer;
+        var heroCards = _modalLayer?.FindChild("DeployComposeHeroCards", true, false) as HBoxContainer;
+        var table = _modalLayer?.FindChild("ComposeOfficerTable", true, false) as Tree;
+        var leftScroll = _modalLayer?.FindChild("ComposeResourcesScroll", true, false) as ScrollContainer;
+        var resourceTextures = _modalLayer?.FindChildren("*", "TextureRect", true, false).OfType<TextureRect>()
+            .Select(texture => texture.Texture?.ResourcePath ?? "").ToArray() ?? [];
+        var structureOk = background?.Texture?.ResourcePath.EndsWith("deploy_command_panel.png",
+                System.StringComparison.Ordinal) == true
+            && columns?.GetChildCount() == 2 && troopGrid?.Columns == 2
+            && heroCards?.GetChildCount() == 2 && table?.Columns == 8
+            && leftScroll?.VerticalScrollMode == ScrollContainer.ScrollMode.Auto;
+        var assetsOk = resourceTextures.Any(path => path.EndsWith("food.png", System.StringComparison.Ordinal))
+            && resourceTextures.Any(path => path.EndsWith("money.png", System.StringComparison.Ordinal))
+            && resourceTextures.Count(path => path.EndsWith("hero_card.png", System.StringComparison.Ordinal)) == 2;
+        var noSearch = _modalLayer?.FindChildren("*Search*", "LineEdit", true, false).Count == 0;
+        var firstGeneral = _composeFree.FirstOrDefault();
+        if (firstGeneral != default)
+        {
+            _depVan = firstGeneral;
+            RefreshDeployComposeHeroCards();
+            await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        }
+        var labels = _modalLayer?.FindChildren("*", "Label", true, false).OfType<Label>()
+            .Select(label => label.Text).ToArray() ?? [];
+        var liveSelection = firstGeneral == default || labels.Any(text =>
+            text.Contains(_state.Generals.First(general => general.Id == firstGeneral).Name,
+                System.StringComparison.Ordinal));
+        var passed = structureOk && assetsOk && noSearch && liveSelection;
+        GD.Print($"[deploy-compose-renewal-qa] passed={passed} structure={structureOk} assets={assetsOk} noSearch={noSearch} live={liveSelection}");
         CloseModal();
         GetTree().Quit(passed ? 0 : 1);
     }
