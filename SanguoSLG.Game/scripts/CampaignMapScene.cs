@@ -13834,19 +13834,41 @@ public sealed partial class CampaignMapScene : Node3D
         composeModal.BackButton.Pressed += OpenDeployHub;
         GameUiSkin.ApplyQuickListScroll(composeModal.LeftScroll);
 
-        const int cols = 2;
+        const int cols = 4;
 
         // 다른 예약(수정 중인 것 제외)이 이미 소모한 병력·장수.
         var usedTroops = ReservedTroopsByCode(city, editIndex, editingSupply: false);
         var usedGens = ReservedDeployGenerals(editIndex, editingSupply: false);
 
+
         // 1) 병종
         var deployTroopTitle = MakeLabel("병종 (대기 병력)", 13, GoldBright);
         box.AddChild(deployTroopTitle);
+
+        var troopScroll = new ScrollContainer
+        {
+            Name = "DeployComposeTroopScroll",
+            HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled,
+            VerticalScrollMode = ScrollContainer.ScrollMode.Auto,
+            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+            SizeFlagsVertical = Control.SizeFlags.ShrinkBegin,
+            CustomMinimumSize = new Vector2(0, 156), // 카드 2줄(약 74px * 2 + v_separation 8px) 기준 높이
+        };
+        GameUiSkin.ApplyQuickListScroll(troopScroll);
+        box.AddChild(troopScroll);
+
         var tg = new GridContainer { Name = "DeployComposeTroopGrid", Columns = cols };
         tg.AddThemeConstantOverride("h_separation", 8);
         tg.AddThemeConstantOverride("v_separation", 8);
-        box.AddChild(tg);
+        tg.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+        troopScroll.AddChild(tg);
+        // 1) 병종
+        // var deployTroopTitle = MakeLabel("병종 (대기 병력)", 13, GoldBright);
+        // box.AddChild(deployTroopTitle);
+        // var tg = new GridContainer { Name = "DeployComposeTroopGrid", Columns = cols };
+        // tg.AddThemeConstantOverride("h_separation", 8);
+        // tg.AddThemeConstantOverride("v_separation", 8);
+        // box.AddChild(tg);
         foreach (var gar in _state.Garrisons.Where(g => g.City == city && g.Troops > 0 && !g.Trainee))
         {
             var code = gar.TroopCode;
@@ -13968,9 +13990,9 @@ public sealed partial class CampaignMapScene : Node3D
             ColumnTitlesVisible = true,
             HideRoot = true,
             SelectMode = Tree.SelectModeEnum.Row,
-            CustomMinimumSize = new Vector2(0, 340),
+            CustomMinimumSize = new Vector2(0, 370),
             SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
-            SizeFlagsVertical = Control.SizeFlags.ExpandFill,
+            SizeFlagsVertical = Control.SizeFlags.ShrinkBegin,
             ScrollVerticalEnabled = true,
         };
         _vanTree.SetMeta("compose_officer_table_expanded", true);
