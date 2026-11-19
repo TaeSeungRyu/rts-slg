@@ -9396,7 +9396,8 @@ public sealed partial class CampaignMapScene : Node3D
             ColumnTitlesVisible = true,
             HideRoot = true,
             SelectMode = Tree.SelectModeEnum.Row,
-            CustomMinimumSize = new Vector2(0, 330),
+
+            CustomMinimumSize = new Vector2(0, 350),
             SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
             SizeFlagsVertical = Control.SizeFlags.ExpandFill,
             ScrollVerticalEnabled = true,
@@ -9468,7 +9469,16 @@ public sealed partial class CampaignMapScene : Node3D
             UpdateSupplyPreview();
         };
 
-        officerBox.AddChild(_vanTree);
+        var treeWrap = new MarginContainer
+        {
+            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+            SizeFlagsVertical = Control.SizeFlags.ExpandFill,
+        };
+
+        treeWrap.AddThemeConstantOverride("margin_bottom", 18);
+
+        treeWrap.AddChild(_vanTree);
+        officerBox.AddChild(treeWrap);
         PopulateSupplyGeneralTree();
 
         // =====================================================
