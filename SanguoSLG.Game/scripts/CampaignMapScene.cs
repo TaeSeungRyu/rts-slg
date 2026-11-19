@@ -8966,6 +8966,7 @@ public sealed partial class CampaignMapScene : Node3D
         DrawDeployPaths();
     }
 
+
     private void OpenSupplyCompose(int editIndex)
     {
         var city = _depModalCity;
@@ -8984,15 +8985,27 @@ public sealed partial class CampaignMapScene : Node3D
         _depProvLabel = null;
         _supplyProvisionGuide = null;
         _vanTree = null;
-        if (_modalLayer is not null) { FadeOutModal(_modalLayer); _modalLayer = null; }
 
-        var usedTroops = ReservedTroopsByCode(city, editIndex, editingSupply: true);
-        var usedGens = ReservedDeployGenerals(editIndex, editingSupply: true);
+        if (_modalLayer is not null)
+        {
+            FadeOutModal(_modalLayer);
+            _modalLayer = null;
+        }
+
+        var usedTroops = ReservedTroopsByCode(
+            city, editIndex, editingSupply: true);
+
+        var usedGens = ReservedDeployGenerals(
+            editIndex, editingSupply: true);
+
         if (editIndex >= 0 && editIndex < _pendingSupplyDeploys.Count)
         {
             var req = _pendingSupplyDeploys[editIndex].Req;
             _depVan = req.Vanguard;
-            foreach (var line in req.Lines) { _supplyDraft[line.TroopCode] = line.Troops; }
+
+            foreach (var line in req.Lines)
+                _supplyDraft[line.TroopCode] = line.Troops;
+
             _depProvDays = SupplyProvisionDaysFromAmount(req.Provisions);
             _depGold = req.Gold;
             _depDelayDays = req.DelayDays;
@@ -9001,94 +9014,261 @@ public sealed partial class CampaignMapScene : Node3D
         var vp = GetViewport().GetVisibleRect().Size;
         var mw = Mathf.Clamp(vp.X * 0.88f, 820f, 1120f);
         var mh = Mathf.Clamp(vp.Y * 0.86f, 560f, 760f);
-        var cityName = _state.Cities.First(x => x.Id == city).Name;
+
+        var cityName = _state.Cities
+            .First(x => x.Id == city).Name;
+
         var layer = new CanvasLayer { Layer = 20 };
         AddChild(layer);
         _modalLayer = layer;
+
         var backdrop = new ColorRect
         {
             Name = "ModalBackdrop",
             Color = new Color(0, 0, 0, 0.68f),
             MouseFilter = Control.MouseFilterEnum.Stop,
         };
+
         backdrop.SetAnchorsPreset(Control.LayoutPreset.FullRect);
+
         backdrop.GuiInput += input =>
         {
-            if (input is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left }) CloseModal();
+            if (input is InputEventMouseButton
+                { Pressed: true, ButtonIndex: MouseButton.Left })
+                CloseModal();
         };
+
         layer.AddChild(backdrop);
-        var supplyModal = new SupplyComposeModal(vp,
-            GD.Load<Texture2D>(DeployCommandAssetRoot + "deploy_command_panel.png"), _font,
-            $"{(editIndex >= 0 ? "보급부대 수정" : "보급부대 편성")}  《 {cityName} 》");
+
+        var supplyModal = new SupplyComposeModal(
+            vp,
+            GD.Load<Texture2D>(
+                DeployCommandAssetRoot + "deploy_command_panel.png"),
+            _font,
+            $"{(editIndex >= 0 ? "보급부대 수정" : "보급부대 편성")}  《 {cityName} 》"
+        );
+
         layer.AddChild(supplyModal);
+
         var box = supplyModal.LeftContent;
         var officerBox = supplyModal.RightContent;
         var footerBox = supplyModal.FooterContent;
-        ApplyDeployComposeButtonTexture(supplyModal.BackButton, false);
+
+        ApplyDeployComposeButtonTexture(
+            supplyModal.BackButton, false);
+
         supplyModal.BackButton.Pressed += () => OpenSupplyHub(city);
+
         GameUiSkin.ApplyQuickListScroll(supplyModal.LeftScroll);
 
-        var supplyTroopTitle = MakeLabel($"보급 병력 선택 (총원 최대 {_cb.SupplyMaxTroops}명)", 13, GoldBright);
-        box.AddChild(supplyTroopTitle);
-        foreach (var gar in _state.Garrisons.Where(g => g.City == city && g.Troops > 0 && !g.Trainee).OrderBy(g => g.TroopCode))
+        // =====================================================
+        // 보급 병력 선택
+        // =====================================================
+
+        const int troopAreaWidth = 510;
+        const int troopListHeight = 180;
+
+        var troopBox = new VBoxContainer
         {
-            var template = _troops.FirstOrDefault(t => t.Code == gar.TroopCode);
-            var available = System.Math.Max(0, gar.Troops - usedTroops.GetValueOrDefault(gar.TroopCode, 0));
-            var row = new HBoxContainer();
+            Name = "SupplyTroopSelectionBox",
+            CustomMinimumSize = new Vector2(troopAreaWidth, 0),
+            SizeFlagsHorizontal = Control.SizeFlags.ShrinkBegin,
+            SizeFlagsVertical = Control.SizeFlags.ShrinkBegin,
+        };
+
+        troopBox.AddThemeConstantOverride("separation", 8);
+        box.AddChild(troopBox);
+
+        var supplyTroopTitle = MakeLabel(
+            $"보급 병력 선택 (총원 최대 {_cb.SupplyMaxTroops}명)",
+            13,
+            GoldBright
+        );
+
+        troopBox.AddChild(supplyTroopTitle);
+
+        // =====================================================
+        // ★ 병력 목록 전용 고정 높이 영역
+        // =====================================================
+
+        var troopViewport = new Control
+        {
+            Name = "SupplyTroopViewport",
+            CustomMinimumSize = new Vector2(
+                troopAreaWidth,
+                troopListHeight
+            ),
+            SizeFlagsHorizontal = Control.SizeFlags.ShrinkBegin,
+            SizeFlagsVertical = Control.SizeFlags.ShrinkBegin,
+            ClipContents = true,
+        };
+
+        troopBox.AddChild(troopViewport);
+
+        var troopScroll = new ScrollContainer
+        {
+            Name = "SupplyTroopScroll",
+            OffsetLeft = 0,
+            OffsetTop = 0,
+            OffsetRight = 0,
+            OffsetBottom = 0,
+
+            HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled,
+            VerticalScrollMode = ScrollContainer.ScrollMode.Auto,
+
+            MouseFilter = Control.MouseFilterEnum.Stop,
+        };
+
+        troopScroll.SetAnchorsPreset(Control.LayoutPreset.FullRect);
+
+        GameUiSkin.ApplyQuickListScroll(troopScroll);
+        troopViewport.AddChild(troopScroll);
+
+        var troopList = new VBoxContainer
+        {
+            Name = "SupplyTroopList",
+            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+            SizeFlagsVertical = Control.SizeFlags.ShrinkBegin,
+        };
+
+        troopList.AddThemeConstantOverride("separation", 8);
+        troopScroll.AddChild(troopList);
+
+        // =====================================================
+        // ★ 반복되는 병종은 troopList에만 추가
+        // =====================================================
+
+        foreach (var gar in _state.Garrisons
+            .Where(g => g.City == city && g.Troops > 0 && !g.Trainee)
+            .OrderBy(g => g.TroopCode))
+        {
+            var template = _troops.FirstOrDefault(
+                t => t.Code == gar.TroopCode
+            );
+
+            var available = System.Math.Max(
+                0,
+                gar.Troops - usedTroops.GetValueOrDefault(
+                    gar.TroopCode, 0)
+            );
+
+            var row = new HBoxContainer
+            {
+                SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+                SizeFlagsVertical = Control.SizeFlags.ShrinkBegin,
+            };
+
             row.AddThemeConstantOverride("separation", 8);
-            row.AddChild(DeployUnitArtwork(UnitCard(gar.TroopCode, template?.Class), 34));
-            var name = MakeLabel($"{template?.Name ?? gar.TroopCode} · 가능 {available} · 훈{gar.TrainingLevel}", 12, Parchment);
+
+            row.AddChild(
+                DeployUnitArtwork(
+                    UnitCard(gar.TroopCode, template?.Class),
+                    34
+                )
+            );
+
+            var name = MakeLabel(
+                $"{template?.Name ?? gar.TroopCode} · 가능 {available} · 훈{gar.TrainingLevel}",
+                12,
+                Parchment
+            );
+
             name.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
             row.AddChild(name);
-            var amountRow = new HBoxContainer();
+
+            var amountRow = new HBoxContainer
+            {
+                SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+            };
+
             amountRow.AddThemeConstantOverride("separation", 8);
-            amountRow.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+
             var slider = ApplySliderStyle(new HSlider
             {
                 MinValue = 0,
-                MaxValue = System.Math.Min(available, _cb.SupplyMaxTroops),
+                MaxValue = System.Math.Min(
+                    available, _cb.SupplyMaxTroops),
                 Step = 100,
-                Value = System.Math.Min(available, _supplyDraft.GetValueOrDefault(gar.TroopCode, 0)),
-                CustomMinimumSize = new Vector2(180, 24),
+                Value = System.Math.Min(
+                    available,
+                    _supplyDraft.GetValueOrDefault(
+                        gar.TroopCode, 0)
+                ),
+                CustomMinimumSize = new Vector2(100, 24),
                 SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
                 SizeFlagsVertical = Control.SizeFlags.ShrinkCenter,
             });
+
             var spin = ApplyNumberInputStyle(new SpinBox
             {
                 MinValue = 0,
-                MaxValue = System.Math.Min(available, _cb.SupplyMaxTroops),
+                MaxValue = System.Math.Min(
+                    available, _cb.SupplyMaxTroops),
                 Step = 100,
                 Value = slider.Value,
-                CustomMinimumSize = new Vector2(120, 30),
+                CustomMinimumSize = new Vector2(85, 30),
             });
+
             void SetSupplyAmount(double v, bool fromSlider)
             {
                 var n = (int)v;
-                var otherTotal = _supplyDraft.Where(p => p.Key != gar.TroopCode).Sum(p => p.Value);
-                var maxForThis = System.Math.Max(0, System.Math.Min(available, _cb.SupplyMaxTroops - otherTotal));
+
+                var otherTotal = _supplyDraft
+                    .Where(p => p.Key != gar.TroopCode)
+                    .Sum(p => p.Value);
+
+                var maxForThis = System.Math.Max(
+                    0,
+                    System.Math.Min(
+                        available,
+                        _cb.SupplyMaxTroops - otherTotal
+                    )
+                );
+
                 if (n > maxForThis)
-                {
                     n = maxForThis;
-                }
+
                 slider.SetValueNoSignal(n);
                 spin.SetValueNoSignal(n);
-                if (n <= 0) { _supplyDraft.Remove(gar.TroopCode); }
-                else { _supplyDraft[gar.TroopCode] = n; }
+
+                if (n <= 0)
+                    _supplyDraft.Remove(gar.TroopCode);
+                else
+                    _supplyDraft[gar.TroopCode] = n;
+
                 SyncSupplyProvisionSlider();
                 UpdateSupplyPreview();
             }
-            slider.ValueChanged += v => SetSupplyAmount(v, true);
-            spin.ValueChanged += v => SetSupplyAmount(v, false);
+
+            slider.ValueChanged += v =>
+                SetSupplyAmount(v, true);
+
+            spin.ValueChanged += v =>
+                SetSupplyAmount(v, false);
+
             amountRow.AddChild(slider);
             amountRow.AddChild(spin);
             row.AddChild(amountRow);
-            box.AddChild(row);
+
+            // ★ 반드시 스크롤 내부 목록에 추가
+            troopList.AddChild(row);
         }
 
+        // =====================================================
+        // 휴대 군량
+        // =====================================================
+
         box.AddChild(GoldRule());
-        box.AddChild(MakeLabel("휴대 군량 · 보급부대 자체 소비 기준 일수", 13, GoldBright));
+
+        box.AddChild(MakeLabel(
+            "휴대 군량 · 보급부대 자체 소비 기준 일수",
+            13,
+            GoldBright
+        ));
+
         var provRow = new HBoxContainer();
         provRow.AddThemeConstantOverride("separation", 10);
+
         _depProvSlider = ApplySliderStyle(new HSlider
         {
             MinValue = 0,
@@ -9099,39 +9279,102 @@ public sealed partial class CampaignMapScene : Node3D
             SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
             SizeFlagsVertical = Control.SizeFlags.ShrinkCenter,
         });
-        _depProvSlider.ValueChanged += v => { _depProvDays = (int)v; UpdateSupplyPreview(); };
+
+        _depProvSlider.ValueChanged += v =>
+        {
+            _depProvDays = (int)v;
+            UpdateSupplyPreview();
+        };
+
         provRow.AddChild(_depProvSlider);
+
         _depProvLabel = MakeLabel("", 12, Parchment);
         _depProvLabel.CustomMinimumSize = new Vector2(240, 0);
         provRow.AddChild(_depProvLabel);
+
         box.AddChild(provRow);
+
         _supplyProvisionGuide = MakeLabel("", 12, Parchment);
-        _supplyProvisionGuide.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        _supplyProvisionGuide.AutowrapMode =
+            TextServer.AutowrapMode.WordSmart;
+
         box.AddChild(_supplyProvisionGuide);
-        var supportPreset = MakeButton("2만 명 · 60일 지원 군량 자동 선택");
+
+        var supportPreset = MakeButton(
+            "2만 명 · 60일 지원 군량 자동 선택"
+        );
+
         ApplyDeployComposeButtonTexture(supportPreset, false);
+
         supportPreset.Pressed += () =>
         {
             var daily = SupplyDraftDailyConsumption();
-            if (daily <= 0) { ShowNotice("보급 군량", "먼저 보급부대 병력을 편성하세요."); return; }
-            var transfer = 20_000 * _provPer10kPerDay / 10_000d;
-            var required = (int)System.Math.Ceiling((daily + transfer) * 60);
-            _depProvDays = System.Math.Min(SupplyMaxCarryDays(), (int)System.Math.Ceiling(required / daily));
+
+            if (daily <= 0)
+            {
+                ShowNotice(
+                    "보급 군량",
+                    "먼저 보급부대 병력을 편성하세요."
+                );
+                return;
+            }
+
+            var transfer =
+                20_000 * _provPer10kPerDay / 10_000d;
+
+            var required = (int)System.Math.Ceiling(
+                (daily + transfer) * 60
+            );
+
+            _depProvDays = System.Math.Min(
+                SupplyMaxCarryDays(),
+                (int)System.Math.Ceiling(required / daily)
+            );
+
             _depProvSlider?.SetValueNoSignal(_depProvDays);
             UpdateSupplyPreview();
         };
+
         box.AddChild(supportPreset);
         SyncSupplyProvisionSlider();
-        _depGoldSpin = AddGoldCargoSelector(box, city, _depGold, value => { _depGold = value; UpdateSupplyPreview(); });
-        AddDeploymentDelaySelector(box, _depDelayDays, value => _depDelayDays = value);
+
+        _depGoldSpin = AddGoldCargoSelector(
+            box,
+            city,
+            _depGold,
+            value =>
+            {
+                _depGold = value;
+                UpdateSupplyPreview();
+            }
+        );
+
+        AddDeploymentDelaySelector(
+            box,
+            _depDelayDays,
+            value => _depDelayDays = value
+        );
+
+        // =====================================================
+        // 주장 선택
+        // =====================================================
 
         var supplyRosterRule = GoldRule();
         officerBox.AddChild(supplyRosterRule);
-        officerBox.AddChild(MakeLabel("주장 선택 (보급부대는 부관 없음)", 15, GoldBright));
+
+        officerBox.AddChild(MakeLabel(
+            "주장 선택 (보급부대는 부관 없음)",
+            15,
+            GoldBright
+        ));
+
         _composeFree = _state.GeneralsAt(city)
-            .Where(g => !_state.IsGeneralBusy(g) && !usedGens.Contains(g))
+            .Where(g =>
+                !_state.IsGeneralBusy(g) &&
+                !usedGens.Contains(g))
             .OrderBy(g => g.Value)
             .ToList();
+
         _vanTree = new Tree
         {
             Name = "ComposeOfficerTable",
@@ -9144,60 +9387,114 @@ public sealed partial class CampaignMapScene : Node3D
             SizeFlagsVertical = Control.SizeFlags.ExpandFill,
             ScrollVerticalEnabled = true,
         };
+
         _vanTree.SetMeta("compose_officer_table_expanded", true);
+
         _vanTree.AddThemeFontOverride("font", _font);
         _vanTree.AddThemeFontSizeOverride("font_size", 13);
-        _vanTree.AddThemeFontOverride("title_button_font", _font);
-        _vanTree.AddThemeFontSizeOverride("title_button_font_size", 12);
-        _vanTree.SetColumnTitle(0, "주장"); _vanTree.SetColumnExpand(0, false); _vanTree.SetColumnCustomMinimumWidth(0, 52);
-        _vanTree.SetColumnTitle(1, "이름"); _vanTree.SetColumnExpand(1, true); _vanTree.SetColumnExpandRatio(1, 2);
-        foreach (var (col, titleText) in new[] { (2, "무"), (3, "지"), (4, "정") })
+        _vanTree.AddThemeFontOverride(
+            "title_button_font", _font);
+        _vanTree.AddThemeFontSizeOverride(
+            "title_button_font_size", 12);
+
+        _vanTree.SetColumnTitle(0, "주장");
+        _vanTree.SetColumnExpand(0, false);
+        _vanTree.SetColumnCustomMinimumWidth(0, 52);
+
+        _vanTree.SetColumnTitle(1, "이름");
+        _vanTree.SetColumnExpand(1, true);
+        _vanTree.SetColumnExpandRatio(1, 2);
+
+        foreach (var (col, titleText) in new[]
+        {
+            (2, "무"),
+            (3, "지"),
+            (4, "정")
+        })
         {
             _vanTree.SetColumnTitle(col, titleText);
             _vanTree.SetColumnExpand(col, false);
             _vanTree.SetColumnCustomMinimumWidth(col, 42);
         }
+
         _vanTree.SetColumnTitle(5, "보급");
         _vanTree.SetColumnExpand(5, false);
         _vanTree.SetColumnCustomMinimumWidth(5, 48);
+
         _vanTree.SetColumnTitle(6, "현재 담당업무");
         _vanTree.SetColumnExpand(6, true);
+
         _vanTree.ColumnTitleClicked += (col, _) =>
         {
             var c = (int)col;
-            if (c == 0) { return; }
+
+            if (c == 0)
+                return;
+
             _vanSortCol = c;
             _vanSortAsc = !_vanSortAsc;
-            CallDeferred(nameof(PopulateSupplyGeneralTreeDeferred));
+
+            CallDeferred(
+                nameof(PopulateSupplyGeneralTreeDeferred));
         };
+
         _vanTree.ItemSelected += () =>
         {
             var it = _vanTree.GetSelected();
-            if (it is null) { return; }
-            _depVan = new GeneralId(it.GetMetadata(0).AsInt32());
+
+            if (it is null)
+                return;
+
+            _depVan = new GeneralId(
+                it.GetMetadata(0).AsInt32()
+            );
+
             RestyleSupplyGeneralTreeSelection();
             SyncSupplyProvisionSlider();
             UpdateSupplyPreview();
         };
+
         officerBox.AddChild(_vanTree);
         PopulateSupplyGeneralTree();
 
+        // =====================================================
+        // 하단 미리보기 및 확인
+        // =====================================================
+
         var supplyFooterRule = GoldRule();
         footerBox.AddChild(supplyFooterRule);
+
         _depPreview = MakeLabel("", 12, Parchment);
-        _depPreview.AutowrapMode = TextServer.AutowrapMode.WordSmart;
-        _depPreview.CustomMinimumSize = new Vector2(mw - 60f, 0);
+        _depPreview.AutowrapMode =
+            TextServer.AutowrapMode.WordSmart;
+
+        _depPreview.CustomMinimumSize =
+            new Vector2(mw - 60f, 0);
+
         footerBox.AddChild(_depPreview);
+
         var save = MakeButton("▶ 확인", accent: true);
         save.CustomMinimumSize = new Vector2(0, 34);
+
         ApplyDeployComposeButtonTexture(save, true);
         save.Pressed += SaveSupplyCompose;
+
         footerBox.AddChild(save);
         UpdateSupplyPreview();
 
-        CenterAndDrag(supplyModal, supplyModal.Header, mw, mh, supplyModal.Root);
-        supplyModal.Position = (vp - supplyModal.Size) / 2f;
+        CenterAndDrag(
+            supplyModal,
+            supplyModal.Header,
+            mw,
+            mh,
+            supplyModal.Root
+        );
+
+        supplyModal.Position =
+            (vp - supplyModal.Size) / 2f;
     }
+
+
 
     // 병종 코드 → 한글 이름(성벽 연구 코드 포함).
     private string TroopName(string code) => code == "army_group" ? "집단군"
