@@ -6,7 +6,7 @@ namespace SanguoSLG.Game;
 /// 전투 부대편성 전용 모달 뷰. 게임 상태와 계산을 알지 않으며 고정 이미지 프레임과
 /// 병종/설정, 편성 장수/목록, 요약/확정 영역의 배치만 소유한다.
 /// </summary>
-public sealed partial class DeployComposeModal : PanelContainer
+public partial class DeployComposeModal : PanelContainer
 {
     public readonly record struct LayoutMetrics(
         // 전체 모달 안전 영역
