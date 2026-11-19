@@ -364,10 +364,53 @@ public sealed partial class CampaignMapScene
             return card;
         }
         var general = _state.Generals.First(item => item.Id == id);
-        var portrait = FixedIcon(OfficerPortrait(id), 82);
-        portrait.CustomMinimumSize = new Vector2(82, 82);
-        portrait.MouseFilter = Control.MouseFilterEnum.Ignore;
-        row.AddChild(portrait);
+
+
+
+        // var portrait = FixedIcon(OfficerPortrait(id), 82);
+        // portrait.CustomMinimumSize = new Vector2(82, 82);
+        // portrait.MouseFilter = Control.MouseFilterEnum.Ignore;
+        // row.AddChild(portrait);
+
+        // 장수 초상화 (82 × 82 정사각형)
+        var portrait = new TextureRect
+        {
+            Texture = OfficerPortrait(id),
+            CustomMinimumSize = new Vector2(78, 78),
+            ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
+            StretchMode = TextureRect.StretchModeEnum.KeepAspectCovered,
+            MouseFilter = Control.MouseFilterEnum.Ignore,
+        };
+
+        // 금색 테두리
+        var portraitFrame = new PanelContainer
+        {
+            CustomMinimumSize = new Vector2(82, 82),
+            MouseFilter = Control.MouseFilterEnum.Ignore,
+        };
+
+        var frameStyle = new StyleBoxFlat
+        {
+            BgColor = new Color("#17120E"),
+            BorderColor = new Color("#B89452"),
+            BorderWidthLeft = 1,
+            BorderWidthRight = 1,
+            BorderWidthTop = 1,
+            BorderWidthBottom = 1,
+            CornerRadiusBottomLeft = 3,
+            CornerRadiusBottomRight = 3,
+            CornerRadiusTopLeft = 3,
+            CornerRadiusTopRight = 3
+        };
+
+        portraitFrame.AddThemeStyleboxOverride("panel", frameStyle);
+        portraitFrame.AddChild(portrait);
+
+        row.AddChild(portraitFrame);        
+
+
+
+
         var text = new VBoxContainer { Alignment = BoxContainer.AlignmentMode.Center,
             SizeFlagsHorizontal = Control.SizeFlags.ExpandFill, MouseFilter = Control.MouseFilterEnum.Ignore };
         text.AddChild(MakeLabel($"{role}   {general.Name}", 17, GoldBright));

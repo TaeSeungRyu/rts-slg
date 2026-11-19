@@ -13990,7 +13990,7 @@ public sealed partial class CampaignMapScene : Node3D
             ColumnTitlesVisible = true,
             HideRoot = true,
             SelectMode = Tree.SelectModeEnum.Row,
-            CustomMinimumSize = new Vector2(0, 370),
+            CustomMinimumSize = new Vector2(0, 380),
             SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
             SizeFlagsVertical = Control.SizeFlags.ShrinkBegin,
             ScrollVerticalEnabled = true,
