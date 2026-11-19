@@ -646,6 +646,9 @@ private void BuildDeployCommandDetails(VBoxContainer parent, SanguoSLG.Core.Doma
         await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
         await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
         var background = _modalLayer?.FindChild("DeployComposeBackground", true, false) as TextureRect;
+        var frame = _modalLayer?.FindChild("DeployComposeFrame", true, false) as PanelContainer;
+        var safeArea = _modalLayer?.FindChild("DeployComposeSafeArea", true, false) as MarginContainer;
+        var outerScroll = _modalLayer?.FindChild("DeployComposeOuterScroll", true, false) as ScrollContainer;
         var columns = _modalLayer?.FindChild("DeployComposeColumns", true, false) as HBoxContainer;
         var troopGrid = _modalLayer?.FindChild("DeployComposeTroopGrid", true, false) as GridContainer;
         var heroCards = _modalLayer?.FindChild("DeployComposeHeroCards", true, false) as HBoxContainer;
@@ -655,6 +658,9 @@ private void BuildDeployCommandDetails(VBoxContainer parent, SanguoSLG.Core.Doma
             .Select(texture => texture.Texture?.ResourcePath ?? "").ToArray() ?? [];
         var structureOk = background?.Texture?.ResourcePath.EndsWith("deploy_command_panel.png",
                 System.StringComparison.Ordinal) == true
+            && frame is not null && safeArea is not null
+            && frame.GetGlobalRect().Encloses(safeArea.GetGlobalRect())
+            && outerScroll?.VerticalScrollMode == ScrollContainer.ScrollMode.Disabled
             && columns?.GetChildCount() == 2 && troopGrid?.Columns == 2
             && heroCards?.GetChildCount() == 2 && table?.Columns == 8
             && leftScroll?.VerticalScrollMode == ScrollContainer.ScrollMode.Auto;

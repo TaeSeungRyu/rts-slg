@@ -13807,29 +13807,24 @@ public sealed partial class CampaignMapScene : Node3D
         var vp = GetViewport().GetVisibleRect().Size;
         var mw = Mathf.Clamp(vp.X * 0.9f, 900f, 1180f);
         var mh = Mathf.Clamp(vp.Y * 0.9f, 360f, 820f); // 표가 고정 높이라, 모달은 내용에 맞춰 스크롤 없이 담기게
-        var box = DeployScaffold(mw, out var scroll, out var panel);
+        var box = DeployComposeScaffold(mw, mh, out var scroll, out var panel);
         box.SetMeta("combat_compose_renewal", true);
-        panel.AddThemeStyleboxOverride("panel", Frame(Colors.Transparent, Colors.Transparent, 0, 0, 24));
-        var composeBackground = new TextureRect
-        {
-            Name = "DeployComposeBackground",
-            Texture = GD.Load<Texture2D>(DeployCommandAssetRoot + "deploy_command_panel.png"),
-            ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
-            StretchMode = TextureRect.StretchModeEnum.Scale,
-            MouseFilter = Control.MouseFilterEnum.Ignore,
-        };
-        panel.AddChild(composeBackground);
-        panel.MoveChild(composeBackground, 0);
 
         var cityName = _state.Cities.First(x => x.Id == city).Name;
-        var titleRow = new HBoxContainer();
+        var titleRow = new HBoxContainer
+        {
+            CustomMinimumSize = new Vector2(0, 72),
+            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+        };
         box.AddChild(titleRow);
         var title = MakeLabel($"{(editIndex >= 0 ? "부대 수정" : "부대 편성")}   《 {cityName} 》", 24, GoldBright);
         title.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+        title.VerticalAlignment = VerticalAlignment.Center;
         title.MouseFilter = Control.MouseFilterEnum.Ignore;
         titleRow.AddChild(title);
         var back = MakeButton("◀ 목록");
         back.CustomMinimumSize = new Vector2(60, 32);
+        back.SizeFlagsVertical = Control.SizeFlags.ShrinkCenter;
         ApplyDeployComposeButtonTexture(back, false);
         back.Pressed += OpenDeployHub;
         titleRow.AddChild(back);
@@ -14062,6 +14057,7 @@ public sealed partial class CampaignMapScene : Node3D
         if (box.FindChild("ComposeResourcesScroll", true, false) is ScrollContainer resourceScroll)
             GameUiSkin.ApplyQuickListScroll(resourceScroll);
         CenterAndDrag(panel, titleRow, mw, mh, box);
+        panel.Position = (GetViewport().GetVisibleRect().Size - panel.Size) / 2f;
     }
 
     // 자유 배치 패널(드래그 가능). panel은 레이어에 직접 얹혀 Position으로 움직인다.
