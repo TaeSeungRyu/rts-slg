@@ -868,6 +868,8 @@ public sealed partial class CampaignMapScene : Node3D
             CallDeferred(nameof(RunSupplyComposeRenewalQa));
         if (args.Any(argument => argument.StartsWith("--maptestsupplycommandcenterqa", StringComparison.Ordinal)))
             CallDeferred(nameof(RunSupplyCommandCenterQa));
+        if (args.Any(argument => argument.StartsWith("--maptesttransportcommandcenterqa", StringComparison.Ordinal)))
+            CallDeferred(nameof(RunTransportCommandCenterQa));
         if (args.Contains("--maptestmodalcamerablockqa")) CallDeferred(nameof(RunModalCameraBlockQa));
         if (args.Contains("--maptestunitmenuqa")) CallDeferred(nameof(RunUnitMenuQa));
         if (args.Contains("--maptestplaybackstateqa")) CallDeferred(nameof(RunPlaybackStateQa));
@@ -13590,7 +13592,7 @@ public sealed partial class CampaignMapScene : Node3D
         CenterAndDrag(panel, titleRow, mw, mh, box);
     }
 
-    private void OpenTransportHub(CityId city)
+    private void OpenTransportHubLegacy(CityId city)
     {
         _depModalCity = city;
         if (_modalLayer is not null) { FadeOutModal(_modalLayer); _modalLayer = null; }
