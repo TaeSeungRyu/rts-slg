@@ -872,6 +872,8 @@ public sealed partial class CampaignMapScene : Node3D
             CallDeferred(nameof(RunTransportCommandCenterQa));
         if (args.Any(argument => argument.StartsWith("--maptestarmygroupcommandcenterqa", StringComparison.Ordinal)))
             CallDeferred(nameof(RunArmyGroupCommandCenterQa));
+        if (args.Any(argument => argument.StartsWith("--maptestarmygroupcomposeuiqa", StringComparison.Ordinal)))
+            CallDeferred(nameof(RunArmyGroupComposeUiQa));
         if (args.Contains("--maptestmodalcamerablockqa")) CallDeferred(nameof(RunModalCameraBlockQa));
         if (args.Contains("--maptestunitmenuqa")) CallDeferred(nameof(RunUnitMenuQa));
         if (args.Contains("--maptestplaybackstateqa")) CallDeferred(nameof(RunPlaybackStateQa));
@@ -13895,37 +13897,39 @@ public sealed partial class CampaignMapScene : Node3D
         var vp = GetViewport().GetVisibleRect().Size;
         var mw = Mathf.Clamp(vp.X * 0.9f, 900f, 1180f);
         var mh = Mathf.Clamp(vp.Y * 0.9f, 420f, 820f);
-        var box = DeployScaffold(mw, out var scroll, out var panel);
         var cityData = _state.Cities.First(c => c.Id == city);
-        var titleRow = new HBoxContainer();
-        box.AddChild(titleRow);
-        var title = MakeLabel($"{(editIndex >= 0 ? "집단군 수정" : "집단군 편성")}   《 {cityData.Name} 》  ⠿", 18, Gold);
-        title.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
-        title.MouseFilter = Control.MouseFilterEnum.Ignore;
-        titleRow.AddChild(title);
-        var back = MakeButton("◀ 목록");
-        back.CustomMinimumSize = new Vector2(60, 32);
-        back.Pressed += () => OpenArmyGroupHub(city);
-        titleRow.AddChild(back);
-        box.AddChild(GoldRule());
+        var layer = new CanvasLayer { Layer = 20 };
+        AddChild(layer);
+        _modalLayer = layer;
+        var backdrop = new ColorRect { Name = "ModalBackdrop", Color = new Color(0, 0, 0, 0.68f), MouseFilter = Control.MouseFilterEnum.Stop };
+        backdrop.SetAnchorsPreset(Control.LayoutPreset.FullRect);
+        backdrop.GuiInput += input =>
+        {
+            if (input is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left }) CloseModal();
+        };
+        layer.AddChild(backdrop);
+        var composeModal = new ArmyGroupComposeModal(vp,
+            GD.Load<Texture2D>(DeployCommandAssetRoot + "deploy_command_panel.png"), _font,
+            $"{(editIndex >= 0 ? "집단군 수정" : "집단군 편성")}  《 {cityData.Name} 》");
+        layer.AddChild(composeModal);
+        var box = composeModal.LeftContent;
+        var officerBox = composeModal.RightContent;
+        var footerBox = composeModal.FooterContent;
+        ApplyDeployComposeButtonTexture(composeModal.BackButton, false);
+        composeModal.BackButton.Pressed += () => OpenArmyGroupHub(city);
+        GameUiSkin.ApplyQuickListScroll(composeModal.LeftScroll);
 
         var maxTroops = CommandEfficiency.ArmyGroupDeployLimit(_state.ResearchOf(cityData.Owner, FactionResearch.ArmyGroupCode), _cb);
         var armyGroupTroopTitle = MakeLabel($"편성 상한 {maxTroops:N0}명 · 필수 최소 {_cb.ArmyGroupMinClassTroops:N0}명: 보병 / 궁병 / 공성", 13, GoldBright);
         armyGroupTroopTitle.Name = "ArmyGroupCapLabel";
         box.AddChild(armyGroupTroopTitle);
-        box.AddChild(DeployUnitArtwork(ArmyGroupIcon(), 52));
         box.AddChild(MakeLabel("집단군 병종 특성은 선봉의 보병·궁병·공성 적성을 평균낸 뒤 반내림합니다. 예: S/A/S = A+, S/A/A = A", 12, Parchment));
 
         var usedTroops = ReservedTroopsByCode(city, editIndex, editingSupply: false);
-        var table = new GridContainer { Columns = 5, SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+        var table = new GridContainer { Name = "ArmyGroupTroopGrid", Columns = 2, SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
         table.AddThemeConstantOverride("h_separation", 8);
         table.AddThemeConstantOverride("v_separation", 6);
         box.AddChild(table);
-        foreach (var head in new[] { "병과", "병종", "대기", "투입", "훈련" })
-        {
-            table.AddChild(MakeLabel(head, 12, GoldBright));
-        }
-
         foreach (var gar in _state.Garrisons
             .Where(g => g.City == city && g.Troops > 0 && !g.Trainee)
             .OrderBy(g => g.TroopCode, System.StringComparer.Ordinal))
@@ -13939,9 +13943,13 @@ public sealed partial class CampaignMapScene : Node3D
             }
             var available = System.Math.Max(0, gar.Troops - reserved);
             var current = System.Math.Min(_armyGroupDraft.GetValueOrDefault(gar.TroopCode, 0), available);
-            table.AddChild(MakeLabel(ClassName(template.Class), 12, Parchment));
-            table.AddChild(MakeLabel(template.Name, 12, Parchment));
-            table.AddChild(MakeLabel($"{available:N0}", 12, Parchment));
+            var card = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+            card.AddThemeConstantOverride("separation", 4);
+            var cardHeading = new HBoxContainer();
+            cardHeading.AddThemeConstantOverride("separation", 6);
+            cardHeading.AddChild(DeployUnitArtwork(UnitCard(gar.TroopCode, template.Class), 42));
+            cardHeading.AddChild(MakeLabel($"{template.Name}\n대기 {available:N0} · 훈련 {gar.TrainingLevel}", 12, Parchment));
+            card.AddChild(cardHeading);
             var spin = ApplyNumberInputStyle(new SpinBox { MinValue = 0, MaxValue = available, Step = 100, Value = current, CustomMinimumSize = new Vector2(120, 30) });
             spin.ValueChanged += v =>
             {
@@ -13949,14 +13957,22 @@ public sealed partial class CampaignMapScene : Node3D
                 UpdateArmyGroupPreview();
             };
             _armyGroupAmountSpins[gar.TroopCode] = spin;
-            table.AddChild(spin);
-            table.AddChild(MakeLabel($"{gar.TrainingLevel}", 12, gar.TrainingLevel < 50 ? AccentFill : Parchment));
+            card.AddChild(spin);
+            table.AddChild(card);
         }
         _depGoldSpin = AddGoldCargoSelector(box, city, _depGold, value => { _depGold = value; UpdateArmyGroupPreview(); });
         AddDeploymentDelaySelector(box, _depDelayDays, value => _depDelayDays = value);
 
         var armyGroupRosterTitle = MakeLabel("장수 편성 (선봉 필수 · 부관 선택 · 전투편성과 동일하게 체크)", 13, GoldBright);
-        box.AddChild(armyGroupRosterTitle);
+        officerBox.AddChild(armyGroupRosterTitle);
+        _deployComposeHeroCards = new HBoxContainer
+        {
+            Name = "ArmyGroupHeroCards",
+            CustomMinimumSize = new Vector2(0, 118),
+            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+        };
+        _deployComposeHeroCards.AddThemeConstantOverride("separation", 8);
+        officerBox.AddChild(_deployComposeHeroCards);
         var tree = new Tree
         {
             Name = "ComposeOfficerTable",
@@ -14016,21 +14032,24 @@ public sealed partial class CampaignMapScene : Node3D
             if (_vanSortCol == c) { _vanSortAsc = !_vanSortAsc; }
             else { _vanSortCol = c; _vanSortAsc = true; }
         };
-        box.AddChild(tree);
+        officerBox.AddChild(tree);
 
         var armyGroupFooterRule = GoldRule();
-        box.AddChild(armyGroupFooterRule);
+        footerBox.AddChild(armyGroupFooterRule);
         _depPreview = MakeLabel("", 12, Parchment);
         _depPreview.AutowrapMode = TextServer.AutowrapMode.WordSmart;
-        box.AddChild(_depPreview);
+        _depPreview.CustomMinimumSize = new Vector2(mw - 60f, 0);
+        footerBox.AddChild(_depPreview);
         var save = MakeButton("▶ 확인", accent: true);
         save.CustomMinimumSize = new Vector2(0, 34);
+        ApplyDeployComposeButtonTexture(save, true);
         save.Pressed += SaveArmyGroupCompose;
-        box.AddChild(save);
+        footerBox.AddChild(save);
+        RefreshArmyGroupHeroCards();
         UpdateArmyGroupPreview();
 
-        ApplyHorizontalComposeLayout(box, armyGroupTroopTitle, armyGroupRosterTitle, armyGroupFooterRule, scroll, mw, mh);
-        CenterAndDrag(panel, titleRow, mw, mh, box);
+        CenterAndDrag(composeModal, composeModal.Header, mw, mh, composeModal.Root);
+        composeModal.Position = (vp - composeModal.Size) / 2f;
     }
 
     private void SaveArmyGroupCompose()
@@ -14135,6 +14154,7 @@ public sealed partial class CampaignMapScene : Node3D
         }
 
         SyncRosterChecks();
+        RefreshArmyGroupHeroCards();
         UpdateArmyGroupPreview();
     }
 
