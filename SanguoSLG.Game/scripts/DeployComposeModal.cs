@@ -8,15 +8,63 @@ namespace SanguoSLG.Game;
 /// </summary>
 public sealed partial class DeployComposeModal : PanelContainer
 {
+    public readonly record struct LayoutMetrics(
+        // 전체 모달 안전 영역
+        int SafeLeft = 33,
+        int SafeRight = 33,
+        int SafeTop = 18,
+        int SafeBottom = 28,
+        int RootSeparation = 7,
+        // 헤더 영역
+        float HeaderMinHeight = 72f,
+        float HeaderLeadingSpacerWidth = 46f,
+        int HeaderSeparation = 10,
+        int HeaderMarginLeft = 0,
+        int HeaderMarginRight = 0,
+        int HeaderMarginTop = 0,
+        int HeaderMarginBottom = 0,
+        // 바디 영역 (좌·우 컬럼)
+        int BodySeparation = 12,
+        int BodyMarginLeft = 0,
+        int BodyMarginRight = 0,
+        int BodyMarginTop = 0,
+        int BodyMarginBottom = 0,
+        float LeftStretchRatio = 0.92f,
+        float RightStretchRatio = 1.5f,
+        int LeftContentSeparation = 8,
+        int RightContentSeparation = 8,
+        // 푸터 영역
+        float FooterMinHeight = 68f,
+        int FooterContentSeparation = 5,
+        int FooterMarginLeft = 12,
+        int FooterMarginRight = 0,
+        int FooterMarginTop = 0,
+        int FooterMarginBottom = 0
+    );
+
     public HBoxContainer Header { get; }
     public Button BackButton { get; }
+    public HBoxContainer Body { get; }
     public VBoxContainer LeftContent { get; }
     public VBoxContainer RightContent { get; }
     public VBoxContainer FooterContent { get; }
     public ScrollContainer LeftScroll { get; }
     public VBoxContainer Root { get; }
 
-    public DeployComposeModal(Vector2 viewport, Texture2D backgroundTexture, Font font, string title)
+    private readonly MarginContainer _safeArea;
+    private readonly MarginContainer _headerContainer;
+    private readonly MarginContainer _bodyContainer;
+    private readonly MarginContainer _footerContainer;
+    private readonly Control _headerLeadingSpacer;
+    private readonly PanelContainer _leftFrame;
+    private readonly PanelContainer _rightFrame;
+
+    public DeployComposeModal(
+        Vector2 viewport,
+        Texture2D backgroundTexture,
+        Font font,
+        string title,
+        LayoutMetrics metrics = default)
     {
         Name = "DeployComposeModal";
         var height = Mathf.Min(viewport.Y - 24f, 848f);
@@ -36,14 +84,11 @@ public sealed partial class DeployComposeModal : PanelContainer
             StretchMode = TextureRect.StretchModeEnum.Scale,
             MouseFilter = MouseFilterEnum.Ignore,
         };
+        background.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
         AddChild(background);
 
-        var safeArea = new MarginContainer { Name = "DeployComposeSafeArea" };
-        safeArea.AddThemeConstantOverride("margin_left", 28);
-        safeArea.AddThemeConstantOverride("margin_right", 28);
-        safeArea.AddThemeConstantOverride("margin_top", 12);
-        safeArea.AddThemeConstantOverride("margin_bottom", 28);
-        AddChild(safeArea);
+        _safeArea = new MarginContainer { Name = "DeployComposeSafeArea" };
+        AddChild(_safeArea);
 
         Root = new VBoxContainer
         {
@@ -51,17 +96,71 @@ public sealed partial class DeployComposeModal : PanelContainer
             SizeFlagsHorizontal = SizeFlags.ExpandFill,
             SizeFlagsVertical = SizeFlags.ExpandFill,
         };
-        Root.AddThemeConstantOverride("separation", 7);
-        safeArea.AddChild(Root);
+        _safeArea.AddChild(Root);
 
-        Header = new HBoxContainer
+        // 1. 헤더 영역
+        (_headerContainer, Header, _headerLeadingSpacer, BackButton) = BuildHeaderSection(font, title);
+        Root.AddChild(_headerContainer);
+
+        // 2. 바디 영역
+        (_bodyContainer, Body, _leftFrame, LeftScroll, LeftContent, _rightFrame, RightContent) = BuildBodySection();
+        Root.AddChild(_bodyContainer);
+
+        // 3. 푸터 영역
+        (_footerContainer, FooterContent) = BuildFooterSection();
+        Root.AddChild(_footerContainer);
+
+        ApplyLayoutMetrics(metrics);
+    }
+
+    public void ApplyLayoutMetrics(LayoutMetrics metrics)
+    {
+        // 전체 세이프에리어 & 루트 간격
+        SetMargins(_safeArea, metrics.SafeLeft, metrics.SafeRight, metrics.SafeTop, metrics.SafeBottom);
+        Root.AddThemeConstantOverride("separation", metrics.RootSeparation);
+
+        // 헤더 간격 및 여백
+        SetMargins(_headerContainer, metrics.HeaderMarginLeft, metrics.HeaderMarginRight, metrics.HeaderMarginTop, metrics.HeaderMarginBottom);
+        Header.CustomMinimumSize = new Vector2(0, metrics.HeaderMinHeight);
+        Header.AddThemeConstantOverride("separation", metrics.HeaderSeparation);
+        _headerLeadingSpacer.CustomMinimumSize = new Vector2(metrics.HeaderLeadingSpacerWidth, 0);
+
+        // 바디 간격, 여백 및 컬럼 비율
+        SetMargins(_bodyContainer, metrics.BodyMarginLeft, metrics.BodyMarginRight, metrics.BodyMarginTop, metrics.BodyMarginBottom);
+        Body.AddThemeConstantOverride("separation", metrics.BodySeparation);
+        _leftFrame.SizeFlagsStretchRatio = metrics.LeftStretchRatio;
+        _rightFrame.SizeFlagsStretchRatio = metrics.RightStretchRatio;
+        LeftContent.AddThemeConstantOverride("separation", metrics.LeftContentSeparation);
+        RightContent.AddThemeConstantOverride("separation", metrics.RightContentSeparation);
+
+        // 푸터 간격 및 여백 (제목을 건드리지 않고 푸터만 좌우/상하 여백 조절 가능)
+        SetMargins(_footerContainer, metrics.FooterMarginLeft, metrics.FooterMarginRight, metrics.FooterMarginTop, metrics.FooterMarginBottom);
+        FooterContent.CustomMinimumSize = new Vector2(0, metrics.FooterMinHeight);
+        FooterContent.AddThemeConstantOverride("separation", metrics.FooterContentSeparation);
+    }
+
+    private static (MarginContainer Container, HBoxContainer Header, Control Spacer, Button BackButton) BuildHeaderSection(Font font, string title)
+    {
+        var container = new MarginContainer
         {
-            Name = "DeployComposeHeader",
-            CustomMinimumSize = new Vector2(0, 72),
+            Name = "DeployComposeHeaderContainer",
             SizeFlagsHorizontal = SizeFlags.ExpandFill,
         };
-        Header.AddThemeConstantOverride("separation", 10);
-        Header.AddChild(new Control { CustomMinimumSize = new Vector2(46, 0), MouseFilter = MouseFilterEnum.Ignore });
+
+        var header = new HBoxContainer
+        {
+            Name = "DeployComposeHeader",
+            SizeFlagsHorizontal = SizeFlags.ExpandFill,
+        };
+        container.AddChild(header);
+
+        var spacer = new Control
+        {
+            Name = "DeployComposeHeaderSpacer",
+            MouseFilter = MouseFilterEnum.Ignore,
+        };
+        header.AddChild(spacer);
+
         var titleLabel = new Label
         {
             Name = "DeployComposeTitle",
@@ -74,17 +173,37 @@ public sealed partial class DeployComposeModal : PanelContainer
         titleLabel.AddThemeFontOverride("font", font);
         titleLabel.AddThemeFontSizeOverride("font_size", 24);
         titleLabel.AddThemeColorOverride("font_color", new Color("f4d777"));
-        Header.AddChild(titleLabel);
-        BackButton = new Button
+        header.AddChild(titleLabel);
+
+        var backButton = new Button
         {
             Name = "DeployComposeBack",
             Text = "◀ 목록",
             CustomMinimumSize = new Vector2(82, 34),
             SizeFlagsVertical = SizeFlags.ShrinkCenter,
         };
-        BackButton.AddThemeFontOverride("font", font);
-        Header.AddChild(BackButton);
-        Root.AddChild(Header);
+        backButton.AddThemeFontOverride("font", font);
+        header.AddChild(backButton);
+
+        return (container, header, spacer, backButton);
+    }
+
+    private static (
+        MarginContainer Container,
+        HBoxContainer Body,
+        PanelContainer LeftFrame,
+        ScrollContainer LeftScroll,
+        VBoxContainer LeftContent,
+        PanelContainer RightFrame,
+        VBoxContainer RightContent
+    ) BuildBodySection()
+    {
+        var container = new MarginContainer
+        {
+            Name = "DeployComposeBodyContainer",
+            SizeFlagsHorizontal = SizeFlags.ExpandFill,
+            SizeFlagsVertical = SizeFlags.ExpandFill,
+        };
 
         var body = new HBoxContainer
         {
@@ -92,12 +211,12 @@ public sealed partial class DeployComposeModal : PanelContainer
             SizeFlagsHorizontal = SizeFlags.ExpandFill,
             SizeFlagsVertical = SizeFlags.ExpandFill,
         };
-        body.AddThemeConstantOverride("separation", 12);
-        Root.AddChild(body);
+        container.AddChild(body);
 
-        var leftFrame = PaneFrame("DeployComposeLeftFrame", 0.92f);
+        var leftFrame = PaneFrame("DeployComposeLeftFrame");
         body.AddChild(leftFrame);
-        LeftScroll = new ScrollContainer
+
+        var leftScroll = new ScrollContainer
         {
             Name = "DeployComposeResourcesScroll",
             HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled,
@@ -105,40 +224,62 @@ public sealed partial class DeployComposeModal : PanelContainer
             SizeFlagsHorizontal = SizeFlags.ExpandFill,
             SizeFlagsVertical = SizeFlags.ExpandFill,
         };
-        leftFrame.AddChild(LeftScroll);
-        LeftContent = new VBoxContainer { Name = "DeployComposeResources", SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        LeftContent.AddThemeConstantOverride("separation", 8);
-        LeftScroll.AddChild(LeftContent);
+        leftFrame.AddChild(leftScroll);
 
-        var rightFrame = PaneFrame("DeployComposeRightFrame", 1.5f);
+        var leftContent = new VBoxContainer
+        {
+            Name = "DeployComposeResources",
+            SizeFlagsHorizontal = SizeFlags.ExpandFill,
+        };
+        leftScroll.AddChild(leftContent);
+
+        var rightFrame = PaneFrame("DeployComposeRightFrame");
         body.AddChild(rightFrame);
-        RightContent = new VBoxContainer
+
+        var rightContent = new VBoxContainer
         {
             Name = "DeployComposeOfficers",
             SizeFlagsHorizontal = SizeFlags.ExpandFill,
             SizeFlagsVertical = SizeFlags.ExpandFill,
         };
-        RightContent.AddThemeConstantOverride("separation", 8);
-        rightFrame.AddChild(RightContent);
+        rightFrame.AddChild(rightContent);
 
-        FooterContent = new VBoxContainer
-        {
-            Name = "DeployComposeFooter",
-            CustomMinimumSize = new Vector2(0, 68),
-            SizeFlagsHorizontal = SizeFlags.ExpandFill,
-        };
-        FooterContent.AddThemeConstantOverride("separation", 5);
-        Root.AddChild(FooterContent);
+        return (container, body, leftFrame, leftScroll, leftContent, rightFrame, rightContent);
     }
 
-    private static PanelContainer PaneFrame(string name, float ratio)
+    private static (MarginContainer Container, VBoxContainer Content) BuildFooterSection()
+    {
+        var container = new MarginContainer
+        {
+            Name = "DeployComposeFooterContainer",
+            SizeFlagsHorizontal = SizeFlags.ExpandFill,
+        };
+
+        var content = new VBoxContainer
+        {
+            Name = "DeployComposeFooter",
+            SizeFlagsHorizontal = SizeFlags.ExpandFill,
+        };
+        container.AddChild(content);
+
+        return (container, content);
+    }
+
+    private static void SetMargins(MarginContainer marginContainer, int left, int right, int top, int bottom)
+    {
+        marginContainer.AddThemeConstantOverride("margin_left", left);
+        marginContainer.AddThemeConstantOverride("margin_right", right);
+        marginContainer.AddThemeConstantOverride("margin_top", top);
+        marginContainer.AddThemeConstantOverride("margin_bottom", bottom);
+    }
+
+    private static PanelContainer PaneFrame(string name)
     {
         var frame = new PanelContainer
         {
             Name = name,
             SizeFlagsHorizontal = SizeFlags.ExpandFill,
             SizeFlagsVertical = SizeFlags.ExpandFill,
-            SizeFlagsStretchRatio = ratio,
         };
         var style = new StyleBoxFlat
         {
