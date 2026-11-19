@@ -283,6 +283,18 @@ public sealed partial class CampaignMapScene
         => new() { Texture = texture, ContentMarginLeft = 12, ContentMarginRight = 12,
             ContentMarginTop = 5, ContentMarginBottom = 5 };
 
+    private void ApplyDeployComposeButtonTexture(Button button, bool active)
+    {
+        var normal = GD.Load<Texture2D>(DeployCommandAssetRoot
+            + (active ? "hover_active_btn.png" : "normal_btn.png"));
+        var hover = GD.Load<Texture2D>(DeployCommandAssetRoot + "hover_active_btn.png");
+        button.AddThemeStyleboxOverride("normal", CommandCenterTextureBox(normal));
+        button.AddThemeStyleboxOverride("hover", CommandCenterTextureBox(hover));
+        button.AddThemeStyleboxOverride("pressed", CommandCenterTextureBox(hover));
+        button.AddThemeStyleboxOverride("focus", new StyleBoxEmpty());
+        button.AddThemeColorOverride("font_color", GoldBright);
+    }
+
 private Control BuildDeployCommandCard(int index)
     {
         var request = _pendingDeploys[index].Req;

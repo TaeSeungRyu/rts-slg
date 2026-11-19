@@ -13806,21 +13806,34 @@ public sealed partial class CampaignMapScene : Node3D
         var mw = Mathf.Clamp(vp.X * 0.9f, 900f, 1180f);
         var mh = Mathf.Clamp(vp.Y * 0.9f, 360f, 820f); // 표가 고정 높이라, 모달은 내용에 맞춰 스크롤 없이 담기게
         var box = DeployScaffold(mw, out var scroll, out var panel);
+        box.SetMeta("combat_compose_renewal", true);
+        panel.AddThemeStyleboxOverride("panel", Frame(Colors.Transparent, Colors.Transparent, 0, 0, 24));
+        var composeBackground = new TextureRect
+        {
+            Name = "DeployComposeBackground",
+            Texture = GD.Load<Texture2D>(DeployCommandAssetRoot + "deploy_command_panel.png"),
+            ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
+            StretchMode = TextureRect.StretchModeEnum.Scale,
+            MouseFilter = Control.MouseFilterEnum.Ignore,
+        };
+        panel.AddChild(composeBackground);
+        panel.MoveChild(composeBackground, 0);
 
         var cityName = _state.Cities.First(x => x.Id == city).Name;
         var titleRow = new HBoxContainer();
         box.AddChild(titleRow);
-        var title = MakeLabel($"{(editIndex >= 0 ? "부대 수정" : "부대 편성")}   《 {cityName} 》  ⠿", 18, Gold);
+        var title = MakeLabel($"{(editIndex >= 0 ? "부대 수정" : "부대 편성")}   《 {cityName} 》", 24, GoldBright);
         title.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
         title.MouseFilter = Control.MouseFilterEnum.Ignore;
         titleRow.AddChild(title);
         var back = MakeButton("◀ 목록");
         back.CustomMinimumSize = new Vector2(60, 32);
+        ApplyDeployComposeButtonTexture(back, false);
         back.Pressed += OpenDeployHub;
         titleRow.AddChild(back);
         box.AddChild(GoldRule());
 
-        var cols = (int)Mathf.Clamp(Mathf.Floor((mw + 8f) / 128f), 2, 4);
+        const int cols = 2;
 
         // 다른 예약(수정 중인 것 제외)이 이미 소모한 병력·장수.
         var usedTroops = ReservedTroopsByCode(city, editIndex, editingSupply: false);
@@ -13881,6 +13894,7 @@ public sealed partial class CampaignMapScene : Node3D
         amtRow.AddChild(_depAmountSpin);
         var maxButton = MakeButton("최대");
         maxButton.CustomMinimumSize = new Vector2(58, 28);
+        ApplyDeployComposeButtonTexture(maxButton, false);
         maxButton.Pressed += () => { if (_depAmountSpin is { } sp) { sp.Value = sp.MaxValue; } };
         amtRow.AddChild(maxButton);
 
@@ -13918,6 +13932,7 @@ public sealed partial class CampaignMapScene : Node3D
             var mm = mode;
             var mb = MakeButton(mlabel);
             mb.CustomMinimumSize = new Vector2(72, 30);
+            ApplyDeployComposeButtonTexture(mb, mode == _depMode);
             mb.Pressed += () => { _depMode = mm; RestyleModes(); UpdateDepPreview(); };
             _depModeButtons.Add((mb, mode));
             modeRow.AddChild(mb);
@@ -13994,6 +14009,7 @@ public sealed partial class CampaignMapScene : Node3D
         box.AddChild(_depPreview);
         var save = MakeButton("▶ 확인", accent: true);
         save.CustomMinimumSize = new Vector2(0, 34);
+        ApplyDeployComposeButtonTexture(save, true);
         save.Pressed += SaveCompose;
         box.AddChild(save);
 
@@ -14026,7 +14042,7 @@ public sealed partial class CampaignMapScene : Node3D
         RestyleModes();
         UpdateProvLabel();
         UpdateDepPreview();
-        ApplyHorizontalComposeLayout(box, deployTroopTitle, deployRosterRule, deployFooterRule, scroll, mw, mh, disableLeftScroll: true);
+        ApplyHorizontalComposeLayout(box, deployTroopTitle, deployRosterRule, deployFooterRule, scroll, mw, mh, disableLeftScroll: false);
         CenterAndDrag(panel, titleRow, mw, mh, box);
     }
 
@@ -14171,8 +14187,9 @@ public sealed partial class CampaignMapScene : Node3D
             return pane;
         }
 
-        var leftPane = AddPane("ComposeResources", 1.0f);
-        var rightPane = AddPane("ComposeOfficers", 1.35f);
+        var combatComposeRenewal = root.GetMeta("combat_compose_renewal", false).AsBool();
+        var leftPane = AddPane("ComposeResources", combatComposeRenewal ? 0.92f : 1.0f);
+        var rightPane = AddPane("ComposeOfficers", combatComposeRenewal ? 1.5f : 1.35f);
         if (disableLeftScroll && leftPane.GetParent() is ScrollContainer leftScroll)
         {
             leftScroll.VerticalScrollMode = ScrollContainer.ScrollMode.Disabled;
