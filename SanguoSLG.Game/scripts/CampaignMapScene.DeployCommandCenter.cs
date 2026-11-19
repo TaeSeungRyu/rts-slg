@@ -6,6 +6,7 @@ namespace SanguoSLG.Game;
 public sealed partial class CampaignMapScene
 {
     private const string DeployCommandAssetRoot = "res://assets/ui/game/deploy_command/";
+    private HBoxContainer? _deployComposeHeroCards;
 
     private void OpenDeployHub()
     {
@@ -293,6 +294,64 @@ public sealed partial class CampaignMapScene
         button.AddThemeStyleboxOverride("pressed", CommandCenterTextureBox(hover));
         button.AddThemeStyleboxOverride("focus", new StyleBoxEmpty());
         button.AddThemeColorOverride("font_color", GoldBright);
+    }
+
+    private void RefreshDeployComposeHeroCards()
+    {
+        if (_deployComposeHeroCards is null || !GodotObject.IsInstanceValid(_deployComposeHeroCards)) return;
+        foreach (var child in _deployComposeHeroCards.GetChildren()) child.QueueFree();
+        _deployComposeHeroCards.AddChild(BuildDeployComposeHeroCard("선봉", _depVan));
+        _deployComposeHeroCards.AddChild(BuildDeployComposeHeroCard("부관", _depAdj));
+    }
+
+    private Control BuildDeployComposeHeroCard(string role, SanguoSLG.Core.Domain.GeneralId? generalId)
+    {
+        var card = new Control
+        {
+            CustomMinimumSize = new Vector2(285, 108),
+            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+            ClipContents = true,
+        };
+        var background = new TextureRect
+        {
+            Texture = GD.Load<Texture2D>(DeployCommandAssetRoot + "hero_card.png"),
+            ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
+            StretchMode = TextureRect.StretchModeEnum.Scale,
+            MouseFilter = Control.MouseFilterEnum.Ignore,
+        };
+        background.SetAnchorsPreset(Control.LayoutPreset.FullRect);
+        card.AddChild(background);
+        var margin = new MarginContainer { MouseFilter = Control.MouseFilterEnum.Ignore };
+        margin.SetAnchorsPreset(Control.LayoutPreset.FullRect);
+        margin.AddThemeConstantOverride("margin_left", 10);
+        margin.AddThemeConstantOverride("margin_right", 10);
+        margin.AddThemeConstantOverride("margin_top", 8);
+        margin.AddThemeConstantOverride("margin_bottom", 8);
+        card.AddChild(margin);
+        var row = new HBoxContainer { MouseFilter = Control.MouseFilterEnum.Ignore };
+        row.AddThemeConstantOverride("separation", 10);
+        margin.AddChild(row);
+        if (generalId is not { } id)
+        {
+            var empty = MakeLabel($"{role}\n선택되지 않음", 14, Parchment);
+            empty.VerticalAlignment = VerticalAlignment.Center;
+            empty.HorizontalAlignment = HorizontalAlignment.Center;
+            empty.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+            row.AddChild(empty);
+            return card;
+        }
+        var general = _state.Generals.First(item => item.Id == id);
+        var portrait = FixedIcon(OfficerPortrait(id), 82);
+        portrait.CustomMinimumSize = new Vector2(82, 82);
+        portrait.MouseFilter = Control.MouseFilterEnum.Ignore;
+        row.AddChild(portrait);
+        var text = new VBoxContainer { Alignment = BoxContainer.AlignmentMode.Center,
+            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill, MouseFilter = Control.MouseFilterEnum.Ignore };
+        text.AddChild(MakeLabel($"{role}   {general.Name}", 17, GoldBright));
+        text.AddChild(MakeLabel($"적성 {GradeText(SelectedDeployAptitude(general))}", 13, Parchment));
+        text.AddChild(MakeLabel($"무 {general.Might} · 지 {general.Intellect} · 정 {general.Politics}", 13, Parchment));
+        row.AddChild(text);
+        return card;
     }
 
 private Control BuildDeployCommandCard(int index)

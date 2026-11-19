@@ -13868,6 +13868,7 @@ public sealed partial class CampaignMapScene : Node3D
                     UpdateCombatProvisionCapacity(followMaximum: true);
                     RestyleDeploy();
                     PopulateVanTree(); // 적성 컬럼이 선택 병종 기준으로 갱신
+                    RefreshDeployComposeHeroCards();
                     UpdateProvLabel();
                     UpdateDepPreview();
                 }
@@ -13948,6 +13949,15 @@ public sealed partial class CampaignMapScene : Node3D
         _composeFree = _state.GeneralsAt(city).Where(g => !_state.IsGeneralBusy(g) && !usedGens.Contains(g)).OrderBy(g => g.Value).ToList();
         var deployRosterRule = GoldRule();
         box.AddChild(deployRosterRule);
+        box.AddChild(MakeLabel("편성 장수 (선봉 1명 · 부관 1명)", 15, GoldBright));
+        _deployComposeHeroCards = new HBoxContainer
+        {
+            Name = "DeployComposeHeroCards",
+            CustomMinimumSize = new Vector2(0, 118),
+            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+        };
+        _deployComposeHeroCards.AddThemeConstantOverride("separation", 8);
+        box.AddChild(_deployComposeHeroCards);
         box.AddChild(MakeLabel("장수 편성 (선봉 필수 · 부관 선택)", 13, GoldBright));
         _vanTree = new Tree
         {
@@ -14040,6 +14050,7 @@ public sealed partial class CampaignMapScene : Node3D
 
         RestyleDeploy();
         RestyleModes();
+        RefreshDeployComposeHeroCards();
         UpdateProvLabel();
         UpdateDepPreview();
         ApplyHorizontalComposeLayout(box, deployTroopTitle, deployRosterRule, deployFooterRule, scroll, mw, mh, disableLeftScroll: false);
@@ -15070,6 +15081,7 @@ public sealed partial class CampaignMapScene : Node3D
             if (_depAmount > cap) { _depAmount = cap; _depAmountSpin.Value = cap; }
             UpdateCombatProvisionCapacity(followMaximum: false);
         }
+        RefreshDeployComposeHeroCards();
         UpdateDepPreview();
     }
 
