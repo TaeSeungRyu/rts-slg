@@ -13449,17 +13449,6 @@ public sealed partial class CampaignMapScene : Node3D
 
         var selectedTransportGeneral = generals[0].Id;
         officerBox.AddChild(MakeLabel("수송 장수 선택 (표에서 1명 선택)", 15, GoldBright));
-        var transportHeroCard = new HBoxContainer { Name = "TransportComposeHeroCard", CustomMinimumSize = new Vector2(0, 118), SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
-        officerBox.AddChild(transportHeroCard);
-        void RefreshTransportHeroCard()
-        {
-            foreach (var child in transportHeroCard.GetChildren())
-            {
-                transportHeroCard.RemoveChild(child);
-                child.QueueFree();
-            }
-            transportHeroCard.AddChild(BuildTransportComposeHeroCard(selectedTransportGeneral));
-        }
         var generalTree = new Tree
         {
             Name = "ComposeOfficerTable",
@@ -13467,7 +13456,7 @@ public sealed partial class CampaignMapScene : Node3D
             ColumnTitlesVisible = true,
             HideRoot = true,
             SelectMode = Tree.SelectModeEnum.Row,
-            CustomMinimumSize = new Vector2(0, 360),
+            CustomMinimumSize = Vector2.Zero,
             SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
             SizeFlagsVertical = Control.SizeFlags.ExpandFill,
             ScrollVerticalEnabled = true,
@@ -13508,11 +13497,9 @@ public sealed partial class CampaignMapScene : Node3D
                 row.SetChecked(0, (int)row.GetMetadata(0) == selectedTransportGeneral.Value);
                 row = row.GetNext();
             }
-            RefreshTransportHeroCard();
             Refresh();
         };
         officerBox.AddChild(generalTree);
-        RefreshTransportHeroCard();
 
         const float transportTroopWidth = 345f;
 
