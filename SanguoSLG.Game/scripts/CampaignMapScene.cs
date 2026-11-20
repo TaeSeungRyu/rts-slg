@@ -739,6 +739,7 @@ public sealed partial class CampaignMapScene : Node3D
             ScenarioTitle = _scenarioOverride is null ? null : _scenarioTitle,
         };
         if (_loadedState is not null) _state = _loadedState;
+        _view.SetSeasonImmediate(VisualSeasonForMonth(_state.Month));
         if (_loadedState is null && (args.Contains("--newmap") || ScenarioStartMenu.CampaignStartedFromMenu))
             _state = _state with { RecruitmentPoints =
                 [new FactionRecruitmentPoints(Player, 3000)] };
@@ -809,6 +810,7 @@ public sealed partial class CampaignMapScene : Node3D
         if (args.Contains("--maptestgeneralrosterqa")) CallDeferred(nameof(RunGeneralRosterPerformanceQa));
         if (args.Contains("--maptestreportmodalqa")) CallDeferred(nameof(RunReportModalQa));
         if (args.Contains("--maptestnavalcomposeqa")) CallDeferred(nameof(RunNavalComposeQa));
+        if (args.Contains("--maptestseasonqa")) CallDeferred(nameof(RunSeasonQa));
         if (args.Contains("--maptestproductioncenterqa")) CallDeferred(nameof(RunProductionCenterQa));
         if (args.Contains("--maptestshutdownresourceqa")) CallDeferred(nameof(RunShutdownResourceQa));
         if (args.Contains("--maptestsaveslotuiqa")) CallDeferred(nameof(RunSaveSlotUiQa));
@@ -19068,6 +19070,7 @@ public sealed partial class CampaignMapScene : Node3D
 
     private void Redraw(string note)
     {
+        RefreshSeasonVisuals();
         RefreshCastleDamageVisuals();
         RefreshScoutLabels();
         DrawSupplyZones();
