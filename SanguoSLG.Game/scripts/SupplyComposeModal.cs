@@ -6,7 +6,7 @@ namespace SanguoSLG.Game;
 /// 보급편성 전용 모달 뷰. 전투편성과 동일한 3구획 프레임을 사용하되,
 /// 보급 데이터와 명령 처리는 소유하지 않는다.
 /// </summary>
-public sealed partial class SupplyComposeModal : PanelContainer
+public partial class SupplyComposeModal : PanelContainer
 {
     public HBoxContainer Header { get; }
     public Button BackButton { get; }

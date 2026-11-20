@@ -874,6 +874,8 @@ public sealed partial class CampaignMapScene : Node3D
             CallDeferred(nameof(RunArmyGroupCommandCenterQa));
         if (args.Any(argument => argument.StartsWith("--maptestarmygroupcomposeuiqa", StringComparison.Ordinal)))
             CallDeferred(nameof(RunArmyGroupComposeUiQa));
+        if (args.Any(argument => argument.StartsWith("--maptesttransportcomposeuiqa", StringComparison.Ordinal)))
+            CallDeferred(nameof(RunTransportComposeUiQa));
         if (args.Contains("--maptestmodalcamerablockqa")) CallDeferred(nameof(RunModalCameraBlockQa));
         if (args.Contains("--maptestunitmenuqa")) CallDeferred(nameof(RunUnitMenuQa));
         if (args.Contains("--maptestplaybackstateqa")) CallDeferred(nameof(RunPlaybackStateQa));
@@ -13366,19 +13368,28 @@ public sealed partial class CampaignMapScene : Node3D
         var vp = GetViewport().GetVisibleRect().Size;
         var mw = Mathf.Clamp(vp.X * 0.88f, 820f, 1120f);
         var mh = Mathf.Clamp(vp.Y * 0.84f, 540f, 740f);
-        var box = DeployScaffold(mw, out var scroll, out var panel);
-        var titleRow = new HBoxContainer();
-        box.AddChild(titleRow);
-        var title = MakeLabel($"수송 편성   《 {source.Name} 》  ⠿", 18, Gold);
-        title.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
-        title.MouseFilter = Control.MouseFilterEnum.Ignore;
-        titleRow.AddChild(title);
-        var back = MakeButton("◀ 목록");
-        back.CustomMinimumSize = new Vector2(60, 32);
-        back.Pressed += () => OpenTransportHub(city);
-        titleRow.AddChild(back);
-        box.AddChild(GoldRule());
+        var layer = new CanvasLayer { Layer = 20 };
+        AddChild(layer);
+        _modalLayer = layer;
+        var backdrop = new ColorRect { Name = "ModalBackdrop", Color = new Color(0, 0, 0, 0.68f), MouseFilter = Control.MouseFilterEnum.Stop };
+        backdrop.SetAnchorsPreset(Control.LayoutPreset.FullRect);
+        backdrop.GuiInput += input =>
+        {
+            if (input is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left }) CloseModal();
+        };
+        layer.AddChild(backdrop);
+        var composeModal = new TransportComposeModal(vp,
+            GD.Load<Texture2D>(DeployCommandAssetRoot + "deploy_command_panel.png"), _font,
+            $"수송 편성  《 {source.Name} 》");
+        layer.AddChild(composeModal);
+        var box = composeModal.LeftContent;
+        var officerBox = composeModal.RightContent;
+        var footerBox = composeModal.FooterContent;
+        ApplyDeployComposeButtonTexture(composeModal.BackButton, false);
+        composeModal.BackButton.Pressed += () => OpenTransportHub(city);
+        GameUiSkin.ApplyQuickListScroll(composeModal.LeftScroll);
         var transportDescription = MakeLabel("주둔 병력과 금·군량을 다른 아군 성으로 이동합니다.\n수송부대는 장수를 배치하지만 행군 전용이며 공격·방어·점령을 할 수 없고, 속도 2·군량 소모 50%로 이동합니다.\n예약 후 목록에서 '목표 지정'을 눌러 지도에서 도착 성을 선택하세요.", 12, Parchment);
+        transportDescription.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         box.AddChild(transportDescription);
 
         var form = new GridContainer { Columns = 2, SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
@@ -13421,8 +13432,19 @@ public sealed partial class CampaignMapScene : Node3D
 
         var selectedTransportGeneral = generals[0].Id;
         var transportRosterRule = GoldRule();
-        box.AddChild(transportRosterRule);
-        box.AddChild(MakeLabel("수송 장수 선택 (표에서 1명 선택)", 13, GoldBright));
+        officerBox.AddChild(transportRosterRule);
+        officerBox.AddChild(MakeLabel("수송 장수 선택 (표에서 1명 선택)", 15, GoldBright));
+        var transportHeroCard = new HBoxContainer { Name = "TransportComposeHeroCard", CustomMinimumSize = new Vector2(0, 118), SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+        officerBox.AddChild(transportHeroCard);
+        void RefreshTransportHeroCard()
+        {
+            foreach (var child in transportHeroCard.GetChildren())
+            {
+                transportHeroCard.RemoveChild(child);
+                child.QueueFree();
+            }
+            transportHeroCard.AddChild(BuildTransportComposeHeroCard(selectedTransportGeneral));
+        }
         var generalTree = new Tree
         {
             Name = "ComposeOfficerTable",
@@ -13471,9 +13493,11 @@ public sealed partial class CampaignMapScene : Node3D
                 row.SetChecked(0, (int)row.GetMetadata(0) == selectedTransportGeneral.Value);
                 row = row.GetNext();
             }
+            RefreshTransportHeroCard();
             Refresh();
         };
-        box.AddChild(generalTree);
+        officerBox.AddChild(generalTree);
+        RefreshTransportHeroCard();
 
         var transportTroopTitle = MakeLabel("수송 병력 선택 (여러 개 선택 가능)", 13, GoldBright);
         box.AddChild(transportTroopTitle);
@@ -13524,11 +13548,15 @@ public sealed partial class CampaignMapScene : Node3D
             spin.ValueChanged += v => SetTransportAmount(v, false);
             amountRow.AddChild(slider);
             amountRow.AddChild(spin);
-            row.AddChild(amountRow);
-            box.AddChild(row);
+            var entry = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+            entry.AddThemeConstantOverride("separation", 3);
+            entry.AddChild(row);
+            entry.AddChild(amountRow);
+            box.AddChild(entry);
         }
-        box.AddChild(preview);
         AddDeploymentDelaySelector(box, _depDelayDays, value => { _depDelayDays = value; Refresh(); });
+        preview.CustomMinimumSize = new Vector2(mw - 60f, 0);
+        footerBox.AddChild(preview);
 
         void Refresh()
         {
@@ -13554,6 +13582,7 @@ public sealed partial class CampaignMapScene : Node3D
 
         var save = MakeButton("수송 예약", accent: true);
         save.CustomMinimumSize = new Vector2(0, 36);
+        ApplyDeployComposeButtonTexture(save, true);
         save.Pressed += () =>
         {
             var leader = generals.First(g => g.Id == selectedTransportGeneral);
@@ -13588,12 +13617,9 @@ public sealed partial class CampaignMapScene : Node3D
                 OpenTransportHub(city);
             });
         };
-        box.AddChild(save);
-
-        ApplyTransportHorizontalComposeLayout(
-            box, transportDescription, form, transportRosterRule, generalTree,
-            transportTroopTitle, preview, scroll, mw, mh);
-        CenterAndDrag(panel, titleRow, mw, mh, box);
+        footerBox.AddChild(save);
+        CenterAndDrag(composeModal, composeModal.Header, mw, mh, composeModal.Root);
+        composeModal.Position = (vp - composeModal.Size) / 2f;
     }
 
     private void OpenTransportHubLegacy(CityId city)
