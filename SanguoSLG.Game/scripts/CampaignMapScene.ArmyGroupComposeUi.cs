@@ -91,9 +91,13 @@ public sealed partial class CampaignMapScene
         var cards = _modalLayer?.FindChild("ArmyGroupHeroCards", true, false) as HBoxContainer;
         var table = _modalLayer?.FindChild("ComposeOfficerTable", true, false) as Tree;
         var provisions = _modalLayer?.FindChild("ArmyGroupProvisionSlider", true, false) as HSlider;
+        var resourceIcons = _modalLayer?.FindChildren("*", "TextureRect", true, false).OfType<TextureRect>()
+            .Select(icon => icon.Texture?.ResourcePath ?? "").ToArray() ?? [];
         var passed = modal is not null && GetViewport().GetVisibleRect().Encloses(modal.GetGlobalRect())
             && grid?.Columns == 2 && cards?.GetChildCount() == 2 && table?.Columns == 8
             && provisions is not null && provisions.MaxValue >= 0
+            && resourceIcons.Any(path => path.EndsWith("food.png", StringComparison.Ordinal))
+            && resourceIcons.Any(path => path.EndsWith("money.png", StringComparison.Ordinal))
             && modal.LeftScroll.VerticalScrollMode == ScrollContainer.ScrollMode.Auto;
         GD.Print($"[army-group-compose-ui-qa] passed={passed} size={modal?.Size} cards={cards?.GetChildCount()}");
         CloseModal();

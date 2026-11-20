@@ -14051,7 +14051,8 @@ public sealed partial class CampaignMapScene : Node3D
         _depProvLabel.CustomMinimumSize = new Vector2(190, 0);
         provisionRow.AddChild(_depProvLabel);
         box.AddChild(provisionRow);
-        _depGoldSpin = AddGoldCargoSelector(box, city, _depGold, value => { _depGold = value; UpdateArmyGroupPreview(); });
+        _depGoldSpin = AddGoldCargoSelector(box, city, _depGold,
+            value => { _depGold = value; UpdateArmyGroupPreview(); }, "money.png");
         AddDeploymentDelaySelector(box, _depDelayDays, value => _depDelayDays = value);
 
         var armyGroupRosterTitle = MakeLabel("장수 편성 (선봉 필수 · 부관 선택 · 전투편성과 동일하게 체크)", 13, GoldBright);
