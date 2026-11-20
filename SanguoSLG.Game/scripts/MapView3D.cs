@@ -24,7 +24,7 @@ public partial class MapView3D : Node3D
     public double LastSeasonMaxBatchMs { get; private set; }
     private readonly Shader _previewForestShader = new()
     {
-        Code = "shader_type spatial; uniform sampler2D source_texture : source_color; uniform vec4 target_color : source_color; uniform vec4 ground_color : source_color; varying float local_height; void vertex() { local_height = VERTEX.y; } void fragment() { vec4 sample_color = texture(source_texture, UV); float shade = dot(sample_color.rgb, vec3(0.299, 0.587, 0.114)); float foliage = smoothstep(0.10, 0.28, local_height); vec3 seasonal = target_color.rgb * mix(0.82, shade, 0.18); ALBEDO = mix(sample_color.rgb * ground_color.rgb, seasonal, foliage); ALPHA = sample_color.a; ROUGHNESS = 0.88; }"
+        Code = "shader_type spatial; uniform sampler2D source_texture : source_color; uniform vec4 target_color : source_color; uniform vec4 ground_color : source_color; varying float local_height; void vertex() { local_height = VERTEX.y; } void fragment() { vec4 sample_color = texture(source_texture, UV); float shade = dot(sample_color.rgb, vec3(0.299, 0.587, 0.114)); float foliage = smoothstep(0.10, 0.28, local_height); vec3 seasonal = target_color.rgb * mix(0.82, shade, 0.18); ALBEDO = mix(sample_color.rgb * ground_color.rgb, seasonal, foliage); ALPHA = sample_color.a; ALPHA_SCISSOR_THRESHOLD = 0.5; ROUGHNESS = 0.88; }"
     };
     private static bool DisablePaletteMaterialCache
         => OS.GetCmdlineUserArgs().Contains("--maploaddisablematerialcache");
