@@ -28,16 +28,17 @@ public sealed partial class CampaignMapScene
             OpenNavalCompose(port.Id);
             for (var i = 0; i < 8; i++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
             var columns = _modalLayer!.FindChildren("DeployComposeColumns", "HBoxContainer", true, false).OfType<HBoxContainer>().Single();
-            var resources = columns.FindChildren("ComposeResources", "VBoxContainer", true, false).OfType<VBoxContainer>().Single();
-            var officers = columns.FindChildren("ComposeOfficers", "VBoxContainer", true, false).OfType<VBoxContainer>().Single();
+            var resources = columns.FindChildren("DeployComposeResources", "VBoxContainer", true, false).OfType<VBoxContainer>().Single();
+            var officers = columns.FindChildren("DeployComposeOfficers", "VBoxContainer", true, false).OfType<VBoxContainer>().Single();
             var table = officers.FindChildren("*", "Tree", true, false).OfType<Tree>().Single();
             var first = table.GetRoot().GetFirstChild();
             if (first is null || !first.IsEditable(0) || !first.IsEditable(1)) throw new Exception("선봉/부관 선택 셀 누락");
             if (table.GetColumnTitle(0) != "선봉" || table.GetColumnTitle(1) != "부관") throw new Exception("장수 역할 표기 불일치");
             if (table.Columns != 8 || table.GetColumnTitle(2) != "이름" || table.GetColumnTitle(6) != "적성")
                 throw new Exception("전투편성형 장수 표 구조 불일치");
-            if (((Control)table.GetParent()).Size.Y < officers.Size.Y * 0.9f)
-                throw new Exception($"장수 목록 높이 부족 {((Control)table.GetParent()).Size.Y}/{officers.Size.Y}");
+            var heroCards = officers.GetNode<HBoxContainer>("NavalComposeHeroCards");
+            if (heroCards.GetChildCount() != 2 || table.Size.Y < 180f)
+                throw new Exception($"장수 카드/목록 높이 부족 cards={heroCards.GetChildCount()} table={table.Size.Y}");
             var ships = (Tree)resources.FindChild("NavalShipTable", true, false);
             var troops = (Tree)resources.FindChild("NavalTroopTable", true, false);
             var initialShipSize = ships.Size;
@@ -81,7 +82,7 @@ public sealed partial class CampaignMapScene
             if (!estimate.Text.Contains("항해 기준") || !estimate.Text.Contains("육상 기준")) throw new Exception("군량 비교 누락");
             if (NavalFoodEstimate(10000, 100, 100) != "항해 기준 약 50일 (하루 2) · 육상 기준 약 10일 (하루 10)")
                 throw new Exception("군량 예상일수 불일치");
-            var panel = _modalLayer.GetChildren().OfType<PanelContainer>().Single();
+            var panel = _modalLayer.GetChildren().OfType<NavalComposeModal>().Single();
             if (panel.GetGlobalRect().End.Y > GetViewport().GetVisibleRect().End.Y) throw new Exception("모달 화면 하단 넘침");
             if (resources.FindChildren("*", "HSlider", true, false).Count != 3) throw new Exception("병력/군량/금 슬라이더 누락");
             var save = _modalLayer.FindChildren("*", "Button", true, false).OfType<Button>().Single(b => b.Text == "출항 예약");

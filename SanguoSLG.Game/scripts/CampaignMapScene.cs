@@ -12993,18 +12993,26 @@ public sealed partial class CampaignMapScene : Node3D
         var vp = GetViewport().GetVisibleRect().Size;
         var mw = Mathf.Clamp(vp.X * 0.90f, 900f, 1280f);
         var mh = Mathf.Min(vp.Y - 80f, 760f);
-        var box = DeployScaffold(mw, out var scroll, out var panel);
-        var titleRow = new HBoxContainer();
-        box.AddChild(titleRow);
-        var title = MakeLabel($"출항 편성   《 {port.Name} 》  ⠿", 18, Gold);
-        title.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
-        title.MouseFilter = Control.MouseFilterEnum.Ignore;
-        titleRow.AddChild(title);
-        var back = MakeButton("◀ 목록");
-        back.CustomMinimumSize = new Vector2(60, 32);
-        back.Pressed += () => OpenNavalHub(city);
-        titleRow.AddChild(back);
-        box.AddChild(GoldRule());
+        var layer = new CanvasLayer { Layer = 20 };
+        AddChild(layer);
+        _modalLayer = layer;
+        var backdrop = new ColorRect { Name = "ModalBackdrop", Color = new Color(0, 0, 0, 0.68f), MouseFilter = Control.MouseFilterEnum.Stop };
+        backdrop.SetAnchorsPreset(Control.LayoutPreset.FullRect);
+        backdrop.GuiInput += input =>
+        {
+            if (input is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left }) CloseModal();
+        };
+        layer.AddChild(backdrop);
+        var composeModal = new NavalComposeModal(vp,
+            GD.Load<Texture2D>(DeployCommandAssetRoot + "deploy_command_panel.png"), _font,
+            $"출항 편성  《 {port.Name} 》");
+        layer.AddChild(composeModal);
+        var box = composeModal.LeftContent;
+        var officerBox = composeModal.RightContent;
+        var footerBox = composeModal.FooterContent;
+        ApplyDeployComposeButtonTexture(composeModal.BackButton, false);
+        composeModal.BackButton.Pressed += () => OpenNavalHub(city);
+        GameUiSkin.ApplyQuickListScroll(composeModal.LeftScroll);
 
         var preview = MakeLabel("", 12, GoldBright);
         void Refresh()
@@ -13164,8 +13172,21 @@ public sealed partial class CampaignMapScene : Node3D
                 _state.ResearchOf(port.Owner, FactionResearch.CombatBackpackCode), TroopClass.Naval, _balance)) * amount / 10000);
         AddGoldCargoSelector(box, city, 0, value => { carriedGold = value; Refresh(); });
 
-        var navalRosterTitle = MakeLabel("장수 편성 · 선봉 필수 / 부관 선택", 14, GoldBright);
-        box.AddChild(navalRosterTitle);
+        var navalRosterTitle = MakeLabel("장수 편성 · 선봉 필수 / 부관 선택", 15, GoldBright);
+        officerBox.AddChild(navalRosterTitle);
+        var heroCards = new HBoxContainer { Name = "NavalComposeHeroCards", CustomMinimumSize = new Vector2(0, 118), SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+        heroCards.AddThemeConstantOverride("separation", 8);
+        officerBox.AddChild(heroCards);
+        void RefreshHeroCards()
+        {
+            foreach (var child in heroCards.GetChildren())
+            {
+                heroCards.RemoveChild(child);
+                child.QueueFree();
+            }
+            heroCards.AddChild(BuildNavalComposeHeroCard("선봉", selectedGeneral));
+            heroCards.AddChild(BuildNavalComposeHeroCard("부관", selectedAdjutant));
+        }
         var generalTree = new Tree
         {
             Name = "NavalOfficerTable",
@@ -13251,18 +13272,23 @@ public sealed partial class CampaignMapScene : Node3D
                 }
             }
             SyncGeneralChecks();
+            RefreshHeroCards();
             Refresh();
         };
         var navalOfficerList = WrapNavalTable(generalTree);
-        box.AddChild(navalOfficerList);
+        navalOfficerList.SizeFlagsVertical = Control.SizeFlags.ExpandFill;
+        officerBox.AddChild(navalOfficerList);
+        RefreshHeroCards();
         var navalFooter = GoldRule();
-        box.AddChild(navalFooter);
-        box.AddChild(preview);
+        footerBox.AddChild(navalFooter);
+        preview.CustomMinimumSize = new Vector2(mw - 60f, 0);
+        footerBox.AddChild(preview);
         AddDeploymentDelaySelector(box, _depDelayDays, value => { _depDelayDays = value; Refresh(); });
         Refresh();
 
         var save = MakeButton("출항 예약", accent: true);
         save.CustomMinimumSize = new Vector2(0, 36);
+        ApplyDeployComposeButtonTexture(save, true);
         save.Pressed += () =>
         {
             var req = new NavalDeployRequest(city, selectedShip, selectedTroop, amount, selectedGeneral, selectedAdjutant,
@@ -13284,21 +13310,9 @@ public sealed partial class CampaignMapScene : Node3D
                 OpenNavalHub(city);
             });
         };
-        box.AddChild(save);
-
-        ApplyHorizontalComposeLayout(box, navalResourceTitle, navalRosterTitle, navalFooter, scroll, mw, mh, disableLeftScroll: false);
-        var columns = box.GetNode<HBoxContainer>("DeployComposeColumns");
-        columns.CustomMinimumSize = new Vector2(0, Math.Max(240, mh - 230f));
-        scroll.SizeFlagsVertical = Control.SizeFlags.Fill;
-        scroll.CustomMinimumSize = new Vector2(mw, mh);
-        var resourcePane = columns.FindChild("ComposeResources", true, false) as VBoxContainer;
-        resourcePane?.AddThemeConstantOverride("separation", 4);
-        var officerPane = (VBoxContainer)columns.FindChild("ComposeOfficers", true, false);
-        ((ScrollContainer)officerPane.GetParent()).VerticalScrollMode = ScrollContainer.ScrollMode.Disabled;
-        navalOfficerList.CustomMinimumSize = new Vector2(0, columns.CustomMinimumSize.Y * 0.9f);
-        navalOfficerList.SizeFlagsVertical = Control.SizeFlags.ShrinkBegin;
-        CenterAndDrag(panel, titleRow, mw, mh, box);
-        panel.Size = new Vector2(mw + 28, mh + 28);
+        footerBox.AddChild(save);
+        CenterAndDrag(composeModal, composeModal.Header, mw, mh, composeModal.Root);
+        composeModal.Position = (vp - composeModal.Size) / 2f;
     }
 
     private string NavalFoodEstimate(int troops, int food, int upkeepPercent)
