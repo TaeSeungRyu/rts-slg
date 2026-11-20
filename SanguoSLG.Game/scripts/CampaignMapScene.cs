@@ -13574,7 +13574,8 @@ public sealed partial class CampaignMapScene : Node3D
         provSpin.ValueChanged += v => provSlider.SetValueNoSignal(v);
 
         var save = MakeButton("수송 예약", accent: true);
-        save.CustomMinimumSize = new Vector2(0, 36);
+        save.CustomMinimumSize = new Vector2(160, 36);
+        save.SizeFlagsHorizontal = Control.SizeFlags.ShrinkCenter;
         ApplyDeployComposeButtonTexture(save, true);
         save.Pressed += () =>
         {
@@ -13610,7 +13611,15 @@ public sealed partial class CampaignMapScene : Node3D
                 OpenTransportHub(city);
             });
         };
-        footerBox.AddChild(save);
+        var saveCenter = new CenterContainer
+        {
+            Name = "TransportReserveButtonCenter",
+            CustomMinimumSize = new Vector2(0, 50),
+            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+            SizeFlagsVertical = Control.SizeFlags.ExpandFill,
+        };
+        saveCenter.AddChild(save);
+        footerBox.AddChild(saveCenter);
         CenterAndDrag(composeModal, composeModal.Header, mw, mh, composeModal.Root);
         composeModal.Position = (vp - composeModal.Size) / 2f;
     }
