@@ -11,10 +11,17 @@ namespace SanguoSLG.Game;
 /// </summary>
 public partial class MapView3D : Node3D
 {
+    public enum PreviewSeason { Default, Autumn, Winter }
+    public PreviewSeason SeasonPreview { get; set; } = PreviewSeason.Default;
     private readonly Dictionary<TerrainType, PackedScene> _tiles = new();
     private readonly Dictionary<TerrainType, PackedScene[]> _terrainVariants = new();
     private readonly Dictionary<HexCoord, int> _presetTerrainVariants = new();
-    private readonly Dictionary<(ulong SourceId, TerrainType Terrain), StandardMaterial3D> _paletteMaterials = new();
+    private readonly Dictionary<(ulong SourceId, TerrainType Terrain, PreviewSeason Season, int Variant), StandardMaterial3D> _paletteMaterials = new();
+    private readonly Dictionary<(ulong SourceId, PreviewSeason Season, int Variant), ShaderMaterial> _previewForestMaterials = new();
+    private readonly Shader _previewForestShader = new()
+    {
+        Code = "shader_type spatial; uniform sampler2D source_texture : source_color; uniform vec4 target_color : source_color; void fragment() { vec4 sample_color = texture(source_texture, UV); float shade = dot(sample_color.rgb, vec3(0.299, 0.587, 0.114)); ALBEDO = target_color.rgb * mix(0.82, shade, 0.18); ALPHA = sample_color.a; ROUGHNESS = 0.88; }"
+    };
     private static bool DisablePaletteMaterialCache
         => OS.GetCmdlineUserArgs().Contains("--maploaddisablematerialcache");
     private PackedScene _water = null!;
@@ -218,7 +225,7 @@ public partial class MapView3D : Node3D
             var instance = scene.Instantiate<Node3D>();
             instance.Position = HexToWorld(tile);
             WorldMapLoadMetrics.RecordTerrain(terrain);
-            ApplyTerrainPalette(instance, terrain);
+            ApplyTerrainPalette(instance, terrain, tile);
             if (terrain is not (TerrainType.Workshop or TerrainType.Village2))
             {
                 // 숲·산의 단조로움을 깨는 결정론적 회전(좌표 해시, 60° 단위).
@@ -314,7 +321,7 @@ public partial class MapView3D : Node3D
     // 원본 저채도 로우폴리 재질의 질감은 유지하고, 지형군별 색조만 곱해
     // 평야·숲·산·물을 멀리서도 구분되게 한다. 각 인스턴스의 재질을 복제하므로
     // 같은 GLB를 공유하는 성·부대나 다른 타일의 재질에는 영향을 주지 않는다.
-    private void ApplyTerrainPalette(Node3D visual, TerrainType terrain)
+    private void ApplyTerrainPalette(Node3D visual, TerrainType terrain, HexCoord? tile = null)
     {
         var started = WorldMapLoadMetrics.Timestamp();
         var surfaces = 0;
@@ -332,6 +339,36 @@ public partial class MapView3D : Node3D
             TerrainType.Swamp => new Color(0.55f, 0.62f, 0.42f),
             _ => Colors.White,
         };
+        var colorVariant = 0;
+        if (SeasonPreview == PreviewSeason.Autumn)
+        {
+            colorVariant = terrain == TerrainType.Forest && tile is { } at
+                ? ((at.Q * 31 + at.R * 17) & int.MaxValue) % 4 : 0;
+            var seasonal = terrain switch
+            {
+                TerrainType.Forest => new[] { new Color(0.76f, 0.70f, 0.37f), new Color(0.80f, 0.55f, 0.31f),
+                    new Color(0.72f, 0.43f, 0.29f), new Color(0.56f, 0.65f, 0.35f) }[colorVariant],
+                TerrainType.Plains or TerrainType.Paddy => new Color(0.86f, 0.76f, 0.44f),
+                TerrainType.Farm => new Color(0.86f, 0.64f, 0.33f),
+                TerrainType.Mountain or TerrainType.Rocks or TerrainType.RockHill or TerrainType.RockMountain
+                    or TerrainType.Karst or TerrainType.Cliff => new Color(0.83f, 0.60f, 0.37f),
+                _ => Colors.White,
+            };
+            if (seasonal != Colors.White) tint = seasonal;
+        }
+        else if (SeasonPreview == PreviewSeason.Winter)
+        {
+            tint = terrain switch
+            {
+                TerrainType.Plains or TerrainType.Paddy or TerrainType.Farm => new Color(0.82f, 0.89f, 0.94f),
+                TerrainType.Forest => new Color(0.55f, 0.64f, 0.60f),
+                TerrainType.Mountain or TerrainType.Rocks or TerrainType.RockHill or TerrainType.RockMountain
+                    or TerrainType.Karst or TerrainType.Cliff or TerrainType.IceMountain
+                    or TerrainType.IceWallLarge or TerrainType.IceWallSmall => new Color(0.78f, 0.84f, 0.86f),
+                TerrainType.Desert or TerrainType.DesertCactus or TerrainType.Swamp => new Color(0.77f, 0.80f, 0.77f),
+                _ => tint,
+            };
+        }
         if (tint == Colors.White) return;
 
         foreach (var mesh in visual.FindChildren("*", "MeshInstance3D", true, false).OfType<MeshInstance3D>())
@@ -340,13 +377,33 @@ public partial class MapView3D : Node3D
             for (var surface = 0; surface < mesh.Mesh.GetSurfaceCount(); surface++)
             {
                 if (mesh.GetActiveMaterial(surface) is not StandardMaterial3D source) continue;
-                var key = (source.GetInstanceId(), terrain);
+                if (terrain == TerrainType.Forest && SeasonPreview != PreviewSeason.Default && source.AlbedoTexture is not null)
+                {
+                    var forestKey = (source.GetInstanceId(), SeasonPreview, colorVariant);
+                    if (!_previewForestMaterials.TryGetValue(forestKey, out var forestMaterial))
+                    {
+                        forestMaterial = new ShaderMaterial { Shader = _previewForestShader };
+                        forestMaterial.SetShaderParameter("source_texture", source.AlbedoTexture);
+                        forestMaterial.SetShaderParameter("target_color", tint);
+                        _previewForestMaterials[forestKey] = forestMaterial;
+                        created++;
+                    }
+                    mesh.SetSurfaceOverrideMaterial(surface, forestMaterial);
+                    surfaces++;
+                    continue;
+                }
+                var key = (source.GetInstanceId(), terrain, SeasonPreview, colorVariant);
                 if (DisablePaletteMaterialCache || !_paletteMaterials.TryGetValue(key, out var material))
                 {
                     material = (StandardMaterial3D)source.Duplicate();
                     var color = material.AlbedoColor;
-                    material.AlbedoColor = new Color(color.R * tint.R, color.G * tint.G,
-                        color.B * tint.B, color.A);
+                    var snowyRock = SeasonPreview == PreviewSeason.Winter && terrain is
+                        (TerrainType.Mountain or TerrainType.Rocks or TerrainType.RockHill or TerrainType.RockMountain
+                        or TerrainType.Karst or TerrainType.Cliff or TerrainType.IceMountain
+                        or TerrainType.IceWallLarge or TerrainType.IceWallSmall);
+                    material.AlbedoColor = snowyRock
+                        ? color.Lerp(new Color(tint.R, tint.G, tint.B, color.A), 0.38f)
+                        : new Color(color.R * tint.R, color.G * tint.G, color.B * tint.B, color.A);
                     material.Roughness = Mathf.Max(material.Roughness, 0.82f);
                     if (!DisablePaletteMaterialCache) _paletteMaterials[key] = material;
                     created++;
