@@ -13448,8 +13448,6 @@ public sealed partial class CampaignMapScene : Node3D
         preview.AutowrapMode = TextServer.AutowrapMode.WordSmart;
 
         var selectedTransportGeneral = generals[0].Id;
-        var transportRosterRule = GoldRule();
-        officerBox.AddChild(transportRosterRule);
         officerBox.AddChild(MakeLabel("수송 장수 선택 (표에서 1명 선택)", 15, GoldBright));
         var transportHeroCard = new HBoxContainer { Name = "TransportComposeHeroCard", CustomMinimumSize = new Vector2(0, 118), SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
         officerBox.AddChild(transportHeroCard);
