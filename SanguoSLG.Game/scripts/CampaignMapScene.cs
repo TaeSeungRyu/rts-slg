@@ -13267,15 +13267,16 @@ public sealed partial class CampaignMapScene : Node3D
         navalOfficerList.SizeFlagsVertical = Control.SizeFlags.ExpandFill;
         officerBox.AddChild(navalOfficerList);
         RefreshHeroCards();
-        var navalFooter = GoldRule();
-        footerBox.AddChild(navalFooter);
-        preview.CustomMinimumSize = new Vector2(mw - 60f, 0);
-        footerBox.AddChild(preview);
+        // var navalFooter = GoldRule();
+        // footerBox.AddChild(navalFooter);
+        //preview.CustomMinimumSize = new Vector2(mw - 60f, 0);
+        //footerBox.AddChild(preview);
         AddDeploymentDelaySelector(box, _depDelayDays, value => { _depDelayDays = value; Refresh(); });
         Refresh();
 
-        var save = MakeButton("출항 예약", accent: true);
-        save.CustomMinimumSize = new Vector2(0, 36);
+        var save = MakeButton("확인", accent: true);
+        save.CustomMinimumSize = new Vector2(64, 36);
+        save.SizeFlagsHorizontal = Control.SizeFlags.ShrinkCenter;
         ApplyDeployComposeButtonTexture(save, true);
         save.Pressed += () =>
         {
@@ -13298,7 +13299,24 @@ public sealed partial class CampaignMapScene : Node3D
                 OpenNavalHub(city);
             });
         };
-        footerBox.AddChild(save);
+        //footerBox.AddChild(save);
+
+
+        var saveCenter = new CenterContainer
+        {
+            Name = "TransportReserveButtonCenter",
+            CustomMinimumSize = new Vector2(0, 50),
+            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+            SizeFlagsVertical = Control.SizeFlags.ExpandFill,
+        };
+        saveCenter.AddChild(save);
+
+        var saveMargin = new MarginContainer();
+        saveMargin.AddThemeConstantOverride("margin_top", 1);
+        saveMargin.AddChild(saveCenter);
+
+        footerBox.AddChild(saveMargin);
+
         CenterAndDrag(composeModal, composeModal.Header, mw, mh, composeModal.Root);
         composeModal.Position = (vp - composeModal.Size) / 2f;
     }
