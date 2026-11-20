@@ -109,6 +109,27 @@ public sealed class ScenarioDraftTests
     }
 
     [Fact]
+    public void ScheduledFactionResearchWaitsInStateUntilFactionAppears()
+    {
+        var hidden = new ScenarioFactionEntry(2, "후발 세력", 2, "#aabbcc", false, true, 191, 2);
+        var draft = Draft() with
+        {
+            Factions = [.. Draft().Factions, hidden],
+            Generals = [.. Draft().Generals, new ScenarioGeneralEntry(2, 2, null)],
+            Research = [new ScenarioResearchEntry(2, FactionResearch.CommerceCode, 5)],
+        };
+        var source = new Scenario(
+            [new Faction(new FactionId(1), "위", new GeneralId(1), 0, "#3366AA")],
+            [new City(new CityId(1), "첫 성", new HexCoord(1, 1), new FactionId(1), 100),
+                new City(new CityId(2), "둘째 성", new HexCoord(4, 3), new FactionId(0), 0)],
+            [new General(new GeneralId(1), "장수1", new Dictionary<TroopClass, AptitudeGrade>(), 50, 50, 50),
+                new General(new GeneralId(2), "장수2", new Dictionary<TroopClass, AptitudeGrade>(), 50, 50, 50)],
+            new BalanceConfig(MonthlyTaxPerCity: 100), new HexMap(0, 5, 0, 4), [], new TileConditionMap());
+        var state = GameState.FromScenario(ScenarioDraftApplier.Apply(source, draft, Map()));
+        Assert.Equal(5, state.ResearchOf(new FactionId(2), FactionResearch.CommerceCode));
+    }
+
+    [Fact]
     public void FactionDescriptionsStaySeparateAndOldScenarioFilesUseEmptyDescription()
     {
         var draft = Draft() with

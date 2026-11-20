@@ -49,8 +49,7 @@ public static class ScenarioDraftApplier
             InitialShips = draft.Cities.Where(city => !scheduledFactionIds.Contains(city.OwnerFactionId))
                 .SelectMany(city => city.Ships.Select(ship =>
                 new PortShipStock(new CityId(city.SiteId), ship.ShipCode, ship.Count))).ToArray(),
-            InitialResearch = draft.ResearchEntries.Where(entry => entry.Level > 0
-                    && !scheduledFactionIds.Contains(entry.FactionId))
+            InitialResearch = draft.ResearchEntries.Where(entry => entry.Level > 0)
                 .Select(entry => new FactionResearch(new FactionId(entry.FactionId), entry.Code, entry.Level))
                 .ToArray(),
             HiddenFactionArrivals = draft.Factions.Where(entry => entry.Hidden)
@@ -107,6 +106,8 @@ public static class ScenarioDraftApplier
             mapVersion.Id, mapVersion.Revision,
             source.Factions.Select(faction => new ScenarioFactionEntry(faction.Id.Value,
                 faction.Name, faction.Ruler.Value, faction.Color)).ToArray(),
-            cities, postings);
+            cities, postings,
+            source.InitialResearch?.Select(entry => new ScenarioResearchEntry(entry.Faction.Value,
+                entry.TroopCode, entry.Level)).ToArray());
     }
 }
