@@ -9956,10 +9956,8 @@ public sealed partial class CampaignMapScene : Node3D
             : null;
         var effective = governor is not null
             && AdministrationGrowth.EffectivePolitics(governor) >= _balance.GovernorMinPolitics;
-        var goldBase = GoldBase(city.Castle) + FacilityOutput(city, "village", city.Villages, _balance.VillageGold);
-        var provisionsBase = ProvisionsBase(city.Castle)
-            + FacilityOutput(city, "paddy", city.Paddies, _balance.PaddyProvisions)
-            + FacilityOutput(city, "farm", city.Farms, _balance.FarmProvisions);
+        var goldBase = GoldBase(city.Castle);
+        var provisionsBase = ProvisionsBase(city.Castle);
         var gold = ScaleMonthlyIncome(goldBase, city, effective, governor, effective ? AdminBonus.Bucket(governor, _adminSkillMap, "tax") : 0);
         var provisions = ScaleMonthlyIncome(provisionsBase, city, effective, governor, effective ? AdminBonus.Bucket(governor, _adminSkillMap, "harvest") : 0);
         if (_cb.AutoOfficerSystemEnabled)
@@ -10042,18 +10040,6 @@ public sealed partial class CampaignMapScene : Node3D
             ? 0
             : PortAdministration.Scale(city, ApplyLowSecurityOutputPenalty(
                 System.Math.Max(1, OfficerMightTier(officer.Might) + 1), city.Security));
-    }
-
-    private int FacilityOutput(City city, string code, int intactCount, int baseOutput)
-    {
-        var placements = _state.Placements
-            .Where(p => p.City == city.Id && p.Code == code)
-            .OrderByDescending(p => FacilityHealth.OutputMultiplier(p.HitPoints))
-            .ThenByDescending(p => p.HitPoints)
-            .Take(intactCount)
-            .ToList();
-        var output = placements.Sum(p => baseOutput * FacilityHealth.OutputMultiplier(p.HitPoints));
-        return output + System.Math.Max(0, intactCount - placements.Count) * baseOutput;
     }
 
     private int ScaleMonthlyIncome(int baseAmount, City city, bool effectiveGovernor, General? governor, int bucketPercent)
@@ -18174,26 +18160,15 @@ public sealed partial class CampaignMapScene : Node3D
 
     private string FacilityEffectText(string code, int hitPoints = FacilityHealth.Level1)
     {
-        var current = FacilityEffectValue(code, hitPoints);
-        var next = FacilityHealth.NextTier(hitPoints);
-        var nextText = next is { } n && code != "workshop" ? $" → +{FacilityEffectValue(code, n)}" : "";
         return code switch
         {
-            "paddy" => $"도시 월 정기 군량 +{current}{nextText} · 생산 명령 산출량과 무관",
-            "farm" => $"도시 월 정기 군량 +{current}{nextText} · 생산 명령 산출량과 무관",
-            "village" => $"도시 월 정기 금 +{current}{nextText} · 생산 명령 산출량과 무관",
+            "paddy" => "생산 명령 완료 시 군량 획득 · 장수 정치에 따라 산출량 결정",
+            "farm" => "생산 명령 완료 시 군량 획득 · 장수 정치에 따라 산출량 결정",
+            "village" => "생산 명령 완료 시 금 획득 · 장수 정치에 따라 산출량 결정",
             "workshop" => $"성벽수리 회복량 +{_cb.WallRepairWorkshopBonus}%p",
             _ => "",
         };
     }
-
-    private int FacilityEffectValue(string code, int hitPoints) => code switch
-    {
-        "paddy" => _balance.PaddyProvisions * FacilityHealth.OutputMultiplier(hitPoints),
-        "farm" => _balance.FarmProvisions * FacilityHealth.OutputMultiplier(hitPoints),
-        "village" => _balance.VillageGold * FacilityHealth.OutputMultiplier(hitPoints),
-        _ => 0,
-    };
 
     private int FacilityBuildCost(string code) => code switch
     {

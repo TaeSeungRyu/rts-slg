@@ -224,9 +224,9 @@ public class WorldEngineTests
     }
 
     [Fact]
-    public void 수입은_성규모_기본치에_시설_가산이_붙는다()
+    public void 정기수입은_시설수와_무관하고_성규모_기본치만_사용한다()
     {
-        // 대성(금 300·군량 2000) + 마을 2(금 +100) + 논 2(군량 +600) + 밭 1(군량 +150). 인구 만충(배율 100%)
+        // 논·밭·마을이 있어도 생산 작전을 수행하지 않으면 정기 수입에는 가산되지 않는다.
         var cities = new List<City>
         {
             new(new CityId(1), "허창", new HexCoord(0, 0), new FactionId(1), 1000, CastleSize.Large,
@@ -237,8 +237,8 @@ public class WorldEngineTests
         var after = new WorldEngine(Balance).AdvanceDays(s, 30);
         var city = after.Cities.Single();
 
-        Assert.Equal(300 + 100, city.Gold);
-        Assert.Equal(1000 + 2000 + 600 + 150, city.Provisions);
+        Assert.Equal(300, city.Gold);
+        Assert.Equal(1000 + 2000, city.Provisions);
     }
 
     [Fact]
@@ -251,8 +251,8 @@ public class WorldEngineTests
         var d7 = new WorldEngine(Balance).AdvanceDays(s, 7).Cities.Single();
         var d30 = new WorldEngine(Balance).AdvanceDays(s, 30).Cities.Single();
 
-        Assert.Equal(1000 + (Balance.ProvisionsBaseSmall + Balance.PaddyProvisions) / 4, d7.Provisions);
-        Assert.Equal(1000 + Balance.ProvisionsBaseSmall + Balance.PaddyProvisions, d30.Provisions);
+        Assert.Equal(1000 + Balance.ProvisionsBaseSmall / 4, d7.Provisions);
+        Assert.Equal(1000 + Balance.ProvisionsBaseSmall, d30.Provisions);
     }
 
     [Fact]

@@ -5,7 +5,7 @@ using SanguoSLG.Core.Spatial;
 
 /// <summary>
 /// 세계 시계 엔진(design-administration "시간 축"). 일 단위로 시간을 흘리며 주기 틱을 발화한다.
-/// 매월 말(그 달 30일): 수입(금·군량 = 성 규모 기본치 + 시설 가산, 도시 금고로 — 금은 도시별
+/// 매월 말(그 달 30일): 수입(금·군량 = 성 규모 기본치, 도시 금고로 — 금은 도시별
 /// 소유), 자원 산출(산출 도시만), 인구 성장(치안 비례). 처리·저장은 항상 id 오름차순 — 결정론.
 /// </summary>
 public sealed class WorldEngine
@@ -111,7 +111,7 @@ public sealed class WorldEngine
             }
         }
 
-        // 월말 틱(그 달 30일): 수입(금·군량 = 성 규모 기본치 + 시설 가산) + 자원 산출 + 인구 성장.
+        // 월말 틱(그 달 30일): 수입(금·군량 = 성 규모 기본치) + 자원 산출 + 인구 성장.
         if (next.DayOfMonth == GameState.DaysPerMonth)
         {
             var byId = next.Generals.ToDictionary(g => g.Id);
@@ -1364,13 +1364,13 @@ public sealed class WorldEngine
         _ => city,
     };
 
-    // 수입(design-administration "시설 건설"·"세율"·"내정 심화"): 금 = 성 규모 기본치 + 마을 가산,
-    // 군량 = 성 규모 기본치 + 논·밭 가산. 여기에 세 배율이 곱해진다(모두 정수 %):
+    // 정기 수입은 성 규모 기본치에 세 배율을 적용한다. 논·밭·마을의 보상은
+    // 장수와 500명 부대가 시설을 왕복하는 생산 작전을 완료했을 때만 지급한다.
     //   ① 세율 배율(세율/기준 20%)  ② 인구 충원율 배율(바닥% ~ 100%)  ③ 저치안 페널티(<임계면 감액).
     // 공방은 수입이 아니라 생산·연구 게이트(③).
     private City Income(GameState state, City city, Domain.General? governor)
     {
-        var goldBase = GoldBase(city.Castle) + FacilityOutput(state, city, "village", city.Villages, _balance.VillageGold);
+        var goldBase = GoldBase(city.Castle);
 
         // 담당관(태수) 없거나 정치 미달이면 도시 경제가 무척 낮게 돌아간다(사용자 확정 2026-08-16).
         var effective = governor is not null
@@ -1386,27 +1386,13 @@ public sealed class WorldEngine
 
     private int MonthlyProvisionsIncome(GameState state, City city, Domain.General? governor)
     {
-        var provBase = ProvisionsBase(city.Castle)
-            + FacilityOutput(state, city, "paddy", city.Paddies, _balance.PaddyProvisions)
-            + FacilityOutput(state, city, "farm", city.Farms, _balance.FarmProvisions);
+        var provBase = ProvisionsBase(city.Castle);
         var effective = governor is not null
             && AdministrationGrowth.EffectivePolitics(governor) >= _balance.GovernorMinPolitics;
         var provBucket = effective ? GovernorBucket(governor, "harvest") : 0;
         var provisions = Scale(state, provBase, city, effective, governor, provBucket);
         return GameDifficultyRules.Production(state, city.Owner,
             ApplyGeneralOutputBonus(state, city.Owner, FactionResearch.AgricultureCode, provisions));
-    }
-
-    private static int FacilityOutput(GameState state, City city, string code, int intactCount, int baseOutput)
-    {
-        var placements = state.Placements
-            .Where(p => p.City == city.Id && p.Code == code)
-            .OrderByDescending(p => FacilityHealth.OutputMultiplier(p.HitPoints))
-            .ThenByDescending(p => p.HitPoints)
-            .Take(intactCount)
-            .ToList();
-        var output = placements.Sum(p => baseOutput * FacilityHealth.OutputMultiplier(p.HitPoints));
-        return output + System.Math.Max(0, intactCount - placements.Count) * baseOutput;
     }
 
     // 수입 = base × (스킬 버킷) × 세율배율 × 인구 충원율 × 저치안. 세율배율은 담당관에 따라 갈린다:
