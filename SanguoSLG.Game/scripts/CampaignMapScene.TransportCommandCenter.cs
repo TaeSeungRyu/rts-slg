@@ -48,6 +48,14 @@ public sealed partial class CampaignMapScene
 
         public static class Buttons
         {
+            public static readonly Vector2 CloseSize = new(30, 30);
+            public const int CloseFontSize = 18;
+            public const int CloseBorderWidth = 1;
+            public const int CloseCornerRadius = 4;
+            public const int ClosePadding = 2;
+            public static readonly Color CloseHoverBackground = new("5b1712");
+            public static readonly Color ClosePressedBackground = new("35100d");
+
             public static readonly Vector2 DeleteSize = new(132, 42);
             public static readonly Vector2 EditSize = new(145, 42);
             public static readonly Vector2 ConfirmSize = new(190, 42);
@@ -87,7 +95,7 @@ public sealed partial class CampaignMapScene
             "예약 수송부대 목록", "선택 수송부대 정보");
         frame.Name = "TransportCommandCenter";
         layer.AddChild(frame);
-        ApplyDeployComposeButtonTexture(frame.CloseButton, false);
+        StyleTransportCommandCloseButton(frame.CloseButton);
         frame.CloseButton.Pressed += () => { CloseModal(); SelectCity(city); };
         ApplyDeployComposeButtonTexture(frame.NewButton, true);
         frame.NewButton.Pressed += () => OpenTransportCompose(city);
@@ -100,6 +108,25 @@ public sealed partial class CampaignMapScene
         BuildTransportCommandActions(frame.Actions, city);
         CenterAndDrag(frame, frame.Header, frame.Size.X, frame.Size.Y, frame.Root);
         frame.Position = (GetViewport().GetVisibleRect().Size - frame.Size) / 2f;
+    }
+
+    private void StyleTransportCommandCloseButton(Button close)
+    {
+        close.Text = "×";
+        close.CustomMinimumSize = TransportHubLayout.Buttons.CloseSize;
+        close.SizeFlagsHorizontal = Control.SizeFlags.ShrinkCenter;
+        close.SizeFlagsVertical = Control.SizeFlags.ShrinkCenter;
+        close.AddThemeFontSizeOverride("font_size", TransportHubLayout.Buttons.CloseFontSize);
+
+        var borderWidth = TransportHubLayout.Buttons.CloseBorderWidth;
+        var cornerRadius = TransportHubLayout.Buttons.CloseCornerRadius;
+        var padding = TransportHubLayout.Buttons.ClosePadding;
+        close.AddThemeStyleboxOverride("normal", Frame(Colors.Transparent, Gold, borderWidth, cornerRadius, padding));
+        close.AddThemeStyleboxOverride("hover",
+            Frame(TransportHubLayout.Buttons.CloseHoverBackground, GoldBright, borderWidth, cornerRadius, padding));
+        close.AddThemeStyleboxOverride("pressed",
+            Frame(TransportHubLayout.Buttons.ClosePressedBackground, GoldBright, borderWidth, cornerRadius, padding));
+        close.AddThemeStyleboxOverride("focus", new StyleBoxEmpty());
     }
 
     private void BuildTransportCommandActions(Control parent, CityId city)

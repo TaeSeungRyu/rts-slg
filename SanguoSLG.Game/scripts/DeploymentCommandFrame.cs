@@ -63,6 +63,25 @@ public sealed partial class DeploymentCommandFrame : PanelContainer
         Header.AddChild(CloseButton);
         Root.AddChild(Header);
 
+        var bodyMargin = new MarginContainer
+        {
+            Name = "DeploymentCommandBodyMargin",
+            SizeFlagsVertical = SizeFlags.ExpandFill,
+        };
+        bodyMargin.AddThemeConstantOverride("margin_left", 5);
+        bodyMargin.AddThemeConstantOverride("margin_top", 5);
+        bodyMargin.AddThemeConstantOverride("margin_right", 5);
+        bodyMargin.AddThemeConstantOverride("margin_bottom", 5);
+        Root.AddChild(bodyMargin);
+
+        var body = new VBoxContainer
+        {
+            Name = "DeploymentCommandBody",
+            Alignment = BoxContainer.AlignmentMode.Begin,
+        };
+        body.AddThemeConstantOverride("separation", 8);
+        bodyMargin.AddChild(body);
+
         var status = new HBoxContainer { CustomMinimumSize = new Vector2(0, 46) };
         var count = new Label { Text = countText, VerticalAlignment = VerticalAlignment.Center };
         count.AddThemeFontOverride("font", font);
@@ -73,7 +92,8 @@ public sealed partial class DeploymentCommandFrame : PanelContainer
         NewButton = new Button { Name = "DeploymentCommandNew", Text = "＋ 신규 편성", CustomMinimumSize = new Vector2(170, 42) };
         NewButton.AddThemeFontOverride("font", font);
         status.AddChild(NewButton);
-        Root.AddChild(status);
+        body.AddChild(status);
+
 
         var columns = new HBoxContainer
         {
@@ -82,7 +102,7 @@ public sealed partial class DeploymentCommandFrame : PanelContainer
             SizeFlagsVertical = SizeFlags.ExpandFill,
         };
         columns.AddThemeConstantOverride("separation", 12);
-        Root.AddChild(columns);
+        body.AddChild(columns);
         var left = new VBoxContainer { CustomMinimumSize = new Vector2(405, 0), SizeFlagsVertical = SizeFlags.ExpandFill };
         left.AddThemeConstantOverride("separation", 7);
         left.AddChild(SectionTitle(listTitle, font));
