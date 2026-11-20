@@ -33,15 +33,38 @@ public sealed partial class CampaignMapScene
             "예약 출항부대 목록", "선택 출항부대 정보");
         frame.Name = "NavalCommandCenter";
         layer.AddChild(frame);
-        ApplyDeployComposeButtonTexture(frame.CloseButton, false);
-        frame.CloseButton.Pressed += () => { CloseModal(); SelectCity(city); };
+
+        var close = frame.CloseButton;
+        close.Text = "×";
+        close.CustomMinimumSize = new Vector2(30, 30);
+        close.SizeFlagsHorizontal = Control.SizeFlags.ShrinkCenter;
+        close.SizeFlagsVertical = Control.SizeFlags.ShrinkCenter;
+        close.AddThemeFontSizeOverride("font_size", 18);
+        close.AddThemeStyleboxOverride("normal", Frame(Colors.Transparent, Gold, 1, 4, 2));
+        close.AddThemeStyleboxOverride("hover", Frame(new Color("5b1712"), GoldBright, 1, 4, 2));
+        close.AddThemeStyleboxOverride("pressed", Frame(new Color("35100d"), GoldBright, 1, 4, 2));
+        close.AddThemeStyleboxOverride("focus", new StyleBoxEmpty());
+
+        //ApplyDeployComposeButtonTexture(frame.CloseButton, false);
+        //close.CloseButton.Pressed += () => { CloseModal(); SelectCity(city); };
+        close.Pressed += () => { CloseModal(); SelectCity(city); };
+
+
         ApplyDeployComposeButtonTexture(frame.NewButton, true);
         frame.NewButton.Pressed += () => OpenNavalCompose(city);
         foreach (var index in mine) frame.List.AddChild(BuildNavalCommandCard(index, city));
         if (mine.Count == 0)
         {
-            var empty = MakeLabel("예약된 출항부대가 없습니다.\n신규 편성으로 부대를 추가하세요.", 15, Parchment);
+            var empty = MakeLabel(
+                "예약된 출항부대가 없습니다.\n신규 편성으로 부대를 추가하세요.",
+                15,
+                Parchment);
+
+            empty.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+            empty.SizeFlagsVertical = Control.SizeFlags.ExpandFill;
             empty.HorizontalAlignment = HorizontalAlignment.Center;
+            empty.VerticalAlignment = VerticalAlignment.Center;
+
             frame.List.AddChild(empty);
         }
         BuildNavalCommandDetails(frame.Details);
@@ -78,7 +101,10 @@ public sealed partial class CampaignMapScene
         button.AddThemeStyleboxOverride("focus", new StyleBoxEmpty());
         button.Pressed += () => { _depSelectedUnit = index; OpenNavalHub(city); };
         var row = new HBoxContainer { MouseFilter = Control.MouseFilterEnum.Ignore };
-        row.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect, Control.LayoutPresetMode.Minsize, 18);
+        //row.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect, Control.LayoutPresetMode.Minsize, 18);
+        row.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
+        row.OffsetLeft = 48;
+
         row.AddThemeConstantOverride("separation", 12);
         var art = FixedIcon(UnitCard(request.ShipCode, TroopClass.Naval), 68);
         art.CustomMinimumSize = new Vector2(68, 68);
@@ -139,8 +165,13 @@ public sealed partial class CampaignMapScene
         var commandBox = new VBoxContainer();
         commandBox.AddThemeConstantOverride("separation", 6);
         commandBox.AddChild(MakeLabel($"현재 목표: {NavalTargetName(request)} · {DelayLabel(request.DelayDays)}", 15, GoldBright));
-        var target = CommandCenterButton("목표 지정", true, new Vector2(132, 38));
+
+
+        var target = CommandCenterButton("목표 지정", true, new Vector2(96, 38));
+        target.SizeFlagsHorizontal = Control.SizeFlags.ShrinkCenter;
         target.Pressed += () => BeginNavalTargeting(index);
+
+
         commandBox.AddChild(target);
         command.AddChild(commandBox);
         parent.AddChild(command);
