@@ -13444,9 +13444,6 @@ public sealed partial class CampaignMapScene : Node3D
         provBox.AddChild(provSpin);
         form.AddChild(provBox);
 
-        var preview = MakeLabel("", 12, Parchment);
-        preview.AutowrapMode = TextServer.AutowrapMode.WordSmart;
-
         var selectedTransportGeneral = generals[0].Id;
         officerBox.AddChild(MakeLabel("수송 장수 선택 (표에서 1명 선택)", 15, GoldBright));
         var generalTree = new Tree
@@ -13497,7 +13494,6 @@ public sealed partial class CampaignMapScene : Node3D
                 row.SetChecked(0, (int)row.GetMetadata(0) == selectedTransportGeneral.Value);
                 row = row.GetNext();
             }
-            Refresh();
         };
         officerBox.AddChild(generalTree);
 
@@ -13557,7 +13553,6 @@ public sealed partial class CampaignMapScene : Node3D
                 else { _transportDraft[code] = value; }
                 if (fromSlider) { spin.SetValueNoSignal(value); }
                 else { slider.SetValueNoSignal(value); }
-                Refresh();
             }
             slider.ValueChanged += v => SetTransportAmount(v, true);
             spin.ValueChanged += v => SetTransportAmount(v, false);
@@ -13571,31 +13566,12 @@ public sealed partial class CampaignMapScene : Node3D
             // foreach 끝에서 각 병력 항목을 추가하는 부분
             transportTroopSection.AddChild(entry);            
         }
-        AddDeploymentDelaySelector(box, _depDelayDays, value => { _depDelayDays = value; Refresh(); });
-        preview.CustomMinimumSize = new Vector2(mw - 60f, 0);
-        footerBox.AddChild(preview);
+        AddDeploymentDelaySelector(box, _depDelayDays, value => _depDelayDays = value);
 
-        void Refresh()
-        {
-            var leader = generals.First(g => g.Id == selectedTransportGeneral);
-            var total = _transportDraft.Values.Sum();
-            if (total > DeployService.TransportMaxTroops)
-            {
-                preview.Text = $"⚠ 수송 병력은 최대 {DeployService.TransportMaxTroops}명입니다. 현재 {total}명";
-                return;
-            }
-
-            var lineText = _transportDraft.Count == 0
-                ? "병종 미선택"
-                : string.Join(", ", _transportDraft.OrderBy(p => p.Key).Select(p => $"{_troops.FirstOrDefault(t => t.Code == p.Key)?.Name ?? p.Key} {p.Value}명"));
-            preview.Text = $"예약 미리보기: {source.Name} → 목표 미지정 · {leader.Name} · {lineText} · 금 {(int)goldSpin.Value} · 군량 {(int)provSpin.Value}\n※ 금·군량은 병력 수와 무관하게 도시 보유량 안에서 원하는 만큼 실을 수 있습니다.\n※ 예약 후 목록에서 '목표 지정'을 눌러 지도에서 도착 성을 선택하세요.";
-        }
-
-        goldSlider.ValueChanged += v => { goldSpin.SetValueNoSignal(v); Refresh(); };
-        goldSpin.ValueChanged += v => { goldSlider.SetValueNoSignal(v); Refresh(); };
-        provSlider.ValueChanged += v => { provSpin.SetValueNoSignal(v); Refresh(); };
-        provSpin.ValueChanged += v => { provSlider.SetValueNoSignal(v); Refresh(); };
-        Refresh();
+        goldSlider.ValueChanged += v => goldSpin.SetValueNoSignal(v);
+        goldSpin.ValueChanged += v => goldSlider.SetValueNoSignal(v);
+        provSlider.ValueChanged += v => provSpin.SetValueNoSignal(v);
+        provSpin.ValueChanged += v => provSlider.SetValueNoSignal(v);
 
         var save = MakeButton("수송 예약", accent: true);
         save.CustomMinimumSize = new Vector2(0, 36);
