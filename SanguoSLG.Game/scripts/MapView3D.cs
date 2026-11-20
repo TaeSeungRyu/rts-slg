@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using Godot;
 using SanguoSLG.Core.Data;
 using SanguoSLG.Core.Spatial;
@@ -18,6 +19,8 @@ public partial class MapView3D : Node3D
     private readonly Dictionary<HexCoord, int> _presetTerrainVariants = new();
     private readonly Dictionary<(ulong SourceId, TerrainType Terrain, PreviewSeason Season, int Variant), StandardMaterial3D> _paletteMaterials = new();
     private readonly Dictionary<(ulong SourceId, PreviewSeason Season, int Variant), ShaderMaterial> _previewForestMaterials = new();
+    private readonly List<(Node3D Visual, TerrainType Terrain, HexCoord? Tile)> _seasonalVisuals = new();
+    private int _seasonChangeGeneration;
     private readonly Shader _previewForestShader = new()
     {
         Code = "shader_type spatial; uniform sampler2D source_texture : source_color; uniform vec4 target_color : source_color; void fragment() { vec4 sample_color = texture(source_texture, UV); float shade = dot(sample_color.rgb, vec3(0.299, 0.587, 0.114)); ALBEDO = target_color.rgb * mix(0.82, shade, 0.18); ALPHA = sample_color.a; ROUGHNESS = 0.88; }"
@@ -321,8 +324,44 @@ public partial class MapView3D : Node3D
     // 원본 저채도 로우폴리 재질의 질감은 유지하고, 지형군별 색조만 곱해
     // 평야·숲·산·물을 멀리서도 구분되게 한다. 각 인스턴스의 재질을 복제하므로
     // 같은 GLB를 공유하는 성·부대나 다른 타일의 재질에는 영향을 주지 않는다.
-    private void ApplyTerrainPalette(Node3D visual, TerrainType terrain, HexCoord? tile = null)
+    public void SetSeasonImmediate(PreviewSeason season)
     {
+        if (SeasonPreview == season) return;
+        SeasonPreview = season;
+        _seasonChangeGeneration++;
+        foreach (var (visual, terrain, tile) in _seasonalVisuals)
+            RefreshSeasonalVisual(visual, terrain, tile);
+    }
+
+    public async Task SetSeasonBatchedAsync(PreviewSeason season)
+    {
+        if (SeasonPreview == season) return;
+        SeasonPreview = season;
+        var generation = ++_seasonChangeGeneration;
+        for (var index = 0; index < _seasonalVisuals.Count; index++)
+        {
+            if (generation != _seasonChangeGeneration) return;
+            var (visual, terrain, tile) = _seasonalVisuals[index];
+            RefreshSeasonalVisual(visual, terrain, tile);
+            if ((index + 1) % 160 == 0)
+                await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        }
+    }
+
+    private void RefreshSeasonalVisual(Node3D visual, TerrainType terrain, HexCoord? tile)
+    {
+        foreach (var mesh in visual.FindChildren("*", "MeshInstance3D", true, false).OfType<MeshInstance3D>())
+        {
+            if (mesh.Mesh is null) continue;
+            for (var surface = 0; surface < mesh.Mesh.GetSurfaceCount(); surface++)
+                mesh.SetSurfaceOverrideMaterial(surface, null);
+        }
+        ApplyTerrainPalette(visual, terrain, tile, register: false);
+    }
+
+    private void ApplyTerrainPalette(Node3D visual, TerrainType terrain, HexCoord? tile = null, bool register = true)
+    {
+        if (register) _seasonalVisuals.Add((visual, terrain, tile));
         var started = WorldMapLoadMetrics.Timestamp();
         var surfaces = 0;
         var created = 0;

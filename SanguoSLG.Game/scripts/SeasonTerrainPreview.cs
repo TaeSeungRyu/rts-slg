@@ -49,7 +49,7 @@ public partial class SeasonTerrainPreview : Node3D
         _season.AddItem("기본", 0);
         _season.AddItem("가을", 1);
         _season.AddItem("겨울", 2);
-        _season.ItemSelected += index => Rebuild((MapView3D.PreviewSeason)index);
+        _season.ItemSelected += index => _view?.SetSeasonImmediate((MapView3D.PreviewSeason)index);
         content.AddChild(_season);
         content.AddChild(new Label { Text = $"지형 {types.Length}종 모두 포함 · 색상만 변경" });
         Rebuild(MapView3D.PreviewSeason.Default);
@@ -80,11 +80,12 @@ public partial class SeasonTerrainPreview : Node3D
         var rockMountain = _map.Tiles().First(tile => _map.TerrainAt(tile) == TerrainType.RockMountain);
         var mountainColors = new List<Color>();
         var rockColors = new List<Color>();
+        var originalView = _view;
         foreach (var season in Enum.GetValues<MapView3D.PreviewSeason>())
         {
             _season.Select((int)season);
-            Rebuild(season);
-            if (_view is null || _map.Count != 400 || _map.Tiles().Select(_map.TerrainAt).Distinct().Count() != Enum.GetValues<TerrainType>().Length)
+            _view!.SetSeasonImmediate(season);
+            if (_view != originalView || _map.Count != 400 || _map.Tiles().Select(_map.TerrainAt).Distinct().Count() != Enum.GetValues<TerrainType>().Length)
             {
                 GD.PushError("SEASON_PREVIEW_QA FAIL");
                 GetTree().Quit(1);
