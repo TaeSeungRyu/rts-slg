@@ -1,5 +1,7 @@
 using Godot;
 using SanguoSLG.Core.Data;
+using SanguoSLG.Core.Domain;
+using SanguoSLG.Core.Simulation;
 
 namespace SanguoSLG.Game;
 
@@ -727,6 +729,8 @@ public sealed partial class ScenarioEditorScene : Control
         details.AddChild(description);
         NativeTextInputDialog.Attach(description);
 
+        AddFactionResearchTable(details, faction.Id);
+
         details.AddChild(new HSeparator());
         var remove = new Button { Text = "선택한 세력 삭제", CustomMinimumSize = new Vector2(0, 38) };
         remove.Pressed += () => ConfirmDeleteFaction(faction);
@@ -742,6 +746,97 @@ public sealed partial class ScenarioEditorScene : Control
             VerticalAlignment = VerticalAlignment.Center });
         parent.AddChild(row);
         return row;
+    }
+
+    private void AddFactionResearchTable(VBoxContainer parent, int factionId)
+    {
+        parent.AddChild(new HSeparator());
+        var title = new Label { Text = "초기 연구 수치", Name = "FactionResearchTitle" };
+        title.AddThemeColorOverride("font_color", new Color("f1c878"));
+        parent.AddChild(title);
+
+        var scroll = new ScrollContainer
+        {
+            Name = "FactionResearchTableScroll",
+            CustomMinimumSize = new Vector2(0, 280),
+            SizeFlagsHorizontal = SizeFlags.ExpandFill,
+        };
+        GeneralWorkspaceStyle.StyleScrollContainer(scroll);
+        parent.AddChild(scroll);
+        var tableMargin = new MarginContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        tableMargin.AddThemeConstantOverride("margin_right", 12);
+        scroll.AddChild(tableMargin);
+        var table = new VBoxContainer { Name = "FactionResearchTable",
+            SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        table.AddThemeConstantOverride("separation", 3);
+        tableMargin.AddChild(table);
+
+        static Label Cell(string text, float width, bool centered = false) => new()
+        {
+            Text = text,
+            CustomMinimumSize = new Vector2(width, 34),
+            SizeFlagsHorizontal = width <= 0 ? SizeFlags.ExpandFill : SizeFlags.ShrinkBegin,
+            VerticalAlignment = VerticalAlignment.Center,
+            HorizontalAlignment = centered ? HorizontalAlignment.Center : HorizontalAlignment.Left,
+            TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis,
+        };
+        var header = new HBoxContainer { Name = "FactionResearchTableHeader" };
+        header.AddThemeConstantOverride("separation", 8);
+        header.AddChild(Cell("분류", 82, true));
+        header.AddChild(Cell("연구", 0));
+        header.AddChild(Cell("초기 단계", 112, true));
+        table.AddChild(header);
+        table.AddChild(new HSeparator());
+
+        var data = Path.GetFullPath(Path.Combine(ProjectSettings.GlobalizePath("res://"), "..", "data"));
+        var troops = new TroopCatalogLoader().LoadFromDirectory(data)
+            .OrderBy(troop => troop.Class).ThenBy(troop => troop.Name)
+            .Select(troop => (Category: "전투교리", Name: troop.Name, Code: troop.Code, Max: 10));
+        var definitions = new List<(string Category, string Name, string Code, int Max)>
+        {
+            ("특수", "성벽 강화", FactionResearch.WallCode, 10),
+            ("특수", "통솔 병력", FactionResearch.CommandTroopsCode, 10),
+            ("특수", "집단군 편성", FactionResearch.ArmyGroupCode, 10),
+        };
+        definitions.AddRange(GeneralResearchRules.Definitions.Select(definition =>
+            ("일반연구", definition.Name, definition.Code, GeneralResearchRules.MaxLevelFor(definition.Code))));
+        definitions.AddRange(StratagemResearchRules.Definitions.Select(definition =>
+            ("계략연구", definition.Name, definition.ResearchCode, StratagemResearchRules.MaxLevel)));
+        definitions.AddRange(troops);
+
+        foreach (var definition in definitions)
+        {
+            var row = new HBoxContainer { CustomMinimumSize = new Vector2(0, 42) };
+            row.AddThemeConstantOverride("separation", 8);
+            row.AddChild(Cell(definition.Category, 82, true));
+            var name = Cell(definition.Name, 0);
+            name.TooltipText = definition.Code;
+            row.AddChild(name);
+            var level = new SpinBox
+            {
+                Name = "FactionResearchLevel_" + definition.Code,
+                MinValue = 0,
+                MaxValue = definition.Max,
+                Step = 1,
+                Value = _draft.ResearchEntries.FirstOrDefault(entry => entry.FactionId == factionId
+                    && entry.Code == definition.Code)?.Level ?? 0,
+                CustomMinimumSize = new Vector2(112, 36),
+                AllowGreater = false,
+                AllowLesser = false,
+            };
+            var code = definition.Code;
+            level.ValueChanged += value => UpdateFactionResearch(factionId, code, (int)value);
+            row.AddChild(level);
+            table.AddChild(row);
+        }
+    }
+
+    private void UpdateFactionResearch(int factionId, string code, int level)
+    {
+        var entries = _draft.ResearchEntries
+            .Where(entry => entry.FactionId != factionId || entry.Code != code).ToList();
+        if (level > 0) entries.Add(new ScenarioResearchEntry(factionId, code, level));
+        _draft = _draft with { Research = entries };
     }
 
     private void SetFactionHidden(ScenarioFactionEntry faction, bool hidden)
@@ -771,6 +866,7 @@ public sealed partial class ScenarioEditorScene : Control
                 Cities = _draft.Cities.Select(city => city.OwnerFactionId == faction.Id
                     ? city with { OwnerFactionId = 0, Garrisons = [], Ships = [] } : city).ToArray(),
                 Generals = _draft.Generals.Where(general => general.FactionId != faction.Id).ToArray(),
+                Research = _draft.ResearchEntries.Where(entry => entry.FactionId != faction.Id).ToArray(),
             };
             _selectedDescriptionFactionId = _draft.Factions.FirstOrDefault()?.Id ?? 0;
             ShowFactions();
@@ -1407,6 +1503,15 @@ public sealed partial class ScenarioEditorScene : Control
                     && choice.GetItemText(1) == "지정 연도에 등장")
                 && _body.FindChildren("*", "CheckBox", true, false).OfType<CheckBox>()
                     .All(check => check.Text != "새 게임에서 선택 가능한 세력");
+            var researchLevel = _body.FindChild("FactionResearchLevel_"
+                + FactionResearch.AgricultureCode, true, false) as SpinBox;
+            if (researchLevel is not null) researchLevel.Value = 3;
+            var factionResearchUi = researchLevel is not null
+                && _body.FindChild("FactionResearchTable", true, false) is VBoxContainer
+                && _draft.ResearchEntries.Any(entry => entry.FactionId == _selectedDescriptionFactionId
+                    && entry.Code == FactionResearch.AgricultureCode && entry.Level == 3);
+            _draft = originalDraft;
+            ShowFactions();
             var scheduledModePreservesSetup = false;
             var activeFaction = _draft.Factions.FirstOrDefault(faction => !faction.Hidden);
             if (activeFaction is not null)
@@ -1514,7 +1619,7 @@ public sealed partial class ScenarioEditorScene : Control
                 RefreshList();
                 var passed = bundled.Length == 6 && _list.ItemCount >= 6
                     && savedEditRoundTrip && factionDescriptionRoundTrip && newScenarioAtBottom && factionColorUi
-                    && hiddenFactionUi && scheduledModePreservesSetup && factionSearchUi
+                    && hiddenFactionUi && factionResearchUi && scheduledModePreservesSetup && factionSearchUi
                     && cityMapUi && generalSearchUi && generalCityListUi
                     && generalCrudPassed && generalPlacementModalPassed && forceTabRemoved
                     && cityForceUi && forceCrudPassed
@@ -1524,7 +1629,7 @@ public sealed partial class ScenarioEditorScene : Control
                     && multilineDescription && restored.Description == descriptionWithLines
                     && restored.MapRevision == _draft.MapRevision
                     && restored.Cities.Count == _draft.Cities.Count;
-                if (!passed) GD.Print($"[scenario-editor-qa-detail] history={historicalUsesRoot} legacy={legacyRebased} switch={mapSwitchPassed} placement={factionPlacementCompatible} root={currentMapSelected} generals={generalCrudPassed} generalModal={generalPlacementModalPassed} forces={forceCrudPassed} cityUi={cityForceUi} factionUi={factionColorUi && hiddenFactionUi} scheduled={scheduledModePreservesSetup} factionSearch={factionSearchUi} cityMapUi={cityMapUi} generalUi={generalSearchUi && generalCityListUi} errors={errors.Count}");
+                if (!passed) GD.Print($"[scenario-editor-qa-detail] history={historicalUsesRoot} legacy={legacyRebased} switch={mapSwitchPassed} placement={factionPlacementCompatible} root={currentMapSelected} generals={generalCrudPassed} generalModal={generalPlacementModalPassed} forces={forceCrudPassed} cityUi={cityForceUi} factionUi={factionColorUi && hiddenFactionUi} researchUi={factionResearchUi} scheduled={scheduledModePreservesSetup} factionSearch={factionSearchUi} cityMapUi={cityMapUi} generalUi={generalSearchUi && generalCityListUi} errors={errors.Count}");
                 GD.Print($"[scenario-editor-qa] passed={passed} maps={_maps.Count} cities={_draft.Cities.Count} errors={errors.Count}");
                 GetTree().Quit(passed ? 0 : 1);
             }
