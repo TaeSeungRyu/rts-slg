@@ -21,9 +21,10 @@ public partial class MapView3D : Node3D
     private readonly Dictionary<(ulong SourceId, PreviewSeason Season, int Variant), ShaderMaterial> _previewForestMaterials = new();
     private readonly List<(Node3D Visual, TerrainType Terrain, HexCoord? Tile)> _seasonalVisuals = new();
     private int _seasonChangeGeneration;
+    public double LastSeasonMaxBatchMs { get; private set; }
     private readonly Shader _previewForestShader = new()
     {
-        Code = "shader_type spatial; uniform sampler2D source_texture : source_color; uniform vec4 target_color : source_color; void fragment() { vec4 sample_color = texture(source_texture, UV); float shade = dot(sample_color.rgb, vec3(0.299, 0.587, 0.114)); ALBEDO = target_color.rgb * mix(0.82, shade, 0.18); ALPHA = sample_color.a; ROUGHNESS = 0.88; }"
+        Code = "shader_type spatial; uniform sampler2D source_texture : source_color; uniform vec4 target_color : source_color; uniform vec4 ground_color : source_color; varying float local_height; void vertex() { local_height = VERTEX.y; } void fragment() { vec4 sample_color = texture(source_texture, UV); float shade = dot(sample_color.rgb, vec3(0.299, 0.587, 0.114)); float foliage = smoothstep(0.10, 0.28, local_height); vec3 seasonal = target_color.rgb * mix(0.82, shade, 0.18); ALBEDO = mix(sample_color.rgb * ground_color.rgb, seasonal, foliage); ALPHA = sample_color.a; ROUGHNESS = 0.88; }"
     };
     private static bool DisablePaletteMaterialCache
         => OS.GetCmdlineUserArgs().Contains("--maploaddisablematerialcache");
@@ -338,14 +339,23 @@ public partial class MapView3D : Node3D
         if (SeasonPreview == season) return;
         SeasonPreview = season;
         var generation = ++_seasonChangeGeneration;
+        LastSeasonMaxBatchMs = 0d;
+        var batchStarted = Time.GetTicksUsec();
         for (var index = 0; index < _seasonalVisuals.Count; index++)
         {
             if (generation != _seasonChangeGeneration) return;
             var (visual, terrain, tile) = _seasonalVisuals[index];
             RefreshSeasonalVisual(visual, terrain, tile);
-            if ((index + 1) % 160 == 0)
+            if ((index + 1) % 160 == 0 || Time.GetTicksUsec() - batchStarted >= 5000)
+            {
+                LastSeasonMaxBatchMs = System.Math.Max(LastSeasonMaxBatchMs,
+                    (Time.GetTicksUsec() - batchStarted) / 1000d);
                 await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+                batchStarted = Time.GetTicksUsec();
+            }
         }
+        LastSeasonMaxBatchMs = System.Math.Max(LastSeasonMaxBatchMs,
+            (Time.GetTicksUsec() - batchStarted) / 1000d);
     }
 
     private void RefreshSeasonalVisual(Node3D visual, TerrainType terrain, HexCoord? tile)
@@ -399,7 +409,7 @@ public partial class MapView3D : Node3D
         {
             tint = terrain switch
             {
-                TerrainType.Plains or TerrainType.Paddy or TerrainType.Farm => new Color(0.82f, 0.89f, 0.94f),
+                TerrainType.Plains or TerrainType.Paddy or TerrainType.Farm => new Color(0.84f, 0.85f, 0.78f),
                 TerrainType.Forest => new Color(0.55f, 0.64f, 0.60f),
                 TerrainType.Mountain or TerrainType.Rocks or TerrainType.RockHill or TerrainType.RockMountain
                     or TerrainType.Karst or TerrainType.Cliff or TerrainType.IceMountain
@@ -424,6 +434,7 @@ public partial class MapView3D : Node3D
                         forestMaterial = new ShaderMaterial { Shader = _previewForestShader };
                         forestMaterial.SetShaderParameter("source_texture", source.AlbedoTexture);
                         forestMaterial.SetShaderParameter("target_color", tint);
+                        forestMaterial.SetShaderParameter("ground_color", new Color(0.50f, 0.72f, 0.40f));
                         _previewForestMaterials[forestKey] = forestMaterial;
                         created++;
                     }
