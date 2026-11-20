@@ -239,6 +239,7 @@ public sealed partial class CampaignMapScene
         destinationBox.AddChild(MakeLabel($"목표: {destinationName} · {DelayLabel(request.DelayDays)}",
             TransportHubLayout.Details.DestinationFontSize, TransportHubLayout.HighlightText));
         var target = CommandCenterButton("목표 지정", true, TransportHubLayout.Buttons.TargetSize);
+        target.SizeFlagsHorizontal = Control.SizeFlags.ShrinkCenter;
         target.Pressed += () => BeginTransportTargeting(index);
         destinationBox.AddChild(target);
         parent.AddChild(BuildTransportDetailPanel(destinationBox));

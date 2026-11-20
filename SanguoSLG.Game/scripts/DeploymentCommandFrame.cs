@@ -134,7 +134,12 @@ public sealed partial class DeploymentCommandFrame : PanelContainer
         columns.AddChild(Details);
         Actions = new HBoxContainer { Name = "DeploymentCommandActions", CustomMinimumSize = new Vector2(0, 46) };
         Actions.AddThemeConstantOverride("separation", 8);
-        Root.AddChild(Actions);
+
+        var actionsMargin = new MarginContainer();
+        actionsMargin.AddThemeConstantOverride("margin_bottom", 12);
+        actionsMargin.AddChild(Actions);
+        Root.AddChild(actionsMargin);
+
     }
 
     private static Label SectionTitle(string text, Font font)
