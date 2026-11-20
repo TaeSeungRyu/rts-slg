@@ -13440,7 +13440,9 @@ public sealed partial class CampaignMapScene : Node3D
         form.AddThemeConstantOverride("v_separation", 8);
         box.AddChild(form);
 
-        form.AddChild(MakeLabel($"금\n보유 {source.Gold}", 12, GoldBright));
+        var transportGoldHeading = DeployComposeResourceHeading("money.png", $"휴대 금\n보유 {source.Gold:N0}");
+        transportGoldHeading.Name = "TransportGoldHeading";
+        form.AddChild(transportGoldHeading);
         var goldBox = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
         var goldSpin = ApplyNumberInputStyle(new SpinBox
         {
@@ -13455,7 +13457,9 @@ public sealed partial class CampaignMapScene : Node3D
         goldBox.AddChild(goldSpin);
         form.AddChild(goldBox);
 
-        form.AddChild(MakeLabel($"군량\n보유 {source.Provisions}", 12, GoldBright));
+        var transportProvisionHeading = DeployComposeResourceHeading("food.png", $"휴대 군량\n보유 {source.Provisions:N0}");
+        transportProvisionHeading.Name = "TransportProvisionHeading";
+        form.AddChild(transportProvisionHeading);
         var provBox = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
         var provSpin = ApplyNumberInputStyle(new SpinBox
         {

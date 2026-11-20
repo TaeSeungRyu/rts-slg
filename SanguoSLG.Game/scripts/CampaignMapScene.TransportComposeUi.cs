@@ -26,7 +26,9 @@ public sealed partial class CampaignMapScene
         var tree = _modalLayer?.FindChild("ComposeOfficerTable", true, false) as Tree;
         var leftInset = _modalLayer?.FindChild("TransportComposeLeftInset", true, false) as MarginContainer;
         var reserve = _modalLayer?.FindChildren("*", "Button", true, false).OfType<Button>()
-            .FirstOrDefault(button => button.Text == "수송 예약");
+            .FirstOrDefault(button => button.Text == "확인");
+        var resourceIcons = _modalLayer?.FindChildren("*", "TextureRect", true, false).OfType<TextureRect>()
+            .Select(icon => icon.Texture?.ResourcePath ?? "").ToArray() ?? [];
         var passed = modal is not null && GetViewport().GetVisibleRect().Encloses(modal.GetGlobalRect())
             && tree?.Columns == 5 && tree.Size.Y >= 480f
             && leftInset?.GetThemeConstant("margin_right") >= 16
@@ -34,6 +36,8 @@ public sealed partial class CampaignMapScene
             && modal.FindChild("TransportSelectedGeneralCard", true, false) is null
             && !modal.FooterContent.GetChildren().OfType<Label>().Any()
             && modal.LeftScroll.VerticalScrollMode == ScrollContainer.ScrollMode.Auto
+            && resourceIcons.Any(path => path.EndsWith("food.png", StringComparison.Ordinal))
+            && resourceIcons.Any(path => path.EndsWith("money.png", StringComparison.Ordinal))
             && reserve is not null && reserve.Size.X <= 170f
             && Math.Abs(reserve.GetGlobalRect().GetCenter().X - modal.FooterContent.GetGlobalRect().GetCenter().X) <= 2f;
         GD.Print($"[transport-compose-ui-qa] passed={passed} size={modal?.Size} officer_table_height={tree?.Size.Y} reserve={reserve?.Size}");
