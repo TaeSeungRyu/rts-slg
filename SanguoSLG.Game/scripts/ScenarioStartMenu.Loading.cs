@@ -23,14 +23,21 @@ public sealed partial class ScenarioStartMenu
         return null;
     }
 
-    private async void ChangeToCampaign()
+    private void ChangeToCampaign()
     {
         if (_campaignLoading) return;
         _campaignLoading = true;
+        ReloadCampaign(GetTree());
+    }
+
+    public static void ReloadCampaign(SceneTree tree) => ReloadCampaignAsync(tree);
+
+    private static async void ReloadCampaignAsync(SceneTree tree)
+    {
         _loadingLayer?.QueueFree();
         var layer = new CanvasLayer { Layer = 100 };
         _loadingLayer = layer;
-        GetTree().Root.AddChild(layer);
+        tree.Root.AddChild(layer);
         var overlay = new ColorRect { Color = Colors.White, MouseFilter = MouseFilterEnum.Stop,
             Modulate = new Color(1, 1, 1, 0) };
         overlay.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
@@ -79,8 +86,8 @@ public sealed partial class ScenarioStartMenu
         tip.AddThemeFontSizeOverride("font_size", 15);
         column.AddChild(tip);
         CreateTween().TweenProperty(overlay, "modulate:a", 1f, 0.2f);
-        await ToSignal(GetTree().CreateTimer(0.23), SceneTreeTimer.SignalName.Timeout);
-        if (IsInsideTree()) GetTree().ReloadCurrentScene();
+        await layer.ToSignal(tree.CreateTimer(0.23), SceneTreeTimer.SignalName.Timeout);
+        if (GodotObject.IsInstanceValid(layer) && layer.IsInsideTree()) tree.ReloadCurrentScene();
     }
 
     public static void FinishLoading(SceneTree tree)

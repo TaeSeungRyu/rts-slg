@@ -11009,57 +11009,19 @@ public sealed partial class CampaignMapScene : Node3D
         try { loaded = SaveSlots.Load(slot); }
         catch (System.Exception e) { _log.Text = "불러오기 실패: " + e.Message; CloseModal(); return; }
 
-        if (loaded.MapPresetSnapshot is { } savedMap)
+        try
         {
-            var current = _state.MapPresetSnapshot;
-            if (current is null || ScenarioMapArchive.RevisionOf(savedMap)
-                != ScenarioMapArchive.RevisionOf(current))
-            {
-                try
-                {
-                    var source = CreatedGeneralPresets.ApplyAtNewGame(
-                        new ScenarioLoader().LoadFromDirectory(_dataDirectory));
-                    ConfigureLoadedState(loaded, source);
-                    GetTree().ReloadCurrentScene();
-                    return;
-                }
-                catch (System.Exception error)
-                {
-                    _log.Text = "저장 지도를 복원할 수 없습니다: " + error.Message;
-                    CloseModal();
-                    return;
-                }
-            }
-        }
-        else if (loaded.Cities.Any(city => !_state.Cities.Any(current =>
-            current.Id == city.Id && current.Position == city.Position)))
-        {
-            _log.Text = "이전 세이브에 지도 스냅샷이 없고 현재 지도와 거점 위치가 다릅니다. 원래 지도에서 불러오세요.";
+            var source = CreatedGeneralPresets.ApplyAtNewGame(
+                new ScenarioLoader().LoadFromDirectory(_dataDirectory));
+            ConfigureLoadedState(loaded, source);
             CloseModal();
-            return;
+            ScenarioStartMenu.ReloadCampaign(GetTree());
         }
-
-        _state = loaded;
-        Player = new FactionId(loaded.HumanFactionId);
-        _pendingDeploys.Clear();
-        _pendingSupplyDeploys.Clear();
-        _pendingTransportDeploys.Clear();
-        _pendingArmyGroupDeploys.Clear();
-        _selected = null;
-        _selectedUnitId = -1;
-        _week = System.Math.Max(0, (_state.Day - 1) / 7);
-
-        // 야전 토큰·라벨을 전부 지우고 로드 상태에 맞춰 Redraw가 다시 만든다(도시 색·주둔은 Redraw가 동기화).
-        foreach (var t in _armyTokens.Values) { t.QueueFree(); }
-        foreach (var l in _armyLabels.Values) { l.QueueFree(); }
-        _armyTokens.Clear();
-        _armyLabels.Clear();
-        _activeGauges.Clear();
-
-        CloseModal();
-        HidePanels();
-        Redraw($"슬롯 {slot:00}의 게임을 불러왔습니다. ({_state.Year}년 {_state.Month}월)");
-        _storyAwaitingCard = _state.StoryPending.Any(e => e.Faction == Player);
+        catch (System.Exception error)
+        {
+            _log.Text = "저장 게임을 준비할 수 없습니다: " + error.Message;
+            CloseModal();
+        }
     }
 
     // 시스템 모달 공통 헤더(◀ 시스템으로 복귀 · ✕ 닫기).
