@@ -75,6 +75,40 @@ public sealed class ScenarioDraftTests
     }
 
     [Fact]
+    public void FactionResearchRoundTripsAndSeedsGameState()
+    {
+        var research = new ScenarioResearchEntry(1, FactionResearch.AgricultureCode, 4);
+        var draft = Draft() with { Research = [research] };
+        var path = Path.Combine(Path.GetTempPath(), $"scenario-research-{Guid.NewGuid():N}.json");
+        try
+        {
+            ScenarioDraftStore.Save(path, draft, Map(), Generals);
+            var loaded = ScenarioDraftStore.Load(path);
+            Assert.Equal(research, Assert.Single(loaded.ResearchEntries));
+
+            var source = new Scenario(
+                [new Faction(new FactionId(1), "위", new GeneralId(1), 0, "#3366AA")],
+                [new City(new CityId(1), "첫 성", new HexCoord(1, 1), new FactionId(1), 100),
+                    new City(new CityId(2), "둘째 성", new HexCoord(4, 3), new FactionId(0), 0)],
+                [new General(new GeneralId(1), "장수", new Dictionary<TroopClass, AptitudeGrade>(), 50, 50, 50)],
+                new BalanceConfig(MonthlyTaxPerCity: 100), new HexMap(0, 5, 0, 4), [], new TileConditionMap());
+            var applied = ScenarioDraftApplier.Apply(source, loaded, Map());
+            Assert.Equal(4, GameState.FromScenario(applied).ResearchOf(new FactionId(1),
+                FactionResearch.AgricultureCode));
+        }
+        finally { if (File.Exists(path)) File.Delete(path); }
+    }
+
+    [Fact]
+    public void InvalidFactionResearchIsRejected()
+    {
+        var invalid = Draft() with { Research =
+            [new ScenarioResearchEntry(1, FactionResearch.AgricultureCode, 11),
+                new ScenarioResearchEntry(1, FactionResearch.AgricultureCode, 3)] };
+        Assert.Contains(invalid.Validate(Map(), Generals), error => error.Contains("연구 수치"));
+    }
+
+    [Fact]
     public void FactionDescriptionsStaySeparateAndOldScenarioFilesUseEmptyDescription()
     {
         var draft = Draft() with

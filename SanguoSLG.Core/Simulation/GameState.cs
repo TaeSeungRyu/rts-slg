@@ -237,7 +237,8 @@ public sealed record GameState(
             RuinDefinitions: scenario.RuinList,
             RuinStates: scenario.RuinList.Select(r => new RuinState(r.Id, r.MaxDefenders)).ToList(),
             MapPresetSnapshot: scenario.MapPreset?.Snapshot(),
-            HiddenFactionArrivals: scenario.HiddenFactionArrivals);
+            HiddenFactionArrivals: scenario.HiddenFactionArrivals,
+            ResearchTracks: scenario.InitialResearch);
     }
 
     private static IReadOnlyList<FacilityPlacement> BuildInitialFacilityPlacements(Scenario scenario)

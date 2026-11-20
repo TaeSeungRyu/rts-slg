@@ -16,11 +16,16 @@ public sealed record ScenarioCityEntry(int SiteId, int OwnerFactionId, int Gold,
 
 public sealed record ScenarioGeneralEntry(int GeneralId, int FactionId, int? SiteId);
 
+public sealed record ScenarioResearchEntry(int FactionId, string Code, int Level);
+
 public sealed record ScenarioDraft(int Version, string Id, string Title, string Description,
     int StartYear, int StartMonth, int StartDay, string MapId, string MapRevision,
     IReadOnlyList<ScenarioFactionEntry> Factions, IReadOnlyList<ScenarioCityEntry> Cities,
-    IReadOnlyList<ScenarioGeneralEntry> Generals)
+    IReadOnlyList<ScenarioGeneralEntry> Generals,
+    IReadOnlyList<ScenarioResearchEntry>? Research = null)
 {
+    public IReadOnlyList<ScenarioResearchEntry> ResearchEntries => Research ?? [];
+
     public IReadOnlyList<string> Validate(ScenarioMapPreset map, IReadOnlySet<int> knownGenerals)
     {
         var errors = new List<string>();
@@ -42,6 +47,11 @@ public sealed record ScenarioDraft(int Version, string Id, string Title, string 
             errors.Add("세력 ID, 군주 또는 이름이 올바르지 않습니다.");
         if (!Factions.Any(faction => !faction.Hidden))
             errors.Add("시작 가능한 세력이 적어도 하나 필요합니다.");
+        if (ResearchEntries.Any(entry => !factionIds.Contains(entry.FactionId)
+                || string.IsNullOrWhiteSpace(entry.Code) || entry.Level is < 0 or > 10)
+            || ResearchEntries.Select(entry => (entry.FactionId, entry.Code)).Distinct().Count()
+                != ResearchEntries.Count)
+            errors.Add("세력 연구 수치가 올바르지 않습니다.");
         foreach (var faction in Factions.Where(f => f.Hidden))
         {
             if (faction.ArrivalYear <= StartYear)
