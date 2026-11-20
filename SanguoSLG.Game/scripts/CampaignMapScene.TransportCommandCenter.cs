@@ -102,8 +102,21 @@ public sealed partial class CampaignMapScene
         foreach (var index in mine)
             frame.List.AddChild(BuildTransportCommandCard(index, city));
         if (mine.Count == 0)
-            frame.List.AddChild(MakeLabel("예약된 수송부대가 없습니다.\n신규 편성으로 부대를 추가하세요.",
-                TransportHubLayout.Card.EmptyFontSize, TransportHubLayout.BodyText));
+        {
+            frame.List.SizeFlagsVertical = Control.SizeFlags.ExpandFill;
+
+            var empty = MakeLabel(
+                "예약된 수송부대가 없습니다.\n신규 편성으로 부대를 추가하세요.",
+                TransportHubLayout.Card.EmptyFontSize,
+                TransportHubLayout.BodyText);
+
+            empty.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+            empty.SizeFlagsVertical = Control.SizeFlags.ExpandFill;
+            empty.HorizontalAlignment = HorizontalAlignment.Center;
+            empty.VerticalAlignment = VerticalAlignment.Center;
+
+            frame.List.AddChild(empty);
+        }
         BuildTransportCommandDetails(frame.Details);
         BuildTransportCommandActions(frame.Actions, city);
         CenterAndDrag(frame, frame.Header, frame.Size.X, frame.Size.Y, frame.Root);
@@ -203,9 +216,15 @@ public sealed partial class CampaignMapScene
     {
         if (_depSelectedUnit < 0 || _depSelectedUnit >= _pendingTransportDeploys.Count)
         {
-            var empty = MakeLabel("왼쪽에서 예약 수송부대를 선택하세요.", TransportHubLayout.Details.EmptyFontSize, TransportHubLayout.BodyText);
-            empty.HorizontalAlignment = HorizontalAlignment.Center;
+            var empty = MakeLabel(
+                "왼쪽에서 예약 수송부대를 선택하세요.",
+                TransportHubLayout.Details.EmptyFontSize,
+                TransportHubLayout.BodyText);
+
+            empty.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
             empty.SizeFlagsVertical = Control.SizeFlags.ExpandFill;
+            empty.HorizontalAlignment = HorizontalAlignment.Center;
+            empty.VerticalAlignment = VerticalAlignment.Center;
             parent.AddChild(empty);
             return;
         }

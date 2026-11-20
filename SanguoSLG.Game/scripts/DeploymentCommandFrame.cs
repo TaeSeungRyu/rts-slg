@@ -120,6 +120,7 @@ public sealed partial class DeploymentCommandFrame : PanelContainer
         };
         GameUiSkin.ApplyQuickListScroll(scroll);
         left.AddChild(scroll);
+
         List = new VBoxContainer { Name = "DeploymentCommandList", SizeFlagsHorizontal = SizeFlags.ExpandFill };
         List.AddThemeConstantOverride("separation", 8);
         scroll.AddChild(List);
@@ -131,7 +132,28 @@ public sealed partial class DeploymentCommandFrame : PanelContainer
         };
         Details.AddThemeConstantOverride("separation", 7);
         Details.AddChild(SectionTitle(detailTitle, font));
-        columns.AddChild(Details);
+
+
+        var dividerMargin = new MarginContainer
+        {
+            SizeFlagsVertical = SizeFlags.ExpandFill,
+            MouseFilter = MouseFilterEnum.Ignore,
+        };
+        dividerMargin.AddThemeConstantOverride("margin_top", 4);
+        dividerMargin.AddThemeConstantOverride("margin_bottom", 22);
+
+        var divider = new ColorRect
+        {
+            Color = new Color("8b713e"),
+            CustomMinimumSize = new Vector2(2, 0),
+            MouseFilter = MouseFilterEnum.Ignore,
+        };
+
+        dividerMargin.AddChild(divider);
+        columns.AddChild(dividerMargin);
+        columns.AddChild(Details); // 기존 줄
+
+
         Actions = new HBoxContainer { Name = "DeploymentCommandActions", CustomMinimumSize = new Vector2(0, 46) };
         Actions.AddThemeConstantOverride("separation", 8);
 
