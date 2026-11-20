@@ -18,6 +18,8 @@ public sealed partial class ScenarioEditorScene : Control
     private int _selectedCityId;
     private int _selectedGeneralCityId;
     private int _selectedDescriptionFactionId;
+    private ScrollContainer? _cityDetailScroll;
+    private int _cityDetailScrollSiteId;
     private string _factionSearch = "";
     private string _generalSearch = "";
     private static readonly Color[] FactionPalette = Enumerable.Range(0, 60)
@@ -422,6 +424,11 @@ public sealed partial class ScenarioEditorScene : Control
 
     private void ShowCities()
     {
+        var preservedScroll = _cityDetailScroll is not null
+            && GodotObject.IsInstanceValid(_cityDetailScroll)
+            && _cityDetailScrollSiteId == _selectedCityId
+                ? _cityDetailScroll.ScrollVertical
+                : 0;
         ClearBody();
         var map = CurrentMap().Preset;
         if (!_draft.Cities.Any(city => city.SiteId == _selectedCityId))
@@ -453,6 +460,9 @@ public sealed partial class ScenarioEditorScene : Control
         editSection.GetParent<PanelContainer>().SizeFlagsVertical = SizeFlags.ExpandFill;
         var detailScroll = new ScrollContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill,
             SizeFlagsVertical = SizeFlags.ExpandFill };
+        detailScroll.Name = "ScenarioCityDetailScroll";
+        _cityDetailScroll = detailScroll;
+        _cityDetailScrollSiteId = _selectedCityId;
         GeneralWorkspaceStyle.StyleScrollContainer(detailScroll);
         editSection.AddChild(detailScroll);
         var details = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
@@ -462,6 +472,15 @@ public sealed partial class ScenarioEditorScene : Control
         detailMargin.AddThemeConstantOverride("margin_bottom", 4);
         detailMargin.AddChild(details);
         detailScroll.AddChild(detailMargin);
+        if (preservedScroll > 0)
+        {
+            detailScroll.ScrollVertical = preservedScroll;
+            Callable.From(() =>
+            {
+                if (GodotObject.IsInstanceValid(detailScroll) && detailScroll.IsInsideTree())
+                    detailScroll.ScrollVertical = preservedScroll;
+            }).CallDeferred();
+        }
 
         var city = _draft.Cities.FirstOrDefault(city => city.SiteId == _selectedCityId);
         var site = map.Sites.FirstOrDefault(site => site.Id == _selectedCityId);
