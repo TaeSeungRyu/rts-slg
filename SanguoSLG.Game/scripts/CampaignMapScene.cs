@@ -18179,9 +18179,9 @@ public sealed partial class CampaignMapScene : Node3D
         var nextText = next is { } n && code != "workshop" ? $" → +{FacilityEffectValue(code, n)}" : "";
         return code switch
         {
-            "paddy" => $"월 군량 +{current}{nextText}",
-            "farm" => $"월 군량 +{current}{nextText}",
-            "village" => $"월 금 +{current}{nextText}",
+            "paddy" => $"도시 월 정기 군량 +{current}{nextText} · 생산 명령 산출량과 무관",
+            "farm" => $"도시 월 정기 군량 +{current}{nextText} · 생산 명령 산출량과 무관",
+            "village" => $"도시 월 정기 금 +{current}{nextText} · 생산 명령 산출량과 무관",
             "workshop" => $"성벽수리 회복량 +{_cb.WallRepairWorkshopBonus}%p",
             _ => "",
         };
