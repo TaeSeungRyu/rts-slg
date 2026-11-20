@@ -27,8 +27,20 @@ public sealed partial class CampaignMapScene
             "예약 집단군 목록", "선택 집단군 정보");
         frame.Name = "ArmyGroupCommandCenter";
         layer.AddChild(frame);
-        ApplyDeployComposeButtonTexture(frame.CloseButton, false);
-        frame.CloseButton.Pressed += () => { CloseModal(); SelectCity(city); };
+
+
+        var close = frame.CloseButton;
+        close.Text = "×";
+        close.CustomMinimumSize = new Vector2(30, 30);
+        close.SizeFlagsHorizontal = Control.SizeFlags.ShrinkCenter;
+        close.SizeFlagsVertical = Control.SizeFlags.ShrinkCenter;
+        close.AddThemeFontSizeOverride("font_size", 18);
+        close.AddThemeStyleboxOverride("normal", Frame(Colors.Transparent, Gold, 1, 4, 2));
+        close.AddThemeStyleboxOverride("hover", Frame(new Color("5b1712"), GoldBright, 1, 4, 2));
+        close.AddThemeStyleboxOverride("pressed", Frame(new Color("35100d"), GoldBright, 1, 4, 2));
+        close.AddThemeStyleboxOverride("focus", new StyleBoxEmpty());
+        close.Pressed += () => { CloseModal(); SelectCity(city); };
+
         ApplyDeployComposeButtonTexture(frame.NewButton, true);
         frame.NewButton.Disabled = existing || mine.Count > 0;
         frame.NewButton.Text = existing ? "출전중" : mine.Count > 0 ? "예약됨" : "＋ 신규 편성";
@@ -73,7 +85,16 @@ public sealed partial class CampaignMapScene
         button.AddThemeStyleboxOverride("focus", new StyleBoxEmpty());
         button.Pressed += () => { _depSelectedUnit = index; OpenArmyGroupHub(city); };
         var row = new HBoxContainer { MouseFilter = Control.MouseFilterEnum.Ignore };
-        row.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect, Control.LayoutPresetMode.Minsize, 18);
+
+
+        //row.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect, Control.LayoutPresetMode.Minsize, 18);
+
+        row.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
+        row.OffsetLeft = 48;
+        // row.OffsetRight = -24;
+        // row.OffsetTop = 180;
+        // row.OffsetBottom = -12;
+
         row.AddThemeConstantOverride("separation", 12);
         var art = FixedIcon(ArmyGroupIcon(), 68);
         art.CustomMinimumSize = new Vector2(68, 68);
@@ -131,7 +152,8 @@ public sealed partial class CampaignMapScene
         command.AddThemeStyleboxOverride("panel", Frame(Colors.Transparent, Gold, 1, 5, 10));
         var commandBox = new VBoxContainer();
         commandBox.AddChild(MakeLabel($"목표: {ArmyGroupTargetName(request.Target)} · {DelayLabel(request.DelayDays)}", 15, GoldBright));
-        var target = CommandCenterButton("목표 지정", true, new Vector2(132, 38));
+        var target = CommandCenterButton("목표 지정", true, new Vector2(96, 38));
+        target.SizeFlagsHorizontal = Control.SizeFlags.ShrinkCenter;
         target.Pressed += () => BeginArmyGroupTargeting(index);
         commandBox.AddChild(target);
         command.AddChild(commandBox);
