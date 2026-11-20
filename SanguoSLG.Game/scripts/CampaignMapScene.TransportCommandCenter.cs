@@ -6,14 +6,75 @@ namespace SanguoSLG.Game;
 
 public sealed partial class CampaignMapScene
 {
+    // 수송 지휘소 전용 디자인 값입니다. 크기와 간격의 단위는 px입니다.
+    private static class TransportHubLayout
+    {
+        public const int ModalLayer = 20;
+        public const string PanelTexture = "deploy_command_panel.png";
+        public static readonly Color BackdropColor = new(0, 0, 0, 0.68f);
+
+        public static class Card
+        {
+            public static readonly Vector2 MinimumSize = new(377, 112);
+            public const int Padding = 18;
+            public const int Gap = 12;
+            public const int ArtworkSize = 68;
+            public const int TitleFontSize = 17;
+            public const int LeaderFontSize = 13;
+            public const int DestinationFontSize = 12;
+            public const int EmptyFontSize = 15;
+            public const string NormalTexture = "troop_normal.png";
+            public const string ActiveTexture = "troop_hover_active.png";
+        }
+
+        public static class Details
+        {
+            public const int OverviewGap = 12;
+            public const int ArtworkSize = 76;
+            public const int TitleFontSize = 21;
+            public const int RosterFontSize = 13;
+            public const int BodyFontSize = 14;
+            public const int DestinationFontSize = 15;
+            public const int EmptyFontSize = 16;
+            public const int SummaryFontSize = 14;
+            public const int SummaryHeight = 42;
+            public const int SummaryCornerRadius = 4;
+            public const int BorderWidth = 1;
+            public const int CornerRadius = 5;
+            public const int Padding = 10;
+            public static Color PanelBackground => Colors.Transparent;
+            public static Color PanelBorder => Gold;
+        }
+
+        public static class Buttons
+        {
+            public static readonly Vector2 DeleteSize = new(132, 42);
+            public static readonly Vector2 EditSize = new(145, 42);
+            public static readonly Vector2 ConfirmSize = new(190, 42);
+            public static readonly Vector2 TargetSize = new(132, 38);
+        }
+
+        public static Color HighlightText => GoldBright;
+        public static Color BodyText => Parchment;
+    }
+
     private void OpenTransportHub(CityId city)
     {
         _depModalCity = city;
-        if (_modalLayer is not null) { FadeOutModal(_modalLayer); _modalLayer = null; }
-        var layer = new CanvasLayer { Layer = 20 };
+        if (_modalLayer is not null)
+        {
+            FadeOutModal(_modalLayer);
+            _modalLayer = null;
+        }
+
+        var layer = new CanvasLayer { Layer = TransportHubLayout.ModalLayer };
         AddChild(layer);
         _modalLayer = layer;
-        var backdrop = new ColorRect { Color = new Color(0, 0, 0, 0.68f), MouseFilter = Control.MouseFilterEnum.Stop };
+        var backdrop = new ColorRect
+        {
+            Color = TransportHubLayout.BackdropColor,
+            MouseFilter = Control.MouseFilterEnum.Stop,
+        };
         backdrop.SetAnchorsPreset(Control.LayoutPreset.FullRect);
         layer.AddChild(backdrop);
         var mine = Enumerable.Range(0, _pendingTransportDeploys.Count)
@@ -21,7 +82,7 @@ public sealed partial class CampaignMapScene
         if (!mine.Contains(_depSelectedUnit)) _depSelectedUnit = mine.FirstOrDefault(-1);
         var cityName = _state.Cities.First(item => item.Id == city).Name;
         var frame = new DeploymentCommandFrame(GetViewport().GetVisibleRect().Size,
-            GD.Load<Texture2D>(DeployCommandAssetRoot + "deploy_command_panel.png"), _font,
+            GD.Load<Texture2D>(DeployCommandAssetRoot + TransportHubLayout.PanelTexture), _font,
             $"수송 지휘소  《 {cityName} 》", $"예약된 수송부대  {mine.Count}",
             "예약 수송부대 목록", "선택 수송부대 정보");
         frame.Name = "TransportCommandCenter";
@@ -30,25 +91,38 @@ public sealed partial class CampaignMapScene
         frame.CloseButton.Pressed += () => { CloseModal(); SelectCity(city); };
         ApplyDeployComposeButtonTexture(frame.NewButton, true);
         frame.NewButton.Pressed += () => OpenTransportCompose(city);
-        foreach (var index in mine) frame.List.AddChild(BuildTransportCommandCard(index, city));
-        if (mine.Count == 0) frame.List.AddChild(MakeLabel("예약된 수송부대가 없습니다.\n신규 편성으로 부대를 추가하세요.", 15, Parchment));
-        BuildTransportCommandDetails(frame.Details, city);
+        foreach (var index in mine)
+            frame.List.AddChild(BuildTransportCommandCard(index, city));
+        if (mine.Count == 0)
+            frame.List.AddChild(MakeLabel("예약된 수송부대가 없습니다.\n신규 편성으로 부대를 추가하세요.",
+                TransportHubLayout.Card.EmptyFontSize, TransportHubLayout.BodyText));
+        BuildTransportCommandDetails(frame.Details);
+        BuildTransportCommandActions(frame.Actions, city);
+        CenterAndDrag(frame, frame.Header, frame.Size.X, frame.Size.Y, frame.Root);
+        frame.Position = (GetViewport().GetVisibleRect().Size - frame.Size) / 2f;
+    }
+
+    private void BuildTransportCommandActions(Control parent, CityId city)
+    {
         if (_depSelectedUnit >= 0 && _depSelectedUnit < _pendingTransportDeploys.Count)
         {
             var selected = _depSelectedUnit;
-            var remove = CommandCenterButton("부대 삭제", false, new Vector2(132, 42));
-            remove.Pressed += () => { _pendingTransportDeploys.RemoveAt(selected); _depSelectedUnit = -1; OpenTransportHub(city); };
-            frame.Actions.AddChild(remove);
-            var edit = CommandCenterButton("편성 수정", false, new Vector2(145, 42));
+            var remove = CommandCenterButton("부대 삭제", false, TransportHubLayout.Buttons.DeleteSize);
+            remove.Pressed += () =>
+            {
+                _pendingTransportDeploys.RemoveAt(selected);
+                _depSelectedUnit = -1;
+                OpenTransportHub(city);
+            };
+            parent.AddChild(remove);
+            var edit = CommandCenterButton("편성 수정", false, TransportHubLayout.Buttons.EditSize);
             edit.Pressed += () => OpenTransportCompose(city);
-            frame.Actions.AddChild(edit);
+            parent.AddChild(edit);
         }
-        frame.Actions.AddChild(new Control { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill });
-        var done = CommandCenterButton("확인", true, new Vector2(190, 42));
+        parent.AddChild(new Control { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill });
+        var done = CommandCenterButton("확인", true, TransportHubLayout.Buttons.ConfirmSize);
         done.Pressed += () => { CloseModal(); SelectCity(city); };
-        frame.Actions.AddChild(done);
-        CenterAndDrag(frame, frame.Header, frame.Size.X, frame.Size.Y, frame.Root);
-        frame.Position = (GetViewport().GetVisibleRect().Size - frame.Size) / 2f;
+        parent.AddChild(done);
     }
 
     private Control BuildTransportCommandCard(int index, CityId city)
@@ -58,28 +132,35 @@ public sealed partial class CampaignMapScene
         var leader = _state.Generals.FirstOrDefault(general => general.Id == request.Vanguard)?.Name ?? "-";
         var button = new Button
         {
-            Name = $"TransportCommandCard{index}", Text = "", FocusMode = Control.FocusModeEnum.None,
-            CustomMinimumSize = new Vector2(377, 112), SizeFlagsHorizontal = Control.SizeFlags.ShrinkCenter,
+            Name = $"TransportCommandCard{index}",
+            Text = "",
+            FocusMode = Control.FocusModeEnum.None,
+            CustomMinimumSize = TransportHubLayout.Card.MinimumSize,
+            SizeFlagsHorizontal = Control.SizeFlags.ShrinkCenter,
         };
-        button.AddThemeStyleboxOverride("normal", CommandCenterTextureBox(GD.Load<Texture2D>(DeployCommandAssetRoot
-            + (index == _depSelectedUnit ? "troop_hover_active.png" : "troop_normal.png"))));
-        var active = CommandCenterTextureBox(GD.Load<Texture2D>(DeployCommandAssetRoot + "troop_hover_active.png"));
+        var activeTexture = GD.Load<Texture2D>(DeployCommandAssetRoot + TransportHubLayout.Card.ActiveTexture);
+        var normalTexture = index == _depSelectedUnit
+            ? activeTexture
+            : GD.Load<Texture2D>(DeployCommandAssetRoot + TransportHubLayout.Card.NormalTexture);
+        button.AddThemeStyleboxOverride("normal", CommandCenterTextureBox(normalTexture));
+        var active = CommandCenterTextureBox(activeTexture);
         button.AddThemeStyleboxOverride("hover", active);
         button.AddThemeStyleboxOverride("pressed", active);
         button.AddThemeStyleboxOverride("focus", new StyleBoxEmpty());
         button.Pressed += () => { _depSelectedUnit = index; OpenTransportHub(city); };
         var row = new HBoxContainer { MouseFilter = Control.MouseFilterEnum.Ignore };
-        row.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect, Control.LayoutPresetMode.Minsize, 18);
-        row.AddThemeConstantOverride("separation", 12);
-        var art = FixedIcon(UnitCard("transport"), 68);
-        art.CustomMinimumSize = new Vector2(68, 68);
+        row.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect, Control.LayoutPresetMode.Minsize, TransportHubLayout.Card.Padding);
+        row.AddThemeConstantOverride("separation", TransportHubLayout.Card.Gap);
+        var artworkSize = TransportHubLayout.Card.ArtworkSize;
+        var art = FixedIcon(UnitCard("transport"), artworkSize);
+        art.CustomMinimumSize = new Vector2(artworkSize, artworkSize);
         art.SizeFlagsVertical = Control.SizeFlags.ShrinkCenter;
         art.MouseFilter = Control.MouseFilterEnum.Ignore;
         row.AddChild(art);
         var info = new VBoxContainer { Alignment = BoxContainer.AlignmentMode.Center, SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
-        info.AddChild(MakeLabel($"수송부대  {total:N0}명", 17, GoldBright));
-        info.AddChild(MakeLabel($"주장 {leader}", 13, Parchment));
-        info.AddChild(MakeLabel(TransportDestination(request), 12, GoldBright));
+        info.AddChild(MakeLabel($"수송부대  {total:N0}명", TransportHubLayout.Card.TitleFontSize, TransportHubLayout.HighlightText));
+        info.AddChild(MakeLabel($"주장 {leader}", TransportHubLayout.Card.LeaderFontSize, TransportHubLayout.BodyText));
+        info.AddChild(MakeLabel(TransportDestination(request), TransportHubLayout.Card.DestinationFontSize, TransportHubLayout.HighlightText));
         row.AddChild(info);
         button.AddChild(row);
         return button;
@@ -90,11 +171,11 @@ public sealed partial class CampaignMapScene
             ? _state.Cities.FirstOrDefault(city => city.Id == id)?.Name ?? $"성{id.Value}"
             : "목표 미지정";
 
-    private void BuildTransportCommandDetails(VBoxContainer parent, CityId city)
+    private void BuildTransportCommandDetails(VBoxContainer parent)
     {
         if (_depSelectedUnit < 0 || _depSelectedUnit >= _pendingTransportDeploys.Count)
         {
-            var empty = MakeLabel("왼쪽에서 예약 수송부대를 선택하세요.", 16, Parchment);
+            var empty = MakeLabel("왼쪽에서 예약 수송부대를 선택하세요.", TransportHubLayout.Details.EmptyFontSize, TransportHubLayout.BodyText);
             empty.HorizontalAlignment = HorizontalAlignment.Center;
             empty.SizeFlagsVertical = Control.SizeFlags.ExpandFill;
             parent.AddChild(empty);
@@ -106,38 +187,55 @@ public sealed partial class CampaignMapScene
         var leader = _state.Generals.First(general => general.Id == request.Vanguard);
         var roster = string.Join(" · ", request.Lines.Select(line =>
             $"{_troops.FirstOrDefault(troop => troop.Code == line.TroopCode)?.Name ?? line.TroopCode} {line.Troops:N0}"));
-        var overview = new PanelContainer();
-        overview.AddThemeStyleboxOverride("panel", Frame(Colors.Transparent, Gold, 1, 5, 10));
+        var destinationName = TransportDestination(request);
+
         var overviewRow = new HBoxContainer();
-        overviewRow.AddThemeConstantOverride("separation", 12);
-        overviewRow.AddChild(DeployUnitArtwork(UnitCard("transport"), 76));
+        overviewRow.AddThemeConstantOverride("separation", TransportHubLayout.Details.OverviewGap);
+        overviewRow.AddChild(DeployUnitArtwork(UnitCard("transport"), TransportHubLayout.Details.ArtworkSize));
         var overviewText = new VBoxContainer { Alignment = BoxContainer.AlignmentMode.Center };
-        overviewText.AddChild(MakeLabel($"수송부대  {total:N0}명", 21, GoldBright));
-        overviewText.AddChild(MakeLabel(roster, 13, Parchment));
+        overviewText.AddChild(MakeLabel($"수송부대  {total:N0}명",
+            TransportHubLayout.Details.TitleFontSize, TransportHubLayout.HighlightText));
+        overviewText.AddChild(MakeLabel(roster, TransportHubLayout.Details.RosterFontSize, TransportHubLayout.BodyText));
         overviewRow.AddChild(overviewText);
-        overview.AddChild(overviewRow);
-        parent.AddChild(overview);
-        var officer = new PanelContainer();
-        officer.AddThemeStyleboxOverride("panel", Frame(Colors.Transparent, Gold, 1, 5, 10));
-        officer.AddChild(MakeLabel($"편성 장수\n주장 {leader.Name} · 무 {leader.Might} · 지 {leader.Intellect} · 정 {leader.Politics}", 14, Parchment));
-        parent.AddChild(officer);
-        var cargo = new PanelContainer();
-        cargo.AddThemeStyleboxOverride("panel", Frame(Colors.Transparent, Gold, 1, 5, 10));
-        cargo.AddChild(MakeLabel($"수송 화물\n군량 {request.Provisions:N0} · 금 {request.Gold:N0}", 14, Parchment));
-        parent.AddChild(cargo);
-        var destination = new PanelContainer();
-        destination.AddThemeStyleboxOverride("panel", Frame(Colors.Transparent, Gold, 1, 5, 10));
+        parent.AddChild(BuildTransportDetailPanel(overviewRow));
+
+        var officer = MakeLabel($"편성 장수\n주장 {leader.Name} · 무 {leader.Might} · 지 {leader.Intellect} · 정 {leader.Politics}",
+            TransportHubLayout.Details.BodyFontSize, TransportHubLayout.BodyText);
+        parent.AddChild(BuildTransportDetailPanel(officer));
+
+        var cargo = MakeLabel($"수송 화물\n군량 {request.Provisions:N0} · 금 {request.Gold:N0}",
+            TransportHubLayout.Details.BodyFontSize, TransportHubLayout.BodyText);
+        parent.AddChild(BuildTransportDetailPanel(cargo));
+
         var destinationBox = new VBoxContainer();
-        destinationBox.AddChild(MakeLabel($"목표: {TransportDestination(request)} · {DelayLabel(request.DelayDays)}", 15, GoldBright));
-        var target = CommandCenterButton("목표 지정", true, new Vector2(132, 38));
+        destinationBox.AddChild(MakeLabel($"목표: {destinationName} · {DelayLabel(request.DelayDays)}",
+            TransportHubLayout.Details.DestinationFontSize, TransportHubLayout.HighlightText));
+        var target = CommandCenterButton("목표 지정", true, TransportHubLayout.Buttons.TargetSize);
         target.Pressed += () => BeginTransportTargeting(index);
         destinationBox.AddChild(target);
-        destination.AddChild(destinationBox);
-        parent.AddChild(destination);
-        var summary = new PanelContainer { CustomMinimumSize = new Vector2(0, 42) };
-        summary.AddThemeStyleboxOverride("panel", Frame(Colors.Transparent, Gold, 1, 4, 10));
-        summary.AddChild(MakeLabel($"편성 요약 · 수송 {total:N0}명 | 주장 {leader.Name} | {TransportDestination(request)}", 14, GoldBright));
-        parent.AddChild(summary);
+        parent.AddChild(BuildTransportDetailPanel(destinationBox));
+
+        var summary = MakeLabel($"편성 요약 · 수송 {total:N0}명 | 주장 {leader.Name} | {destinationName}",
+            TransportHubLayout.Details.SummaryFontSize, TransportHubLayout.HighlightText);
+        parent.AddChild(BuildTransportDetailPanel(summary,
+            cornerRadius: TransportHubLayout.Details.SummaryCornerRadius,
+            minimumHeight: TransportHubLayout.Details.SummaryHeight));
+    }
+
+    private PanelContainer BuildTransportDetailPanel(
+        Control content,
+        int cornerRadius = TransportHubLayout.Details.CornerRadius,
+        int minimumHeight = 0)
+    {
+        var panel = new PanelContainer { CustomMinimumSize = new Vector2(0, minimumHeight) };
+        panel.AddThemeStyleboxOverride("panel", Frame(
+            TransportHubLayout.Details.PanelBackground,
+            TransportHubLayout.Details.PanelBorder,
+            TransportHubLayout.Details.BorderWidth,
+            cornerRadius,
+            TransportHubLayout.Details.Padding));
+        panel.AddChild(content);
+        return panel;
     }
 
     private async void RunTransportCommandCenterQa()
