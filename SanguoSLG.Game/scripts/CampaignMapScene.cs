@@ -7444,13 +7444,15 @@ public sealed partial class CampaignMapScene : Node3D
         var fourItemHeight = _cmdSubMiddle.CustomMinimumSize.Y;
         var fourItemBounds = _cmdSubMenu.Size.Y;
         ToggleDeployGroup();
-        var fiveItemCount = _cmdSubList.GetChildren().OfType<Button>()
+        var deployItemCount = _cmdSubList.GetChildren().OfType<Button>()
             .Count(button => !button.IsQueuedForDeletion());
-        var fiveItemHeight = _cmdSubMiddle.CustomMinimumSize.Y;
-        var fiveItemBounds = _cmdSubMenu.Size.Y;
-        var dynamicSubmenuSizing = twoItemCount == 2 && fourItemCount == 4 && fiveItemCount == 5
-            && twoItemHeight < fourItemHeight && fourItemHeight < fiveItemHeight
-            && twoItemBounds < fourItemBounds && fourItemBounds < fiveItemBounds;
+        var deployItemHeight = _cmdSubMiddle.CustomMinimumSize.Y;
+        var deployItemBounds = _cmdSubMenu.Size.Y;
+        var batchDeployHidden = !_cmdSubList.GetChildren().OfType<Button>()
+            .Any(button => button.Text == "일괄전투편성");
+        var dynamicSubmenuSizing = twoItemCount == 2 && fourItemCount == 4 && deployItemCount == 4
+            && twoItemHeight < fourItemHeight && Mathf.IsEqualApprox(fourItemHeight, deployItemHeight)
+            && twoItemBounds < fourItemBounds && Mathf.IsEqualApprox(fourItemBounds, deployItemBounds);
         var mainBackdrop = _cmdMenu.FindChild("CityCommandPaletteWoodBackground", true, false) as Control;
         var subBackdrop = _cmdSubMenu.FindChild("CityCommandSubmenuBackdrop", true, false) as Control;
         var backdropLayers = mainBackdrop?.MouseFilter == Control.MouseFilterEnum.Ignore
@@ -7474,8 +7476,8 @@ public sealed partial class CampaignMapScene : Node3D
         }
         var passed = menusCompact && titlesCompact && mainSizing && submenuSizing && dynamicSubmenuSizing
             && backdropLayers && opaqueSubmenuBackdrop
-            && accentMeaning && selectedMeaning;
-        GD.Print($"[maptestcitycommandlabelsqa] passed={passed} menu={menusCompact} titles={titlesCompact} mainSizing={mainSizing} submenuSizing={submenuSizing} dynamicSubmenu={dynamicSubmenuSizing} backdrops={backdropLayers} opaqueSubmenu={opaqueSubmenuBackdrop} counts={twoItemCount}/{fourItemCount}/{fiveItemCount} heights={twoItemHeight}/{fourItemHeight}/{fiveItemHeight} bounds={twoItemBounds}/{fourItemBounds}/{fiveItemBounds} accentMeaning={accentMeaning} selectedMeaning={selectedMeaning}");
+            && accentMeaning && selectedMeaning && batchDeployHidden;
+        GD.Print($"[maptestcitycommandlabelsqa] passed={passed} menu={menusCompact} titles={titlesCompact} mainSizing={mainSizing} submenuSizing={submenuSizing} dynamicSubmenu={dynamicSubmenuSizing} batchHidden={batchDeployHidden} backdrops={backdropLayers} opaqueSubmenu={opaqueSubmenuBackdrop} counts={twoItemCount}/{fourItemCount}/{deployItemCount} heights={twoItemHeight}/{fourItemHeight}/{deployItemHeight} bounds={twoItemBounds}/{fourItemBounds}/{deployItemBounds} accentMeaning={accentMeaning} selectedMeaning={selectedMeaning}");
         GetTree().Quit(passed ? 0 : 1);
     }
 
@@ -7629,7 +7631,6 @@ public sealed partial class CampaignMapScene : Node3D
         }
 
         Add("전투편성", () => { if (_selected is { } c) { OpenDeployModal(c); } });
-        Add("일괄전투편성", () => { if (_selected is { } c) { OpenBatchDeployCompose(c); } });
         Add("보급편성", () => { if (_selected is { } c) { OpenSupplyHub(c); } });
         Add("수송편성", () => { if (_selected is { } c) { OpenTransportHub(c); } });
         if (_selected is { } selectedCity && _state.Cities.FirstOrDefault(c => c.Id == selectedCity) is { IsPort: true })
