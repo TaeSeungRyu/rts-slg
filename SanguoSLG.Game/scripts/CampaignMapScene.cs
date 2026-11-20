@@ -13935,6 +13935,7 @@ public sealed partial class CampaignMapScene : Node3D
         _armyGroupEditIndex = editIndex;
         _armyGroupDraft.Clear();
         _depGold = 0;
+        _depProvAmount = 0;
         _depDelayDays = 0;
         _depGoldSpin = null;
         _armyGroupAmountSpins.Clear();
@@ -13952,6 +13953,7 @@ public sealed partial class CampaignMapScene : Node3D
             _depVan = _pendingArmyGroupDeploys[editIndex].Req.Vanguard;
             _depAdj = _pendingArmyGroupDeploys[editIndex].Req.Adjutant;
             _depGold = _pendingArmyGroupDeploys[editIndex].Req.Gold;
+            _depProvAmount = _pendingArmyGroupDeploys[editIndex].Req.Provisions;
             _depDelayDays = _pendingArmyGroupDeploys[editIndex].Req.DelayDays;
         }
 
@@ -14015,12 +14017,36 @@ public sealed partial class CampaignMapScene : Node3D
             spin.ValueChanged += v =>
             {
                 _armyGroupDraft[gar.TroopCode] = (int)v;
+                UpdateArmyGroupProvisionSelector();
                 UpdateArmyGroupPreview();
             };
             _armyGroupAmountSpins[gar.TroopCode] = spin;
             card.AddChild(spin);
             table.AddChild(card);
         }
+        box.AddChild(DeployComposeResourceHeading("food.png", "휴대 군량"));
+        var provisionRow = new HBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+        provisionRow.AddThemeConstantOverride("separation", 10);
+        _depProvSlider = ApplySliderStyle(new HSlider
+        {
+            Name = "ArmyGroupProvisionSlider",
+            MinValue = 0,
+            MaxValue = 0,
+            Step = 1,
+            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+            SizeFlagsVertical = Control.SizeFlags.ShrinkCenter,
+        });
+        _depProvSlider.ValueChanged += value =>
+        {
+            _depProvAmount = (int)value;
+            UpdateArmyGroupProvisionSelector();
+            UpdateArmyGroupPreview();
+        };
+        provisionRow.AddChild(_depProvSlider);
+        _depProvLabel = MakeLabel("", 12, Parchment);
+        _depProvLabel.CustomMinimumSize = new Vector2(190, 0);
+        provisionRow.AddChild(_depProvLabel);
+        box.AddChild(provisionRow);
         _depGoldSpin = AddGoldCargoSelector(box, city, _depGold, value => { _depGold = value; UpdateArmyGroupPreview(); });
         AddDeploymentDelaySelector(box, _depDelayDays, value => _depDelayDays = value);
 
@@ -14113,6 +14139,7 @@ public sealed partial class CampaignMapScene : Node3D
         footerBox.AddChild(saveMargin);
 
         RefreshArmyGroupHeroCards();
+        UpdateArmyGroupProvisionSelector(followMaximum: _depProvAmount < 0);
         UpdateArmyGroupPreview();
 
         CenterAndDrag(composeModal, composeModal.Header, mw, mh, composeModal.Root);
@@ -14131,13 +14158,13 @@ public sealed partial class CampaignMapScene : Node3D
         if (_depAdj == van) { Err("부관은 선봉과 다른 장수여야 합니다."); return; }
         var ids = _depAdj is { } adj ? new[] { van, adj } : new[] { van };
         var req = new ArmyGroupDeployRequest(_depModalCity, lines, van, _depAdj, UnitMode.Advance,
-            Provisions: -1, Gold: _depGold, DelayDays: _depDelayDays);
+            Provisions: _depProvAmount, Gold: _depGold, DelayDays: _depDelayDays);
         var preview = _deployer.DeployArmyGroup(_state, req);
         if (!preview.Ok) { Err(preview.Error ?? "집단군을 편성할 수 없습니다."); return; }
 
         var leader = _state.Generals.First(g => g.Id == van).Name;
         var total = lines.Sum(l => l.Troops);
-        var label = $"집단군 {total:N0}({leader}) · 금 {_depGold:N0} · {ArmyGroupLineText(lines)} · {DelayLabel(_depDelayDays)}";
+        var label = $"집단군 {total:N0}({leader}) · 군량 {_depProvAmount:N0} · 금 {_depGold:N0} · {ArmyGroupLineText(lines)} · {DelayLabel(_depDelayDays)}";
         ShowConfirm("집단군 예약 확인", $"{label}\n액티브 스킬은 발동하지 않습니다.{DutyReleaseNotice(ids)}", () =>
         {
             if (_advancing || ids.Any(id => _state.IsGeneralBusy(id)) || ReservedDeployGenerals(_armyGroupEditIndex, editingSupply: false).Overlaps(ids))
@@ -14178,7 +14205,23 @@ public sealed partial class CampaignMapScene : Node3D
         var min = _cb.ArmyGroupMinClassTroops;
         _depPreview.Text = $"총 {total:N0} / 상한 {maxTroops:N0}\n"
             + $"보병 {byClass.GetValueOrDefault(TroopClass.Infantry):N0}/{min:N0} · 궁병 {byClass.GetValueOrDefault(TroopClass.Archer):N0}/{min:N0} · 공성 {byClass.GetValueOrDefault(TroopClass.Siege):N0}/{min:N0}\n"
-            + $"선봉 {(_depVan is { } v ? $"{OfficerName(v) ?? "-"} · 집단군 {GradeText(ArmyGroupAptitude(_state.Generals.First(g => g.Id == v)))}" : "미선택")} · 부관 {(_depAdj is { } a ? OfficerName(a) ?? "-" : "없음")} · 휴대 금 {_depGold:N0}";
+            + $"선봉 {(_depVan is { } v ? $"{OfficerName(v) ?? "-"} · 집단군 {GradeText(ArmyGroupAptitude(_state.Generals.First(g => g.Id == v)))}" : "미선택")} · 부관 {(_depAdj is { } a ? OfficerName(a) ?? "-" : "없음")} · 휴대 군량 {_depProvAmount:N0} · 휴대 금 {_depGold:N0}";
+    }
+
+    private void UpdateArmyGroupProvisionSelector(bool followMaximum = false)
+    {
+        if (_depProvSlider is null || _depProvLabel is null) { return; }
+        var city = _state.Cities.First(c => c.Id == _depModalCity);
+        var total = _armyGroupDraft.Values.Where(value => value > 0).Sum();
+        var capacityPer10k = _cb.ArmyGroupProvisionsCapacity
+            + GeneralResearchRules.CombatBackpackCapacityPer10k(
+                _state.ResearchOf(city.Owner, FactionResearch.CombatBackpackCode), TroopClass.Siege, _balance);
+        var maximum = System.Math.Min(city.Provisions, capacityPer10k * total / 10_000);
+        if (followMaximum || _depProvAmount < 0) { _depProvAmount = maximum; }
+        else { _depProvAmount = System.Math.Clamp(_depProvAmount, 0, maximum); }
+        _depProvSlider.MaxValue = maximum;
+        _depProvSlider.SetValueNoSignal(_depProvAmount);
+        _depProvLabel.Text = $"휴대 {_depProvAmount:N0} / 최대 {maximum:N0} · 성 비축 {city.Provisions:N0}";
     }
 
     private static AptitudeGrade ArmyGroupAptitude(General general)

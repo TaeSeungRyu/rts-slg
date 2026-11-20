@@ -90,8 +90,10 @@ public sealed partial class CampaignMapScene
         var grid = _modalLayer?.FindChild("ArmyGroupTroopGrid", true, false) as GridContainer;
         var cards = _modalLayer?.FindChild("ArmyGroupHeroCards", true, false) as HBoxContainer;
         var table = _modalLayer?.FindChild("ComposeOfficerTable", true, false) as Tree;
+        var provisions = _modalLayer?.FindChild("ArmyGroupProvisionSlider", true, false) as HSlider;
         var passed = modal is not null && GetViewport().GetVisibleRect().Encloses(modal.GetGlobalRect())
             && grid?.Columns == 2 && cards?.GetChildCount() == 2 && table?.Columns == 8
+            && provisions is not null && provisions.MaxValue >= 0
             && modal.LeftScroll.VerticalScrollMode == ScrollContainer.ScrollMode.Auto;
         GD.Print($"[army-group-compose-ui-qa] passed={passed} size={modal?.Size} cards={cards?.GetChildCount()}");
         CloseModal();
