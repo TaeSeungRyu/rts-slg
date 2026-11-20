@@ -13386,7 +13386,20 @@ public sealed partial class CampaignMapScene : Node3D
             GD.Load<Texture2D>(DeployCommandAssetRoot + "deploy_command_panel.png"), _font,
             $"수송 편성  《 {source.Name} 》");
         layer.AddChild(composeModal);
-        var box = composeModal.LeftContent;
+        var transportLeftInset = new MarginContainer
+        {
+            Name = "TransportComposeLeftInset",
+            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+        };
+        transportLeftInset.AddThemeConstantOverride("margin_right", 16);
+        composeModal.LeftContent.AddChild(transportLeftInset);
+        var box = new VBoxContainer
+        {
+            Name = "TransportComposeLeftContent",
+            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+        };
+        box.AddThemeConstantOverride("separation", 8);
+        transportLeftInset.AddChild(box);
         var officerBox = composeModal.RightContent;
         var footerBox = composeModal.FooterContent;
         ApplyDeployComposeButtonTexture(composeModal.BackButton, false);
