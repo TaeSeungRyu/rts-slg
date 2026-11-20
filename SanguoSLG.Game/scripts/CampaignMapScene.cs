@@ -13503,8 +13503,21 @@ public sealed partial class CampaignMapScene : Node3D
         officerBox.AddChild(generalTree);
         RefreshTransportHeroCard();
 
+        const float transportTroopWidth = 345f;
+
+        var transportTroopSection = new VBoxContainer
+        {
+            CustomMinimumSize = new Vector2(transportTroopWidth, 0),
+            SizeFlagsHorizontal = Control.SizeFlags.ShrinkBegin,
+        };
+        box.AddChild(transportTroopSection);        
+
         var transportTroopTitle = MakeLabel("수송 병력 선택 (여러 개 선택 가능)", 13, GoldBright);
-        box.AddChild(transportTroopTitle);
+        //box.AddChild(transportTroopTitle);
+        // 제목을 추가하는 부분
+        transportTroopSection.AddChild(transportTroopTitle);
+
+
         foreach (var gar in garrisons)
         {
             var code = gar.TroopCode;
@@ -13556,7 +13569,9 @@ public sealed partial class CampaignMapScene : Node3D
             entry.AddThemeConstantOverride("separation", 3);
             entry.AddChild(row);
             entry.AddChild(amountRow);
-            box.AddChild(entry);
+            //box.AddChild(entry);
+            // foreach 끝에서 각 병력 항목을 추가하는 부분
+            transportTroopSection.AddChild(entry);            
         }
         AddDeploymentDelaySelector(box, _depDelayDays, value => { _depDelayDays = value; Refresh(); });
         preview.CustomMinimumSize = new Vector2(mw - 60f, 0);
