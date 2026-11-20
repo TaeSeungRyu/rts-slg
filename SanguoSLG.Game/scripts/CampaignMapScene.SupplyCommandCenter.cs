@@ -60,6 +60,8 @@ public sealed partial class CampaignMapScene
 
         public const int NewUnitButtonTopMargin = 20;
 
+        public const int CardExtraLeftPadding = 30;  //왼쪽 카드 영역 내부 패딩
+
     }
 
     private void OpenSupplyHub(CityId cityId)
@@ -137,8 +139,15 @@ public sealed partial class CampaignMapScene
         title.VerticalAlignment = VerticalAlignment.Center;
         title.MouseFilter = Control.MouseFilterEnum.Ignore;
         header.AddChild(title);
-        var close = CommandCenterButton("×", false, SupplyHubLayout.CloseButtonSize);
+        var close = MakeButton("×");
+        close.CustomMinimumSize = new Vector2(30, 30);
+        close.SizeFlagsHorizontal = Control.SizeFlags.ShrinkCenter;
         close.SizeFlagsVertical = Control.SizeFlags.ShrinkCenter;
+        close.AddThemeFontSizeOverride("font_size", 18);
+        close.AddThemeStyleboxOverride("normal", Frame(Colors.Transparent, Gold, 1, 4, 2));
+        close.AddThemeStyleboxOverride("hover", Frame(new Color("5b1712"), GoldBright, 1, 4, 2));
+        close.AddThemeStyleboxOverride("pressed", Frame(new Color("35100d"), GoldBright, 1, 4, 2));
+        close.AddThemeStyleboxOverride("focus", new StyleBoxEmpty());        
         close.Name = "SupplyCommandClose";
         close.Pressed += () => { CloseModal(); SelectCity(cityId); };
         header.AddChild(close);
@@ -259,6 +268,8 @@ public sealed partial class CampaignMapScene
         var row = new HBoxContainer { MouseFilter = Control.MouseFilterEnum.Ignore };
         row.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect, Control.LayoutPresetMode.Minsize, SupplyHubLayout.CardPadding);
         row.AddThemeConstantOverride("separation", SupplyHubLayout.CardContentGap);
+        row.OffsetLeft += SupplyHubLayout.CardExtraLeftPadding;
+
         var art = FixedIcon(UnitCard("supply", TroopClass.Supply), SupplyHubLayout.CardIconSize);
         art.CustomMinimumSize = new Vector2(SupplyHubLayout.CardIconSize, SupplyHubLayout.CardIconSize);
         art.SizeFlagsVertical = Control.SizeFlags.ShrinkCenter;
