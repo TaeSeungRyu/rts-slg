@@ -13573,8 +13573,8 @@ public sealed partial class CampaignMapScene : Node3D
         provSlider.ValueChanged += v => provSpin.SetValueNoSignal(v);
         provSpin.ValueChanged += v => provSlider.SetValueNoSignal(v);
 
-        var save = MakeButton("수송 예약", accent: true);
-        save.CustomMinimumSize = new Vector2(160, 36);
+        var save = MakeButton("확인", accent: true);
+        save.CustomMinimumSize = new Vector2(64, 36);
         save.SizeFlagsHorizontal = Control.SizeFlags.ShrinkCenter;
         ApplyDeployComposeButtonTexture(save, true);
         save.Pressed += () =>
@@ -13619,7 +13619,14 @@ public sealed partial class CampaignMapScene : Node3D
             SizeFlagsVertical = Control.SizeFlags.ExpandFill,
         };
         saveCenter.AddChild(save);
-        footerBox.AddChild(saveCenter);
+
+        var saveMargin = new MarginContainer();
+        saveMargin.AddThemeConstantOverride("margin_top", -1);
+        saveMargin.AddChild(saveCenter);
+
+    
+
+        footerBox.AddChild(saveMargin);
         CenterAndDrag(composeModal, composeModal.Header, mw, mh, composeModal.Root);
         composeModal.Position = (vp - composeModal.Size) / 2f;
     }
@@ -14062,17 +14069,23 @@ public sealed partial class CampaignMapScene : Node3D
         };
         officerBox.AddChild(tree);
 
-        var armyGroupFooterRule = GoldRule();
-        footerBox.AddChild(armyGroupFooterRule);
+        // var armyGroupFooterRule = GoldRule();
+        // footerBox.AddChild(armyGroupFooterRule);
         _depPreview = MakeLabel("", 12, Parchment);
         _depPreview.AutowrapMode = TextServer.AutowrapMode.WordSmart;
-        _depPreview.CustomMinimumSize = new Vector2(mw - 60f, 0);
-        footerBox.AddChild(_depPreview);
+        //_depPreview.CustomMinimumSize = new Vector2(mw - 60f, 0);
+        box.AddChild(_depPreview);
         var save = MakeButton("▶ 확인", accent: true);
-        save.CustomMinimumSize = new Vector2(0, 34);
+        save.CustomMinimumSize = new Vector2(60, 34);
+        save.SizeFlagsHorizontal = Control.SizeFlags.ShrinkCenter;
         ApplyDeployComposeButtonTexture(save, true);
         save.Pressed += SaveArmyGroupCompose;
-        footerBox.AddChild(save);
+        var saveMargin = new MarginContainer();
+        saveMargin.AddThemeConstantOverride("margin_top", 8);
+        saveMargin.AddChild(save);
+
+        footerBox.AddChild(saveMargin);
+
         RefreshArmyGroupHeroCards();
         UpdateArmyGroupPreview();
 

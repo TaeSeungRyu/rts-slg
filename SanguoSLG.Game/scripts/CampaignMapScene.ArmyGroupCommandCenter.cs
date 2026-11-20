@@ -62,6 +62,7 @@ public sealed partial class CampaignMapScene
         frame.Actions.AddChild(new Control { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill });
         var done = CommandCenterButton("확인", true, new Vector2(190, 42));
         done.Pressed += () => { CloseModal(); SelectCity(city); };
+        
         frame.Actions.AddChild(done);
         CenterAndDrag(frame, frame.Header, frame.Size.X, frame.Size.Y, frame.Root);
         frame.Position = (GetViewport().GetVisibleRect().Size - frame.Size) / 2f;
