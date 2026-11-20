@@ -22,6 +22,8 @@ public sealed partial class ScenarioEditorScene : Control
     private int _selectedDescriptionFactionId;
     private ScrollContainer? _cityDetailScroll;
     private int _cityDetailScrollSiteId;
+    private int _cityDetailScrollPosition;
+    private bool _restoringCityDetailScroll;
     private string _factionSearch = "";
     private string _generalSearch = "";
     private static readonly Color[] FactionPalette = Enumerable.Range(0, 60)
@@ -426,11 +428,14 @@ public sealed partial class ScenarioEditorScene : Control
 
     private void ShowCities()
     {
-        var preservedScroll = _cityDetailScroll is not null
+        var sameCity = _cityDetailScrollSiteId == _selectedCityId;
+        var currentScroll = sameCity && _cityDetailScroll is not null
             && GodotObject.IsInstanceValid(_cityDetailScroll)
-            && _cityDetailScrollSiteId == _selectedCityId
                 ? _cityDetailScroll.ScrollVertical
                 : 0;
+        var preservedScroll = sameCity ? Math.Max(_cityDetailScrollPosition, currentScroll) : 0;
+        if (!sameCity) _cityDetailScrollPosition = 0;
+        _restoringCityDetailScroll = preservedScroll > 0;
         ClearBody();
         var map = CurrentMap().Preset;
         if (!_draft.Cities.Any(city => city.SiteId == _selectedCityId))
@@ -465,6 +470,12 @@ public sealed partial class ScenarioEditorScene : Control
         detailScroll.Name = "ScenarioCityDetailScroll";
         _cityDetailScroll = detailScroll;
         _cityDetailScrollSiteId = _selectedCityId;
+        detailScroll.GetVScrollBar().ValueChanged += value =>
+        {
+            if (!_restoringCityDetailScroll && ReferenceEquals(_cityDetailScroll, detailScroll)
+                && _cityDetailScrollSiteId == _selectedCityId)
+                _cityDetailScrollPosition = (int)value;
+        };
         GeneralWorkspaceStyle.StyleScrollContainer(detailScroll);
         editSection.AddChild(detailScroll);
         var details = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
@@ -475,14 +486,8 @@ public sealed partial class ScenarioEditorScene : Control
         detailMargin.AddChild(details);
         detailScroll.AddChild(detailMargin);
         if (preservedScroll > 0)
-        {
-            detailScroll.ScrollVertical = preservedScroll;
-            Callable.From(() =>
-            {
-                if (GodotObject.IsInstanceValid(detailScroll) && detailScroll.IsInsideTree())
-                    detailScroll.ScrollVertical = preservedScroll;
-            }).CallDeferred();
-        }
+            RestoreCityDetailScroll(detailScroll, _selectedCityId, preservedScroll);
+        else _restoringCityDetailScroll = false;
 
         var city = _draft.Cities.FirstOrDefault(city => city.SiteId == _selectedCityId);
         var site = map.Sites.FirstOrDefault(site => site.Id == _selectedCityId);
@@ -552,6 +557,25 @@ public sealed partial class ScenarioEditorScene : Control
         }
         details.AddChild(new HSeparator());
         ShowGeneralsForCity(details, city);
+    }
+
+    private async void RestoreCityDetailScroll(ScrollContainer scroll, int siteId, int position)
+    {
+        // 컨테이너의 최소 크기와 스크롤 범위는 다음 프레임들에서 확정된다.
+        // 범위가 생기기 전에 값을 넣으면 Godot가 0으로 다시 고정하므로 레이아웃 후 복원한다.
+        for (var frame = 0; frame < 3; frame++)
+        {
+            await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+            if (!GodotObject.IsInstanceValid(scroll) || !scroll.IsInsideTree()
+                || _cityDetailScrollSiteId != siteId)
+            {
+                _restoringCityDetailScroll = false;
+                return;
+            }
+        }
+        scroll.ScrollVertical = Math.Min(position, (int)scroll.GetVScrollBar().MaxValue);
+        _cityDetailScrollPosition = scroll.ScrollVertical;
+        _restoringCityDetailScroll = false;
     }
 
     private void ShowFactions()
@@ -651,6 +675,19 @@ public sealed partial class ScenarioEditorScene : Control
         detailPanel.SizeFlagsHorizontal = SizeFlags.ExpandFill;
         detailPanel.SizeFlagsVertical = SizeFlags.ExpandFill;
         columns.AddChild(detailPanel);
+        detailPanel.RemoveChild(details);
+        var factionDetailScroll = new ScrollContainer
+        {
+            Name = "FactionDetailScroll",
+            SizeFlagsHorizontal = SizeFlags.ExpandFill,
+            SizeFlagsVertical = SizeFlags.ExpandFill,
+        };
+        GeneralWorkspaceStyle.StyleScrollContainer(factionDetailScroll);
+        detailPanel.AddChild(factionDetailScroll);
+        var factionDetailMargin = new MarginContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        factionDetailMargin.AddThemeConstantOverride("margin_right", 12);
+        factionDetailScroll.AddChild(factionDetailMargin);
+        factionDetailMargin.AddChild(details);
 
         var nameRow = AddFactionField(details, "세력 이름");
         var name = new LineEdit { Text = faction.Name, SizeFlagsHorizontal = SizeFlags.ExpandFill,
@@ -692,6 +729,8 @@ public sealed partial class ScenarioEditorScene : Control
         GeneralWorkspaceStyle.StyleOptionButton(color, 200);
         colorRow.AddChild(color);
 
+        AddFactionResearchTable(details, faction.Id);
+
         var arrivalRow = AddFactionField(details, "등장 방식");
         var arrivalMode = new OptionButton { SizeFlagsHorizontal = SizeFlags.ExpandFill,
             CustomMinimumSize = new Vector2(0, 38) };
@@ -728,8 +767,6 @@ public sealed partial class ScenarioEditorScene : Control
             current => current with { Description = description.Text });
         details.AddChild(description);
         NativeTextInputDialog.Attach(description);
-
-        AddFactionResearchTable(details, faction.Id);
 
         details.AddChild(new HSeparator());
         var remove = new Button { Text = "선택한 세력 삭제", CustomMinimumSize = new Vector2(0, 38) };
@@ -1403,7 +1440,7 @@ public sealed partial class ScenarioEditorScene : Control
         catch (Exception error) { _message.Text = "저장 불가: " + error.Message; }
     }
 
-    private void RunQa()
+    private async void RunQa()
     {
         try
         {
@@ -1503,13 +1540,21 @@ public sealed partial class ScenarioEditorScene : Control
                     && choice.GetItemText(1) == "지정 연도에 등장")
                 && _body.FindChildren("*", "CheckBox", true, false).OfType<CheckBox>()
                     .All(check => check.Text != "새 게임에서 선택 가능한 세력");
-            var researchLevel = _body.FindChild("FactionResearchLevel_"
-                + FactionResearch.AgricultureCode, true, false) as SpinBox;
-            if (researchLevel is not null) researchLevel.Value = 3;
-            var factionResearchUi = researchLevel is not null
-                && _body.FindChild("FactionResearchTable", true, false) is VBoxContainer
-                && _draft.ResearchEntries.Any(entry => entry.FactionId == _selectedDescriptionFactionId
-                    && entry.Code == FactionResearch.AgricultureCode && entry.Level == 3);
+            var researchLevel = _body.FindChildren("FactionResearchLevel_"
+                    + FactionResearch.AgricultureCode, "SpinBox", true, false)
+                .OfType<SpinBox>().LastOrDefault(field => !field.IsQueuedForDeletion());
+            if (researchLevel is not null)
+            {
+                researchLevel.Value = 3;
+                researchLevel.EmitSignal(Godot.Range.SignalName.ValueChanged, 3.0);
+            }
+            var researchTable = _body.FindChildren("FactionResearchTable", "VBoxContainer", true, false)
+                .OfType<VBoxContainer>().LastOrDefault(table => !table.IsQueuedForDeletion());
+            var researchStored = _draft.ResearchEntries.Any(entry => entry.FactionId == _selectedDescriptionFactionId
+                && entry.Code == FactionResearch.AgricultureCode && entry.Level == 3);
+            var factionResearchUi = researchLevel is not null && researchTable is not null && researchStored;
+            if (!factionResearchUi)
+                GD.Print($"[scenario-editor-research-qa] level={researchLevel is not null} table={researchTable is not null} stored={researchStored} selected={_selectedDescriptionFactionId} entries={string.Join(';', _draft.ResearchEntries.Select(entry => $"{entry.FactionId}:{entry.Code}:{entry.Level}"))}");
             _draft = originalDraft;
             ShowFactions();
             var scheduledModePreservesSetup = false;
@@ -1571,8 +1616,32 @@ public sealed partial class ScenarioEditorScene : Control
             var generalPlacementModalPassed = ownedCity is not null && RunGeneralPlacementQa(ownedCity);
             var cityForceUi = false;
             var forceCrudPassed = false;
+            var cityScrollPreserved = false;
             if (ownedCity is not null)
             {
+                var beforeScrollDraft = _draft;
+                var dataDirectory = Path.GetFullPath(Path.Combine(ProjectSettings.GlobalizePath("res://"), "..", "data"));
+                var overflowForces = new TroopCatalogLoader().LoadFromDirectory(dataDirectory)
+                    .Where(troop => troop.Class != TroopClass.Naval)
+                    .Select(troop => new ScenarioGarrisonEntry(troop.Code, 1000)).ToArray();
+                UpdateCity(ownedCity.SiteId, city => city with { Garrisons = overflowForces });
+                _selectedCityId = ownedCity.SiteId;
+                ShowCities();
+                for (var frame = 0; frame < 3; frame++)
+                    await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+                var cityScroll = _body.FindChild("ScenarioCityDetailScroll", true, false) as ScrollContainer;
+                if (cityScroll is not null)
+                    cityScroll.ScrollVertical = Math.Min(120,
+                        Math.Max(0, (int)(cityScroll.GetVScrollBar().MaxValue - cityScroll.GetVScrollBar().Page)));
+                var expectedScroll = cityScroll?.ScrollVertical ?? 0;
+                ShowCities();
+                for (var frame = 0; frame < 5; frame++)
+                    await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+                cityScroll = _body.FindChild("ScenarioCityDetailScroll", true, false) as ScrollContainer;
+                cityScrollPreserved = expectedScroll > 0 && cityScroll is not null
+                    && cityScroll.ScrollVertical == expectedScroll;
+                _draft = beforeScrollDraft;
+
                 var before = ownedCity.Garrisons.Count;
                 _selectedCityId = ownedCity.SiteId;
                 ShowCities();
@@ -1622,14 +1691,14 @@ public sealed partial class ScenarioEditorScene : Control
                     && hiddenFactionUi && factionResearchUi && scheduledModePreservesSetup && factionSearchUi
                     && cityMapUi && generalSearchUi && generalCityListUi
                     && generalCrudPassed && generalPlacementModalPassed && forceTabRemoved
-                    && cityForceUi && forceCrudPassed
+                    && cityForceUi && forceCrudPassed && cityScrollPreserved
                     && errors.Count == 0 && mapSwitchPassed && currentMapSelected
                     && historicalUsesRoot && legacyRebased
                     && factionPlacementCompatible
                     && multilineDescription && restored.Description == descriptionWithLines
                     && restored.MapRevision == _draft.MapRevision
                     && restored.Cities.Count == _draft.Cities.Count;
-                if (!passed) GD.Print($"[scenario-editor-qa-detail] history={historicalUsesRoot} legacy={legacyRebased} switch={mapSwitchPassed} placement={factionPlacementCompatible} root={currentMapSelected} generals={generalCrudPassed} generalModal={generalPlacementModalPassed} forces={forceCrudPassed} cityUi={cityForceUi} factionUi={factionColorUi && hiddenFactionUi} researchUi={factionResearchUi} scheduled={scheduledModePreservesSetup} factionSearch={factionSearchUi} cityMapUi={cityMapUi} generalUi={generalSearchUi && generalCityListUi} errors={errors.Count}");
+                if (!passed) GD.Print($"[scenario-editor-qa-detail] history={historicalUsesRoot} legacy={legacyRebased} switch={mapSwitchPassed} placement={factionPlacementCompatible} root={currentMapSelected} generals={generalCrudPassed} generalModal={generalPlacementModalPassed} forces={forceCrudPassed} cityScroll={cityScrollPreserved} cityUi={cityForceUi} factionUi={factionColorUi && hiddenFactionUi} researchUi={factionResearchUi} scheduled={scheduledModePreservesSetup} factionSearch={factionSearchUi} cityMapUi={cityMapUi} generalUi={generalSearchUi && generalCityListUi} errors={errors.Count}");
                 GD.Print($"[scenario-editor-qa] passed={passed} maps={_maps.Count} cities={_draft.Cities.Count} errors={errors.Count}");
                 GetTree().Quit(passed ? 0 : 1);
             }
