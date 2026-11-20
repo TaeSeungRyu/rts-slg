@@ -876,6 +876,8 @@ public sealed partial class CampaignMapScene : Node3D
             CallDeferred(nameof(RunArmyGroupComposeUiQa));
         if (args.Any(argument => argument.StartsWith("--maptesttransportcomposeuiqa", StringComparison.Ordinal)))
             CallDeferred(nameof(RunTransportComposeUiQa));
+        if (args.Any(argument => argument.StartsWith("--maptestnavalcommandcenterqa", StringComparison.Ordinal)))
+            CallDeferred(nameof(RunNavalCommandCenterQa));
         if (args.Contains("--maptestmodalcamerablockqa")) CallDeferred(nameof(RunModalCameraBlockQa));
         if (args.Contains("--maptestunitmenuqa")) CallDeferred(nameof(RunUnitMenuQa));
         if (args.Contains("--maptestplaybackstateqa")) CallDeferred(nameof(RunPlaybackStateQa));
@@ -12651,7 +12653,7 @@ public sealed partial class CampaignMapScene : Node3D
         DrawDeployPaths(); // 편성 중에만 예약 경로 표시(삭제·수정 즉시 반영)
     }
 
-    private void OpenNavalHub(CityId city)
+    private void OpenNavalHubLegacy(CityId city)
     {
         _depModalCity = city;
         if (_modalLayer is not null) { FadeOutModal(_modalLayer); _modalLayer = null; }
