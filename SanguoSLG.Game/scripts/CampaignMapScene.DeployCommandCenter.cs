@@ -770,6 +770,8 @@ private void BuildDeployCommandDetails(VBoxContainer parent, SanguoSLG.Core.Doma
         var buttons = _modalLayer?.FindChildren("*", "Button", true, false).OfType<Button>().ToArray() ?? [];
         var labels = _modalLayer?.FindChildren("*", "Label", true, false).OfType<Label>()
             .Select(label => label.Text).ToArray() ?? [];
+        var resourceIcons = _modalLayer?.FindChildren("*", "TextureRect", true, false).OfType<TextureRect>()
+            .Select(icon => icon.Texture?.ResourcePath ?? "").ToArray() ?? [];
 
         var structureOk = modal is not null && safeArea is not null
             && modal.GetGlobalRect().Encloses(safeArea.GetGlobalRect())
@@ -782,6 +784,8 @@ private void BuildDeployCommandDetails(VBoxContainer parent, SanguoSLG.Core.Doma
         var contentOk = labels.Any(text => text.Contains("보급 병력 선택", System.StringComparison.Ordinal))
             && labels.Any(text => text.Contains("주장 선택", System.StringComparison.Ordinal))
             && buttons.Any(button => button.Text.Contains("확인", System.StringComparison.Ordinal))
+            && resourceIcons.Any(path => path.EndsWith("food.png", System.StringComparison.Ordinal))
+            && resourceIcons.Any(path => path.EndsWith("money.png", System.StringComparison.Ordinal))
             && delay?.ItemCount == DeployService.MaxDeploymentDelayDays + 1;
         var viewportRect = GetViewport().GetVisibleRect();
         var boundsOk = modal is not null && viewportRect.Encloses(modal.GetGlobalRect());

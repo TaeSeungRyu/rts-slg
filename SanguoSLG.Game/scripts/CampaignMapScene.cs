@@ -9289,11 +9289,10 @@ public sealed partial class CampaignMapScene : Node3D
 
         box.AddChild(GoldRule());
 
-        box.AddChild(MakeLabel(
-            "휴대 군량 · 보급부대 자체 소비 기준 일수",
-            13,
-            GoldBright
-        ));
+        var supplyProvisionHeading = DeployComposeResourceHeading(
+            "food.png", "휴대 군량 · 보급부대 자체 소비 기준 일수");
+        supplyProvisionHeading.Name = "SupplyProvisionHeading";
+        box.AddChild(supplyProvisionHeading);
 
         var provRow = new HBoxContainer();
         provRow.AddThemeConstantOverride("separation", 10);
@@ -9382,7 +9381,8 @@ public sealed partial class CampaignMapScene : Node3D
             {
                 _depGold = value;
                 UpdateSupplyPreview();
-            }
+            },
+            "money.png"
         );
 
         AddDeploymentDelaySelector(
