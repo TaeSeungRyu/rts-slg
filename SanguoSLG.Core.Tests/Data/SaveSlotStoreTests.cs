@@ -40,6 +40,34 @@ public sealed class SaveSlotStoreTests : IDisposable
     }
 
     [Fact]
+    public void 순서대로_저장해도_다른_슬롯을_보존하고_덮어쓰기_백업을_남긴다()
+    {
+        var store = new SaveSlotStore(_directory);
+        store.Save(1, State(10));
+        store.Save(2, State(20));
+        store.Save(3, State(30));
+        store.Save(2, State(21));
+
+        Assert.Equal(10, store.Load(1).Day);
+        Assert.Equal(21, store.Load(2).Day);
+        Assert.Equal(30, store.Load(3).Day);
+        Assert.Equal(20, SaveService.Load(store.BackupPathFor(2)).Day);
+        Assert.Equal([1, 2, 3], store.InspectAll().Where(info => info.Exists).Select(info => info.Slot));
+    }
+
+    [Fact]
+    public void 기본_파일이_사라지면_마지막_백업을_불러온다()
+    {
+        var store = new SaveSlotStore(_directory);
+        store.Save(2, State(20));
+        store.Save(2, State(21));
+        File.Delete(store.PathFor(2));
+
+        Assert.True(store.Inspect(2).Exists);
+        Assert.Equal(20, store.Load(2).Day);
+    }
+
+    [Fact]
     public void 빈슬롯은_거부하고_손상슬롯은_표시하며_기존상태를_건드리지않는다()
     {
         var store = new SaveSlotStore(_directory);

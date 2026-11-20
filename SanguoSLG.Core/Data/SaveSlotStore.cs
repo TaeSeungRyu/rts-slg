@@ -73,10 +73,12 @@ public sealed class SaveSlotStore
         ValidateSlot(slot);
         Directory.CreateDirectory(_directory);
         var path = PathFor(slot);
+        var backup = BackupPathFor(slot);
         var temp = Path.Combine(_directory, $".{Path.GetFileName(path)}.{Guid.NewGuid():N}.tmp");
         try
         {
             File.WriteAllText(temp, SaveService.Serialize(state));
+            if (File.Exists(path)) File.Copy(path, backup, overwrite: true);
             File.Move(temp, path, overwrite: true);
         }
         finally
@@ -102,11 +104,19 @@ public sealed class SaveSlotStore
         return Path.Combine(_directory, $"sanguo-save-{slot:00}.json");
     }
 
+    public string BackupPathFor(int slot)
+    {
+        ValidatePositiveSlot(slot);
+        return Path.Combine(_directory, $"sanguo-save-{slot:00}.bak.json");
+    }
+
     public void Delete(int slot)
     {
         ValidatePositiveSlot(slot);
         var path = ExistingPath(slot);
         if (path is not null) File.Delete(path);
+        var backup = BackupPathFor(slot);
+        if (File.Exists(backup)) File.Delete(backup);
     }
 
     private string? ExistingPath(int slot)
@@ -116,6 +126,9 @@ public sealed class SaveSlotStore
         {
             return path;
         }
+
+        var backup = BackupPathFor(slot);
+        if (File.Exists(backup)) return backup;
 
         return slot == 1 && _legacyPath is not null && File.Exists(_legacyPath) ? _legacyPath : null;
     }
