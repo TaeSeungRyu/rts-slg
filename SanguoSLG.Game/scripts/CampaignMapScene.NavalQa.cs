@@ -29,6 +29,11 @@ public sealed partial class CampaignMapScene
             for (var i = 0; i < 8; i++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
             var columns = _modalLayer!.FindChildren("DeployComposeColumns", "HBoxContainer", true, false).OfType<HBoxContainer>().Single();
             var resources = columns.FindChildren("DeployComposeResources", "VBoxContainer", true, false).OfType<VBoxContainer>().Single();
+            var resourceScroll = _modalLayer.FindChildren("DeployComposeResourcesScroll", "ScrollContainer", true, false)
+                .OfType<ScrollContainer>().Single();
+            var resourceBar = resourceScroll.GetVScrollBar();
+            if (!resourceBar.Visible || resourceBar.GlobalPosition.X - resources.GetGlobalRect().End.X < 3f)
+                throw new Exception($"출항 편성 항목과 세로 스크롤 간격 부족: content={resources.GetGlobalRect()} bar={resourceBar.GetGlobalRect()}");
             var officers = columns.FindChildren("DeployComposeOfficers", "VBoxContainer", true, false).OfType<VBoxContainer>().Single();
             var table = officers.FindChildren("*", "Tree", true, false).OfType<Tree>().Single();
             var first = table.GetRoot().GetFirstChild();
@@ -85,7 +90,7 @@ public sealed partial class CampaignMapScene
             var panel = _modalLayer.GetChildren().OfType<NavalComposeModal>().Single();
             if (panel.GetGlobalRect().End.Y > GetViewport().GetVisibleRect().End.Y) throw new Exception("모달 화면 하단 넘침");
             if (resources.FindChildren("*", "HSlider", true, false).Count != 3) throw new Exception("병력/군량/금 슬라이더 누락");
-            var save = _modalLayer.FindChildren("*", "Button", true, false).OfType<Button>().Single(b => b.Text == "출항 예약");
+            var save = _modalLayer.FindChildren("*", "Button", true, false).OfType<Button>().Single(b => b.Text == "확인");
             if (!panel.GetGlobalRect().Encloses(save.GetGlobalRect())) throw new Exception("출항 예약 버튼 모달 밖으로 넘침");
             if (save.GetGlobalRect().End.Y > GetViewport().GetVisibleRect().End.Y - 8) throw new Exception("출항 예약 버튼 화면 하단 넘침");
             OpenNavalCompose(new SanguoSLG.Core.Domain.CityId(9));

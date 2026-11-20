@@ -5,8 +5,7 @@ namespace SanguoSLG.Game;
 public sealed partial class NavalComposeModal : DeployComposeModal
 {
 
-    private const int LeftContentRightMargin = 4;
-    public VBoxContainer PaddedLeftContent { get; }    
+    private const int LeftContentRightMargin = 12;
 
     public NavalComposeModal(Vector2 viewport, Texture2D background, Font font, string title)
         : base(viewport, background, font, title)
@@ -20,12 +19,9 @@ public sealed partial class NavalComposeModal : DeployComposeModal
             SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
         };
         padding.AddThemeConstantOverride("margin_right", LeftContentRightMargin);
-        LeftContent.AddChild(padding);
-
-        PaddedLeftContent = new VBoxContainer();
-        PaddedLeftContent.AddThemeConstantOverride(
-            "separation", LeftContent.GetThemeConstant("separation"));
-        padding.AddChild(PaddedLeftContent);
+        LeftScroll.RemoveChild(LeftContent);
+        LeftScroll.AddChild(padding);
+        padding.AddChild(LeftContent);
 
 
         if (LeftScroll.GetParent() is PanelContainer leftFrame)
