@@ -17,7 +17,7 @@ public sealed partial class CampaignMapScene
         public const int PaddingLeft = 45;
         public const int PaddingRight = 45;
         public const int PaddingTop = 13;
-        public const int PaddingBottom = 24;
+        public const int PaddingBottom = 38;
         public const int MainRowGap = 8; // 헤더, 상태줄, 본문, 푸터 사이 공통 간격
 
         // 헤더와 상태줄
@@ -203,10 +203,45 @@ public sealed partial class CampaignMapScene
             list.AddChild(BuildSupplyCommandCard(index, cityId));
         if (reservedIndices.Count == 0)
         {
-            var empty = MakeLabel("예약된 보급부대가 없습니다.\n신규 편성으로 부대를 추가하세요.", 15, Parchment);
+            var empty = MakeLabel(
+                "예약된 보급부대가 없습니다.\n신규 편성으로 부대를 추가하세요.",
+                15,
+                Parchment
+            );
+            empty.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+            empty.SizeFlagsVertical = Control.SizeFlags.ExpandFill;
             empty.HorizontalAlignment = HorizontalAlignment.Center;
-            list.AddChild(empty);
+            empty.VerticalAlignment = VerticalAlignment.Center;
+
+            listScroll.AddChild(empty);
         }
+        else
+        {
+            var list2 = new VBoxContainer
+            {
+                SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+                Alignment = BoxContainer.AlignmentMode.Begin,
+            };
+            list2.AddThemeConstantOverride("separation", SupplyHubLayout.ListCardGap);
+            listScroll.AddChild(list2);
+
+            foreach (var index in reservedIndices)
+                list2.AddChild(BuildSupplyCommandCard(index, cityId));
+        }
+
+
+        var divider = new ColorRect
+        {
+            Name = "SupplyCommandColumnDivider",
+            Color = Gold,
+            CustomMinimumSize = new Vector2(
+                1,
+                585
+            ),
+            SizeFlagsVertical = Control.SizeFlags.ShrinkBegin,
+            MouseFilter = Control.MouseFilterEnum.Ignore,
+        };
+        columns.AddChild(divider);        
 
         var right = CommandCenterSection("선택 보급부대 정보");
         if (SupplyHubLayout.DetailSectionGap is int detailSectionGap)
