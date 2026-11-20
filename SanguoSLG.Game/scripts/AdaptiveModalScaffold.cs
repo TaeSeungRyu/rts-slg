@@ -17,6 +17,7 @@ public sealed partial class AdaptiveModalScaffold : PanelContainer
         Compact,
         Standard,
         Wide,
+        HeroRecruit
     }
 
     public enum ContentLayout
@@ -252,14 +253,17 @@ public sealed partial class AdaptiveModalScaffold : PanelContainer
             bodyMinimum.X + ScrollBarAllowance);
         var desiredWidth = Mathf.Round(Mathf.Min(availableWidth,
             measuredContentWidth + ChromeHorizontalExtras));
-        if (_workspaceProfile != WorkspaceProfile.Default
-            && _workspaceProfile != WorkspaceProfile.EmptyCompact
-            && _workspaceProfile != WorkspaceProfile.CommandTable)
+
+        if (_widthProfile == WidthProfile.HeroRecruit
+            || (_workspaceProfile != WorkspaceProfile.Default
+                && _workspaceProfile != WorkspaceProfile.EmptyCompact
+                && _workspaceProfile != WorkspaceProfile.CommandTable))
         {
-            // 카드 열 수는 Configure 시점의 작업 폭으로 결정된다. 이후 측정 패스에서
-            // 폭을 다시 줄이면 마지막 열이 잘리므로 대상 작업공간은 최초 폭을 유지한다.
+                    // 카드 열 수는 Configure 시점의 작업 폭으로 결정된다. 이후 측정 패스에서
+                    // 폭을 다시 줄이면 마지막 열이 잘리므로 대상 작업공간은 최초 폭을 유지한다.    
             desiredWidth = Mathf.Min(availableWidth, LayoutSize.X);
-        }
+        }            
+
         if (_chrome is not null)
             _chrome.SetContentWidth(desiredWidth - ChromeHorizontalExtras);
 
@@ -391,6 +395,7 @@ public sealed partial class AdaptiveModalScaffold : PanelContainer
             ContentLayout.Empty => 0.46f,
             ContentLayout.Table when profile == WidthProfile.Wide => 0.82f,
             ContentLayout.Table => 0.64f,
+            ContentLayout.Cards when profile == WidthProfile.HeroRecruit => 0.87f,
             ContentLayout.Cards => 0.72f,
             ContentLayout.Mixed => 0.82f,
             _ => profile switch
@@ -405,6 +410,7 @@ public sealed partial class AdaptiveModalScaffold : PanelContainer
             ContentLayout.Empty => 520f,
             ContentLayout.Table when profile == WidthProfile.Wide => 960f,
             ContentLayout.Table => 720f,
+            ContentLayout.Cards when profile == WidthProfile.HeroRecruit => 990f,
             ContentLayout.Cards => 820f,
             ContentLayout.Mixed => 960f,
             _ => profile switch

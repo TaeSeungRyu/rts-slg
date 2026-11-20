@@ -8215,13 +8215,21 @@ public sealed partial class CampaignMapScene : Node3D
         var selectedCityData = _state.Cities.First(x => x.Id == city);
         var wideDoctrineModal = cmd.Kind == CommandKind.Research
             && cmd.Param is "troop" or "general" or "stratagem_research";
-        var modalProfile = wideDoctrineModal
-            ? AdaptiveModalScaffold.WidthProfile.Wide
-            : AdaptiveModalScaffold.WidthProfile.Standard;
+        var modalProfile = (cmd.Kind, cmd.Param) switch
+        {
+            (CommandKind.RecruitHero, "hero") => AdaptiveModalScaffold.WidthProfile.HeroRecruit,
+            _ when wideDoctrineModal => AdaptiveModalScaffold.WidthProfile.Wide,
+            _ => AdaptiveModalScaffold.WidthProfile.Standard,
+        };
+        var cmdddd = Cmds[cmdIndex];
+        GD.Print($"[OpenModal cccc] Kind={cmdddd.Kind}, Param={cmdddd.Param}");
+
         var contentLayout = AdaptiveLayoutForCommand(cmd, selectedCityData);
         var workspaceProfile = WorkspaceProfileForCommand(cmd, selectedCityData);
         var scaffold = new AdaptiveModalScaffold();
         scaffold.Configure(vp, modalProfile, contentLayout, workspaceProfile);
+
+
         if (!scaffold.UsesImageChrome)
             scaffold.AddThemeStyleboxOverride("panel", Frame(Ink, Gold, 2, 10, 14));
         scaffold.TextureFilter = CanvasItem.TextureFilterEnum.LinearWithMipmaps; // 고해상 아이콘 축소 시 선명
@@ -15896,10 +15904,27 @@ public sealed partial class CampaignMapScene : Node3D
             $"획득 방법  · 유적 최초 등록 +{RecruitmentPointBank.RuinRegistrationPoints}  · 탐색 완료 +{RecruitmentPointBank.ExplorationPoints}  " +
             $"· 담당자 7일 수행 +{RecruitmentPointBank.DutyPoints}  · 생산 투입 +{RecruitmentPointBank.ProductionPoints}  " +
             $"· 도시 계략 수행 +{RecruitmentPointBank.StratagemPoints}", 13, Parchment));
-        box.AddChild(guide);
+
+        var cardMargin0 = new MarginContainer
+        {
+            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+        };
+        cardMargin0.AddThemeConstantOverride("margin_right", 5);
+        cardMargin0.AddChild(guide);
+        box.AddChild(cardMargin0);
 
         var pageHost = new VBoxContainer { Name = "HeroRecruitPageHost", SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
-        box.AddChild(pageHost);
+
+        var cardMargin = new MarginContainer
+        {
+            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+        };
+        cardMargin.AddThemeConstantOverride("margin_right", 5);
+
+        box.AddChild(cardMargin);
+        cardMargin.AddChild(pageHost);
+
+
         var navigation = new HBoxContainer { Name = "HeroRecruitPagination", Alignment = BoxContainer.AlignmentMode.Center };
         navigation.AddThemeConstantOverride("separation", 12);
         var previous = MakeButton("이전");
@@ -16105,7 +16130,7 @@ public sealed partial class CampaignMapScene : Node3D
         var text = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
         row.AddChild(text);
         text.AddChild(MakeLabel($"{name} · {type}", 17, state.CanRecruit ? Gold : new Color(Gold, 0.65f)));
-        text.AddChild(MakeLabel($"{status}\n{HeroRequirementText(hero, general)}\n영입 포인트 {hero.RecruitPointCost}점 (보유 {points}점) · 금 {goldCost:N0} (도시 {city.Gold:N0})", 13, Parchment));
+        text.AddChild(MakeLabel($"{status}\n{HeroRequirementText(hero, general)}\n영입 포인트 {hero.RecruitPointCost}점 (보유 {points}점) · 금 {goldCost:N0}", 13, Parchment));
 
         var unavailable = !state.CanRecruit || !new HeroUnlockService().IsSatisfied(_state, hero, city.Owner)
             ? "잠김"
