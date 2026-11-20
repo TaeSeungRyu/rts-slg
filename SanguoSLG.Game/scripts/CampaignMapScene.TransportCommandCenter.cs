@@ -177,6 +177,7 @@ public sealed partial class CampaignMapScene
         button.Pressed += () => { _depSelectedUnit = index; OpenTransportHub(city); };
         var row = new HBoxContainer { MouseFilter = Control.MouseFilterEnum.Ignore };
         row.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect, Control.LayoutPresetMode.Minsize, TransportHubLayout.Card.Padding);
+        row.OffsetLeft += 30; // 왼쪽 여백만 추가
         row.AddThemeConstantOverride("separation", TransportHubLayout.Card.Gap);
         var artworkSize = TransportHubLayout.Card.ArtworkSize;
         var art = FixedIcon(UnitCard("transport"), artworkSize);

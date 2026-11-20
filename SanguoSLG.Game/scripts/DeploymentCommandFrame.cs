@@ -91,7 +91,12 @@ public sealed partial class DeploymentCommandFrame : PanelContainer
         status.AddChild(new Control { SizeFlagsHorizontal = SizeFlags.ExpandFill });
         NewButton = new Button { Name = "DeploymentCommandNew", Text = "＋ 신규 편성", CustomMinimumSize = new Vector2(170, 42) };
         NewButton.AddThemeFontOverride("font", font);
-        status.AddChild(NewButton);
+
+        var newButtonMargin = new MarginContainer();
+        newButtonMargin.AddThemeConstantOverride("margin_top", 15);
+        newButtonMargin.AddChild(NewButton);
+        status.AddChild(newButtonMargin);        
+
         body.AddChild(status);
 
 
@@ -142,5 +147,6 @@ public sealed partial class DeploymentCommandFrame : PanelContainer
     }
 
     public int BodyColumnCount()
-        => GetNode<HBoxContainer>("DeploymentCommandSafeArea/DeploymentCommandContent/DeploymentCommandColumns").GetChildCount();
+        => GetNode<HBoxContainer>( "DeploymentCommandSafeArea/DeploymentCommandContent/" +
+        "DeploymentCommandBodyMargin/DeploymentCommandBody/DeploymentCommandColumns").GetChildCount();
 }
