@@ -85,7 +85,7 @@ public sealed partial class ScenarioStartMenu
         var tip = new Label { Text = tips[GD.RandRange(0, tips.Length - 1)] };
         tip.AddThemeFontSizeOverride("font_size", 15);
         column.AddChild(tip);
-        CreateTween().TweenProperty(overlay, "modulate:a", 1f, 0.2f);
+        layer.CreateTween().TweenProperty(overlay, "modulate:a", 1f, 0.2f);
         await layer.ToSignal(tree.CreateTimer(0.23), SceneTreeTimer.SignalName.Timeout);
         if (GodotObject.IsInstanceValid(layer) && layer.IsInsideTree()) tree.ReloadCurrentScene();
     }
