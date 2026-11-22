@@ -69,7 +69,7 @@ public sealed partial class CampaignMapScene
         targetGrid.AddThemeConstantOverride("h_separation", 10);
         targetGrid.AddThemeConstantOverride("v_separation", 10);
         workspace.DoctrineList.AddChild(targetGrid);
-        var cards = new List<(Button Card, HexCoord Plot, string Code)>();
+        var cards = new List<(Button Card, Label Caption, HexCoord Plot, string Code)>();
 
         void StyleTargetCard(Button card, bool selected)
         {
@@ -96,14 +96,14 @@ public sealed partial class CampaignMapScene
             var rewardText = reward.Gold > 0 ? $"금 +{reward.Gold:N0}"
                 : reward.Provisions > 0 ? $"군량 +{reward.Provisions:N0}" : "보상 -";
 
-            foreach (var (card, plot, code) in cards)
+            foreach (var (card, caption, plot, code) in cards)
             {
                 var selected = selectedTarget == plot;
                 var cardReward = general is null ? (Gold: 0, Provisions: 0)
                     : ProductionRules.Reward(code, general.Politics);
                 var cardRewardText = cardReward.Gold > 0 ? $"금 +{cardReward.Gold:N0}"
                     : cardReward.Provisions > 0 ? $"군량 +{cardReward.Provisions:N0}" : "장수 선택 필요";
-                card.Text = $"{FacilityName(code)}{(selected ? "  ✓" : "")}\n{cardRewardText}";
+                caption.Text = $"{FacilityName(code)}{(selected ? "  ✓" : "")}\n{cardRewardText}";
                 StyleTargetCard(card, selected);
             }
 
@@ -132,13 +132,28 @@ public sealed partial class CampaignMapScene
             var targetCopy = target;
             var card = new Button { CustomMinimumSize = new Vector2(170f, 92f),
                 SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+            var content = new HBoxContainer
+            {
+                MouseFilter = Control.MouseFilterEnum.Ignore,
+                Alignment = BoxContainer.AlignmentMode.Center,
+            };
+            content.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect, Control.LayoutPresetMode.Minsize, 8);
+            content.AddThemeConstantOverride("separation", 8);
+            content.AddChild(CreateProductionFacilityPreview(target.Code));
+            var caption = MakeLabel(string.Empty, 14, Parchment);
+            caption.MouseFilter = Control.MouseFilterEnum.Ignore;
+            caption.HorizontalAlignment = HorizontalAlignment.Center;
+            caption.VerticalAlignment = VerticalAlignment.Center;
+            caption.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+            content.AddChild(caption);
+            card.AddChild(content);
             card.Pressed += () =>
             {
                 selectedTarget = targetCopy.Plot;
                 selectedFacility = targetCopy.Code;
                 Refresh();
             };
-            cards.Add((card, target.Plot, target.Code));
+            cards.Add((card, caption, target.Plot, target.Code));
             targetGrid.AddChild(card);
         }
 
@@ -182,6 +197,66 @@ public sealed partial class CampaignMapScene
                 });
         };
         Refresh();
+    }
+
+    private static SubViewportContainer CreateProductionFacilityPreview(string facilityCode)
+    {
+        var modelPath = facilityCode switch
+        {
+            "paddy" => "res://assets/models/paddy.glb",
+            "farm" => "res://assets/models/building-farm.glb",
+            "village" => "res://assets/models/village-1.glb",
+            _ => string.Empty,
+        };
+        var container = new SubViewportContainer
+        {
+            CustomMinimumSize = new Vector2(64f, 64f),
+            Stretch = true,
+            MouseFilter = Control.MouseFilterEnum.Ignore,
+        };
+        var viewport = new SubViewport
+        {
+            Size = new Vector2I(128, 128),
+            TransparentBg = true,
+            OwnWorld3D = true,
+            RenderTargetUpdateMode = SubViewport.UpdateMode.Always,
+        };
+        container.AddChild(viewport);
+        if (string.IsNullOrWhiteSpace(modelPath) || GD.Load<PackedScene>(modelPath) is not { } scene)
+            return container;
+
+        var stage = new Node3D();
+        viewport.AddChild(stage);
+        var model = scene.Instantiate<Node3D>();
+        model.RotationDegrees = new Vector3(0f, -35f, 0f);
+        stage.AddChild(model);
+        stage.AddChild(new DirectionalLight3D
+        {
+            RotationDegrees = new Vector3(-50f, -35f, 0f),
+            LightEnergy = 1.15f,
+            ShadowEnabled = false,
+        });
+        stage.AddChild(new WorldEnvironment
+        {
+            Environment = new Godot.Environment
+            {
+                BackgroundMode = Godot.Environment.BGMode.Color,
+                BackgroundColor = Colors.Transparent,
+                AmbientLightSource = Godot.Environment.AmbientSource.Color,
+                AmbientLightColor = new Color("f2cf83"),
+                AmbientLightEnergy = 0.85f,
+            },
+        });
+        var camera = new Camera3D
+        {
+            Projection = Camera3D.ProjectionType.Orthogonal,
+            Size = facilityCode == "village" ? 2.8f : 2.35f,
+            Position = new Vector3(2.4f, 2.1f, 2.4f),
+            Current = true,
+        };
+        camera.LookAtFromPosition(camera.Position, new Vector3(0f, 0.35f, 0f), Vector3.Up);
+        stage.AddChild(camera);
+        return container;
     }
 
     private void OpenProductionGeneralPicker(IReadOnlyList<General> generals, GeneralId? current,
