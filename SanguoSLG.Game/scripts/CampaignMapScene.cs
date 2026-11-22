@@ -20801,6 +20801,7 @@ public sealed partial class CampaignMapScene : Node3D
     }
 
     // 좌하단 보고 패널(삼국지11 오마주) — 진행 결과·명령 발행 등 사건을 최근 순으로 쌓아 보여준다.
+
     private void BuildCityQuickList(CanvasLayer layer)
     {
         var panel = new PanelContainer
@@ -20809,17 +20810,42 @@ public sealed partial class CampaignMapScene : Node3D
             CustomMinimumSize = new Vector2(360f, 0f),
             Name = "CityQuickPanel",
         };
-        GameUiSkin.ApplyQuickListFloatingPanel(panel, false);
+        panel.AddThemeStyleboxOverride("panel", new StyleBoxEmpty());
         layer.AddChild(panel);
         _cityQuickPanel = panel;
 
+        var smallBackground = LoadQuickListBackground(expanded: false);
+        var bigBackground = LoadQuickListBackground(expanded: true);
+
+        var background = new TextureRect
+        {
+            Name = "CityQuickBackground",
+            Texture = smallBackground,
+            ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
+            StretchMode = TextureRect.StretchModeEnum.Scale,
+            MouseFilter = Control.MouseFilterEnum.Ignore,
+        };
+        panel.AddChild(background);
+
+        var padding = new MarginContainer
+        {
+            MouseFilter = Control.MouseFilterEnum.Ignore,
+        };
+        padding.AddThemeConstantOverride("margin_left", 12);
+        padding.AddThemeConstantOverride("margin_top", 12);
+        padding.AddThemeConstantOverride("margin_right", 12);
+        padding.AddThemeConstantOverride("margin_bottom", 12);
+        panel.AddChild(padding);
+
         var content = new VBoxContainer();
         content.AddThemeConstantOverride("separation", 2);
-        panel.AddChild(content);
+        padding.AddChild(content);
+
         var header = new HBoxContainer();
         header.AddThemeConstantOverride("separation", 4);
         content.AddChild(header);
         AddQuickListDragHandle(header, panel, () => _cityQuickMoved = true);
+
         var toggle = MakeButton("도시 목록 (0)");
         toggle.Name = "CityQuickToggle";
         toggle.Icon = GameUiSkin.ListTexture("city_icon", "res://assets/icons/icon_wall.png");
@@ -20829,17 +20855,13 @@ public sealed partial class CampaignMapScene : Node3D
         toggle.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
         toggle.CustomMinimumSize = new Vector2(0, 40);
         GameUiSkin.ApplyQuickListHeader(toggle);
+        RemoveQuickListHeaderFrame(toggle);
         header.AddChild(toggle);
         _cityQuickToggle = toggle;
-        _cityQuickArrow = MakeLabel("⌄", 22, GameUiSkin.GoldBright);
-        _cityQuickArrow.CustomMinimumSize = new Vector2(24, 40);
-        _cityQuickArrow.HorizontalAlignment = HorizontalAlignment.Center;
-        _cityQuickArrow.VerticalAlignment = VerticalAlignment.Center;
-        _cityQuickArrow.MouseFilter = Control.MouseFilterEnum.Ignore;
-        header.AddChild(_cityQuickArrow);
-        var rule = GoldRule();
-        rule.Visible = false;
-        content.AddChild(rule);
+
+        // var rule = GoldRule();
+        // rule.Visible = false;
+        // content.AddChild(rule);
 
         _cityQuickExpandedContent = new VBoxContainer
         {
@@ -20849,11 +20871,17 @@ public sealed partial class CampaignMapScene : Node3D
         };
         _cityQuickExpandedContent.AddThemeConstantOverride("separation", 6);
         content.AddChild(_cityQuickExpandedContent);
-        var controls = new HBoxContainer { Name = "CityQuickControls", SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+
+        var controls = new HBoxContainer
+        {
+            Name = "CityQuickControls",
+            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+        };
         controls.AddThemeConstantOverride("separation", 4);
         _cityQuickExpandedContent.AddChild(controls);
+
         var filterGroup = new ButtonGroup { AllowUnpress = false };
-        foreach (var (label, filter) in new[] { ("전체", 0), ("본거지", 1), ("거점", 2), ("항구", 3) })
+        foreach (var (label, filter) in new[] { ("전체", 0), ("거점", 2), ("항구", 3) })
         {
             var filterButton = MakeButton(label);
             filterButton.Name = $"CityQuickFilter_{filter}";
@@ -20870,6 +20898,7 @@ public sealed partial class CampaignMapScene : Node3D
             };
             controls.AddChild(filterButton);
         }
+
         var sortButton = MakeButton("이름순 ▲");
         sortButton.Name = "CityQuickSort";
         sortButton.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
@@ -20891,27 +20920,37 @@ public sealed partial class CampaignMapScene : Node3D
             SizeFlagsVertical = Control.SizeFlags.ExpandFill,
             HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled,
             VerticalScrollMode = ScrollContainer.ScrollMode.Auto,
-            Visible = true,
         };
         _cityQuickScroll = scroll;
         GameUiSkin.ApplyQuickListScroll(scroll);
         _cityQuickExpandedContent.AddChild(scroll);
-        toggle.Pressed += () =>
+
+        var inset = new MarginContainer
         {
-            _cityQuickExpandedContent.Visible = !_cityQuickExpandedContent.Visible;
-            rule.Visible = _cityQuickExpandedContent.Visible;
-            _cityQuickArrow.Text = _cityQuickExpandedContent.Visible ? "⌃" : "⌄";
-            GameUiSkin.ApplyQuickListFloatingPanel(panel, _cityQuickExpandedContent.Visible);
-            panel.ResetSize();
+            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
         };
-        var inset = new MarginContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
         inset.AddThemeConstantOverride("margin_right", 10);
         scroll.AddChild(inset);
-        _cityQuickList = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+
+        _cityQuickList = new VBoxContainer
+        {
+            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+        };
         _cityQuickList.AddThemeConstantOverride("separation", 2);
         inset.AddChild(_cityQuickList);
-    }
 
+        toggle.Pressed += () =>
+        {
+            var expanded = !_cityQuickExpandedContent.Visible;
+            if (expanded && !_state.Cities.Any(city => city.Owner == Player))
+                return;
+
+            _cityQuickExpandedContent.Visible = expanded;
+            //rule.Visible = expanded;
+            background.Texture = expanded ? bigBackground : smallBackground;
+            panel.ResetSize();
+        };
+    }
     private void RefreshCityQuickList()
     {
         var ownedCities = _state.Cities.Where(city => city.Owner == Player).ToArray();
@@ -20969,22 +21008,48 @@ public sealed partial class CampaignMapScene : Node3D
 
     private void BuildSortieQuickList(CanvasLayer layer)
     {
-        _sortieQuickPanel = new PanelContainer
+        var panel = new PanelContainer
         {
             Position = new Vector2(LeftHudX, 160f),
             CustomMinimumSize = new Vector2(360f, 0f),
             Name = "SortieQuickPanel",
         };
-        GameUiSkin.ApplyQuickListFloatingPanel(_sortieQuickPanel, false);
-        layer.AddChild(_sortieQuickPanel);
+        panel.AddThemeStyleboxOverride("panel", new StyleBoxEmpty());
+        layer.AddChild(panel);
+        _sortieQuickPanel = panel;
+
+        var smallBackground = LoadQuickListBackground(expanded: false);
+        var bigBackground = LoadQuickListBackground(expanded: true);
+
+        var background = new TextureRect
+        {
+            Name = "SortieQuickBackground",
+            Texture = smallBackground,
+            ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
+            StretchMode = TextureRect.StretchModeEnum.Scale,
+            MouseFilter = Control.MouseFilterEnum.Ignore,
+        };
+        panel.AddChild(background);
+
+        var padding = new MarginContainer
+        {
+            MouseFilter = Control.MouseFilterEnum.Ignore,
+        };
+        padding.AddThemeConstantOverride("margin_left", 12);
+        padding.AddThemeConstantOverride("margin_top", 12);
+        padding.AddThemeConstantOverride("margin_right", 12);
+        padding.AddThemeConstantOverride("margin_bottom", 12);
+        panel.AddChild(padding);
 
         var content = new VBoxContainer();
         content.AddThemeConstantOverride("separation", 2);
-        _sortieQuickPanel.AddChild(content);
+        padding.AddChild(content);
+
         var header = new HBoxContainer();
         header.AddThemeConstantOverride("separation", 4);
         content.AddChild(header);
-        AddQuickListDragHandle(header, _sortieQuickPanel, () => _sortieQuickMoved = true);
+        AddQuickListDragHandle(header, panel, () => _sortieQuickMoved = true);
+
         var toggle = MakeButton("출전 장수 목록 (0)");
         toggle.Name = "SortieQuickToggle";
         toggle.Icon = GameUiSkin.ListTexture("general_icon", "res://assets/icons/icon_sword.png");
@@ -20994,17 +21059,13 @@ public sealed partial class CampaignMapScene : Node3D
         toggle.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
         toggle.CustomMinimumSize = new Vector2(0, 40);
         GameUiSkin.ApplyQuickListHeader(toggle);
+        RemoveQuickListHeaderFrame(toggle);
         header.AddChild(toggle);
         _sortieQuickToggle = toggle;
-        _sortieQuickArrow = MakeLabel("⌄", 22, GameUiSkin.GoldBright);
-        _sortieQuickArrow.CustomMinimumSize = new Vector2(24, 40);
-        _sortieQuickArrow.HorizontalAlignment = HorizontalAlignment.Center;
-        _sortieQuickArrow.VerticalAlignment = VerticalAlignment.Center;
-        _sortieQuickArrow.MouseFilter = Control.MouseFilterEnum.Ignore;
-        header.AddChild(_sortieQuickArrow);
-        var rule = GoldRule();
-        rule.Visible = false;
-        content.AddChild(rule);
+
+        // var rule = GoldRule();
+        // rule.Visible = false;
+        // content.AddChild(rule);
 
         _sortieQuickExpandedContent = new VBoxContainer
         {
@@ -21021,25 +21082,36 @@ public sealed partial class CampaignMapScene : Node3D
             SizeFlagsVertical = Control.SizeFlags.ExpandFill,
             HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled,
             VerticalScrollMode = ScrollContainer.ScrollMode.Auto,
-            Visible = true,
         };
         _sortieQuickScroll = scroll;
         GameUiSkin.ApplyQuickListScroll(scroll);
         _sortieQuickExpandedContent.AddChild(scroll);
-        toggle.Pressed += () =>
+
+        var inset = new MarginContainer
         {
-            _sortieQuickExpandedContent.Visible = !_sortieQuickExpandedContent.Visible;
-            rule.Visible = _sortieQuickExpandedContent.Visible;
-            _sortieQuickArrow.Text = _sortieQuickExpandedContent.Visible ? "⌃" : "⌄";
-            GameUiSkin.ApplyQuickListFloatingPanel(_sortieQuickPanel, _sortieQuickExpandedContent.Visible);
-            _sortieQuickPanel.ResetSize();
+            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
         };
-        var inset = new MarginContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
         inset.AddThemeConstantOverride("margin_right", 10);
         scroll.AddChild(inset);
-        _sortieQuickList = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+
+        _sortieQuickList = new VBoxContainer
+        {
+            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+        };
         _sortieQuickList.AddThemeConstantOverride("separation", 1);
         inset.AddChild(_sortieQuickList);
+
+        toggle.Pressed += () =>
+        {
+            var expanded = !_sortieQuickExpandedContent.Visible;
+            if (expanded && !_state.Armies.Any(unit => unit.Field.Owner == Player && unit.VanguardId is not null))
+                return;
+
+            _sortieQuickExpandedContent.Visible = expanded;
+           // rule.Visible = expanded;
+            background.Texture = expanded ? bigBackground : smallBackground;
+            panel.ResetSize();
+        };
     }
 
     private void RefreshSortieQuickList()
@@ -21138,6 +21210,25 @@ public sealed partial class CampaignMapScene : Node3D
             _sortieQuickList.AddChild(button);
         }
     }
+
+    private static Texture2D? LoadQuickListBackground(bool expanded)
+    {
+        return (GameUiSkin.QuickListFloatingPanel(expanded) as StyleBoxTexture)?.Texture;
+    }
+
+    private static void RemoveQuickListHeaderFrame(Button button)
+    {
+        foreach (var state in new[] { "normal", "hover", "pressed", "hover_pressed", "disabled" })
+        {
+            var source = button.GetThemeStylebox(state);
+            var style = new StyleBoxEmpty();
+            foreach (var side in new[] { Side.Left, Side.Top, Side.Right, Side.Bottom })
+                style.SetContentMargin(side, source.GetMargin(side));
+
+            button.AddThemeStyleboxOverride(state, style);
+        }
+    }
+    
 
     private static void SetQuickListHeight(ScrollContainer scroll, int itemCount, float rowHeight,
         float separation = QuickListRowSeparation)
