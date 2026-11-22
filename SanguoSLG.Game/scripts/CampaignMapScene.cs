@@ -9736,6 +9736,7 @@ public sealed partial class CampaignMapScene : Node3D
         var c = inspectedCity;
 
         var titleRow = new HBoxContainer();
+        titleRow.CustomMinimumSize = new Vector2(0, 82);
         box.AddChild(titleRow);
         var detailGov = OfficerName(c.Governor);
         var detailStra = OfficerName(c.Strategist);
@@ -9743,6 +9744,8 @@ public sealed partial class CampaignMapScene : Node3D
             ? $"《 {c.Name} 》 · 정찰 정보 · 남은 {ScoutDaysLeft(c.Id)}일"
             : $"《 {c.Name} 》 · 태수 {detailGov ?? "없음"} · 군사 {detailStra ?? "없음"}";
         var title = MakeLabel(titleText, 16, Gold);
+        title.VerticalAlignment = VerticalAlignment.Center;
+        title.TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis;
         title.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
         title.MouseFilter = Control.MouseFilterEnum.Ignore;
         titleRow.AddChild(title);
@@ -9750,7 +9753,6 @@ public sealed partial class CampaignMapScene : Node3D
         close.CustomMinimumSize = new Vector2(46, 34);
         close.Pressed += CloseModal;
         titleRow.AddChild(close);
-        box.AddChild(GoldRule());
 
         // 도시 유형 일러스트와 상태 수치를 하나의 고정 상단 영역으로 묶는다.
         var overview = new HBoxContainer
@@ -9765,7 +9767,7 @@ public sealed partial class CampaignMapScene : Node3D
         {
             Name = "CityDetailTypeArt",
             Texture = CityDetailTypeTexture(c),
-            CustomMinimumSize = new Vector2(196, 138),
+            CustomMinimumSize = new Vector2(Mathf.Min(196, mw * 0.30f), 138),
             ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
             StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
             MouseFilter = Control.MouseFilterEnum.Ignore,
@@ -9953,8 +9955,10 @@ public sealed partial class CampaignMapScene : Node3D
         }
         tabs.CurrentTab = readOnlyIntel ? 0 : Mathf.Clamp(_cityDetailTab, 0, tabs.GetTabCount() - 1);
         tabs.TabChanged += index => _cityDetailTab = (int)index;
-        scroll.CustomMinimumSize = new Vector2(mw, mh);
+        var frameMargins = panel.GetThemeStylebox("panel").GetMinimumSize();
+        scroll.CustomMinimumSize = new Vector2(mw, mh) - frameMargins;
         CenterAndDrag(panel, titleRow, mw, mh, box);
+        panel.Position = (vp - new Vector2(mw, mh)) / 2f;
     }
 
     private static StyleBox CityDetailBackgroundStyle()
@@ -9966,7 +9970,7 @@ public sealed partial class CampaignMapScene : Node3D
             {
                 Texture = texture,
                 TextureMarginLeft = 34,
-                TextureMarginTop = 92,
+                TextureMarginTop = 108,
                 TextureMarginRight = 34,
                 TextureMarginBottom = 44,
                 ContentMarginLeft = 18,
