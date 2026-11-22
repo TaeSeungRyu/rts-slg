@@ -9710,6 +9710,8 @@ public sealed partial class CampaignMapScene : Node3D
         var mw = Mathf.Clamp(vp.X * 0.52f, 460f, 680f);
         var mh = Mathf.Clamp(vp.Y * 0.94f, 460f, 900f);
         var box = DeployScaffold(mw, out var scroll, out var panel);
+        panel.Name = "CityDetailModal";
+        panel.AddThemeStyleboxOverride("panel", CityDetailBackgroundStyle());
         panel.SetMeta("scouted_city_read_only", readOnlyIntel);
         scroll.Name = "CityDetailOuterScroll";
         scroll.VerticalScrollMode = vp.Y >= 760f
@@ -9931,6 +9933,28 @@ public sealed partial class CampaignMapScene : Node3D
 
         ShowTab(readOnlyIntel ? 0 : Mathf.Clamp(_cityDetailTab, 0, 2));
         CenterAndDrag(panel, titleRow, mw, mh, box);
+    }
+
+    private static StyleBox CityDetailBackgroundStyle()
+    {
+        const string path = "res://assets/ui/game/city_detail/bg.png";
+        if (ResourceLoader.Exists(path) && GD.Load<Texture2D>(path) is { } texture)
+        {
+            return new StyleBoxTexture
+            {
+                Texture = texture,
+                TextureMarginLeft = 34,
+                TextureMarginTop = 92,
+                TextureMarginRight = 34,
+                TextureMarginBottom = 44,
+                ContentMarginLeft = 18,
+                ContentMarginTop = 18,
+                ContentMarginRight = 18,
+                ContentMarginBottom = 18,
+            };
+        }
+
+        return Frame(Ink, Gold, 2, 10, 14);
     }
 
     // 폴더 탭 모양 — 위 모서리만 둥글고 아래는 각짐. 활성은 내용 패널과 같은 색·아래 테두리 없이 이어지고,
