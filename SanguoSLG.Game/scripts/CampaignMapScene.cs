@@ -10015,6 +10015,9 @@ public sealed partial class CampaignMapScene : Node3D
     private static StyleBox CityDetailBackgroundStyle()
     {
         const string path = "res://assets/ui/game/city_detail/bg.png";
+        // 전체 좌우 여백은 아래 ContentMarginLeft/Right를 함께 변경한다.
+        // 값이 클수록 사진·수치·카드·탭이 프레임 안쪽으로 이동하고 사용할 수 있는 너비가 줄어든다.
+        const float horizontalPadding = 24f;
         if (LoadCityDetailTexture(path) is { } texture)
         {
             return new StyleBoxTexture
@@ -10025,9 +10028,9 @@ public sealed partial class CampaignMapScene : Node3D
                 TextureMarginTop = 108,
                 TextureMarginRight = 34,
                 TextureMarginBottom = 44,
-                ContentMarginLeft = 18,
+                ContentMarginLeft = horizontalPadding,
                 ContentMarginTop = 18,
-                ContentMarginRight = 18,
+                ContentMarginRight = horizontalPadding,
                 ContentMarginBottom = 18,
             };
         }
