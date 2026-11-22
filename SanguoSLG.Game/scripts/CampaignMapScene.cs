@@ -20803,7 +20803,7 @@ public sealed partial class CampaignMapScene : Node3D
     // 좌하단 보고 패널(삼국지11 오마주) — 진행 결과·명령 발행 등 사건을 최근 순으로 쌓아 보여준다.
     private void BuildCityQuickList(CanvasLayer layer)
     {
-        const float expandedHeight = 300f;
+        const float expandedHeight = 245f;
 
         var panel = new PanelContainer
         {
@@ -20884,7 +20884,7 @@ public sealed partial class CampaignMapScene : Node3D
         {
             SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
         };
-        filterPadding.AddThemeConstantOverride("margin_top",10);
+        filterPadding.AddThemeConstantOverride("margin_top",12);
 
         _cityQuickExpandedContent.AddChild(filterPadding);
         filterPadding.AddChild(controls);
@@ -20957,7 +20957,7 @@ public sealed partial class CampaignMapScene : Node3D
             _cityQuickExpandedContent.Visible = expanded;
             //rule.Visible = expanded;
             background.Texture = expanded ? bigBackground : smallBackground;
-            padding.AddThemeConstantOverride("margin_top", expanded ? 20 : 12);
+           // padding.AddThemeConstantOverride("margin_top", expanded ? 20 : 12);
             panel.CustomMinimumSize = new Vector2(
                 panel.CustomMinimumSize.X, expanded ? expandedHeight : 0f);
             panel.ResetSize();
@@ -21020,7 +21020,7 @@ public sealed partial class CampaignMapScene : Node3D
 
     private void BuildSortieQuickList(CanvasLayer layer)
     {
-        const float expandedHeight = 300f;
+        const float expandedHeight = 245f;
 
         var panel = new PanelContainer
         {
@@ -21100,7 +21100,16 @@ public sealed partial class CampaignMapScene : Node3D
         };
         _sortieQuickScroll = scroll;
         GameUiSkin.ApplyQuickListScroll(scroll);
-        _sortieQuickExpandedContent.AddChild(scroll);
+        var scrollPadding = new MarginContainer
+        {
+            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+            SizeFlagsVertical = Control.SizeFlags.ExpandFill,
+            MouseFilter = Control.MouseFilterEnum.Ignore,
+        };
+        scrollPadding.AddThemeConstantOverride("margin_top", 12);
+
+        _sortieQuickExpandedContent.AddChild(scrollPadding);
+        scrollPadding.AddChild(scroll);
 
         var inset = new MarginContainer
         {
