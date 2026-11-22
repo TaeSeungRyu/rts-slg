@@ -20801,9 +20801,10 @@ public sealed partial class CampaignMapScene : Node3D
     }
 
     // 좌하단 보고 패널(삼국지11 오마주) — 진행 결과·명령 발행 등 사건을 최근 순으로 쌓아 보여준다.
-
     private void BuildCityQuickList(CanvasLayer layer)
     {
+        const float expandedHeight = 300f;
+
         var panel = new PanelContainer
         {
             Position = new Vector2(LeftHudX, 108f),
@@ -20868,6 +20869,7 @@ public sealed partial class CampaignMapScene : Node3D
             Name = "CityQuickExpandedContent",
             Visible = false,
             SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+            SizeFlagsVertical = Control.SizeFlags.ExpandFill,
         };
         _cityQuickExpandedContent.AddThemeConstantOverride("separation", 6);
         content.AddChild(_cityQuickExpandedContent);
@@ -20878,7 +20880,14 @@ public sealed partial class CampaignMapScene : Node3D
             SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
         };
         controls.AddThemeConstantOverride("separation", 4);
-        _cityQuickExpandedContent.AddChild(controls);
+        var filterPadding = new MarginContainer
+        {
+            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+        };
+        filterPadding.AddThemeConstantOverride("margin_top",10);
+
+        _cityQuickExpandedContent.AddChild(filterPadding);
+        filterPadding.AddChild(controls);
 
         var filterGroup = new ButtonGroup { AllowUnpress = false };
         foreach (var (label, filter) in new[] { ("전체", 0), ("거점", 2), ("항구", 3) })
@@ -20948,7 +20957,11 @@ public sealed partial class CampaignMapScene : Node3D
             _cityQuickExpandedContent.Visible = expanded;
             //rule.Visible = expanded;
             background.Texture = expanded ? bigBackground : smallBackground;
+            padding.AddThemeConstantOverride("margin_top", expanded ? 20 : 12);
+            panel.CustomMinimumSize = new Vector2(
+                panel.CustomMinimumSize.X, expanded ? expandedHeight : 0f);
             panel.ResetSize();
+
         };
     }
     private void RefreshCityQuickList()
@@ -20969,7 +20982,6 @@ public sealed partial class CampaignMapScene : Node3D
             : query.OrderByDescending(city => city.Name, StringComparer.CurrentCulture).ThenByDescending(city => city.Id.Value);
         var cities = query.ToArray();
         _cityQuickToggle.Text = $"도시 목록 ({ownedCities.Length})";
-        SetQuickListHeight(_cityQuickScroll, cities.Length, 38f);
         var key = $"{_cityQuickFilter}:{_cityQuickSortAscending}:"
             + string.Join("|", cities.Select(city => $"{city.Id.Value}:{city.Name}:{city.Id == capital}"));
         if (key == _cityQuickListKey) return;
@@ -21008,6 +21020,8 @@ public sealed partial class CampaignMapScene : Node3D
 
     private void BuildSortieQuickList(CanvasLayer layer)
     {
+        const float expandedHeight = 300f;
+
         var panel = new PanelContainer
         {
             Position = new Vector2(LeftHudX, 160f),
@@ -21072,6 +21086,7 @@ public sealed partial class CampaignMapScene : Node3D
             Name = "SortieQuickExpandedContent",
             Visible = false,
             SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+            SizeFlagsVertical = Control.SizeFlags.ExpandFill,
         };
         content.AddChild(_sortieQuickExpandedContent);
 
@@ -21110,6 +21125,8 @@ public sealed partial class CampaignMapScene : Node3D
             _sortieQuickExpandedContent.Visible = expanded;
            // rule.Visible = expanded;
             background.Texture = expanded ? bigBackground : smallBackground;
+            panel.CustomMinimumSize = new Vector2(
+                panel.CustomMinimumSize.X, expanded ? expandedHeight : 0f);
             panel.ResetSize();
         };
     }
@@ -21119,7 +21136,6 @@ public sealed partial class CampaignMapScene : Node3D
         var units = _state.Armies.Where(unit => unit.Field.Owner == Player && unit.VanguardId is not null)
             .OrderBy(unit => unit.Id.Value).ToArray();
         _sortieQuickToggle.Text = $"출전 장수 목록 ({units.Length})";
-        SetQuickListHeight(_sortieQuickScroll, units.Length, 50f, separation: 1f);
         var key = string.Join("|", units.Select(unit =>
             $"{unit.Id.Value}:{unit.VanguardId}:{unit.AdjutantId}:{unit.Pool.Active}:{unit.IsWaitingDeployment}"));
         if (key == _sortieQuickListKey) return;
@@ -21210,6 +21226,7 @@ public sealed partial class CampaignMapScene : Node3D
             _sortieQuickList.AddChild(button);
         }
     }
+
 
     private static Texture2D? LoadQuickListBackground(bool expanded)
     {
