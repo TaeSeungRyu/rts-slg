@@ -9948,7 +9948,7 @@ public sealed partial class CampaignMapScene : Node3D
         {
             tabs.SetTabTitle(i, labels[i]);
             var iconPath = $"res://assets/ui/game/city_detail/{tabIcons[i]}.png";
-            if (ResourceLoader.Exists(iconPath) && GD.Load<Texture2D>(iconPath) is { } icon)
+            if (LoadCityDetailTexture(iconPath) is { } icon)
                 tabs.SetTabIcon(i, icon);
         }
         tabs.CurrentTab = readOnlyIntel ? 0 : Mathf.Clamp(_cityDetailTab, 0, tabs.GetTabCount() - 1);
@@ -9960,7 +9960,7 @@ public sealed partial class CampaignMapScene : Node3D
     private static StyleBox CityDetailBackgroundStyle()
     {
         const string path = "res://assets/ui/game/city_detail/bg.png";
-        if (ResourceLoader.Exists(path) && GD.Load<Texture2D>(path) is { } texture)
+        if (LoadCityDetailTexture(path) is { } texture)
         {
             return new StyleBoxTexture
             {
@@ -9988,7 +9988,17 @@ public sealed partial class CampaignMapScene : Node3D
             _ => "small_castle",
         };
         var path = $"res://assets/ui/game/city_detail/{file}.png";
-        return ResourceLoader.Exists(path) ? GD.Load<Texture2D>(path) : null;
+        return LoadCityDetailTexture(path);
+    }
+
+    private static Texture2D? LoadCityDetailTexture(string resourcePath)
+    {
+        if (ResourceLoader.Exists(resourcePath) && GD.Load<Texture2D>(resourcePath) is { } imported)
+            return imported;
+        var absolutePath = ProjectSettings.GlobalizePath(resourcePath);
+        if (!System.IO.File.Exists(absolutePath)) return null;
+        var image = Image.LoadFromFile(absolutePath);
+        return image is null || image.IsEmpty() ? null : ImageTexture.CreateFromImage(image);
     }
 
     // 폴더 탭 모양 — 위 모서리만 둥글고 아래는 각짐. 활성은 내용 패널과 같은 색·아래 테두리 없이 이어지고,

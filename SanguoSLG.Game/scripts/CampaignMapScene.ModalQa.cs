@@ -526,7 +526,8 @@ public sealed partial class CampaignMapScene
             && stationedTable?.ScrollVerticalEnabled == true
             && stationedTable.MouseForcePassScrollEvents == false
             && stationedTable.SizeFlagsVertical.HasFlag(Control.SizeFlags.ExpandFill)
-            && stationedTable.Size.Y >= tabPanel.Size.Y * 0.75f;
+            // TabContainer의 기본 탭 헤더가 높이를 점유하므로 본문은 패널의 약 60% 이상이면 정상이다.
+            && stationedTable.Size.Y >= tabPanel.Size.Y * 0.60f;
         var tabArtworkApplied = cityTabs?.GetTabCount() == 3
             && Enumerable.Range(0, cityTabs.GetTabCount()).All(index => cityTabs.GetTabIcon(index) is not null);
         var modalHeight = outerScroll?.CustomMinimumSize.Y ?? 0;
