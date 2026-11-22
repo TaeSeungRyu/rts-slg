@@ -9996,10 +9996,13 @@ public sealed partial class CampaignMapScene : Node3D
             if (!readOnlyIntel) _cityDetailTab = (int)index;
             tabButtons[(int)index].SetPressedNoSignal(true);
         };
+        // 패널의 PNG 장식 여백까지 포함한 최종 높이를 화면 안으로 제한한다.
         var frameMargins = panel.GetThemeStylebox("panel").GetMinimumSize();
-        scroll.CustomMinimumSize = new Vector2(mw, mh) - frameMargins;
+        var visibleHeight = Mathf.Min(mh, vp.Y - 32f);
+        scroll.CustomMinimumSize = new Vector2(mw - frameMargins.X,
+            Mathf.Max(0f, visibleHeight - frameMargins.Y));
         CenterAndDrag(panel, titleRow, mw, mh, box);
-        panel.Position = (vp - new Vector2(mw, mh)) / 2f;
+        panel.Position = (vp - new Vector2(mw, visibleHeight)) / 2f;
     }
 
     private static StyleBox CityDetailBackgroundStyle()
