@@ -521,7 +521,9 @@ public sealed partial class CampaignMapScene
         var cityTabs = _modalLayer?.FindChild("CityDetailTabs", true, false) as TabContainer;
         var stationedTable = _modalLayer?.FindChild("CityDetailStationedTable", true, false) as Tree;
         var stationedGoldPortraits = stationedTable?.GetMeta("thin_gold_portraits").AsBool() == true;
-        var stationedInternalScroll = outerScroll?.VerticalScrollMode == ScrollContainer.ScrollMode.Disabled
+        var stationedInternalScroll = outerScroll?.VerticalScrollMode == ScrollContainer.ScrollMode.Auto
+            && _modalLayer?.FindChild("CityDetailModal", true, false) is PanelContainer detailPanel
+            && detailPanel.Size.Y <= GetViewport().GetVisibleRect().Size.Y - 32f
             && tabPanel?.CustomMinimumSize.Y >= 250f
             && stationedTable?.ScrollVerticalEnabled == true
             && stationedTable.MouseForcePassScrollEvents == false
