@@ -9752,11 +9752,38 @@ public sealed partial class CampaignMapScene : Node3D
         titleRow.AddChild(close);
         box.AddChild(GoldRule());
 
+        // 도시 유형 일러스트와 상태 수치를 하나의 고정 상단 영역으로 묶는다.
+        var overview = new HBoxContainer
+        {
+            Name = "CityDetailOverview",
+            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+            CustomMinimumSize = new Vector2(0, 154),
+        };
+        overview.AddThemeConstantOverride("separation", 12);
+        box.AddChild(overview);
+        var cityArt = new TextureRect
+        {
+            Name = "CityDetailTypeArt",
+            Texture = CityDetailTypeTexture(c),
+            CustomMinimumSize = new Vector2(196, 138),
+            ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
+            StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
+            MouseFilter = Control.MouseFilterEnum.Ignore,
+        };
+        overview.AddChild(cityArt);
+        var overviewInfo = new VBoxContainer
+        {
+            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+            SizeFlagsVertical = Control.SizeFlags.ExpandFill,
+        };
+        overviewInfo.AddThemeConstantOverride("separation", 4);
+        overview.AddChild(overviewInfo);
+
         // 도시 수치(정보 카드보다 상세).
         var g4 = new GridContainer { Columns = 4, SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
         g4.AddThemeConstantOverride("h_separation", 12);
         g4.AddThemeConstantOverride("v_separation", 4);
-        box.AddChild(g4);
+        overviewInfo.AddChild(g4);
         AddCell(g4, Sym.Coin, "금", $"{c.Gold}");
         AddCell(g4, Sym.Grain, "군량", $"{c.Provisions}");
         var (weeklyGold, weeklyProvisions) = WeeklyIncomePreview(c);
@@ -9778,14 +9805,14 @@ public sealed partial class CampaignMapScene : Node3D
                 13,
                 GoldBright);
             portInfo.AutowrapMode = TextServer.AutowrapMode.WordSmart;
-            box.AddChild(portInfo);
+            overviewInfo.AddChild(portInfo);
         }
 
         if (!readOnlyIntel)
         {
             var officers = $"치안 {OfficerName(c.SecurityOfficer) ?? "없음"} · 내정 {OfficerName(c.DomesticOfficer) ?? "없음"}\n"
                 + $"병력 {OfficerName(c.RecruitmentOfficer) ?? "없음"} · 훈련 {OfficerName(c.TrainingOfficer) ?? "없음"}";
-            box.AddChild(MakeLabel($"담당자: {officers}", 13, GoldBright));
+            overviewInfo.AddChild(MakeLabel($"담당자: {officers}", 13, GoldBright));
         }
         var outputPercent = _cb.LowSecurityOutputPercent(c.Security);
         var raid = _cb.BanditRaidChance(c.Security);
@@ -9798,7 +9825,7 @@ public sealed partial class CampaignMapScene : Node3D
                 : raid.Percent > 0 ? $"\n진행 종료 시 도적 출현 확률 {raid.Percent}% · 병력 {raid.Troops:N0}명"
                 : "\n도적 출현 위험 없음"), 13, outputPercent < 100 ? AccentFill : Parchment);
         securityDetails.AutowrapMode = TextServer.AutowrapMode.WordSmart;
-        box.AddChild(securityDetails);
+        overviewInfo.AddChild(securityDetails);
 
         var garr = _state.Garrisons.Where(g => g.City == city)
             .OrderBy(g => g.TroopCode, System.StringComparer.Ordinal).ThenBy(g => g.Trainee).ToList();
@@ -9809,9 +9836,12 @@ public sealed partial class CampaignMapScene : Node3D
             // 카드가 많으면 가로 스크롤만(세로 스크롤은 모달 바깥 하나로 통일).
             var hscroll = new ScrollContainer
             {
+                Name = "CityDetailGarrisonScroll",
                 CustomMinimumSize = new Vector2(0, 92),
                 SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+                HorizontalScrollMode = ScrollContainer.ScrollMode.Auto,
                 VerticalScrollMode = ScrollContainer.ScrollMode.Disabled,
+                MouseForcePassScrollEvents = false,
             };
             box.AddChild(hscroll);
             var strip = new HBoxContainer();
@@ -9955,6 +9985,18 @@ public sealed partial class CampaignMapScene : Node3D
         }
 
         return Frame(Ink, Gold, 2, 10, 14);
+    }
+
+    private static Texture2D? CityDetailTypeTexture(City city)
+    {
+        var file = city.IsPort ? "port" : city.Castle switch
+        {
+            CastleSize.Large => "big_castle",
+            CastleSize.Medium => "middle_castle",
+            _ => "small_castle",
+        };
+        var path = $"res://assets/ui/game/city_detail/{file}.png";
+        return ResourceLoader.Exists(path) ? GD.Load<Texture2D>(path) : null;
     }
 
     // 폴더 탭 모양 — 위 모서리만 둥글고 아래는 각짐. 활성은 내용 패널과 같은 색·아래 테두리 없이 이어지고,
