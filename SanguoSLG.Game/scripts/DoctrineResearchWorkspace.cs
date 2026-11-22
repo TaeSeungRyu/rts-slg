@@ -2,7 +2,7 @@ using Godot;
 
 namespace SanguoSLG.Game;
 
-public sealed partial class DoctrineResearchWorkspace : VBoxContainer
+public partial class DoctrineResearchWorkspace : VBoxContainer
 {
     private static readonly Color Gold = new("c9973f");
     private static readonly Color GoldBright = new("f1cc72");
