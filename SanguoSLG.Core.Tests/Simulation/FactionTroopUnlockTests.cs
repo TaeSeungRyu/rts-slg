@@ -44,4 +44,14 @@ public sealed class FactionTroopUnlockTests
         Assert.True(FactionTroopUnlock.Check(state, Faction, "geukbyeong").Allowed);
         Assert.False(FactionTroopUnlock.Check(state, new FactionId(2), "geukbyeong").Allowed);
     }
+
+    [Fact]
+    public void PositiveScenarioResearchUnlocksSpecialTroopWithoutRuinObject()
+    {
+        var state = State([new(Faction, "geukbyeong", 1)]);
+
+        Assert.True(FactionTroopUnlock.Check(state, Faction, "geukbyeong").Allowed);
+        Assert.True(FactionTroopUnlock.CheckResearch(state, Faction, "geukbyeong").Allowed);
+        Assert.False(FactionTroopUnlock.Check(state, new FactionId(2), "geukbyeong").Allowed);
+    }
 }

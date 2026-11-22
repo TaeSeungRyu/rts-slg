@@ -30,10 +30,18 @@ public static class FactionTroopUnlock
             return level >= SiegeResearchLevel ? TroopProductionAccess.Granted
                 : new(false, $"충차 연구 Lv.{SiegeResearchLevel} 필요 · 현재 Lv.{level}");
         }
-        if (RuinNames.ContainsKey(troopCode)
-            && state.RuinStatus.Any(r => r.Registrations.Contains(faction)
+        if (RuinNames.ContainsKey(troopCode))
+        {
+            // 시나리오 에디터에서 특수 병종 연구를 1 이상으로 지정한 경우에는
+            // 해당 시나리오에 대응 유적 오브젝트가 없더라도 해금된 시작 상태다.
+            // 일반 플레이에서는 잠긴 병종 연구 자체가 유적 등록으로 제한되므로,
+            // 양수 연구 레벨은 이미 생산권을 얻었다는 안전한 증거로 사용할 수 있다.
+            if (state.ResearchOf(faction, troopCode) > 0)
+                return TroopProductionAccess.Granted;
+            if (state.RuinStatus.Any(r => r.Registrations.Contains(faction)
                 && state.Ruins.Any(d => d.Id == r.RuinId && d.TroopCode == troopCode)))
-            return TroopProductionAccess.Granted;
+                return TroopProductionAccess.Granted;
+        }
         return RuinNames.TryGetValue(troopCode, out var ruin)
             ? new(false, $"{ruin} 점령 필요") : new(false, "생산 해금 조건을 충족하지 못했다.");
     }
