@@ -9711,6 +9711,8 @@ public sealed partial class CampaignMapScene : Node3D
         var mh = Mathf.Clamp(vp.Y * 0.94f, 460f, 900f);
         var box = DeployScaffold(mw, out var scroll, out var panel);
         panel.Name = "CityDetailModal";
+        // 바깥 여백은 CityDetailBackgroundStyle의 ContentMargin*에서 조정한다.
+        // TextureMargin*은 PNG의 고정 구간이므로 장식 분할선을 옮길 때만 변경한다.
         panel.AddThemeStyleboxOverride("panel", CityDetailBackgroundStyle());
         panel.SetMeta("scouted_city_read_only", readOnlyIntel);
         scroll.Name = "CityDetailOuterScroll";
@@ -9735,6 +9737,8 @@ public sealed partial class CampaignMapScene : Node3D
         };
         var c = inspectedCity;
 
+        // 본문 시작 Y = 상단 ContentMargin(18) + 제목줄 높이(82) + VBox 간격(8).
+        // bg.png의 금장 구분선이 끝나는 Y≈104 아래에 본문 첫 줄을 배치한다.
         var titleRow = new HBoxContainer();
         titleRow.CustomMinimumSize = new Vector2(0, 82);
         box.AddChild(titleRow);
@@ -9750,12 +9754,13 @@ public sealed partial class CampaignMapScene : Node3D
         title.MouseFilter = Control.MouseFilterEnum.Ignore;
         titleRow.AddChild(title);
         var close = MakeButton("✕");
+        // 가로·세로를 같은 값으로 조정하면 제목줄 중앙의 정사각형이 유지된다.
         close.CustomMinimumSize = new Vector2(36, 36);
         close.SizeFlagsVertical = Control.SizeFlags.ShrinkCenter;
         close.Pressed += CloseModal;
         titleRow.AddChild(close);
 
-        // 도시 유형 일러스트와 상태 수치를 하나의 고정 상단 영역으로 묶는다.
+        // Overview 최소 높이, 열 간격(separation), cityArt 최소 크기로 상단 좌우 배치를 조정한다.
         var overview = new HBoxContainer
         {
             Name = "CityDetailOverview",
@@ -9836,7 +9841,7 @@ public sealed partial class CampaignMapScene : Node3D
         if (garr.Count == 0) { box.AddChild(MakeLabel("(없음)", 12, Parchment)); }
         else
         {
-            // 카드가 많으면 가로 스크롤만(세로 스크롤은 모달 바깥 하나로 통일).
+            // 카드 줄 높이는 hscroll의 92, 카드 사이 간격은 strip의 separation에서 조정한다.
             var hscroll = new ScrollContainer
             {
                 Name = "CityDetailGarrisonScroll",
@@ -9855,8 +9860,7 @@ public sealed partial class CampaignMapScene : Node3D
 
         box.AddChild(new Control { CustomMinimumSize = new Vector2(0, 2) });
 
-        // 탭 3종: 주둔 장수 / 진행 중 명령 / 출전 예약. 탭 막대와 내용 패널을 붙여(간격 0)
-        // 폴더 탭처럼 — 활성 탭은 내용 패널과 같은 색·아래 테두리 없이 이어지고, 비활성은 어둡게 물러난다.
+        // 탭 본문 높이는 contentPanel, 탭 버튼 높이와 아이콘 크기는 아래 버튼 생성부에서 조정한다.
         var stationed = _state.GeneralsAt(city).OrderBy(x => x.Value)
             .Select(id => _state.Generals.First(x => x.Id == id)).ToList();
         var cmds = readOnlyIntel ? [] : _state.Commands.Where(x => x.City == city).OrderBy(x => x.CompletionDay).ToList();
