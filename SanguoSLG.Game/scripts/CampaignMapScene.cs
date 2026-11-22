@@ -9750,7 +9750,8 @@ public sealed partial class CampaignMapScene : Node3D
         title.MouseFilter = Control.MouseFilterEnum.Ignore;
         titleRow.AddChild(title);
         var close = MakeButton("✕");
-        close.CustomMinimumSize = new Vector2(46, 34);
+        close.CustomMinimumSize = new Vector2(36, 36);
+        close.SizeFlagsVertical = Control.SizeFlags.ShrinkCenter;
         close.Pressed += CloseModal;
         titleRow.AddChild(close);
 
