@@ -115,13 +115,13 @@ public sealed partial class CampaignMapScene
                 15, Parchment));
             workspace.FundingSummary.Text = string.IsNullOrWhiteSpace(selectedTroop)
                 ? "500명 이상 대기 중인 지상 병종이 없습니다."
-                : $"{troop.Troop.Name} · 대기 {troop.Garrison.Troops:N0}명 · 훈련 {troop.Garrison.TrainingLevel}";
+                : $"{troop.Troop.Name} · 실제 투입 {ProductionOperation.FixedTroops:N0}명 · 훈련 {troop.Garrison.TrainingLevel}";
             workspace.OfficerSummary.Text = general is null
                 ? "투입 가능한 장수가 없습니다."
                 : $"{general.Name} · 정치 {general.Politics} · {CurrentDuty(general.Id)}";
             workspace.TotalCost.Text = selectedTarget is null || general is null || string.IsNullOrWhiteSpace(selectedTroop)
                 ? "시설·병종·수행 장수를 선택하세요."
-                : $"편성 요약 · {FacilityName(selectedFacility)} · {general.Name} · {troop.Troop.Name} 500명 · {days}일 · {rewardText}";
+                : $"편성 요약 · {FacilityName(selectedFacility)} · {general.Name} · {troop.Troop.Name} {ProductionOperation.FixedTroops:N0}명 · {days}일 · {rewardText}";
             workspace.StartButton.Disabled = selectedTarget is null || general is null || string.IsNullOrWhiteSpace(selectedTroop);
         }
 
@@ -174,7 +174,7 @@ public sealed partial class CampaignMapScene
             var generalData = _state.Generals.First(candidate => candidate.Id == general);
             var troopName = _troops.First(troop => troop.Code == selectedTroop).Name;
             ShowConfirm("생산 작전 확인",
-                $"{cityData.Name}에서 {FacilityName(selectedFacility)} 생산을 시작합니다.\n수행 장수: {generalData.Name}\n투입 병종: {troopName} 500명{DutyReleaseNotice(general)}\n\n시작 후 취소할 수 없습니다.",
+                $"{cityData.Name}에서 {FacilityName(selectedFacility)} 생산을 시작합니다.\n수행 장수: {generalData.Name}\n투입 병종: {troopName} {ProductionOperation.FixedTroops:N0}명{DutyReleaseNotice(general)}\n\n시작 후 취소할 수 없습니다.",
                 () =>
                 {
                     if (_advancing) return;
