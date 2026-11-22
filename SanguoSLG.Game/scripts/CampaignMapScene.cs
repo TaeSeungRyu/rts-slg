@@ -9707,6 +9707,7 @@ public sealed partial class CampaignMapScene : Node3D
         if (_modalLayer is not null) { FadeOutModal(_modalLayer); _modalLayer = null; }
         _openCityDetailCity = readOnlyIntel ? null : city;
         var vp = GetViewport().GetVisibleRect().Size;
+        // 전체 크기 비율과 상한. 실제 보이는 높이는 아래 visibleHeight에서 화면에 맞춰 제한한다.
         var mw = Mathf.Clamp(vp.X * 0.52f, 460f, 680f);
         var mh = Mathf.Clamp(vp.Y * 0.94f, 460f, 900f);
         var box = DeployScaffold(mw, out var scroll, out var panel);
@@ -9764,9 +9765,11 @@ public sealed partial class CampaignMapScene : Node3D
         var overview = new HBoxContainer
         {
             Name = "CityDetailOverview",
+            // 상단 도시 사진과 상태 영역의 최소 높이. 이 값을 줄이면 대기 병력이 위로 이동한다.
             SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
             CustomMinimumSize = new Vector2(0, 154),
         };
+        // 그림과 상태 텍스트 사이 가로 간격.
         overview.AddThemeConstantOverride("separation", 12);
         box.AddChild(overview);
         var cityArt = new TextureRect
@@ -9789,6 +9792,7 @@ public sealed partial class CampaignMapScene : Node3D
 
         // 도시 수치(정보 카드보다 상세).
         var g4 = new GridContainer { Columns = 4, SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+        // 자원 표의 가로·세로 셀 간격.
         g4.AddThemeConstantOverride("h_separation", 12);
         g4.AddThemeConstantOverride("v_separation", 4);
         overviewInfo.AddChild(g4);
@@ -9842,6 +9846,7 @@ public sealed partial class CampaignMapScene : Node3D
         else
         {
             // 카드 줄 높이는 hscroll의 92, 카드 사이 간격은 strip의 separation에서 조정한다.
+            // 대기 병력 줄 높이는 92, 카드 사이 간격은 strip의 separation으로 조절한다.
             var hscroll = new ScrollContainer
             {
                 Name = "CityDetailGarrisonScroll",
@@ -9887,10 +9892,12 @@ public sealed partial class CampaignMapScene : Node3D
         var contentPanel = new PanelContainer
         {
             Name = "CityDetailTabPanel",
+            // 하단 목록 영역의 최소 높이. 화면이 작으면 이 값도 함께 줄여야 상단이 잘리지 않는다.
             CustomMinimumSize = new Vector2(0, Mathf.Clamp(vp.Y * 0.34f, 250f, 340f)),
             SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
             SizeFlagsVertical = Control.SizeFlags.ExpandFill,
         };
+        // 탭 사이 간격은 separation, 버튼 높이는 아래 button.CustomMinimumSize에서 조절한다.
         var tabBar = new HBoxContainer();
         tabBar.AddThemeConstantOverride("separation", 4);
         box.AddChild(tabBar);
@@ -10013,6 +10020,7 @@ public sealed partial class CampaignMapScene : Node3D
             return new StyleBoxTexture
             {
                 Texture = texture,
+                // TextureMargin은 금장 장식을 보존하는 분할 경계다. 내부 padding은 ContentMargin에서 조절한다.
                 TextureMarginLeft = 34,
                 TextureMarginTop = 108,
                 TextureMarginRight = 34,
