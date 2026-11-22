@@ -9877,14 +9877,6 @@ public sealed partial class CampaignMapScene : Node3D
         var navalDeploys = Enumerable.Range(0, _pendingNavalDeploys.Count)
             .Where(i => _pendingNavalDeploys[i].Req.City == city).ToList();
 
-        var tabWrap = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
-        tabWrap.AddThemeConstantOverride("separation", 0);
-        box.AddChild(tabWrap);
-
-        var tabBar = new HBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
-        tabBar.AddThemeConstantOverride("separation", 3);
-        tabWrap.AddChild(tabBar);
-
         var contentPanel = new PanelContainer
         {
             Name = "CityDetailTabPanel",
@@ -9893,75 +9885,75 @@ public sealed partial class CampaignMapScene : Node3D
             SizeFlagsVertical = Control.SizeFlags.ExpandFill,
         };
         contentPanel.AddThemeStyleboxOverride("panel", TabContentStyle());
-        tabWrap.AddChild(contentPanel);
-        var stationedContent = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
-            SizeFlagsVertical = Control.SizeFlags.ExpandFill };
-        stationedContent.AddThemeConstantOverride("separation", 6);
-        contentPanel.AddChild(stationedContent);
-        var tabScroll = new ScrollContainer
+        box.AddChild(contentPanel);
+        var tabs = new TabContainer
         {
-            Name = "CityDetailTabScroll",
+            Name = "CityDetailTabs",
             SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
             SizeFlagsVertical = Control.SizeFlags.ExpandFill,
-            HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled,
-            VerticalScrollMode = ScrollContainer.ScrollMode.Auto,
-            MouseForcePassScrollEvents = false,
+            TabsVisible = true,
         };
-        contentPanel.AddChild(tabScroll);
-        var content = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
-        content.AddThemeConstantOverride("separation", 6);
-        tabScroll.AddChild(content);
+        tabs.AddThemeFontOverride("font", _font);
+        tabs.AddThemeFontSizeOverride("font_size", 13);
+        tabs.AddThemeColorOverride("font_selected_color", GoldBright);
+        tabs.AddThemeColorOverride("font_unselected_color", new Color(Parchment, 0.72f));
+        contentPanel.AddChild(tabs);
 
         var labels = readOnlyIntel
             ? new[] { $"주둔 장수 {stationed.Count}" }
             : new[] { $"주둔 장수 {stationed.Count}", $"진행 명령 {cmds.Count}",
                 $"예약 {deploys.Count + supplyDeploys.Count + transportDeploys.Count + armyGroupDeploys.Count + navalDeploys.Count + _state.Armies.Count(u => u.OriginCity == city && u.IsWaitingDeployment)}" };
-        var tabBtns = new Button[labels.Length];
-        void ShowTab(int t)
+
+        var stationedContent = new VBoxContainer
         {
-            _cityDetailTab = t;
-            for (var i = 0; i < labels.Length; i++)
-            {
-                var on = i == t;
-                tabBtns[i].AddThemeColorOverride("font_color", on ? GoldBright : new Color(Parchment, 0.6f));
-                tabBtns[i].AddThemeColorOverride("font_hover_color", on ? GoldBright : Parchment);
-                tabBtns[i].AddThemeStyleboxOverride("normal", TabStyle(on));
-                tabBtns[i].AddThemeStyleboxOverride("hover", TabStyle(on));
-                tabBtns[i].AddThemeStyleboxOverride("pressed", TabStyle(on));
-            }
+            Name = labels[0],
+            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+            SizeFlagsVertical = Control.SizeFlags.ExpandFill,
+        };
+        stationedContent.AddThemeConstantOverride("separation", 6);
+        tabs.AddChild(stationedContent);
+        BuildStationedTab(stationedContent, city, stationed, readOnlyIntel);
 
-            var stationedTab = t == 0;
-            stationedContent.Visible = stationedTab;
-            tabScroll.Visible = !stationedTab;
-            Clear(stationedContent);
-            Clear(content);
-            tabScroll.ScrollVertical = 0;
-            switch (t)
+        ScrollContainer MakeListTab(string tabName, string nodeName)
+        {
+            var tab = new ScrollContainer
             {
-                case 0: BuildStationedTab(stationedContent, city, stationed, readOnlyIntel); break;
-                case 1: BuildCommandsTab(content, city, cmds); break;
-                default: BuildDeployTab(content, city, deploys, supplyDeploys, transportDeploys, armyGroupDeploys, navalDeploys); break;
-            }
-
-            var h = box.GetCombinedMinimumSize().Y;
-            scroll.CustomMinimumSize = new Vector2(mw, Mathf.Min(h, mh));
+                Name = tabName,
+                SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+                SizeFlagsVertical = Control.SizeFlags.ExpandFill,
+                HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled,
+                VerticalScrollMode = ScrollContainer.ScrollMode.Auto,
+                MouseForcePassScrollEvents = false,
+            };
+            tab.SetMeta("city_detail_list_tab", true);
+            tabs.AddChild(tab);
+            var list = new VBoxContainer { Name = nodeName, SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+            list.AddThemeConstantOverride("separation", 6);
+            tab.AddChild(list);
+            return tab;
         }
 
-        for (var i = 0; i < labels.Length; i++)
+        if (!readOnlyIntel)
         {
-            var t = i;
-            var b = new Button { Text = labels[i], SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
-            b.AddThemeFontOverride("font", _font);
-            b.AddThemeFontSizeOverride("font_size", 13);
-            b.AddThemeColorOverride("font_pressed_color", GoldBright);
-            b.AddThemeStyleboxOverride("focus", new StyleBoxEmpty());
-            b.CustomMinimumSize = new Vector2(0, 30);
-            b.Pressed += () => ShowTab(t);
-            tabBtns[i] = b;
-            tabBar.AddChild(b);
+            var commandTab = MakeListTab(labels[1], "CityDetailCommandsList");
+            commandTab.Name = labels[1];
+            BuildCommandsTab((VBoxContainer)commandTab.GetChild(0), city, cmds);
+            var deployTab = MakeListTab(labels[2], "CityDetailDeployList");
+            BuildDeployTab((VBoxContainer)deployTab.GetChild(0), city, deploys, supplyDeploys,
+                transportDeploys, armyGroupDeploys, navalDeploys);
         }
 
-        ShowTab(readOnlyIntel ? 0 : Mathf.Clamp(_cityDetailTab, 0, 2));
+        var tabIcons = new[] { "first_tap", "second_tap", "third_tap" };
+        for (var i = 0; i < tabs.GetTabCount(); i++)
+        {
+            tabs.SetTabTitle(i, labels[i]);
+            var iconPath = $"res://assets/ui/game/city_detail/{tabIcons[i]}.png";
+            if (ResourceLoader.Exists(iconPath) && GD.Load<Texture2D>(iconPath) is { } icon)
+                tabs.SetTabIcon(i, icon);
+        }
+        tabs.CurrentTab = readOnlyIntel ? 0 : Mathf.Clamp(_cityDetailTab, 0, tabs.GetTabCount() - 1);
+        tabs.TabChanged += index => _cityDetailTab = (int)index;
+        scroll.CustomMinimumSize = new Vector2(mw, mh);
         CenterAndDrag(panel, titleRow, mw, mh, box);
     }
 
