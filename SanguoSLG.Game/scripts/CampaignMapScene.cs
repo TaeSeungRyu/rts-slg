@@ -9887,19 +9887,19 @@ public sealed partial class CampaignMapScene : Node3D
             SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
             SizeFlagsVertical = Control.SizeFlags.ExpandFill,
         };
-        contentPanel.AddThemeStyleboxOverride("panel", TabContentStyle());
+        var tabBar = new HBoxContainer();
+        tabBar.AddThemeConstantOverride("separation", 4);
+        box.AddChild(tabBar);
+        contentPanel.AddThemeStyleboxOverride("panel", new StyleBoxEmpty());
         box.AddChild(contentPanel);
         var tabs = new TabContainer
         {
             Name = "CityDetailTabs",
             SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
             SizeFlagsVertical = Control.SizeFlags.ExpandFill,
-            TabsVisible = true,
+            TabsVisible = false,
         };
-        tabs.AddThemeFontOverride("font", _font);
-        tabs.AddThemeFontSizeOverride("font_size", 13);
-        tabs.AddThemeColorOverride("font_selected_color", GoldBright);
-        tabs.AddThemeColorOverride("font_unselected_color", new Color(Parchment, 0.72f));
+        tabs.AddThemeStyleboxOverride("panel", new StyleBoxEmpty());
         contentPanel.AddChild(tabs);
 
         var labels = readOnlyIntel
@@ -9929,6 +9929,7 @@ public sealed partial class CampaignMapScene : Node3D
                 MouseForcePassScrollEvents = false,
             };
             tab.SetMeta("city_detail_list_tab", true);
+            GameUiSkin.ApplyQuickListScroll(tab);
             tabs.AddChild(tab);
             var list = new VBoxContainer { Name = nodeName, SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
             list.AddThemeConstantOverride("separation", 6);
@@ -9947,15 +9948,50 @@ public sealed partial class CampaignMapScene : Node3D
         }
 
         var tabIcons = new[] { "first_tap", "second_tap", "third_tap" };
+        var tabButtons = new List<Button>();
+        var tabGroup = new ButtonGroup();
         for (var i = 0; i < tabs.GetTabCount(); i++)
         {
+            var index = i;
+            var icon = LoadCityDetailTexture($"res://assets/ui/game/city_detail/{tabIcons[i]}.png");
+            var button = new Button
+            {
+                Text = labels[i],
+                Icon = icon,
+                ExpandIcon = true,
+                ToggleMode = true,
+                ButtonGroup = tabGroup,
+                CustomMinimumSize = new Vector2(0, 34),
+                SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+            };
+            button.AddThemeFontOverride("font", _font);
+            button.AddThemeFontSizeOverride("font_size", 13);
+            button.AddThemeConstantOverride("icon_max_width", 20);
+            button.AddThemeColorOverride("font_color", Parchment);
+            button.AddThemeColorOverride("font_pressed_color", GoldBright);
+            foreach (var style in new[] { "normal", "hover", "pressed", "hover_pressed" })
+            {
+                var active = style.Contains("pressed");
+                button.AddThemeStyleboxOverride(style, new StyleBoxFlat
+                {
+                    BgColor = Colors.Transparent,
+                    BorderColor = new Color(Gold, active ? 1f : 0.4f),
+                    BorderWidthBottom = active ? 2 : 1,
+                });
+            }
+            button.Pressed += () => tabs.CurrentTab = index;
+            tabButtons.Add(button);
+            tabBar.AddChild(button);
             tabs.SetTabTitle(i, labels[i]);
-            var iconPath = $"res://assets/ui/game/city_detail/{tabIcons[i]}.png";
-            if (LoadCityDetailTexture(iconPath) is { } icon)
-                tabs.SetTabIcon(i, icon);
+            tabs.SetTabIcon(i, icon);
         }
         tabs.CurrentTab = readOnlyIntel ? 0 : Mathf.Clamp(_cityDetailTab, 0, tabs.GetTabCount() - 1);
-        tabs.TabChanged += index => _cityDetailTab = (int)index;
+        tabButtons[tabs.CurrentTab].SetPressedNoSignal(true);
+        tabs.TabChanged += index =>
+        {
+            if (!readOnlyIntel) _cityDetailTab = (int)index;
+            tabButtons[(int)index].SetPressedNoSignal(true);
+        };
         var frameMargins = panel.GetThemeStylebox("panel").GetMinimumSize();
         scroll.CustomMinimumSize = new Vector2(mw, mh) - frameMargins;
         CenterAndDrag(panel, titleRow, mw, mh, box);
