@@ -795,7 +795,7 @@ public sealed partial class ScenarioEditorScene : Control
         var scroll = new ScrollContainer
         {
             Name = "FactionResearchTableScroll",
-            CustomMinimumSize = new Vector2(0, 280),
+            CustomMinimumSize = new Vector2(0, 250),
             SizeFlagsHorizontal = SizeFlags.ExpandFill,
         };
         GeneralWorkspaceStyle.StyleScrollContainer(scroll);
@@ -803,27 +803,18 @@ public sealed partial class ScenarioEditorScene : Control
         var tableMargin = new MarginContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
         tableMargin.AddThemeConstantOverride("margin_right", 12);
         scroll.AddChild(tableMargin);
-        var table = new VBoxContainer { Name = "FactionResearchTable",
+        var table = new GridContainer { Name = "FactionResearchTable", Columns = 4,
             SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        table.AddThemeConstantOverride("separation", 3);
+        table.AddThemeConstantOverride("h_separation", 6);
+        table.AddThemeConstantOverride("v_separation", 5);
         tableMargin.AddChild(table);
-
-        static Label Cell(string text, float width, bool centered = false) => new()
+        void UpdateColumns()
         {
-            Text = text,
-            CustomMinimumSize = new Vector2(width, 34),
-            SizeFlagsHorizontal = width <= 0 ? SizeFlags.ExpandFill : SizeFlags.ShrinkBegin,
-            VerticalAlignment = VerticalAlignment.Center,
-            HorizontalAlignment = centered ? HorizontalAlignment.Center : HorizontalAlignment.Left,
-            TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis,
-        };
-        var header = new HBoxContainer { Name = "FactionResearchTableHeader" };
-        header.AddThemeConstantOverride("separation", 8);
-        header.AddChild(Cell("분류", 82, true));
-        header.AddChild(Cell("연구", 0));
-        header.AddChild(Cell("초기 단계", 112, true));
-        table.AddChild(header);
-        table.AddChild(new HSeparator());
+            var available = table.Size.X > 0 ? table.Size.X : tableMargin.Size.X;
+            table.Columns = ResearchColumnsForWidth(available);
+        }
+        table.Resized += UpdateColumns;
+        Callable.From(UpdateColumns).CallDeferred();
 
         var data = Path.GetFullPath(Path.Combine(ProjectSettings.GlobalizePath("res://"), "..", "data"));
         var troops = new TroopCatalogLoader().LoadFromDirectory(data)
@@ -843,12 +834,27 @@ public sealed partial class ScenarioEditorScene : Control
 
         foreach (var definition in definitions)
         {
-            var row = new HBoxContainer { CustomMinimumSize = new Vector2(0, 42) };
-            row.AddThemeConstantOverride("separation", 8);
-            row.AddChild(Cell(definition.Category, 82, true));
-            var name = Cell(definition.Name, 0);
-            name.TooltipText = definition.Code;
-            row.AddChild(name);
+            var card = new PanelContainer
+            {
+                Name = "FactionResearchCard_" + definition.Code,
+                CustomMinimumSize = new Vector2(170, 58),
+                SizeFlagsHorizontal = SizeFlags.ExpandFill,
+                TooltipText = definition.Code,
+            };
+            card.AddThemeStyleboxOverride("panel", ForceRowStyle("17100e", "4d3524"));
+            var row = new HBoxContainer();
+            row.AddThemeConstantOverride("separation", 5);
+            card.AddChild(row);
+            var labels = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+            labels.AddThemeConstantOverride("separation", 0);
+            var category = new Label { Text = definition.Category,
+                TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis };
+            category.AddThemeFontSizeOverride("font_size", 11);
+            category.AddThemeColorOverride("font_color", new Color("aa956e"));
+            labels.AddChild(category);
+            labels.AddChild(new Label { Text = definition.Name,
+                TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis });
+            row.AddChild(labels);
             var level = new SpinBox
             {
                 Name = "FactionResearchLevel_" + definition.Code,
@@ -857,16 +863,19 @@ public sealed partial class ScenarioEditorScene : Control
                 Step = 1,
                 Value = _draft.ResearchEntries.FirstOrDefault(entry => entry.FactionId == factionId
                     && entry.Code == definition.Code)?.Level ?? 0,
-                CustomMinimumSize = new Vector2(112, 36),
+                CustomMinimumSize = new Vector2(56, 34),
                 AllowGreater = false,
                 AllowLesser = false,
             };
             var code = definition.Code;
             level.ValueChanged += value => UpdateFactionResearch(factionId, code, (int)value);
             row.AddChild(level);
-            table.AddChild(row);
+            table.AddChild(card);
         }
     }
+
+    private static int ResearchColumnsForWidth(float width)
+        => width > 0 && width < 760 ? 3 : 4;
 
     private void UpdateFactionResearch(int factionId, string code, int level)
     {
@@ -1548,11 +1557,13 @@ public sealed partial class ScenarioEditorScene : Control
                 researchLevel.Value = 3;
                 researchLevel.EmitSignal(Godot.Range.SignalName.ValueChanged, 3.0);
             }
-            var researchTable = _body.FindChildren("FactionResearchTable", "VBoxContainer", true, false)
-                .OfType<VBoxContainer>().LastOrDefault(table => !table.IsQueuedForDeletion());
+            var researchTable = _body.FindChildren("FactionResearchTable", "GridContainer", true, false)
+                .OfType<GridContainer>().LastOrDefault(table => !table.IsQueuedForDeletion());
             var researchStored = _draft.ResearchEntries.Any(entry => entry.FactionId == _selectedDescriptionFactionId
                 && entry.Code == FactionResearch.AgricultureCode && entry.Level == 3);
-            var factionResearchUi = researchLevel is not null && researchTable is not null && researchStored;
+            var factionResearchUi = researchLevel is not null && researchTable is { Columns: 3 or 4 }
+                && researchTable.GetChildCount() >= 16 && researchStored
+                && ResearchColumnsForWidth(900) == 4 && ResearchColumnsForWidth(700) == 3;
             if (!factionResearchUi)
                 GD.Print($"[scenario-editor-research-qa] level={researchLevel is not null} table={researchTable is not null} stored={researchStored} selected={_selectedDescriptionFactionId} entries={string.Join(';', _draft.ResearchEntries.Select(entry => $"{entry.FactionId}:{entry.Code}:{entry.Level}"))}");
             _draft = originalDraft;
