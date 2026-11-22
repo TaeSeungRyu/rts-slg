@@ -8215,7 +8215,8 @@ public sealed partial class CampaignMapScene : Node3D
         var vp = GetViewport().GetVisibleRect().Size;
         var selectedCityData = _state.Cities.First(x => x.Id == city);
         var wideDoctrineModal = cmd.Kind == CommandKind.Research
-            && cmd.Param is "troop" or "general" or "stratagem_research";
+            && cmd.Param is "troop" or "general" or "stratagem_research"
+            || cmd.Kind == CommandKind.CityStratagem;
         var modalProfile = (cmd.Kind, cmd.Param) switch
         {
             (CommandKind.RecruitHero, "hero") => AdaptiveModalScaffold.WidthProfile.HeroRecruit,
@@ -8262,6 +8263,7 @@ public sealed partial class CampaignMapScene : Node3D
         close.Pressed += CloseModal;
         scaffold.SetHeader(title, close, GoldRule());
         if (cmd.Kind == CommandKind.Research && cmd.Param is "troop" or "general" or "stratagem_research"
+            || cmd.Kind == CommandKind.CityStratagem
             || cmd.Kind is CommandKind.FormAlliance or CommandKind.DeclareWar or CommandKind.AppointRecruitmentOfficer)
         {
             BuildIntegratedCommandWorkspace(scaffold, selectedCityData, cmdIndex);
@@ -8703,6 +8705,8 @@ public sealed partial class CampaignMapScene : Node3D
             return AdaptiveModalScaffold.WorkspaceProfile.CardSelection;
         if (command.Kind == CommandKind.Research && command.Param == "troop")
             return AdaptiveModalScaffold.WorkspaceProfile.DoctrineWorkflow;
+        if (command.Kind == CommandKind.CityStratagem)
+            return AdaptiveModalScaffold.WorkspaceProfile.DenseResearch;
         if (command.Kind == CommandKind.Research
             && command.Param is "general" or "stratagem_research")
             return AdaptiveModalScaffold.WorkspaceProfile.DenseResearch;
@@ -8715,8 +8719,6 @@ public sealed partial class CampaignMapScene : Node3D
                 ? AdaptiveModalScaffold.WorkspaceProfile.MixedCommand
                 : AdaptiveModalScaffold.WorkspaceProfile.EmptyCompact;
         }
-        if (command.Kind == CommandKind.CityStratagem)
-            return AdaptiveModalScaffold.WorkspaceProfile.MixedCommand;
         if (command.Kind == CommandKind.AppointRecruitmentOfficer)
             return AdaptiveModalScaffold.WorkspaceProfile.Recruitment;
         return AdaptiveModalScaffold.WorkspaceProfile.Default;

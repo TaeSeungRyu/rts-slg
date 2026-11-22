@@ -41,34 +41,42 @@ public sealed partial class CampaignMapScene
         scaffold.Body.AddChild(workspace);
         var doctrine = command.Param == "troop";
         var stratagem = command.Param == "stratagem_research";
+        var cityStratagem = command.Kind == CommandKind.CityStratagem;
         var alliance = command.Kind == CommandKind.FormAlliance;
         var declareWar = command.Kind == CommandKind.DeclareWar;
         var recruitment = command.Kind == CommandKind.AppointRecruitmentOfficer;
-        workspace.Configure("연구 도시", research, "수행 장수",
-            alliance ? "동맹 제안" : declareWar ? "선전포고" : recruitment ? "병력담당 임명" : "연구 시작");
+        workspace.Configure(cityStratagem ? "대상 도시" : "연구 도시", research, "수행 장수",
+            cityStratagem ? "지도에서 대상 지정" : alliance ? "동맹 제안" : declareWar ? "선전포고"
+                : recruitment ? "병력담당 임명" : "연구 시작");
         if (research) workspace.FundingChangeButton.Pressed += () => OpenDoctrineFundingPicker(city);
         workspace.OfficerChangeButton.Pressed += () => OpenDoctrineOfficerPicker(city.Id, cmdIndex);
         workspace.StartButton.Pressed += () =>
         {
             if (_doctrineOfficer is { } officer)
-                AskExecute(city.Id, cmdIndex, officer, _modalParam);
+            {
+                if (cityStratagem) BeginStratagemMapTargeting(city.Id, cmdIndex, officer, _modalParam);
+                else AskExecute(city.Id, cmdIndex, officer, _modalParam);
+            }
         };
 
         workspace.DetailHost.AddChild(MakeLabel(doctrine ? "선택 교리 상세"
-            : stratagem ? "선택 계략연구 상세" : alliance ? "선택 세력 상세"
+            : stratagem ? "선택 계략연구 상세" : cityStratagem ? "선택 계략 상세" : alliance ? "선택 세력 상세"
                 : declareWar ? "선택 성 상세" : recruitment ? "자동 생산 설정" : "선택 연구 상세", 18, GoldBright));
         _modalDetail = MakeLabel(doctrine ? "전투교리 대상을 선택하세요."
-            : stratagem ? "계략연구 대상을 선택하세요." : alliance ? "동맹을 제안할 세력을 선택하세요."
+            : stratagem ? "계략연구 대상을 선택하세요." : cityStratagem ? "실행할 도시계략을 선택하세요."
+                : alliance ? "동맹을 제안할 세력을 선택하세요."
                 : declareWar ? "선전포고할 성을 선택하세요." : recruitment ? "자동 생산 병종을 선택하세요."
                     : "일반연구 대상을 선택하세요.", 14, Parchment);
         _modalDetail.Name = doctrine ? "DoctrineResearchDetailText"
-            : stratagem ? "StratagemResearchDetailText" : "GeneralResearchDetailText";
+            : stratagem ? "StratagemResearchDetailText" : cityStratagem ? "CityStratagemDetailText"
+                : "GeneralResearchDetailText";
         _modalDetail.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         workspace.DetailHost.AddChild(_modalDetail);
 
         workspace.DoctrineList.AddChild(MakeLabel(doctrine
             ? "연구할 전투교리를 선택하세요"
-            : stratagem ? "연구할 계략을 선택하세요" : alliance ? "동맹을 제안할 세력을 선택하세요"
+            : stratagem ? "연구할 계략을 선택하세요" : cityStratagem ? "실행할 도시계략을 선택하세요"
+                : alliance ? "동맹을 제안할 세력을 선택하세요"
                 : declareWar ? "선전포고할 성을 선택하세요" : recruitment ? "자동 생산 병종을 선택하세요"
                     : "연구할 일반연구를 선택하세요", 18, GoldBright));
         var options = OptionList(Cmds[cmdIndex], city);
@@ -157,16 +165,21 @@ public sealed partial class CampaignMapScene
             .Where(name => !string.IsNullOrWhiteSpace(name))
             .ToList();
 
-        _doctrineWorkspace!.FundingSummary.Text = shares.Count == 0
-            ? "선택된 도시가 없습니다."
-            : $"{shares.Count}개 도시 · {string.Join(", ", selectedNames.Take(4))}{(selectedNames.Count > 4 ? " 외" : "")}"
-                + (shortage.City.Value == 0 ? "" : "\n금이 부족한 도시가 있습니다.");
-        _doctrineWorkspace.FundingSummary.Modulate = shares.Count == 0 || shortage.City.Value != 0 ? Red : Colors.White;
+        var cityStratagem = command.Kind == CommandKind.CityStratagem;
+        _doctrineWorkspace!.FundingSummary.Text = cityStratagem
+            ? "계략과 수행 장수를 정한 뒤 지도에서 적 성을 선택합니다."
+            : shares.Count == 0
+                ? "선택된 도시가 없습니다."
+                : $"{shares.Count}개 도시 · {string.Join(", ", selectedNames.Take(4))}{(selectedNames.Count > 4 ? " 외" : "")}"
+                    + (shortage.City.Value == 0 ? "" : "\n금이 부족한 도시가 있습니다.");
+        _doctrineWorkspace.FundingSummary.Modulate = cityStratagem
+            ? Colors.White : shares.Count == 0 || shortage.City.Value != 0 ? Red : Colors.White;
         _doctrineWorkspace.OfficerSummary.Text = _doctrineOfficer is { } officer
             ? OfficerSummaryText(officer, command.Kind)
             : "수행 장수를 선택하세요.";
         _doctrineWorkspace.TotalCost.Text = research
             ? $"총 연구비 {cost:N0}금"
+            : cityStratagem ? "실행 후 지도에서 대상 성 지정"
             : command.Kind == CommandKind.FormAlliance ? $"사절 비용 {_cb.AllianceGoldCost:N0}금"
             : command.Kind == CommandKind.DeclareWar ? "선전포고 유효 기간 100일"
             : command.Kind == CommandKind.AppointRecruitmentOfficer
