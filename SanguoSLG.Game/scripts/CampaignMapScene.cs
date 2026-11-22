@@ -12015,39 +12015,47 @@ public sealed partial class CampaignMapScene : Node3D
             var city = _state.Cities.First(c => c.Owner == Player && ProductionTargets(c).Any());
             OpenProductionModal(city.Id, ProductionTargets(city).First().Plot);
             for (var i = 0; i < 3; i++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
-            var panel = _modalLayer!.GetChildren().OfType<PanelContainer>().Single();
-            var center = panel.GetGlobalRect().GetCenter();
+            var scaffold = _modalLayer!.FindChild("ProductionOperationScaffold", true, false)
+                as AdaptiveModalScaffold ?? throw new Exception("생산 작전 공통 스캐폴드를 찾지 못했습니다.");
+            var workspace = scaffold.FindChild("ProductionOperationWorkspace", true, false)
+                as ProductionOperationWorkspace ?? throw new Exception("생산 작전 워크스페이스를 찾지 못했습니다.");
+            var center = scaffold.GetGlobalRect().GetCenter();
             var viewportCenter = GetViewport().GetVisibleRect().GetCenter();
             if (center.DistanceTo(viewportCenter) > 3f)
                 throw new Exception($"생산 모달이 중앙에 있지 않습니다: {center} / {viewportCenter}");
-            var columns = panel.FindChildren("DeployComposeColumns", "HBoxContainer", true, false)
-                .OfType<HBoxContainer>().Single();
-            var troop = columns.FindChildren("ProductionTroopTable", "Tree", true, false)
-                .OfType<Tree>().Single();
-            var general = columns.FindChildren("ProductionGeneralTable", "Tree", true, false)
-                .OfType<Tree>().Single();
-            if (troop.GetGlobalRect().GetCenter().X >= general.GetGlobalRect().GetCenter().X)
-                throw new Exception("투입 병종과 주최 장수의 좌우 배치가 반대입니다.");
-            var outerScroll = panel.FindChildren("*", "ScrollContainer", true, false)
-                .OfType<ScrollContainer>().First();
-            if (outerScroll.VerticalScrollMode != ScrollContainer.ScrollMode.Disabled)
+            var targetCards = workspace.FindChild("ProductionTargetCards", true, false) as GridContainer;
+            if (targetCards is null || targetCards.Columns != 3)
+                throw new Exception("생산 시설 카드가 3열 선택 목록으로 구성되지 않았습니다.");
+            if (scaffold.BodyScroll.VerticalScrollMode != ScrollContainer.ScrollMode.Disabled)
                 throw new Exception("생산 모달 전체 세로 스크롤이 켜져 있습니다.");
-            var start = panel.FindChildren("*", "Button", true, false).OfType<Button>()
-                .Single(b => b.Text == "생산 시작");
-            if (!panel.GetGlobalRect().Encloses(start.GetGlobalRect()))
+            var start = workspace.FindChild("ProductionStart", true, false) as Button
+                ?? throw new Exception("생산 시작 버튼을 찾지 못했습니다.");
+            if (!scaffold.GetGlobalRect().Encloses(start.GetGlobalRect()))
                 throw new Exception("생산 시작 버튼이 모달 밖으로 밀렸습니다.");
             var fixedLocation = ProductionTargets(city).First().Plot;
-            var fixedTexts = panel.FindChildren("*", "Label", true, false).OfType<Label>()
+            var fixedTexts = scaffold.FindChildren("*", "Label", true, false).OfType<Label>()
                 .Select(label => label.Text);
             if (fixedTexts.Any(text => text.Contains($"({fixedLocation.Q},{fixedLocation.R})", StringComparison.Ordinal)))
                 throw new Exception("고정 생산 대상에 좌표가 표시됩니다.");
-            OpenProductionModal(city.Id);
+
+            (workspace.FindChild("ProductionTroopChange", true, false) as Button)?.EmitSignal(Button.SignalName.Pressed);
             await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
-            var targetTable = _modalLayer?.FindChild("ProductionTargetTable", true, false) as Tree;
-            if (targetTable is null || targetTable.Columns != 3
-                || Enumerable.Range(0, targetTable.Columns).Any(column => targetTable.GetColumnTitle(column) == "좌표"))
-                throw new Exception("생산 대상 표에 좌표 열이 남아 있습니다.");
-            GD.Print("PRODUCTION_CENTER_QA PASS: centered, horizontal columns, visible action");
+            if (_doctrinePickerLayer?.FindChild("ProductionTroopPicker", true, false) is not Tree)
+                throw new Exception("투입 병종 변경 표가 열리지 않습니다.");
+            CloseDoctrinePicker();
+
+            (workspace.FindChild("ProductionOfficerChange", true, false) as Button)?.EmitSignal(Button.SignalName.Pressed);
+            await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+            if (_doctrinePickerLayer?.FindChild("ProductionGeneralPicker", true, false) is not Tree)
+                throw new Exception("수행 장수 변경 표가 열리지 않습니다.");
+            CloseDoctrinePicker();
+
+            OpenProductionModal(city.Id);
+            for (var i = 0; i < 2; i++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+            var allTargets = _modalLayer?.FindChild("ProductionTargetCards", true, false) as GridContainer;
+            if (allTargets is null || allTargets.GetChildCount() != ProductionTargets(city).Count())
+                throw new Exception("도시 전체 생산 시설 카드 수가 실제 대상 수와 다릅니다.");
+            GD.Print("PRODUCTION_CENTER_QA PASS: integrated workspace, pickers, fixed footer, target cards");
             GetParent().CallDeferred("RequestGracefulShutdown");
         }
         catch (Exception e)
@@ -12057,7 +12065,7 @@ public sealed partial class CampaignMapScene : Node3D
         }
     }
 
-    private void OpenProductionModal(CityId city, HexCoord? fixedTarget = null)
+    private void OpenProductionModalLegacy(CityId city, HexCoord? fixedTarget = null)
     {
         if (_advancing) { return; }
         if (_modalLayer is not null) { FadeOutModal(_modalLayer); _modalLayer = null; }
