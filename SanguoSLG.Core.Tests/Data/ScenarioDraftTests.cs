@@ -130,6 +130,52 @@ public sealed class ScenarioDraftTests
     }
 
     [Fact]
+    public void PositiveLockedTroopResearchUnlocksThatTroopAtScenarioStart()
+    {
+        const string troopCode = "geukbyeong";
+        var map = Map() with { Sites = [.. Map().Sites,
+            new MapEditorSite(99, "극병 유적", "ruin", troopCode, 2, 2)] };
+        var draft = Draft() with
+        {
+            MapRevision = ScenarioMapArchive.RevisionOf(map),
+            Research = [new ScenarioResearchEntry(1, troopCode, 1)],
+        };
+        var source = new Scenario(
+            [new Faction(new FactionId(1), "위", new GeneralId(1), 0, "#3366AA")],
+            [new City(new CityId(1), "첫 성", new HexCoord(1, 1), new FactionId(1), 100),
+                new City(new CityId(2), "둘째 성", new HexCoord(4, 3), new FactionId(0), 0)],
+            [new General(new GeneralId(1), "장수", new Dictionary<TroopClass, AptitudeGrade>(), 50, 50, 50)],
+            new BalanceConfig(MonthlyTaxPerCity: 100), new HexMap(0, 5, 0, 4), [], new TileConditionMap());
+
+        var state = GameState.FromScenario(ScenarioDraftApplier.Apply(source, draft, map));
+
+        Assert.Equal(1, state.ResearchOf(new FactionId(1), troopCode));
+        Assert.True(FactionTroopUnlock.Check(state, new FactionId(1), troopCode).Allowed);
+        Assert.Contains(new FactionId(1), Assert.Single(state.RuinStatus).Registrations);
+    }
+
+    [Fact]
+    public void ZeroLockedTroopResearchKeepsThatTroopLockedAtScenarioStart()
+    {
+        const string troopCode = "geukbyeong";
+        var map = Map() with { Sites = [.. Map().Sites,
+            new MapEditorSite(99, "극병 유적", "ruin", troopCode, 2, 2)] };
+        var source = new Scenario(
+            [new Faction(new FactionId(1), "위", new GeneralId(1), 0, "#3366AA")],
+            [new City(new CityId(1), "첫 성", new HexCoord(1, 1), new FactionId(1), 100),
+                new City(new CityId(2), "둘째 성", new HexCoord(4, 3), new FactionId(0), 0)],
+            [new General(new GeneralId(1), "장수", new Dictionary<TroopClass, AptitudeGrade>(), 50, 50, 50)],
+            new BalanceConfig(MonthlyTaxPerCity: 100), new HexMap(0, 5, 0, 4), [], new TileConditionMap());
+
+        var state = GameState.FromScenario(ScenarioDraftApplier.Apply(source,
+            Draft() with { MapRevision = ScenarioMapArchive.RevisionOf(map),
+                Research = [new ScenarioResearchEntry(1, troopCode, 0)] }, map));
+
+        Assert.False(FactionTroopUnlock.Check(state, new FactionId(1), troopCode).Allowed);
+        Assert.Empty(Assert.Single(state.RuinStatus).Registrations);
+    }
+
+    [Fact]
     public void FactionDescriptionsStaySeparateAndOldScenarioFilesUseEmptyDescription()
     {
         var draft = Draft() with

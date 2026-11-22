@@ -226,6 +226,11 @@ public sealed record GameState(
     {
         var heroUnlocks = scenario.HeroUnlockList;
         var placements = scenario.InitialFacilities ?? BuildInitialFacilityPlacements(scenario);
+        var initialResearch = scenario.InitialResearch ?? [];
+        var ruinStates = scenario.RuinList.Select(ruin => new RuinState(ruin.Id, ruin.MaxDefenders,
+            RegisteredFactions: initialResearch
+                .Where(research => research.Level > 0 && research.TroopCode == ruin.TroopCode)
+                .Select(research => research.Faction).Distinct().ToArray())).ToList();
         return new(1, startYear, scenario.Factions, scenario.Cities, scenario.Generals, Postings: scenario.Postings,
             GarrisonForces: scenario.InitialGarrisons,
             PortShipStocks: scenario.InitialShips,
@@ -235,10 +240,10 @@ public sealed record GameState(
                 .Select(h => new HeroUnlockState(h.General, HeroUnlockStatus.Locked))
                 .ToList(),
             RuinDefinitions: scenario.RuinList,
-            RuinStates: scenario.RuinList.Select(r => new RuinState(r.Id, r.MaxDefenders)).ToList(),
+            RuinStates: ruinStates,
             MapPresetSnapshot: scenario.MapPreset?.Snapshot(),
             HiddenFactionArrivals: scenario.HiddenFactionArrivals,
-            ResearchTracks: scenario.InitialResearch);
+            ResearchTracks: initialResearch);
     }
 
     private static IReadOnlyList<FacilityPlacement> BuildInitialFacilityPlacements(Scenario scenario)
