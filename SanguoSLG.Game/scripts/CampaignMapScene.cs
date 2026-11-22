@@ -9717,9 +9717,8 @@ public sealed partial class CampaignMapScene : Node3D
         panel.AddThemeStyleboxOverride("panel", CityDetailBackgroundStyle());
         panel.SetMeta("scouted_city_read_only", readOnlyIntel);
         scroll.Name = "CityDetailOuterScroll";
-        scroll.VerticalScrollMode = vp.Y >= 760f
-            ? ScrollContainer.ScrollMode.Disabled
-            : ScrollContainer.ScrollMode.Auto;
+        // 상단 정보와 목록의 최소 높이가 합쳐져도 바깥 스크롤이 패널 높이를 제한한다.
+        scroll.VerticalScrollMode = ScrollContainer.ScrollMode.Auto;
         panel.SetMeta("blocks_map_wheel", true);
         panel.GuiInput += input =>
         {
@@ -10005,9 +10004,10 @@ public sealed partial class CampaignMapScene : Node3D
         };
         // 패널의 PNG 장식 여백까지 포함한 최종 높이를 화면 안으로 제한한다.
         var frameMargins = panel.GetThemeStylebox("panel").GetMinimumSize();
-        var visibleHeight = Mathf.Min(mh, vp.Y - 32f);
+        var visibleHeight = Mathf.Min(mh, vp.Y - 48f);
         scroll.CustomMinimumSize = new Vector2(mw - frameMargins.X,
             Mathf.Max(0f, visibleHeight - frameMargins.Y));
+        panel.CustomMinimumSize = new Vector2(mw, visibleHeight);
         CenterAndDrag(panel, titleRow, mw, mh, box);
         panel.Position = (vp - new Vector2(mw, visibleHeight)) / 2f;
     }
