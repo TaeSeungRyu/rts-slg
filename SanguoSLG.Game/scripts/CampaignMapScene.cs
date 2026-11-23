@@ -10166,11 +10166,10 @@ public sealed partial class CampaignMapScene : Node3D
         if (officer is null) { return "+0"; }
 
         var troopCodes = string.Join(',', CurrentAutoRecruitTroopCodes(city));
-        var perTroop = AutoRecruitWeeklyTroopsFor(officer, city);
-        var troops = perTroop * CurrentAutoRecruitTroopCodes(city).Count();
+        var troops = AutoRecruitWeeklyTroopsFor(officer, city) * CurrentAutoRecruitTroopCodes(city).Count();
         var cost = AutoRecruitWeeklyCostFor(officer, troopCodes, city);
         var rate = CommandBalance.AutoRecruitRate(city.AutoRecruitRate);
-        return $"+{troops} (병종별 +{perTroop}) {AutoRecruitTroopNames(troopCodes)} / -{cost}금 / {rate}배";
+        return $"+{troops}명 ({cost}금, {rate}배)";
     }
 
     private string AutoRecruitTroopCode(City city)
