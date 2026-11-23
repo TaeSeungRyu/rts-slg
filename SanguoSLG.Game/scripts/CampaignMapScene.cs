@@ -9829,9 +9829,12 @@ public sealed partial class CampaignMapScene : Node3D
 
         if (!readOnlyIntel)
         {
-            var officers = $"치안 {OfficerName(c.SecurityOfficer) ?? "없음"} · 내정 {OfficerName(c.DomesticOfficer) ?? "없음"}\n"
+            var officers = $"치안 {OfficerName(c.SecurityOfficer) ?? "없음"} · 내정 {OfficerName(c.DomesticOfficer) ?? "없음"} · "
                 + $"병력 {OfficerName(c.RecruitmentOfficer) ?? "없음"} · 훈련 {OfficerName(c.TrainingOfficer) ?? "없음"}";
-            overviewInfo.AddChild(MakeLabel($"담당자: {officers}", 13, GoldBright));
+            var officerLine = MakeLabel($"담당자: {officers}", 13, GoldBright);
+            officerLine.AutowrapMode = TextServer.AutowrapMode.Off;
+            officerLine.TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis;
+            overviewInfo.AddChild(officerLine);
         }
         var outputPercent = _cb.LowSecurityOutputPercent(c.Security);
         var raid = _cb.BanditRaidChance(c.Security);
