@@ -730,6 +730,7 @@ public sealed partial class ScenarioEditorScene : Control
         colorRow.AddChild(color);
 
         AddFactionResearchTable(details, faction.Id);
+        AddFactionMajorTroopPicker(details, faction.Id);
 
         var arrivalRow = AddFactionField(details, "등장 방식");
         var arrivalMode = new OptionButton { SizeFlagsHorizontal = SizeFlags.ExpandFill,
@@ -885,6 +886,57 @@ public sealed partial class ScenarioEditorScene : Control
         _draft = _draft with { Research = entries };
     }
 
+    private void AddFactionMajorTroopPicker(VBoxContainer parent, int factionId)
+    {
+        parent.AddChild(new HSeparator());
+        var title = new Label { Text = "초기 주력병종 (최대 2개)", Name = "FactionMajorTroopTitle" };
+        title.AddThemeColorOverride("font_color", new Color("f1c878"));
+        parent.AddChild(title);
+
+        var grid = new GridContainer
+        {
+            Name = "FactionMajorTroopGrid",
+            Columns = 3,
+            SizeFlagsHorizontal = SizeFlags.ExpandFill,
+        };
+        grid.AddThemeConstantOverride("h_separation", 8);
+        grid.AddThemeConstantOverride("v_separation", 4);
+        parent.AddChild(grid);
+
+        var data = Path.GetFullPath(Path.Combine(ProjectSettings.GlobalizePath("res://"), "..", "data"));
+        var troops = new TroopCatalogLoader().LoadFromDirectory(data)
+            .OrderBy(troop => troop.Class).ThenBy(troop => troop.Name).ToArray();
+        foreach (var troop in troops)
+        {
+            var code = troop.Code;
+            var toggle = new CheckButton
+            {
+                Name = "FactionMajorTroop_" + code,
+                Text = troop.Name,
+                ButtonPressed = _draft.MajorTroopEntries.Any(entry => entry.FactionId == factionId
+                    && entry.TroopCode == code),
+                CustomMinimumSize = new Vector2(150, 34),
+            };
+            toggle.Toggled += enabled =>
+            {
+                var selected = _draft.MajorTroopEntries
+                    .Where(entry => entry.FactionId == factionId).ToList();
+                if (enabled && selected.Count >= 2)
+                {
+                    toggle.SetPressedNoSignal(false);
+                    _message.Text = "주력병종은 최대 2개까지 선택할 수 있습니다.";
+                    return;
+                }
+
+                var entries = _draft.MajorTroopEntries
+                    .Where(entry => entry.FactionId != factionId || entry.TroopCode != code).ToList();
+                if (enabled) entries.Add(new ScenarioMajorTroopEntry(factionId, code));
+                _draft = _draft with { MajorTroops = entries };
+            };
+            grid.AddChild(toggle);
+        }
+    }
+
     private void SetFactionHidden(ScenarioFactionEntry faction, bool hidden)
     {
         var sites = CurrentMap().Preset.Sites.Where(site => site.Kind is "city" or "port" or "gate").ToArray();
@@ -913,6 +965,7 @@ public sealed partial class ScenarioEditorScene : Control
                     ? city with { OwnerFactionId = 0, Garrisons = [], Ships = [] } : city).ToArray(),
                 Generals = _draft.Generals.Where(general => general.FactionId != faction.Id).ToArray(),
                 Research = _draft.ResearchEntries.Where(entry => entry.FactionId != faction.Id).ToArray(),
+                MajorTroops = _draft.MajorTroopEntries.Where(entry => entry.FactionId != faction.Id).ToArray(),
             };
             _selectedDescriptionFactionId = _draft.Factions.FirstOrDefault()?.Id ?? 0;
             ShowFactions();

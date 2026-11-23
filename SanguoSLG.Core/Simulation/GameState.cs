@@ -243,7 +243,8 @@ public sealed record GameState(
             RuinStates: ruinStates,
             MapPresetSnapshot: scenario.MapPreset?.Snapshot(),
             HiddenFactionArrivals: scenario.HiddenFactionArrivals,
-            ResearchTracks: initialResearch);
+            ResearchTracks: initialResearch,
+            MajorTroopSelections: scenario.InitialMajorTroops);
     }
 
     private static IReadOnlyList<FacilityPlacement> BuildInitialFacilityPlacements(Scenario scenario)

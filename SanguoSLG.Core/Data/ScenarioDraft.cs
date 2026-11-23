@@ -18,13 +18,17 @@ public sealed record ScenarioGeneralEntry(int GeneralId, int FactionId, int? Sit
 
 public sealed record ScenarioResearchEntry(int FactionId, string Code, int Level);
 
+public sealed record ScenarioMajorTroopEntry(int FactionId, string TroopCode);
+
 public sealed record ScenarioDraft(int Version, string Id, string Title, string Description,
     int StartYear, int StartMonth, int StartDay, string MapId, string MapRevision,
     IReadOnlyList<ScenarioFactionEntry> Factions, IReadOnlyList<ScenarioCityEntry> Cities,
     IReadOnlyList<ScenarioGeneralEntry> Generals,
-    IReadOnlyList<ScenarioResearchEntry>? Research = null)
+    IReadOnlyList<ScenarioResearchEntry>? Research = null,
+    IReadOnlyList<ScenarioMajorTroopEntry>? MajorTroops = null)
 {
     public IReadOnlyList<ScenarioResearchEntry> ResearchEntries => Research ?? [];
+    public IReadOnlyList<ScenarioMajorTroopEntry> MajorTroopEntries => MajorTroops ?? [];
 
     public IReadOnlyList<string> Validate(ScenarioMapPreset map, IReadOnlySet<int> knownGenerals)
     {
@@ -52,6 +56,12 @@ public sealed record ScenarioDraft(int Version, string Id, string Title, string 
             || ResearchEntries.Select(entry => (entry.FactionId, entry.Code)).Distinct().Count()
                 != ResearchEntries.Count)
             errors.Add("세력 연구 수치가 올바르지 않습니다.");
+        if (MajorTroopEntries.Any(entry => !factionIds.Contains(entry.FactionId)
+                || string.IsNullOrWhiteSpace(entry.TroopCode))
+            || MajorTroopEntries.Select(entry => (entry.FactionId, entry.TroopCode)).Distinct().Count()
+                != MajorTroopEntries.Count
+            || MajorTroopEntries.GroupBy(entry => entry.FactionId).Any(group => group.Count() > 2))
+            errors.Add("세력 주력병종 설정이 올바르지 않습니다.");
         foreach (var faction in Factions.Where(f => f.Hidden))
         {
             if (faction.ArrivalYear <= StartYear)

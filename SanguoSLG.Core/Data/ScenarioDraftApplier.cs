@@ -52,6 +52,9 @@ public static class ScenarioDraftApplier
             InitialResearch = draft.ResearchEntries.Where(entry => entry.Level > 0)
                 .Select(entry => new FactionResearch(new FactionId(entry.FactionId), entry.Code, entry.Level))
                 .ToArray(),
+            InitialMajorTroops = draft.MajorTroopEntries
+                .Select(entry => new FactionMajorTroop(new FactionId(entry.FactionId), entry.TroopCode))
+                .ToArray(),
             HiddenFactionArrivals = draft.Factions.Where(entry => entry.Hidden)
                 .Select(entry => new HiddenFactionArrival(new Faction(new FactionId(entry.Id),
                     entry.Name, new GeneralId(entry.RulerGeneralId), 0, entry.Color),
@@ -108,6 +111,8 @@ public static class ScenarioDraftApplier
                 faction.Name, faction.Ruler.Value, faction.Color)).ToArray(),
             cities, postings,
             source.InitialResearch?.Select(entry => new ScenarioResearchEntry(entry.Faction.Value,
-                entry.TroopCode, entry.Level)).ToArray());
+                entry.TroopCode, entry.Level)).ToArray(),
+            source.InitialMajorTroops?.Select(entry => new ScenarioMajorTroopEntry(entry.Faction.Value,
+                entry.TroopCode)).ToArray());
     }
 }
