@@ -519,21 +519,26 @@ public sealed partial class CampaignMapScene
         var outerScroll = _modalLayer?.FindChild("CityDetailOuterScroll", true, false) as ScrollContainer;
         var tabPanel = _modalLayer?.FindChild("CityDetailTabPanel", true, false) as PanelContainer;
         var cityTabs = _modalLayer?.FindChild("CityDetailTabs", true, false) as TabContainer;
+        var detailPanel = _modalLayer?.FindChild("CityDetailModal", true, false) as PanelContainer;
         var stationedTable = _modalLayer?.FindChild("CityDetailStationedTable", true, false) as Tree;
         var stationedGoldPortraits = stationedTable?.GetMeta("thin_gold_portraits").AsBool() == true;
-        var stationedInternalScroll = outerScroll?.VerticalScrollMode == ScrollContainer.ScrollMode.Auto
-            && _modalLayer?.FindChild("CityDetailModal", true, false) is PanelContainer detailPanel
+        var stationedInternalScroll = outerScroll?.VerticalScrollMode == ScrollContainer.ScrollMode.ShowNever
+            && detailPanel is not null
             && detailPanel.Size.Y <= GetViewport().GetVisibleRect().Size.Y - 32f
-            && tabPanel?.CustomMinimumSize.Y >= 250f
+            && tabPanel?.CustomMinimumSize.Y >= 225f
             && stationedTable?.ScrollVerticalEnabled == true
             && stationedTable.MouseForcePassScrollEvents == false
             && stationedTable.SizeFlagsVertical.HasFlag(Control.SizeFlags.ExpandFill)
-            // TabContainer의 기본 탭 헤더가 높이를 점유하므로 본문은 패널의 약 60% 이상이면 정상이다.
-            && stationedTable.Size.Y >= tabPanel.Size.Y * 0.60f;
+            // 제목과 표 헤더가 높이를 점유하므로 실제 행 영역이 탭 패널의 절반 이상이면 정상이다.
+            && stationedTable.Size.Y >= tabPanel.Size.Y * 0.50f;
         var tabArtworkApplied = cityTabs?.GetTabCount() == 3
             && Enumerable.Range(0, cityTabs.GetTabCount()).All(index => cityTabs.GetTabIcon(index) is not null);
         var modalHeight = outerScroll?.CustomMinimumSize.Y ?? 0;
         var tabHeight = tabPanel?.CustomMinimumSize.Y ?? 0;
+        var outerMode = outerScroll?.VerticalScrollMode;
+        var tabPanelSize = tabPanel?.Size.Y ?? 0;
+        var stationedTableSize = stationedTable?.Size.Y ?? 0;
+        var detailPanelSize = detailPanel?.Size.Y ?? 0;
         CloseModal();
 
         var originalState = _state;
@@ -609,7 +614,7 @@ public sealed partial class CampaignMapScene
             && noObsoleteResources && portShipsShown
             && commandTableLayout && commandScrollWorks && deployTableLayout && diplomacyTranslated
             && stationedGoldPortraits && commandGoldPortraits && deployGoldPortraits && tabArtworkApplied;
-        GD.Print($"[city-detail-qa] passed={passed} roundedGarrisons={garrisonFrames.Count}/{expected}:{roundedGarrisons} noObsoleteResources={noObsoleteResources} portShipsShown={portShipsShown} mapWheelBlocked={mapWheelBlocked}:{wheelBlockers} stationedInternalScroll={stationedInternalScroll} tabArtwork={tabArtworkApplied} modalHeight={modalHeight} tabHeight={tabHeight} commandRows={commandRows}:{commandTableLayout} commandScroll={commandScrollWorks} deployRows={deployRows}:{deployTableLayout} goldPortraits={stationedGoldPortraits}/{commandGoldPortraits}/{deployGoldPortraits}");
+        GD.Print($"[city-detail-qa] passed={passed} roundedGarrisons={garrisonFrames.Count}/{expected}:{roundedGarrisons} noObsoleteResources={noObsoleteResources} portShipsShown={portShipsShown} mapWheelBlocked={mapWheelBlocked}:{wheelBlockers} stationedInternalScroll={stationedInternalScroll} outerMode={outerMode} detailPanelSize={detailPanelSize} panelSize={tabPanelSize} tableSize={stationedTableSize} tabArtwork={tabArtworkApplied} modalHeight={modalHeight} tabHeight={tabHeight} commandRows={commandRows}:{commandTableLayout} commandScroll={commandScrollWorks} deployRows={deployRows}:{deployTableLayout} goldPortraits={stationedGoldPortraits}/{commandGoldPortraits}/{deployGoldPortraits}");
         GetTree().Quit(passed ? 0 : 1);
     }
 

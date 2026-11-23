@@ -9725,8 +9725,8 @@ public sealed partial class CampaignMapScene : Node3D
         panel.AddThemeStyleboxOverride("panel", CityDetailBackgroundStyle());
         panel.SetMeta("scouted_city_read_only", readOnlyIntel);
         scroll.Name = "CityDetailOuterScroll";
-        // 상단 정보와 목록의 최소 높이가 합쳐져도 바깥 스크롤이 패널 높이를 제한한다.
-        scroll.VerticalScrollMode = ScrollContainer.ScrollMode.Auto;
+        // 모달 전체에는 세로 스크롤을 두지 않는다. 긴 목록은 각 하단 탭 안에서만 스크롤한다.
+        scroll.VerticalScrollMode = ScrollContainer.ScrollMode.ShowNever;
         panel.SetMeta("blocks_map_wheel", true);
         panel.GuiInput += input =>
         {
@@ -9902,8 +9902,8 @@ public sealed partial class CampaignMapScene : Node3D
         var contentPanel = new PanelContainer
         {
             Name = "CityDetailTabPanel",
-            // 하단 목록 영역의 최소 높이. 화면이 작으면 이 값도 함께 줄여야 상단이 잘리지 않는다.
-            CustomMinimumSize = new Vector2(0, Mathf.Clamp(vp.Y * 0.34f, 250f, 340f)),
+            // 기존 하단 탭 높이의 90%. 화면 높이 비율·최소·최대값을 함께 10% 줄였다.
+            CustomMinimumSize = new Vector2(0, Mathf.Clamp(vp.Y * 0.306f, 225f, 306f)),
             SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
             SizeFlagsVertical = Control.SizeFlags.ExpandFill,
         };
