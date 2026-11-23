@@ -7186,12 +7186,20 @@ public sealed partial class CampaignMapScene : Node3D
         var cityTitle = MakeLabel(c.Name, 18, GameUiSkin.GoldBright);
         cityTitle.Name = "CityInfoTitle";
         cityTitle.AnchorRight = 1f;
-        var cityTextOffset = !known ? 8f : scoutedEnemy ? 3f : 0f;
+        var cityTextOffset = !known ? 1f : scoutedEnemy ? 3f : 0f;
         cityTitle.OffsetTop = -cityTextOffset;
         cityTitle.OffsetBottom = 22f - cityTextOffset;
         cityTitle.HorizontalAlignment = HorizontalAlignment.Center;
         cityTitle.VerticalAlignment = VerticalAlignment.Center;
         cityTitle.TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis;
+
+    //     if (!known)
+    //     {
+    // var titleMargin = new MarginContainer();
+    // titleMargin.AddThemeConstantOverride("margin_top", 10);
+    // infoHeader.AddChild(titleMargin);
+    //     }
+
         infoHeader.AddChild(cityTitle);
         var siteType = c.IsPort ? "항구" : "성";
         var scoutStatus = scoutedEnemy ? $" · 정찰 {ScoutDaysLeft(id)}일" : "";
@@ -7217,7 +7225,7 @@ public sealed partial class CampaignMapScene : Node3D
             unknownPanel.AddThemeStyleboxOverride("panel", new StyleBoxEmpty
             {
                 ContentMarginLeft = 16f,
-                ContentMarginTop = 8f,
+                ContentMarginTop = 15f,
                 ContentMarginRight = 16f,
                 ContentMarginBottom = 24f,
             });
@@ -9747,7 +9755,7 @@ public sealed partial class CampaignMapScene : Node3D
         var titleText = readOnlyIntel
             ? $"《 {c.Name} 》 · 정찰 정보 · 남은 {ScoutDaysLeft(c.Id)}일"
             : $"《 {c.Name} 》 · 태수 {detailGov ?? "없음"} · 군사 {detailStra ?? "없음"}";
-        var title = MakeLabel(titleText, 16, Gold);
+        var title = MakeLabel(titleText, 20, Gold);
         title.VerticalAlignment = VerticalAlignment.Center;
         title.TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis;
         title.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
@@ -9755,7 +9763,7 @@ public sealed partial class CampaignMapScene : Node3D
         titleRow.AddChild(title);
         var close = MakeButton("✕");
         // 가로·세로를 같은 값으로 조정하면 제목줄 중앙의 정사각형이 유지된다.
-        close.CustomMinimumSize = new Vector2(36, 36);
+        close.CustomMinimumSize = new Vector2(34, 34);
         close.SizeFlagsVertical = Control.SizeFlags.ShrinkCenter;
         close.Pressed += CloseModal;
         titleRow.AddChild(close);
@@ -11497,6 +11505,7 @@ public sealed partial class CampaignMapScene : Node3D
 
         var titleRow = new HBoxContainer();
         box.AddChild(titleRow);
+        
         var back = MakeButton("◀");
         back.CustomMinimumSize = new Vector2(40, 30);
         back.Pressed += OpenCityRoster;

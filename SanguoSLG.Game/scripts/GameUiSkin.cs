@@ -252,7 +252,7 @@ internal static class GameUiSkin
             // 원본 장식은 좌우 24px, 상하 약 18px 안에 모여 있다. 펼친 프레임은
             // 헤더 구분선까지 고정해 중앙의 단색 목재 영역만 세로로 늘린다.
             return expanded
-                ? TextureBox(texture, 26, 148, 26, 24, 12)
+                ? TextureBox(texture, 26, 18, 26, 24, 12)
                 : TextureBox(texture, 26, 18, 26, 18, 12);
         }
         return QuickListPanel();
