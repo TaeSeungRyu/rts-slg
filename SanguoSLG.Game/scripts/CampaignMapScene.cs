@@ -8374,7 +8374,7 @@ public sealed partial class CampaignMapScene : Node3D
         }
         else if (cmd.Kind == CommandKind.SelectMajorTroop)
         {
-            box.AddChild(MakeLabel("주력병종은 세력을 대표하는 병종입니다. 최대 2개까지 선택 가능하며, 한 번 적용하면 철회할 수 없습니다.", 15, Parchment));
+            box.AddChild(MakeLabel($"주력병종은 세력을 대표하는 병종입니다. 최대 {FactionMajorTroop.MaxSelections}개까지 선택 가능하며, 한 번 적용하면 철회할 수 없습니다.", 15, Parchment));
         }
         else if (cmd.Kind == CommandKind.BuildShip)
         {
@@ -8483,7 +8483,8 @@ public sealed partial class CampaignMapScene : Node3D
             var majorOptions = MajorTroopOptions(cityData);
             for (var i = 0; i < majorOptions.Count; i++)
             {
-                if (!selectedMajors.Contains(majorOptions[i].Code) && selectedMajors.Count >= 2)
+                if (!selectedMajors.Contains(majorOptions[i].Code)
+                    && selectedMajors.Count >= FactionMajorTroop.MaxSelections)
                 {
                     _disabledOptions.Add(i);
                 }
@@ -8534,7 +8535,8 @@ public sealed partial class CampaignMapScene : Node3D
 
             var optionTitle = cmd.Kind == CommandKind.AppointRecruitmentOfficer
                 ? "자동 생산 병종을 선택하세요 (여러 개 선택 가능)"
-                : cmd.Kind == CommandKind.SelectMajorTroop ? "주력병종을 선택하세요 (1~2개 선택 후 적용)"
+                : cmd.Kind == CommandKind.SelectMajorTroop
+                    ? $"주력병종을 선택하세요 (1~{FactionMajorTroop.MaxSelections}개 선택 후 적용)"
                 : cmd.Param == "stratagem_research" ? "계략연구 대상을 선택하세요"
                 : cmd.Param == "stratagem" ? "계략을 선택하세요" : "대상을 선택하세요";
             box.AddChild(MakeLabel(optionTitle, 19, GoldBright));
@@ -15851,7 +15853,7 @@ public sealed partial class CampaignMapScene : Node3D
             {
                 var detail = selected.Contains(t.Code)
                     ? "이미 주력병종"
-                    : selected.Count >= 2 ? "선택 불가"
+                    : selected.Count >= FactionMajorTroop.MaxSelections ? "선택 불가"
                     : "Lv.10 연구 가능";
                 list.Add((t.Name, UnitCard(t.Code, t.Class), detail));
             }
@@ -16446,7 +16448,7 @@ public sealed partial class CampaignMapScene : Node3D
         }
 
         ShowConfirm("주력병종 선택",
-            $"{city.Name} 세력의 주력병종으로 {names}을(를) 선택합니다.\n\n주력병종은 철회할 수 없고, 최대 2개까지만 선택 가능합니다.\n선택한 병종은 Lv.10까지 전투교리 연구가 가능합니다.\n\n적용하시겠습니까?",
+            $"{city.Name} 세력의 주력병종으로 {names}을(를) 선택합니다.\n\n주력병종은 철회할 수 없고, 최대 {FactionMajorTroop.MaxSelections}개까지만 선택 가능합니다.\n선택한 병종은 Lv.10까지 전투교리 연구가 가능합니다.\n\n적용하시겠습니까?",
             () =>
             {
                 CommandResult? last = null;
@@ -17139,10 +17141,10 @@ public sealed partial class CampaignMapScene : Node3D
                 }
 
                 var already = _state.MajorTroops.Count(t => t.Faction == city.Owner);
-                var remaining = System.Math.Max(0, 2 - already);
+                var remaining = System.Math.Max(0, FactionMajorTroop.MaxSelections - already);
                 if (_modalMultiParams.Count >= remaining)
                 {
-                    ShowNotice("주력병종 선택", $"주력병종은 최대 2개까지 선택할 수 있습니다. 남은 선택 수: {remaining}");
+                    ShowNotice("주력병종 선택", $"주력병종은 최대 {FactionMajorTroop.MaxSelections}개까지 선택할 수 있습니다. 남은 선택 수: {remaining}");
                     return;
                 }
             }

@@ -799,9 +799,9 @@ public sealed class CommandService
         }
 
         var selected = state.MajorTroops.Where(t => t.Faction == city.Owner).ToList();
-        if (selected.Count >= 2)
+        if (selected.Count >= FactionMajorTroop.MaxSelections)
         {
-            return CommandResult.Fail("주력병종은 최대 2개까지 선택할 수 있다.", state);
+            return CommandResult.Fail($"주력병종은 최대 {FactionMajorTroop.MaxSelections}개까지 선택할 수 있다.", state);
         }
 
         var majors = state.MajorTroops.Append(new FactionMajorTroop(city.Owner, req.TroopCode)).ToList();

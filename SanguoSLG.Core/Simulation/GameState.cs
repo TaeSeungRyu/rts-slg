@@ -116,7 +116,7 @@ public sealed record GameState(
     /// <summary>세력 병종 연구 트랙(design-combat "병종 연구").</summary>
     public IReadOnlyList<FactionResearch> Research => ResearchTracks ?? [];
 
-    /// <summary>세력 대표 병종 목록. 세력당 최대 2개, 철회 불가.</summary>
+    /// <summary>세력 대표 병종 목록. 세력당 최대 4개, 철회 불가.</summary>
     public IReadOnlyList<FactionMajorTroop> MajorTroops => MajorTroopSelections ?? [];
 
     /// <summary>현재 동맹 목록. 동맹은 세력쌍 단위로 저장한다.</summary>

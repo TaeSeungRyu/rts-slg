@@ -591,7 +591,7 @@ public class ResearchSystemTests
     }
 
     [Fact]
-    public void 주력병종은_최대_2개까지_선택하고_철회없이_10단계까지_연구할수있다()
+    public void 주력병종은_최대_4개까지_선택하고_철회없이_10단계까지_연구할수있다()
     {
         var s = State(new[] { Town(1, workshop: false, gold: 20000) }, new[] { Wit(1, 80) })
             with
@@ -609,18 +609,25 @@ public class ResearchSystemTests
             new CommandRequest(new CityId(1), CommandKind.SelectMajorTroop, new GeneralId(1), TroopCode: "swordsman"));
         var major3 = Service().Issue(major2.State,
             new CommandRequest(new CityId(1), CommandKind.SelectMajorTroop, new GeneralId(1), TroopCode: "cavalry"));
-        var majorResearch = Service().Issue(major2.State,
+        var major4 = Service().Issue(major3.State,
+            new CommandRequest(new CityId(1), CommandKind.SelectMajorTroop, new GeneralId(1), TroopCode: "thunder_cart"));
+        var major5 = Service().Issue(major4.State,
+            new CommandRequest(new CityId(1), CommandKind.SelectMajorTroop, new GeneralId(1), TroopCode: "catapult"));
+        var majorResearch = Service().Issue(major4.State,
             new CommandRequest(new CityId(1), CommandKind.Research, new GeneralId(1), TroopCode: "swordsman"));
 
         Assert.False(normalLimit.Ok);
         Assert.Contains("최대", normalLimit.Error);
         Assert.True(major1.Ok, major1.Error);
         Assert.True(major2.Ok, major2.Error);
-        Assert.Equal(2, major2.State.MajorTroops.Count(t => t.Faction == new FactionId(1)));
+        Assert.True(major3.Ok, major3.Error);
+        Assert.True(major4.Ok, major4.Error);
+        Assert.Equal(FactionMajorTroop.MaxSelections,
+            major4.State.MajorTroops.Count(t => t.Faction == new FactionId(1)));
         Assert.False(duplicate.Ok);
         Assert.Contains("이미", duplicate.Error);
-        Assert.False(major3.Ok);
-        Assert.Contains("최대 2개", major3.Error);
+        Assert.False(major5.Ok);
+        Assert.Contains("최대 4개", major5.Error);
         Assert.True(majorResearch.Ok, majorResearch.Error);
     }
 

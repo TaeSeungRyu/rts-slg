@@ -889,7 +889,7 @@ public sealed partial class ScenarioEditorScene : Control
     private void AddFactionMajorTroopPicker(VBoxContainer parent, int factionId)
     {
         parent.AddChild(new HSeparator());
-        var title = new Label { Text = "초기 주력병종 (최대 2개)", Name = "FactionMajorTroopTitle" };
+        var title = new Label { Text = $"초기 주력병종 (최대 {FactionMajorTroop.MaxSelections}개)", Name = "FactionMajorTroopTitle" };
         title.AddThemeColorOverride("font_color", new Color("f1c878"));
         parent.AddChild(title);
 
@@ -921,10 +921,10 @@ public sealed partial class ScenarioEditorScene : Control
             {
                 var selected = _draft.MajorTroopEntries
                     .Where(entry => entry.FactionId == factionId).ToList();
-                if (enabled && selected.Count >= 2)
+                if (enabled && selected.Count >= FactionMajorTroop.MaxSelections)
                 {
                     toggle.SetPressedNoSignal(false);
-                    _message.Text = "주력병종은 최대 2개까지 선택할 수 있습니다.";
+                    _message.Text = $"주력병종은 최대 {FactionMajorTroop.MaxSelections}개까지 선택할 수 있습니다.";
                     return;
                 }
 

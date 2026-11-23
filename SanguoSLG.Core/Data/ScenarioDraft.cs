@@ -1,6 +1,7 @@
 namespace SanguoSLG.Core.Data;
 
 using System.Text.Json;
+using SanguoSLG.Core.Domain;
 
 public sealed record ScenarioFactionEntry(int Id, string Name, int RulerGeneralId, string Color,
     bool Playable = true, bool Hidden = false, int ArrivalYear = 0, int ArrivalSiteId = 0,
@@ -60,7 +61,8 @@ public sealed record ScenarioDraft(int Version, string Id, string Title, string 
                 || string.IsNullOrWhiteSpace(entry.TroopCode))
             || MajorTroopEntries.Select(entry => (entry.FactionId, entry.TroopCode)).Distinct().Count()
                 != MajorTroopEntries.Count
-            || MajorTroopEntries.GroupBy(entry => entry.FactionId).Any(group => group.Count() > 2))
+            || MajorTroopEntries.GroupBy(entry => entry.FactionId)
+                .Any(group => group.Count() > FactionMajorTroop.MaxSelections))
             errors.Add("세력 주력병종 설정이 올바르지 않습니다.");
         foreach (var faction in Factions.Where(f => f.Hidden))
         {

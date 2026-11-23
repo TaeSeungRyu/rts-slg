@@ -30,7 +30,7 @@ public enum CommandKind
     /// <summary>연구 — 세력 병종 연구 +1단계. 효율 능력 = 지력. 기본 30일(지력↑ 단축).</summary>
     Research,
 
-    /// <summary>주력병종 선택 — 세력당 최대 2개, 한 번 선택하면 철회 불가. 즉시·비용/기간/잠금 없음.</summary>
+    /// <summary>주력병종 선택 — 세력당 최대 4개, 한 번 선택하면 철회 불가. 즉시·비용/기간/잠금 없음.</summary>
     SelectMajorTroop,
 
     /// <summary>수리 — 손상된 성벽·파괴된 시설 복구. 효율 능력 = 정치. 15일. design-administration "건물 수리".</summary>
