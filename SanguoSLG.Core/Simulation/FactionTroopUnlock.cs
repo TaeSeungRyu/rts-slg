@@ -24,6 +24,11 @@ public static class FactionTroopUnlock
     public static TroopProductionAccess Check(GameState state, FactionId faction, string troopCode)
     {
         if (Basic.Contains(troopCode)) return TroopProductionAccess.Granted;
+        // 시나리오 에디터에서 특정 병종의 초기 연구를 1 이상으로 지정했다면
+        // 그 값 자체를 해당 세력의 시작 생산권으로 취급한다. 유적 병종뿐 아니라
+        // 공성·특수 병종도 같은 규칙을 사용해야 에디터 설정과 실제 게임이 일치한다.
+        if (state.ResearchOf(faction, troopCode) > 0)
+            return TroopProductionAccess.Granted;
         if (troopCode is "catapult" or "siege_tower")
         {
             var level = state.ResearchOf(faction, "thunder_cart");
@@ -32,12 +37,6 @@ public static class FactionTroopUnlock
         }
         if (RuinNames.ContainsKey(troopCode))
         {
-            // 시나리오 에디터에서 특수 병종 연구를 1 이상으로 지정한 경우에는
-            // 해당 시나리오에 대응 유적 오브젝트가 없더라도 해금된 시작 상태다.
-            // 일반 플레이에서는 잠긴 병종 연구 자체가 유적 등록으로 제한되므로,
-            // 양수 연구 레벨은 이미 생산권을 얻었다는 안전한 증거로 사용할 수 있다.
-            if (state.ResearchOf(faction, troopCode) > 0)
-                return TroopProductionAccess.Granted;
             if (state.RuinStatus.Any(r => r.Registrations.Contains(faction)
                 && state.Ruins.Any(d => d.Id == r.RuinId && d.TroopCode == troopCode)))
                 return TroopProductionAccess.Granted;
