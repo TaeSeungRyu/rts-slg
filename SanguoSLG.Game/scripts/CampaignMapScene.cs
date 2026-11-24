@@ -6945,10 +6945,26 @@ _terrainCard.AddChild(terrainFrame);
         var center = new CenterContainer { MouseFilter = Control.MouseFilterEnum.Ignore };
         center.SetAnchorsPreset(Control.LayoutPreset.FullRect);
         layer.AddChild(center);
-        var panel = new PanelContainer { MouseFilter = Control.MouseFilterEnum.Stop, CustomMinimumSize = new Vector2(720, 0) };
+
+
+        // var panel = new PanelContainer { MouseFilter = Control.MouseFilterEnum.Stop, CustomMinimumSize = new Vector2(720, 0) };
+        // panel.SetMeta("modal_root", true);
+        // panel.AddThemeStyleboxOverride("panel", Frame(Ink, Gold, 2, 10, 14));
+        // center.AddChild(panel);
+        var panel = new PanelContainer
+        {
+            MouseFilter = Control.MouseFilterEnum.Stop,
+            CustomMinimumSize = new Vector2(720, 0)
+        };
+
         panel.SetMeta("modal_root", true);
-        panel.AddThemeStyleboxOverride("panel", Frame(Ink, Gold, 2, 10, 14));
+
         center.AddChild(panel);
+
+        // 공통 금색 테두리 적용
+        ApplyUnitMenuFrame(panel);
+
+
         var box = new VBoxContainer();
         box.AddThemeConstantOverride("separation", 10);
         panel.AddChild(box);
@@ -6964,22 +6980,304 @@ _terrainCard.AddChild(terrainFrame);
         box.AddChild(MakeLabel($"병력 {unit.Pool.Active:N0} · 휴대 금 {unit.CarryingGold:N0} · 군량 {unit.Provisions:N0}\n건축물을 선택한 뒤 현재 또는 인접 타일에 배치합니다.", 13, Parchment));
         box.AddChild(GoldRule());
 
-        var grid = new GridContainer { Columns = 5, SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
-        grid.AddThemeConstantOverride("h_separation", 8);
-        box.AddChild(grid);
-        foreach (var definition in _fieldBuildingDefinitions)
+        // ========================================
+        // 건축물 목록 레이아웃 설정
+        // ========================================
+        const int columns = 5;
+        const int horizontalGap = 8;
+        const int verticalGap = 8;
+
+        // const float cardWidth = 128f;
+        // const float cardHeight = 96f;
+
+        // 건축물 목록 전체 영역
+        var buildingList = new VBoxContainer
         {
-            var selected = definition;
-            var card = MakeButton($"{definition.Name}\n금 {definition.GoldCost:N0}\n{definition.BuildDays}일");
-            card.CustomMinimumSize = new Vector2(128, 96);
-            card.TooltipText = FieldBuildingDescription(definition);
-            card.Disabled = unit.CarryingGold < definition.GoldCost
-                || unit.Provisions < definition.ProvisionsCost
-                || unit.Pool.Active - definition.TroopCost <= 0;
-            card.Pressed += () => BeginFieldBuildingPlacement(unit.Id.Value, selected.Code);
-            grid.AddChild(card);
-        }
+            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+        };
+
+        buildingList.AddThemeConstantOverride(
+            "separation", verticalGap);
+
+        box.AddChild(buildingList);
+
+        // ========================================
+        // 건축물 카드 생성
+        // ========================================
+
+HBoxContainer currentRow = null!;
+int index = 0;
+
+foreach (var definition in _fieldBuildingDefinitions)
+{
+    var selected = definition;
+
+    // 5개마다 새로운 행 생성
+    if (index % columns == 0)
+    {
+        currentRow = new HBoxContainer
+        {
+            Alignment = BoxContainer.AlignmentMode.Center,
+            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+        };
+
+        currentRow.AddThemeConstantOverride(
+            "separation", horizontalGap);
+
+        buildingList.AddChild(currentRow);
     }
+
+    // ========================================
+    // 건축물 버튼 생성
+    // ========================================
+    var card = MakeButton("");
+
+    card.CustomMinimumSize = new Vector2(128, 160);
+    card.SizeFlagsHorizontal = Control.SizeFlags.ShrinkCenter;
+
+    // 기존 버튼 디자인 제거
+    card.AddThemeStyleboxOverride("normal", new StyleBoxEmpty());
+    card.AddThemeStyleboxOverride("hover", new StyleBoxEmpty());
+    card.AddThemeStyleboxOverride("pressed", new StyleBoxEmpty());
+    card.AddThemeStyleboxOverride("disabled", new StyleBoxEmpty());
+    card.AddThemeStyleboxOverride("focus", new StyleBoxEmpty());
+
+    // ========================================
+    // 버튼 내부 콘텐츠
+    // ========================================
+    var cardContent = new VBoxContainer
+    {
+        MouseFilter = Control.MouseFilterEnum.Ignore,
+        Alignment = BoxContainer.AlignmentMode.Center,
+    };
+
+    card.AddChild(cardContent);
+
+    cardContent.SetAnchorsAndOffsetsPreset(
+        Control.LayoutPreset.FullRect);
+
+    cardContent.AddThemeConstantOverride("separation", 3);
+
+    // ========================================
+    // 건축물 이미지
+    // ========================================
+    var buildingImage = new TextureRect
+    {
+        Texture = GD.Load<Texture2D>(
+            $"res://assets/ui/game/struct_card/{index}.png"),
+        CustomMinimumSize = new Vector2(105, 105),
+
+        ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
+        StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
+
+        MouseFilter = Control.MouseFilterEnum.Ignore,
+
+        TextureFilter = CanvasItem.TextureFilterEnum.Linear,
+    };
+
+    cardContent.AddChild(buildingImage);
+
+    // ========================================
+    // 건축물 이름
+    // ========================================
+    var nameLabel = MakeLabel(
+        definition.Name, 15, GoldBright);
+
+    nameLabel.HorizontalAlignment = HorizontalAlignment.Center;
+    nameLabel.MouseFilter = Control.MouseFilterEnum.Ignore;
+
+    cardContent.AddChild(nameLabel);
+
+    // ========================================
+    // 건축 비용
+    // ========================================
+    var costLabel = MakeLabel(
+        $"금 {definition.GoldCost:N0}", 12, Parchment);
+
+    costLabel.HorizontalAlignment = HorizontalAlignment.Center;
+    costLabel.MouseFilter = Control.MouseFilterEnum.Ignore;
+
+    cardContent.AddChild(costLabel);
+
+    // ========================================
+    // 건축 기간
+    // ========================================
+    var daysLabel = MakeLabel(
+        $"{definition.BuildDays}일", 12, Parchment);
+
+    daysLabel.HorizontalAlignment = HorizontalAlignment.Center;
+    daysLabel.MouseFilter = Control.MouseFilterEnum.Ignore;
+
+    cardContent.AddChild(daysLabel);
+
+    // ========================================
+    // 기존 건축 조건 및 기능 유지
+    // ========================================
+    card.TooltipText = FieldBuildingDescription(definition);
+
+    card.Disabled =
+        unit.CarryingGold < definition.GoldCost
+        || unit.Provisions < definition.ProvisionsCost
+        || unit.Pool.Active - definition.TroopCost <= 0;
+
+    card.Pressed += () =>
+        BeginFieldBuildingPlacement(
+            unit.Id.Value, selected.Code);
+
+    // 마우스 효과 적용
+    ApplyBuildingButtonEffect(card);
+
+    currentRow.AddChild(card);
+
+    index++;
+}
+
+
+        // var grid = new GridContainer { Columns = 5, SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+        // grid.AddThemeConstantOverride("h_separation", 8);
+        // box.AddChild(grid);
+        // foreach (var definition in _fieldBuildingDefinitions)
+        // {
+        //     var selected = definition;
+        //     var card = MakeButton($"{definition.Name}\n금 {definition.GoldCost:N0}\n{definition.BuildDays}일");
+        //     card.CustomMinimumSize = new Vector2(128, 96);
+        //     card.TooltipText = FieldBuildingDescription(definition);
+        //     card.Disabled = unit.CarryingGold < definition.GoldCost
+        //         || unit.Provisions < definition.ProvisionsCost
+        //         || unit.Pool.Active - definition.TroopCost <= 0;
+        //     card.Pressed += () => BeginFieldBuildingPlacement(unit.Id.Value, selected.Code);
+        //     grid.AddChild(card);
+        // }
+    }
+
+    private void ApplyFieldBuildingCardStyle(Button button)
+    {
+        const int radius = 6;
+        const int borderWidth = 1;
+
+        StyleBoxFlat CreateStyle(
+            string bgColor,
+            string borderColor,
+            int width)
+        {
+            return new StyleBoxFlat
+            {
+                BgColor = new Color(bgColor),
+                BorderColor = new Color(borderColor),
+
+                BorderWidthLeft = width,
+                BorderWidthTop = width,
+                BorderWidthRight = width,
+                BorderWidthBottom = width,
+
+                CornerRadiusTopLeft = radius,
+                CornerRadiusTopRight = radius,
+                CornerRadiusBottomLeft = radius,
+                CornerRadiusBottomRight = radius,
+
+                ContentMarginLeft = 8,
+                ContentMarginTop = 8,
+                ContentMarginRight = 8,
+                ContentMarginBottom = 8,
+            };
+        }
+
+        // 일반 상태
+        button.AddThemeStyleboxOverride(
+            "normal",
+            CreateStyle("352019", "96703B", borderWidth)
+        );
+
+        // 마우스 호버
+        button.AddThemeStyleboxOverride(
+            "hover",
+            CreateStyle("58301E", "E5BB65", 2)
+        );
+
+        // 클릭 상태
+        button.AddThemeStyleboxOverride(
+            "pressed",
+            CreateStyle("84291F", "F3CE80", 2)
+        );
+
+        // 건축 불가능 상태
+        button.AddThemeStyleboxOverride(
+            "disabled",
+            CreateStyle("211B17", "514333", 1)
+        );
+
+        // 포커스 테두리 제거
+        button.AddThemeStyleboxOverride(
+            "focus", new StyleBoxEmpty()
+        );
+
+        // 글자 색상
+        button.AddThemeColorOverride(
+            "font_color", new Color("E8D3A6"));
+
+        button.AddThemeColorOverride(
+            "font_hover_color", new Color("FFE3A0"));
+
+        button.AddThemeColorOverride(
+            "font_pressed_color", new Color("FFF0C4"));
+
+        button.AddThemeColorOverride(
+            "font_disabled_color", new Color("756B5E"));
+    }    
+
+private void ApplyBuildingButtonEffect(Button button)
+{
+    const float normalOpacity = 0.8f;
+    const float hoverOpacity = 1.0f;
+    const float pressedOpacity = 0.6f;
+    const float disabledOpacity = 0.3f;
+
+    void SetOpacity(float opacity)
+    {
+        button.Modulate = new Color(1, 1, 1, opacity);
+    }
+
+    // 초기 상태
+    SetOpacity(
+        button.Disabled ? disabledOpacity : normalOpacity);
+
+    // 마우스 진입
+    button.MouseEntered += () =>
+    {
+        if (!button.Disabled)
+            SetOpacity(hoverOpacity);
+    };
+
+    // 마우스 이탈
+    button.MouseExited += () =>
+    {
+        SetOpacity(
+            button.Disabled ? disabledOpacity : normalOpacity);
+    };
+
+    // 마우스 클릭
+    button.ButtonDown += () =>
+    {
+        if (!button.Disabled)
+            SetOpacity(pressedOpacity);
+    };
+
+    // 마우스 클릭 해제
+    button.ButtonUp += () =>
+    {
+        if (button.Disabled)
+        {
+            SetOpacity(disabledOpacity);
+            return;
+        }
+
+        bool hovered = button.GetGlobalRect().HasPoint(
+            button.GetGlobalMousePosition());
+
+        SetOpacity(
+            hovered ? hoverOpacity : normalOpacity);
+    };
+}
 
     private static string FieldBuildingDescription(FieldBuildingDefinition definition) => definition.Kind switch
     {
