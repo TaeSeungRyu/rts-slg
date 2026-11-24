@@ -11563,9 +11563,14 @@ private void ApplyBuildingButtonEffect(Button button)
         if (_modalLayer is not null) { FadeOutModal(_modalLayer); _modalLayer = null; }
         var vp = GetViewport().GetVisibleRect().Size;
         var mw = Mathf.Clamp(vp.X * 0.3f, 300f, 420f);
-        var mh = Mathf.Clamp(vp.Y * 0.6f, 260f, 520f);
-        var box = DeployScaffold(mw, out var scroll, out var panel);
-        panel.Name = "SystemPalettePanel";
+        var mh = Mathf.Clamp(vp.Y * 0.65f, 260f, 620f);
+        // var box = DeployScaffold(mw, out var scroll, out var panel);
+        // panel.Name = "SystemPalettePanel";
+var box = DeployScaffold(mw, out var scroll, out var panel);
+panel.Name = "SystemPalettePanel";
+
+// 공통 금색 테두리 및 배경 적용
+ApplyUnitMenuFrame(panel);        
 
         var titleRow = new HBoxContainer();
         box.AddChild(titleRow);
