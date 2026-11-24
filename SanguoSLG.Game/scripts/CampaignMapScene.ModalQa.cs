@@ -290,6 +290,10 @@ public sealed partial class CampaignMapScene
             && _terrainCard.FindChild("TerrainInfoHeader", true, false) is HBoxContainer
             && _terrainCard.FindChild("TerrainIconPreview", true, false) is SubViewportContainer
             && _terrainCard.FindChild("TerrainInfoBody", true, false) is PanelContainer
+            && _terrainCard.FindChild("TerrainInfoOrnateFrame", true, false) is NinePatchRect terrainFrame
+            && terrainFrame.Texture is not null
+            && terrainFrame.DrawCenter == false
+            && terrainFrame.MouseFilter == Control.MouseFilterEnum.Ignore
             && _terrainViewport.TransparentBg
             && terrainValueLabels.All(label => label.AutowrapMode == TextServer.AutowrapMode.Word)
             && terrainKeyLabels.All(label => label!.GetThemeColor("font_color").A >= 0.89f)

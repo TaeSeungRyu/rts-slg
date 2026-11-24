@@ -6311,15 +6311,42 @@ public sealed partial class CampaignMapScene : Node3D
             ZIndex = 60,
             MouseFilter = Control.MouseFilterEnum.Stop,
         };
+        // 내부 암색 배경만 유지하고 기존 코드형 외곽선은 제거한다.
         _terrainCard.AddThemeStyleboxOverride("panel", GameUiSkin.FlatBox(
-            new Color("160d0b", 0.96f), GameUiSkin.Gold, 2, 9, 11));
+            new Color("160d0b", 0.96f), Colors.Transparent, 0, 9, 0));
         _terrainCard.TextureFilter = CanvasItem.TextureFilterEnum.LinearWithMipmaps;
         layer.AddChild(_terrainCard);
+
+        var contentMargin = new MarginContainer
+        {
+            Name = "TerrainInfoContentMargin",
+            MouseFilter = Control.MouseFilterEnum.Pass,
+        };
+        // 원본 프레임의 굵은 금장 모서리 안쪽에 콘텐츠가 들어가도록 안전 여백을 둔다.
+        contentMargin.AddThemeConstantOverride("margin_left", 56);
+        contentMargin.AddThemeConstantOverride("margin_top", 50);
+        contentMargin.AddThemeConstantOverride("margin_right", 56);
+        contentMargin.AddThemeConstantOverride("margin_bottom", 50);
+        _terrainCard.AddChild(contentMargin);
 
         var box = new VBoxContainer { CustomMinimumSize = new Vector2(288, 0) };
         box.SetMeta("expanded_info_palette_width", 288);
         box.AddThemeConstantOverride("separation", 6);
-        _terrainCard.AddChild(box);
+        contentMargin.AddChild(box);
+
+        var terrainFrame = new NinePatchRect
+        {
+            Name = "TerrainInfoOrnateFrame",
+            Texture = GD.Load<Texture2D>("res://assets/ui/game/terrain/terrain_info_frame.png"),
+            PatchMarginLeft = 54,
+            PatchMarginTop = 48,
+            PatchMarginRight = 54,
+            PatchMarginBottom = 48,
+            DrawCenter = false,
+            MouseFilter = Control.MouseFilterEnum.Ignore,
+            ZIndex = 10,
+        };
+        _terrainCard.AddChild(terrainFrame);
 
         var header = new HBoxContainer
         {
