@@ -22291,18 +22291,46 @@ ApplyUnitMenuFrame(_reportPanel);
         var margin = 10f;
         var mw = Mathf.Max(480f, vp.X - margin * 2f - 28f);
         var mh = Mathf.Max(360f, vp.Y - margin * 2f - 28f);
-        var box = DeployScaffold(mw, out var scroll, out var panel);
-        scroll.RemoveChild(box);
-        panel.RemoveChild(scroll);
-        scroll.QueueFree();
-        box.Name = "FullReportLayout";
-        box.SizeFlagsVertical = Control.SizeFlags.ExpandFill;
-        panel.AddChild(box);
-        panel.SetAnchorsPreset(Control.LayoutPreset.FullRect);
-        panel.OffsetLeft = margin;
-        panel.OffsetTop = margin;
-        panel.OffsetRight = -margin;
-        panel.OffsetBottom = -margin;
+
+var box = DeployScaffold(mw, out var scroll, out var panel);
+
+scroll.RemoveChild(box);
+panel.RemoveChild(scroll);
+scroll.QueueFree();
+
+box.Name = "FullReportLayout";
+box.SizeFlagsVertical = Control.SizeFlags.ExpandFill;
+
+panel.AddChild(box);
+
+// 전체 화면 크기 및 외부 여백
+panel.SetAnchorsPreset(Control.LayoutPreset.FullRect);
+
+panel.OffsetLeft = margin;
+panel.OffsetTop = margin;
+panel.OffsetRight = -margin;
+panel.OffsetBottom = -margin;
+
+// 공통 금색 테두리 및 배경 적용
+ApplyUnitMenuFrame(panel);
+
+
+        // var box = DeployScaffold(mw, out var scroll, out var panel);
+        // scroll.RemoveChild(box);
+        // panel.RemoveChild(scroll);
+        // scroll.QueueFree();
+        // box.Name = "FullReportLayout";
+        // box.SizeFlagsVertical = Control.SizeFlags.ExpandFill;
+        // panel.AddChild(box);
+        // panel.SetAnchorsPreset(Control.LayoutPreset.FullRect);
+        // panel.OffsetLeft = margin;
+        // panel.OffsetTop = margin;
+        // panel.OffsetRight = -margin;
+        // panel.OffsetBottom = -margin;
+
+
+
+
 
         var titleRow = new HBoxContainer { Name = "FullReportHeader" };
         titleRow.SetMeta("fixed_report_header", true);
