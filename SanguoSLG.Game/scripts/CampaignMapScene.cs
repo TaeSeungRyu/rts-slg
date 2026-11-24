@@ -737,7 +737,12 @@ public sealed partial class CampaignMapScene : Node3D
                 .ToList(),
             RuinDefinitions = _aiTestFixture?.Ruins ?? scenario.RuinList,
             RuinStates = (_aiTestFixture?.Ruins ?? scenario.RuinList)
-                .Select(r => new RuinState(r.Id, r.MaxDefenders)).ToList(),
+                .Select(r => new RuinState(r.Id, r.MaxDefenders,
+                    RegisteredFactions: (scenario.InitialResearch ?? [])
+                        .Where(research => research.Level > 0 && research.TroopCode == r.TroopCode)
+                        .Select(research => research.Faction).Distinct().ToArray())).ToList(),
+            ResearchTracks = scenario.InitialResearch ?? [],
+            MajorTroopSelections = scenario.InitialMajorTroops ?? [],
             MapPresetSnapshot = _scenarioOverride?.MapPreset?.Snapshot()
                 ?? _aiTestFixture?.MapPreset?.Snapshot() ?? _initial.MapPresetSnapshot,
             ScenarioTitle = _scenarioOverride is null ? null : _scenarioTitle,
