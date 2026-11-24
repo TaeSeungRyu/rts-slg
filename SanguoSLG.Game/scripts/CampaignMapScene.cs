@@ -6310,6 +6310,7 @@ private void BuildTerrainCard(CanvasLayer layer)
         Visible = false,
         ZIndex = 60,
         MouseFilter = Control.MouseFilterEnum.Stop,
+        ClipContents = true, // 추가
     };
 
     // ========================================
@@ -6318,10 +6319,10 @@ private void BuildTerrainCard(CanvasLayer layer)
 _terrainCard.AddThemeStyleboxOverride("panel", new StyleBoxFlat
 {
     BgColor = new Color("160d0b", 0.96f),
-    CornerRadiusTopLeft = 8,
-    CornerRadiusTopRight = 8,
-    CornerRadiusBottomLeft = 8,
-    CornerRadiusBottomRight = 8,
+    CornerRadiusTopLeft = 12,
+    CornerRadiusTopRight = 12,
+    CornerRadiusBottomLeft = 12,
+    CornerRadiusBottomRight = 12,
     CornerDetail = 8,
 });
 
