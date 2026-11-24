@@ -21544,6 +21544,7 @@ var rootBox = box;
             MouseFilter = Control.MouseFilterEnum.Ignore,
         };
         panel.AddChild(background);
+        
 
         var padding = new MarginContainer
         {
@@ -22153,13 +22154,37 @@ var rootBox = box;
         // 좌하단 고정 크기 패널 — 내용이 늘어도 패널 자체는 커지지 않는다(리사이즈로 위치가 튀던 문제
         // 방지). 이전 내용은 내부 ScrollContainer로 스크롤해서 본다.
         const float panelW = 340f, panelH = 200f;
-        _reportPanel = new PanelContainer { Visible = true };
-        _reportPanel.AddThemeStyleboxOverride("panel", Frame(new Color(Ink, 0.98f), Gold, 2, 8, 9));
-        _reportPanel.AnchorLeft = 0f; _reportPanel.AnchorRight = 0f;
-        _reportPanel.AnchorTop = 1f; _reportPanel.AnchorBottom = 1f;
-        _reportPanel.OffsetLeft = 12f; _reportPanel.OffsetRight = 12f + panelW;
-        _reportPanel.OffsetTop = -(panelH + 12f); _reportPanel.OffsetBottom = -12f;
-        layer.AddChild(_reportPanel);
+
+
+        // _reportPanel = new PanelContainer { Visible = true };
+        // _reportPanel.AddThemeStyleboxOverride("panel", Frame(new Color(Ink, 0.98f), Gold, 2, 8, 9));
+        // _reportPanel.AnchorLeft = 0f; _reportPanel.AnchorRight = 0f;
+        // _reportPanel.AnchorTop = 1f; _reportPanel.AnchorBottom = 1f;
+        // _reportPanel.OffsetLeft = 12f; _reportPanel.OffsetRight = 12f + panelW;
+        // _reportPanel.OffsetTop = -(panelH + 12f); _reportPanel.OffsetBottom = -12f;
+        // layer.AddChild(_reportPanel);
+
+_reportPanel = new PanelContainer
+{
+    Visible = true,
+};
+
+_reportPanel.AnchorLeft = 0f;
+_reportPanel.AnchorRight = 0f;
+_reportPanel.AnchorTop = 1f;
+_reportPanel.AnchorBottom = 1f;
+
+_reportPanel.OffsetLeft = 12f;
+_reportPanel.OffsetRight = 12f + panelW;
+_reportPanel.OffsetTop = -(panelH + 12f);
+_reportPanel.OffsetBottom = -12f;
+
+layer.AddChild(_reportPanel);
+
+// 공통 금색 테두리 및 배경 적용
+ApplyUnitMenuFrame(_reportPanel);
+
+
 
         var v = new VBoxContainer();
         v.AddThemeConstantOverride("separation", 2);
