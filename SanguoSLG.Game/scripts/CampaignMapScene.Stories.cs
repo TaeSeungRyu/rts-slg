@@ -191,12 +191,29 @@ public sealed partial class CampaignMapScene
             if (e is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left }) CloseStoryModal();
         };
         layer.AddChild(backdrop);
-        var panel = new PanelContainer { MouseFilter = Control.MouseFilterEnum.Stop };
-        panel.AddThemeStyleboxOverride("panel", Frame(Ink, Gold, 2, 10, 12));
-        panel.AnchorLeft = 0.14f; panel.AnchorRight = 0.86f;
-        panel.AnchorTop = 0.67f; panel.AnchorBottom = 0.98f;
-        panel.ClipContents = true;
-        layer.AddChild(panel);
+
+
+
+
+var panel = new PanelContainer
+{
+    MouseFilter = Control.MouseFilterEnum.Stop,
+    ClipContents = true,
+};
+
+panel.AnchorLeft = 0.14f;
+panel.AnchorRight = 0.86f;
+panel.AnchorTop = 0.67f;
+panel.AnchorBottom = 0.98f;
+
+layer.AddChild(panel);
+
+// 공통 금색 테두리 및 배경 적용
+ApplyUnitMenuFrame(panel);
+
+
+
+
         var frame = new VBoxContainer { SizeFlagsVertical = Control.SizeFlags.ExpandFill };
         panel.AddChild(frame);
         var heading = new HBoxContainer();
@@ -352,6 +369,9 @@ public sealed partial class CampaignMapScene
             else AddStoryChoices(actions, story, line);
         }
     }
+
+
+    
 
     private void CloseStoryModal()
     {
