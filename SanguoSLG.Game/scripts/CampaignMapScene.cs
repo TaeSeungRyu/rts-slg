@@ -12455,6 +12455,7 @@ private void ApplyBuildingButtonEffect(Button button)
         return output;
     }
 
+
     private void OpenGeneralDetail(
         GeneralId gid,
         CityId backCity,
@@ -12468,8 +12469,14 @@ private void ApplyBuildingButtonEffect(Button button)
         var portraitHeight = mh - 50f;
         var portraitWidth = mw * 0.54f;
         var detailWidth = mw - portraitWidth - 18f;
-        var box = DeployScaffold(mw, out var scroll, out var panel);
-        var rootBox = box;
+
+var box = DeployScaffold(mw, out var scroll, out var panel);
+
+// 공통 금색 테두리 적용
+ApplyUnitMenuFrame(panel);
+
+var rootBox = box;
+
         var g = _state.Generals.First(x => x.Id == gid);
         _modalDismissAction = dismissAction;
 
@@ -12722,6 +12729,7 @@ private void ApplyBuildingButtonEffect(Button button)
         scroll.CustomMinimumSize = new Vector2(mw, Mathf.Min(contentH, mh));
         CenterAndDrag(panel, titleRow, mw, mh, rootBox);
     }
+
 
     private async void RunProductionCenterQa()
     {
