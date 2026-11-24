@@ -6302,137 +6302,301 @@ public sealed partial class CampaignMapScene : Node3D
     }
 
     // 지형 정보 카드: 상단 = 지형 3D 에셋 미리보기 + 한글 이름, 하단 = 이동·전투 보정.
-    private void BuildTerrainCard(CanvasLayer layer)
+private void BuildTerrainCard(CanvasLayer layer)
+{
+    _terrainCard = new PanelContainer
     {
-        _terrainCard = new PanelContainer
-        {
-            Name = "TerrainInfoPalette",
-            Visible = false,
-            ZIndex = 60,
-            MouseFilter = Control.MouseFilterEnum.Stop,
-        };
-        // 내부 암색 배경만 유지하고 기존 코드형 외곽선은 제거한다.
-        _terrainCard.AddThemeStyleboxOverride("panel", GameUiSkin.FlatBox(
-            new Color("160d0b", 0.96f), Colors.Transparent, 0, 9, 0));
-        _terrainCard.TextureFilter = CanvasItem.TextureFilterEnum.LinearWithMipmaps;
-        layer.AddChild(_terrainCard);
+        Name = "TerrainInfoPalette",
+        Visible = false,
+        ZIndex = 60,
+        MouseFilter = Control.MouseFilterEnum.Stop,
+    };
 
-        var contentMargin = new MarginContainer
-        {
-            Name = "TerrainInfoContentMargin",
-            MouseFilter = Control.MouseFilterEnum.Pass,
-        };
-        // 원본 프레임의 굵은 금장 모서리 안쪽에 콘텐츠가 들어가도록 안전 여백을 둔다.
-        contentMargin.AddThemeConstantOverride("margin_left", 56);
-        contentMargin.AddThemeConstantOverride("margin_top", 50);
-        contentMargin.AddThemeConstantOverride("margin_right", 56);
-        contentMargin.AddThemeConstantOverride("margin_bottom", 50);
-        _terrainCard.AddChild(contentMargin);
+    // ========================================
+    // 1. 모달 내부 배경 및 모서리
+    // ========================================
+_terrainCard.AddThemeStyleboxOverride("panel", new StyleBoxFlat
+{
+    BgColor = new Color("160d0b", 0.96f),
+    CornerRadiusTopLeft = 8,
+    CornerRadiusTopRight = 8,
+    CornerRadiusBottomLeft = 8,
+    CornerRadiusBottomRight = 8,
+    CornerDetail = 8,
+});
 
-        var box = new VBoxContainer { CustomMinimumSize = new Vector2(288, 0) };
-        box.SetMeta("expanded_info_palette_width", 288);
-        box.AddThemeConstantOverride("separation", 6);
-        contentMargin.AddChild(box);
+    _terrainCard.TextureFilter =
+        CanvasItem.TextureFilterEnum.LinearWithMipmaps;
 
-        var terrainFrame = new NinePatchRect
-        {
-            Name = "TerrainInfoOrnateFrame",
-            Texture = GD.Load<Texture2D>("res://assets/ui/game/terrain/terrain_info_frame.png"),
-            PatchMarginLeft = 54,
-            PatchMarginTop = 48,
-            PatchMarginRight = 54,
-            PatchMarginBottom = 48,
-            DrawCenter = false,
-            MouseFilter = Control.MouseFilterEnum.Ignore,
-            ZIndex = 10,
-        };
-        _terrainCard.AddChild(terrainFrame);
+    layer.AddChild(_terrainCard);
 
-        var header = new HBoxContainer
-        {
-            Name = "TerrainInfoHeader",
-            CustomMinimumSize = new Vector2(0, 68),
-            MouseFilter = Control.MouseFilterEnum.Ignore,
-        };
-        header.AddThemeConstantOverride("separation", 10);
-        box.AddChild(header);
+    // ========================================
+    // 2. 콘텐츠 내부 여백
+    // ========================================
+    var contentMargin = new MarginContainer
+    {
+        Name = "TerrainInfoContentMargin",
+        MouseFilter = Control.MouseFilterEnum.Pass,
+    };
 
-        // 기존 3D 지형 에셋을 아이콘처럼 재사용한다. 별도 PNG가 없어도 원본 지형을 식별할 수 있다.
-        var svc = new SubViewportContainer
-        {
-            Name = "TerrainIconPreview",
-            Stretch = true,
-            CustomMinimumSize = new Vector2(86, 64),
-            MouseFilter = Control.MouseFilterEnum.Ignore,
-            SizeFlagsVertical = Control.SizeFlags.ShrinkCenter,
-        };
-        header.AddChild(svc);
-        var titleStack = new VBoxContainer
-        {
-            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
-            SizeFlagsVertical = Control.SizeFlags.ShrinkCenter,
-            MouseFilter = Control.MouseFilterEnum.Ignore,
-        };
-        titleStack.AddThemeConstantOverride("separation", 2);
-        header.AddChild(titleStack);
-        var eyebrow = MakeLabel("지형 정보", 11, new Color(GameUiSkin.Ivory, 0.66f));
-        eyebrow.MouseFilter = Control.MouseFilterEnum.Ignore;
-        titleStack.AddChild(eyebrow);
-        _terrainName = MakeLabel("", 17, GoldBright);
-        _terrainName.TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis;
-        _terrainName.MouseFilter = Control.MouseFilterEnum.Ignore;
-        titleStack.AddChild(_terrainName);
+contentMargin.AddThemeConstantOverride("margin_left", 14);
+contentMargin.AddThemeConstantOverride("margin_top", 14);
+contentMargin.AddThemeConstantOverride("margin_right", 14);
+contentMargin.AddThemeConstantOverride("margin_bottom", 14);
 
-        var close = MakeButton("✕");
-        close.CustomMinimumSize = new Vector2(26, 24);
-        close.SizeFlagsVertical = Control.SizeFlags.ShrinkBegin;
-        close.AddThemeFontSizeOverride("font_size", 11);
-        close.Pressed += () =>
-        {
-            _terrainCard.Visible = false;
-            _terrainHex = null;
-        };
-        header.AddChild(close);
+    _terrainCard.AddChild(contentMargin);
 
-        _terrainViewport = new SubViewport
-        {
-            Size = new Vector2I(172, 128),
-            TransparentBg = true,
-            RenderTargetUpdateMode = SubViewport.UpdateMode.Always,
-            OwnWorld3D = true, // 자체 3D 월드 — 없으면 메인 씬 월드를 봐 빈 화면이 된다
-        };
-        svc.AddChild(_terrainViewport);
-        _terrainViewport.AddChild(new WorldEnvironment
-        {
-            Environment = new Godot.Environment
-            {
-                BackgroundMode = Godot.Environment.BGMode.Color,
-                BackgroundColor = new Color(0f, 0f, 0f, 0f),
-                AmbientLightSource = Godot.Environment.AmbientSource.Color,
-                AmbientLightColor = new Color(0.78f, 0.78f, 0.82f),
-                AmbientLightEnergy = 0.9f,
-            },
-        });
-        _terrainCam = new Camera3D { Fov = 40f, Current = true };
-        _terrainViewport.AddChild(_terrainCam); // LookAt은 트리에 들어간 뒤에만 가능
-        _terrainCam.Position = new Vector3(0f, 1.7f, 2.1f);
-        _terrainCam.LookAt(new Vector3(0f, 0.15f, 0f), Vector3.Up);
-        var key = new DirectionalLight3D { LightEnergy = 1.4f };
-        key.RotationDegrees = new Vector3(-55f, -35f, 0f);
-        _terrainViewport.AddChild(key);
-        _terrainHolder = new Node3D();
-        _terrainViewport.AddChild(_terrainHolder);
+    // ========================================
+    // 3. 콘텐츠 전체 크기
+    // ========================================
+    var box = new VBoxContainer
+    {
+        CustomMinimumSize = new Vector2(288, 0),
+    };
 
-        box.AddChild(GoldRule());
-        var infoFrame = new PanelContainer { Name = "TerrainInfoBody" };
-        infoFrame.AddThemeStyleboxOverride("panel", GameUiSkin.FlatBox(
-            new Color("241411", 0.72f), new Color(GameUiSkin.Bronze, 0.66f), 1, 6, 7));
-        box.AddChild(infoFrame);
-        _terrainInfo = new VBoxContainer { MouseFilter = Control.MouseFilterEnum.Pass };
-        _terrainInfo.AddThemeConstantOverride("separation", 3);
-        infoFrame.AddChild(_terrainInfo);
-    }
+    box.SetMeta("expanded_info_palette_width", 288);
+    box.AddThemeConstantOverride("separation", 6);
 
+    contentMargin.AddChild(box);
+
+    // ========================================
+    // 4. 금색 외곽 테두리 이미지
+    // ========================================
+    // var terrainFrame = new NinePatchRect
+    // {
+    //     Name = "TerrainInfoOrnateFrame",
+
+    //     Texture = GD.Load<Texture2D>(
+    //         "res://assets/ui/game/terrain/terrain_info_frame.png"),
+
+    //     PatchMarginLeft = 24,
+    //     PatchMarginTop = 24,
+    //     PatchMarginRight = 24,
+    //     PatchMarginBottom = 24,
+
+    //     DrawCenter = false,
+
+    //     MouseFilter = Control.MouseFilterEnum.Ignore,
+    //     ZIndex = 10,
+    // };
+
+    // _terrainCard.AddChild(terrainFrame);
+
+
+var frameTexture = GD.Load<Texture2D>(
+    "res://assets/ui/game/terrain/terrain_info_frame.png"
+);
+
+// 원본 이미지 축소
+var frameImage = frameTexture.GetImage();
+
+const float frameScale = 0.15f;
+
+frameImage.Resize(
+    Mathf.Max(1, Mathf.RoundToInt(frameImage.GetWidth() * frameScale)),
+    Mathf.Max(1, Mathf.RoundToInt(frameImage.GetHeight() * frameScale)),
+    Image.Interpolation.Lanczos
+);
+
+var resizedTexture = ImageTexture.CreateFromImage(frameImage);
+
+var terrainFrame = new NinePatchRect
+{
+    Name = "TerrainInfoOrnateFrame",
+
+    Texture = resizedTexture,
+
+    PatchMarginLeft = 28,
+    PatchMarginTop = 28,
+    PatchMarginRight = 28,
+    PatchMarginBottom = 28,
+
+    DrawCenter = false,
+
+    SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+    SizeFlagsVertical = Control.SizeFlags.ExpandFill,
+
+    TextureFilter = CanvasItem.TextureFilterEnum.Linear,
+
+    MouseFilter = Control.MouseFilterEnum.Ignore,
+
+    ZIndex = 10,
+};
+
+_terrainCard.AddChild(terrainFrame);    
+
+    // ========================================
+    // 5. 헤더 영역
+    // ========================================
+    var header = new HBoxContainer
+    {
+        Name = "TerrainInfoHeader",
+        CustomMinimumSize = new Vector2(0, 68),
+        MouseFilter = Control.MouseFilterEnum.Ignore,
+    };
+
+    header.AddThemeConstantOverride("separation", 10);
+
+    box.AddChild(header);
+
+    // ========================================
+    // 6. 지형 3D 아이콘
+    // ========================================
+    var svc = new SubViewportContainer
+    {
+        Name = "TerrainIconPreview",
+        Stretch = true,
+        CustomMinimumSize = new Vector2(86, 64),
+        MouseFilter = Control.MouseFilterEnum.Ignore,
+        SizeFlagsVertical = Control.SizeFlags.ShrinkCenter,
+    };
+
+    header.AddChild(svc);
+
+    // ========================================
+    // 7. 지형 정보 제목
+    // ========================================
+    var titleStack = new VBoxContainer
+    {
+        SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+        SizeFlagsVertical = Control.SizeFlags.ShrinkCenter,
+        MouseFilter = Control.MouseFilterEnum.Ignore,
+    };
+
+    titleStack.AddThemeConstantOverride("separation", 2);
+
+    header.AddChild(titleStack);
+
+    var eyebrow = MakeLabel(
+        "지형 정보",
+        11,
+        new Color(GameUiSkin.Ivory, 0.66f)
+    );
+
+    eyebrow.MouseFilter = Control.MouseFilterEnum.Ignore;
+
+    titleStack.AddChild(eyebrow);
+
+    _terrainName = MakeLabel("", 17, GoldBright);
+
+    _terrainName.TextOverrunBehavior =
+        TextServer.OverrunBehavior.TrimEllipsis;
+
+    _terrainName.MouseFilter =
+        Control.MouseFilterEnum.Ignore;
+
+    titleStack.AddChild(_terrainName);
+
+    // ========================================
+    // 8. 닫기 버튼
+    // ========================================
+    var close = MakeButton("✕");
+
+    close.CustomMinimumSize = new Vector2(26, 24);
+    close.SizeFlagsVertical = Control.SizeFlags.ShrinkBegin;
+    close.AddThemeFontSizeOverride("font_size", 11);
+
+    close.Pressed += () =>
+    {
+        _terrainCard.Visible = false;
+        _terrainHex = null;
+    };
+
+    header.AddChild(close);
+
+    // ========================================
+    // 9. 지형 3D 렌더링
+    // ========================================
+    _terrainViewport = new SubViewport
+    {
+        Size = new Vector2I(172, 128),
+        TransparentBg = true,
+        RenderTargetUpdateMode = SubViewport.UpdateMode.Always,
+        OwnWorld3D = true,
+    };
+
+    svc.AddChild(_terrainViewport);
+
+    _terrainViewport.AddChild(new WorldEnvironment
+    {
+        Environment = new Godot.Environment
+        {
+            BackgroundMode = Godot.Environment.BGMode.Color,
+            BackgroundColor = new Color(0f, 0f, 0f, 0f),
+
+            AmbientLightSource =
+                Godot.Environment.AmbientSource.Color,
+
+            AmbientLightColor =
+                new Color(0.78f, 0.78f, 0.82f),
+
+            AmbientLightEnergy = 0.9f,
+        },
+    });
+
+    _terrainCam = new Camera3D
+    {
+        Fov = 40f,
+        Current = true,
+    };
+
+    _terrainViewport.AddChild(_terrainCam);
+
+    _terrainCam.Position = new Vector3(0f, 1.7f, 2.1f);
+
+    _terrainCam.LookAt(
+        new Vector3(0f, 0.15f, 0f),
+        Vector3.Up
+    );
+
+    var key = new DirectionalLight3D
+    {
+        LightEnergy = 1.4f,
+    };
+
+    key.RotationDegrees = new Vector3(-55f, -35f, 0f);
+
+    _terrainViewport.AddChild(key);
+
+    _terrainHolder = new Node3D();
+
+    _terrainViewport.AddChild(_terrainHolder);
+
+    // ========================================
+    // 10. 헤더 하단 구분선
+    // ========================================
+    box.AddChild(GoldRule());
+
+    // ========================================
+    // 11. 지형 상세 정보 영역
+    // ========================================
+    var infoFrame = new PanelContainer
+    {
+        Name = "TerrainInfoBody",
+    };
+
+    infoFrame.AddThemeStyleboxOverride(
+        "panel",
+        GameUiSkin.FlatBox(
+            new Color("241411", 0.72f),
+            new Color(GameUiSkin.Bronze, 0.66f),
+            1,
+            6,
+            7
+        )
+    );
+
+    box.AddChild(infoFrame);
+
+    _terrainInfo = new VBoxContainer
+    {
+        MouseFilter = Control.MouseFilterEnum.Pass,
+    };
+
+    _terrainInfo.AddThemeConstantOverride("separation", 3);
+
+    infoFrame.AddChild(_terrainInfo);
+}
     // 유닛 명령 팔레트 — 성 팔레트와 같은 개념(작은 떠있는 패널). 지금은 '정보'만 동작하고
     // 이동(행군/전진/공격)·계략은 모양만(기능 미배선).
     private void BuildUnitMenu(CanvasLayer layer)
