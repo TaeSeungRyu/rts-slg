@@ -13486,8 +13486,12 @@ var rootBox = box;
         var vp = GetViewport().GetVisibleRect().Size;
         var mw = Mathf.Clamp(vp.X * 0.46f, 440f, 680f);
         var mh = Mathf.Clamp(vp.Y * 0.78f, 360f, 720f);
-        var box = DeployScaffold(mw, out var scroll, out var panel);
-        if (_modalLayer is not null) { _modalLayer.Name = "ExplorationResultsModal"; }
+var box = DeployScaffold(mw, out var scroll, out var panel);
+
+// 공통 금색 테두리 및 배경 적용
+ApplyUnitMenuFrame(panel);
+
+if (_modalLayer is not null) { _modalLayer.Name = "ExplorationResultsModal"; }
         var titleRow = new HBoxContainer();
         box.AddChild(titleRow);
         var title = MakeLabel($"탐색 결과  {results.Count}건", 19, Gold);
