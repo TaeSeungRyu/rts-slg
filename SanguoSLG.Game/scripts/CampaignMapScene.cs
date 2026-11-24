@@ -6603,7 +6603,8 @@ _terrainCard.AddChild(terrainFrame);
     private void BuildUnitMenu(CanvasLayer layer)
     {
         _unitChoiceMenu = new PanelContainer { Visible = false, ZIndex = 51 };
-        _unitChoiceMenu.AddThemeStyleboxOverride("panel", Frame(Ink, Gold, 2, 5, 4));
+        //_unitChoiceMenu.AddThemeStyleboxOverride("panel", Frame(Ink, Gold, 2, 5, 4));
+        ApplyUnitMenuFrame(_unitChoiceMenu);
         layer.AddChild(_unitChoiceMenu);
         var choiceBox = new VBoxContainer();
         choiceBox.AddThemeConstantOverride("separation", 4);
@@ -6614,7 +6615,12 @@ _terrainCard.AddChild(terrainFrame);
         _unitChoiceRows.AddThemeConstantOverride("separation", 3);
         choiceBox.AddChild(_unitChoiceRows);
         _unitMenu = new PanelContainer { Visible = false, ZIndex = 50 };
-        _unitMenu.AddThemeStyleboxOverride("panel", Frame(Ink, Gold, 2, 5, 4));
+
+
+        //_unitMenu.AddThemeStyleboxOverride("panel", Frame(Ink, Gold, 2, 5, 4));
+        ApplyUnitMenuFrame(_unitMenu);
+
+
         layer.AddChild(_unitMenu);
         var menu = new VBoxContainer();
         menu.AddThemeConstantOverride("separation", 1);
@@ -6697,6 +6703,112 @@ _terrainCard.AddChild(terrainFrame);
         _summonUnitButton.Pressed += OpenSummonModal;
         _unitCmdBox.AddChild(_summonUnitButton);
 
+    }
+
+
+    private void ApplyUnitMenuFrame(PanelContainer panel)
+    {
+        // ========================================
+        // 디자인 설정
+        // ========================================
+        const float frameScale = 0.15f;
+        const int patchMargin = 28;
+        const int contentPadding = 10;
+        const int cornerRadius = 12;
+
+        // ========================================
+        // 내부 배경
+        // ========================================
+        panel.ClipContents = true;
+
+        panel.AddThemeStyleboxOverride("panel", new StyleBoxFlat
+        {
+            BgColor = new Color("160d0b", 0.96f),
+
+            CornerRadiusTopLeft = cornerRadius,
+            CornerRadiusTopRight = cornerRadius,
+            CornerRadiusBottomLeft = cornerRadius,
+            CornerRadiusBottomRight = cornerRadius,
+
+            CornerDetail = 16,
+
+            ContentMarginLeft = contentPadding,
+            ContentMarginTop = contentPadding,
+            ContentMarginRight = contentPadding,
+            ContentMarginBottom = contentPadding,
+
+            // 배경을 안쪽으로 3px 축소
+            ExpandMarginLeft = -3,
+            ExpandMarginTop = -3,
+            ExpandMarginRight = -3,
+            ExpandMarginBottom = -3,            
+        });
+
+        // ========================================
+        // 테두리 이미지 로드 및 축소
+        // ========================================
+        var frameTexture = GD.Load<Texture2D>(
+            "res://assets/ui/game/terrain/terrain_info_frame.png"
+        );
+
+        var frameImage = frameTexture.GetImage();
+
+        frameImage.Resize(
+            Mathf.Max(1, Mathf.RoundToInt(
+                frameImage.GetWidth() * frameScale)),
+            Mathf.Max(1, Mathf.RoundToInt(
+                frameImage.GetHeight() * frameScale)),
+            Image.Interpolation.Lanczos
+        );
+
+        var resizedTexture =
+            ImageTexture.CreateFromImage(frameImage);
+
+        // ========================================
+        // 금색 외곽 테두리
+        // ========================================
+        var terrainFrame = new NinePatchRect
+        {
+            Name = "UnitMenuOrnateFrame",
+
+            Texture = resizedTexture,
+
+            PatchMarginLeft = patchMargin,
+            PatchMarginTop = patchMargin,
+            PatchMarginRight = patchMargin,
+            PatchMarginBottom = patchMargin,
+
+            DrawCenter = false,
+
+            TextureFilter = CanvasItem.TextureFilterEnum.Linear,
+            MouseFilter = Control.MouseFilterEnum.Ignore,
+
+            ZIndex = 10,
+        };
+
+        // PanelContainer의 내부 여백에 영향을 받지 않도록
+        // 일반 Control을 통해 테두리를 배치
+        var frameOverlay = new Control
+        {
+            Name = "UnitMenuFrameOverlay",
+            MouseFilter = Control.MouseFilterEnum.Ignore,
+        };
+
+        panel.AddChild(frameOverlay);
+
+        frameOverlay.AddChild(terrainFrame);
+
+        void UpdateFrame()
+        {
+            terrainFrame.Position = -frameOverlay.Position;
+            terrainFrame.Size = panel.Size;
+        }
+
+        panel.Resized += UpdateFrame;
+        frameOverlay.Resized += UpdateFrame;
+        frameOverlay.ItemRectChanged += UpdateFrame;
+
+        UpdateFrame();
     }
 
     private void RunUnitMenuQa()
