@@ -6946,11 +6946,6 @@ _terrainCard.AddChild(terrainFrame);
         center.SetAnchorsPreset(Control.LayoutPreset.FullRect);
         layer.AddChild(center);
 
-
-        // var panel = new PanelContainer { MouseFilter = Control.MouseFilterEnum.Stop, CustomMinimumSize = new Vector2(720, 0) };
-        // panel.SetMeta("modal_root", true);
-        // panel.AddThemeStyleboxOverride("panel", Frame(Ink, Gold, 2, 10, 14));
-        // center.AddChild(panel);
         var panel = new PanelContainer
         {
             MouseFilter = Control.MouseFilterEnum.Stop,
@@ -7011,7 +7006,6 @@ int index = 0;
 foreach (var definition in _fieldBuildingDefinitions)
 {
     var selected = definition;
-
     // 5개마다 새로운 행 생성
     if (index % columns == 0)
     {
@@ -7020,10 +7014,8 @@ foreach (var definition in _fieldBuildingDefinitions)
             Alignment = BoxContainer.AlignmentMode.Center,
             SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
         };
-
         currentRow.AddThemeConstantOverride(
             "separation", horizontalGap);
-
         buildingList.AddChild(currentRow);
     }
 
@@ -7092,23 +7084,13 @@ foreach (var definition in _fieldBuildingDefinitions)
     // 건축 비용
     // ========================================
     var costLabel = MakeLabel(
-        $"금 {definition.GoldCost:N0}", 12, Parchment);
+        $"금 {definition.GoldCost:N0}({definition.BuildDays}일)", 11, Parchment);
 
     costLabel.HorizontalAlignment = HorizontalAlignment.Center;
     costLabel.MouseFilter = Control.MouseFilterEnum.Ignore;
 
     cardContent.AddChild(costLabel);
 
-    // ========================================
-    // 건축 기간
-    // ========================================
-    var daysLabel = MakeLabel(
-        $"{definition.BuildDays}일", 12, Parchment);
-
-    daysLabel.HorizontalAlignment = HorizontalAlignment.Center;
-    daysLabel.MouseFilter = Control.MouseFilterEnum.Ignore;
-
-    cardContent.AddChild(daysLabel);
 
     // ========================================
     // 기존 건축 조건 및 기능 유지
@@ -7133,21 +7115,6 @@ foreach (var definition in _fieldBuildingDefinitions)
 }
 
 
-        // var grid = new GridContainer { Columns = 5, SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
-        // grid.AddThemeConstantOverride("h_separation", 8);
-        // box.AddChild(grid);
-        // foreach (var definition in _fieldBuildingDefinitions)
-        // {
-        //     var selected = definition;
-        //     var card = MakeButton($"{definition.Name}\n금 {definition.GoldCost:N0}\n{definition.BuildDays}일");
-        //     card.CustomMinimumSize = new Vector2(128, 96);
-        //     card.TooltipText = FieldBuildingDescription(definition);
-        //     card.Disabled = unit.CarryingGold < definition.GoldCost
-        //         || unit.Provisions < definition.ProvisionsCost
-        //         || unit.Pool.Active - definition.TroopCost <= 0;
-        //     card.Pressed += () => BeginFieldBuildingPlacement(unit.Id.Value, selected.Code);
-        //     grid.AddChild(card);
-        // }
     }
 
     private void ApplyFieldBuildingCardStyle(Button button)
