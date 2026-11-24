@@ -11580,20 +11580,37 @@ ApplyUnitMenuFrame(panel);
         titleRow.AddChild(title);
         var close = MakeButton("✕");
         close.Name = "SystemPaletteClose";
-        close.CustomMinimumSize = new Vector2(40, 30);
+        close.CustomMinimumSize = new Vector2(30, 30);
         // 제목줄은 패널 드래그 핸들이기도 하므로 release 기반 Pressed 대신 down에서 즉시 닫는다.
         close.ButtonDown += CloseModal;
         titleRow.AddChild(close);
         box.AddChild(GoldRule());
+void Item(string label, System.Action open)
+{
+    var b = new CommandPaletteButton
+    {
+        Text = label,
+        ArtworkWidthScale = 1f, // 가로 너비 50% 증가
+    };
 
-        void Item(string label, System.Action open)
-        {
-            var b = MakeButton(label, accent: true);
-            b.AddThemeFontSizeOverride("font_size", 14);
-            b.CustomMinimumSize = new Vector2(0, 40);
-            b.Pressed += open;
-            box.AddChild(b);
-        }
+    b.AddThemeFontSizeOverride("font_size", 14);
+    b.CustomMinimumSize = new Vector2(0, 40);
+    b.Alignment = HorizontalAlignment.Center;
+
+    GameUiSkin.ApplyLongCommandArtwork(b);
+
+    b.Pressed += open;
+    box.AddChild(b);
+}
+
+        // void Item(string label, System.Action open)
+        // {
+        //     var b = MakeButton(label, accent: true);
+        //     b.AddThemeFontSizeOverride("font_size", 14);
+        //     b.CustomMinimumSize = new Vector2(0, 40);
+        //     b.Pressed += open;
+        //     box.AddChild(b);
+        // }
 
         Item("세력 기록", OpenFactionScoreboard);
         Item("군단편성", OpenArmyCorpsList);
@@ -11607,7 +11624,6 @@ ApplyUnitMenuFrame(panel);
         Item("게임 불러오기", OpenLoadSlotList);
         if (ScenarioStartMenu.CampaignStartedFromMenu)
         {
-            box.AddChild(GoldRule());
             Item("시작 화면으로", () =>
             {
                 CloseModal();

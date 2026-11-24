@@ -15,6 +15,8 @@ internal partial class CommandPaletteButton : Button
     private float _textRightRatio = 0.06f;
     private bool _fitArtworkWidth;
 
+    public float ArtworkWidthScale { get; set; } = 1.0f;
+
     internal void Configure(Texture2D normal, Texture2D active, Texture2D? disabled = null,
         float textLeftRatio = 0.30f, float textRightRatio = 0.06f, bool fitArtworkWidth = false)
     {
@@ -47,6 +49,7 @@ internal partial class CommandPaletteButton : Button
             ? (Size.X - 2f) / texture.GetWidth()
             : Mathf.Min((Size.X - 2f) / _normal.GetWidth(), (Size.Y - 2f) / referenceHeight);
         var drawSize = texture.GetSize() * scale;
+        drawSize.X *= ArtworkWidthScale;
         var rect = new Rect2((Size - drawSize) * 0.5f, drawSize);
         var imageColor = Disabled ? new Color(1f, 1f, 1f, 0.48f) : Colors.White;
         DrawTextureRect(texture, rect, false, imageColor);

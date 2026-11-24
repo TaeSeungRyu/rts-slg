@@ -141,6 +141,15 @@ internal static class GameUiSkin
         return null;
     }
 
+    internal static Texture2D? CommandLongTexture(string fileName)
+    {
+        var path = $"{Root}/buttons/{fileName}";
+        if (TryLoad(path, out var texture)) return texture;
+        WarnMissing($"command:{fileName}", path);
+        return null;
+    }
+
+
     internal static bool ApplyMainCommandArtwork(CommandPaletteButton button, string menuName, bool accent = false,
         string? artworkName = null, bool hideArtworkIcon = false)
     {
@@ -194,6 +203,16 @@ internal static class GameUiSkin
         button.Configure(normal, active, disabled, 0.08f, 0.08f);
         return true;
     }
+
+    internal static bool ApplyLongCommandArtwork(CommandPaletteButton button)
+    {
+        var normal = CommandLongTexture("long_normal.png");
+        var active = CommandLongTexture("long_active.png");
+        var disabled = CommandLongTexture("long_disable.png");
+        if (normal is null || active is null || disabled is null) return false;
+        button.Configure(normal, active, disabled, 0.08f, 0.08f);
+        return true;
+    }    
 
     internal static void MatchCommandTailToMiddle(TextureRect tail)
     {
