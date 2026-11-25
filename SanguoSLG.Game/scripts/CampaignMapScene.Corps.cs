@@ -60,7 +60,13 @@ public sealed partial class CampaignMapScene
         var cityGrid = _modalLayer?.FindChild("ArmyCorpsCityGrid", true, false) as GridContainer;
         var commanderPreview = _modalLayer?.FindChild("ArmyCorpsCommanderPreview", true, false) as HBoxContainer;
         var policy = _modalLayer?.FindChild("ArmyCorpsCombatPolicy", true, false) as Button;
-        var editorValid = cityGrid is not null && commanderPreview is not null && policy is not null;
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        var editorPanel = _modalLayer?.GetChildren().OfType<PanelContainer>()
+            .FirstOrDefault(candidate => candidate.HasMeta("modal_root"));
+        var editorValid = cityGrid is not null && commanderPreview is not null && policy is not null
+            && editorPanel is ModalChrome
+            && Mathf.Abs(editorPanel.Position.Y + editorPanel.Size.Y * 0.5f - viewport.Y * 0.5f) <= 2f
+            && editorPanel.Position.Y + editorPanel.Size.Y <= viewport.Y;
         OpenArmyCorpsList();
         var close = _modalLayer?.FindChild("SystemViewClose", true, false) as Button;
         close?.EmitSignal(BaseButton.SignalName.ButtonDown);
@@ -188,13 +194,16 @@ public sealed partial class CampaignMapScene
     {
         if (_modalLayer is not null) { FadeOutModal(_modalLayer); _modalLayer = null; }
         var existing = _state.Corps.FirstOrDefault(entry => entry.Id == corpsId && entry.Faction == Player);
+        // 외곽 PNG 프레임을 포함한 목표 크기. X는 좌우 콘텐츠 공간,
+        // Y는 헤더·본문·푸터의 전체 높이이며 뷰포트 비율이 상한이다.
         var width = Mathf.Min(1040f, GetViewport().GetVisibleRect().Size.X * 0.94f);
         var height = Mathf.Min(690f, GetViewport().GetVisibleRect().Size.Y * 0.88f);
         var box = SystemView(existing is null ? "새 군단 편성" : $"제{existing.Id}군단 편집", width,
-            out var scroll, out var panel, out var titleRow);
+            out var scroll, out var panel, out var titleRow, useModalChrome: true);
         scroll.VerticalScrollMode = ScrollContainer.ScrollMode.Disabled;
         box.AddChild(MakeLabel("담당 거점과 군단장을 고른 뒤 운영 방침을 정하세요.", 13, Parchment));
         var body = new HBoxContainer { SizeFlagsVertical = Control.SizeFlags.ExpandFill };
+        // 왼쪽 거점 선택과 오른쪽 군단장/방침 사이의 가로 간격(px).
         body.AddThemeConstantOverride("separation", 14);
         box.AddChild(body);
 
@@ -209,7 +218,9 @@ public sealed partial class CampaignMapScene
         var countLabel = MakeLabel("0곳 선택", 13, Gold);
         cityHeading.AddChild(countLabel);
         left.AddChild(MakeLabel("선택한 거점의 장수와 자원만 군단이 사용합니다.", 12, Parchment));
-        var cityScroll = new ScrollContainer { CustomMinimumSize = new Vector2(0, height - 240),
+        // 외곽 전체 높이에서 PNG 헤더·푸터와 상하 동작 버튼을 뺀 목록 높이.
+        // 목록이 많을 때는 이 영역만 스크롤하고 모달 바깥 높이는 유지한다.
+        var cityScroll = new ScrollContainer { CustomMinimumSize = new Vector2(0, Mathf.Max(190f, height - 390f)),
             SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
         left.AddChild(cityScroll);
         var cityGrid = new GridContainer { Name = "ArmyCorpsCityGrid", Columns = 2,
@@ -339,7 +350,10 @@ public sealed partial class CampaignMapScene
             catch (System.InvalidOperationException exception) { error.Text = exception.Message; }
         };
         actions.AddChild(save);
-        scroll.CustomMinimumSize = new Vector2(width, height);
+        // BodyScroll에 전체 높이를 강제하면 PNG 장식 높이만큼 모달이 커진다.
+        // 외곽 패널에만 폭/높이를 지정하고, 본문은 남은 공간을 사용한다.
+        panel.CustomMinimumSize = new Vector2(width, height);
         CenterAndDrag(panel, titleRow, width, height, box);
+        CenterCorpsPanelAfterLayout(panel, width, height);
     }
 }
