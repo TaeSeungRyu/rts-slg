@@ -269,9 +269,9 @@ public partial class GeneralCreatorScene : Control
             SizeFlagsHorizontal = SizeFlags.ExpandFill };
         stats.AddThemeConstantOverride("h_separation", 12);
         abilitySection.AddChild(stats);
-        _might = Spin(0, 100, 50); AddCompactField(stats, "무력", _might);
-        _intellect = Spin(0, 100, 50); AddCompactField(stats, "지력", _intellect);
-        _politics = Spin(0, 100, 50); AddCompactField(stats, "정치", _politics);
+        _might = Spin(0, 255, 50); AddCompactField(stats, "무력", _might);
+        _intellect = Spin(0, 255, 50); AddCompactField(stats, "지력", _intellect);
+        _politics = Spin(0, 255, 50); AddCompactField(stats, "정치", _politics);
         var aptitudeSection = GeneralWorkspaceStyle.Section(abilities, "병종 적성");
         var grid = new GridContainer { Name = "CreatorAptitudeGrid", Columns = 4,
             SizeFlagsHorizontal = SizeFlags.ExpandFill };
