@@ -74,12 +74,14 @@ public sealed partial class CampaignMapScene
                 row.SetText(7, troop.RangeBuilding.ToString());
                 row.SetText(8, troop.RangeCastle.ToString());
             }
+            AppendSupportTroopGuideRows(table, root);
         }
         FillRows();
         table.ItemSelected += () =>
         {
             var code = table.GetSelected()?.GetMetadata(0).AsString();
-            if (!string.IsNullOrWhiteSpace(code)) OpenTroopGuideDetail(code);
+            if (code is "supply" or "transport") OpenSupportTroopGuideDetail(code);
+            else if (!string.IsNullOrWhiteSpace(code)) OpenTroopGuideDetail(code);
         };
         scroll.CustomMinimumSize = new Vector2(width, height);
         CenterAndDrag(panel, titleRow, width, height, box);
@@ -184,7 +186,7 @@ public sealed partial class CampaignMapScene
             .Select(label => label.Text).ToList() ?? [];
         var table = _modalLayer?.FindChild("TroopGuideTable", true, false) as Tree;
         var items = table?.GetRoot()?.GetChildren().ToList() ?? [];
-        var validItems = items.Count == _troops.Count && items.All(item => item.GetIcon(0) is not null)
+        var validItems = items.Count == _troops.Count + 2 && items.All(item => item.GetIcon(0) is not null)
             && items.All(item => !string.IsNullOrWhiteSpace(item.GetMetadata(0).AsString()))
             && items.Any(item => item.GetText(0) == "극병" && item.GetText(1) == "보병")
             && items.Any(item => item.GetText(0).Contains("투석기"))
@@ -197,6 +199,8 @@ public sealed partial class CampaignMapScene
             && items.Any(item => item.GetText(0) == "화랑궁병" && item.GetText(6) == "2.2")
             && items.Any(item => item.GetText(0) == "투석기" && item.GetText(2).StartsWith("10 →"))
             && items.Any(item => item.GetText(0) == "충차" && item.GetText(4).StartsWith("14 →"));
+        validItems &= items.Any(item => item.GetText(0) == "보급부대")
+            && items.Any(item => item.GetText(0) == "수송부대");
         table?.EmitSignal(Tree.SignalName.ColumnTitleClicked, 1, 1);
         var ascendingFirst = table?.GetRoot()?.GetFirstChild()?.GetText(0);
         table?.EmitSignal(Tree.SignalName.ColumnTitleClicked, 1, 1);
@@ -233,6 +237,12 @@ public sealed partial class CampaignMapScene
             .OfType<ScrollContainer>().Any(container => container.CustomMinimumSize.Y >= 390) == true;
         passed &= _modalLayer?.FindChild("TroopGuideDetailModal", false, false) is PanelContainer;
         passed &= (_modalLayer?.FindChild("SystemViewBack", true, false) as Button)?.Text == "◀";
+        OpenSupportTroopGuideDetail("supply");
+        passed &= _modalLayer?.FindChildren("*", "Label", true, false).OfType<Label>()
+            .Any(label => label.Text.Contains("군량 소비를 줄입니다")) == true;
+        OpenSupportTroopGuideDetail("transport");
+        passed &= _modalLayer?.FindChildren("*", "Label", true, false).OfType<Label>()
+            .Any(label => label.Text.Contains("공격과 반격을 하지 않으며")) == true;
         GD.Print($"[troop-guide-qa] passed={passed} entries={_troops.Count}");
         GetTree().Quit(passed ? 0 : 1);
     }
