@@ -10,11 +10,13 @@ public sealed partial class CampaignMapScene
         const float height = 650f;
         var box = SystemView("부대설명", width, out var scroll, out var panel, out var titleRow);
         panel.Name = "TroopGuideListModal";
+        // 공통 금색 이미지 테두리 적용
+        ApplyUnitMenuFrame(panel);        
         var maxResearchBonus = SanguoSLG.Core.Simulation.ResearchCurve.Bonus(10);
         box.AddChild(MakeLabel($"기본 → 해당 병종 연구 Lv.10 최대치 (공격·방어 각각 +{maxResearchBonus}). 이동·사거리는 연구로 변하지 않습니다. 헤더를 눌러 정렬하세요.", 13, Parchment));
         var table = new Tree
         {
-            Name = "TroopGuideTable", Columns = 7, ColumnTitlesVisible = true,
+            Name = "TroopGuideTable", Columns = 9, ColumnTitlesVisible = true,
             HideRoot = true, SelectMode = Tree.SelectModeEnum.Row,
             CustomMinimumSize = new Vector2(0, height - 110),
             SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
@@ -23,13 +25,13 @@ public sealed partial class CampaignMapScene
         table.AddThemeFontSizeOverride("font_size", 14);
         table.AddThemeFontOverride("title_button_font", _font);
         table.AddThemeFontSizeOverride("title_button_font_size", 13);
-        var captions = new[] { "병종 카드", "병종", "부대 공격", "건물 공격", "방어", "이동/일", "사거리 (부대/건물/성)" };
-        var widths = new[] { 170, 70, 105, 105, 80, 90, 195 };
+        var captions = new[] { "병종 카드", "병종", "부대 공격", "건물 공격", "방어", "이동/일", "부대 사거리", "건물 사거리", "성 사거리" };
+        var widths = new[] { 170, 70, 105, 105, 80, 90, 85, 85, 75 };
         for (var col = 0; col < captions.Length; col++)
         {
             table.SetColumnTitle(col, captions[col]);
             table.SetColumnCustomMinimumWidth(col, widths[col]);
-            table.SetColumnExpand(col, col == 0 || col == 6);
+            table.SetColumnExpand(col, col == 0 || col >= 6);
         }
         box.AddChild(table);
         var sort = 0;
@@ -51,7 +53,9 @@ public sealed partial class CampaignMapScene
                 3 => _troops.OrderBy(t => t.AtkBuilding).ThenBy(t => t.Name, StringComparer.Ordinal),
                 4 => _troops.OrderBy(t => t.Df).ThenBy(t => t.Name, StringComparer.Ordinal),
                 5 => _troops.OrderBy(t => t.MovementPerDay).ThenBy(t => t.Name, StringComparer.Ordinal),
-                6 => _troops.OrderBy(t => t.RangeUnit).ThenBy(t => t.RangeBuilding).ThenBy(t => t.RangeCastle),
+                6 => _troops.OrderBy(t => t.RangeUnit).ThenBy(t => t.Name, StringComparer.Ordinal),
+                7 => _troops.OrderBy(t => t.RangeBuilding).ThenBy(t => t.Name, StringComparer.Ordinal),
+                8 => _troops.OrderBy(t => t.RangeCastle).ThenBy(t => t.Name, StringComparer.Ordinal),
                 _ => _troops.OrderBy(t => t.Class).ThenBy(t => t.Name, StringComparer.Ordinal),
             };
             foreach (var troop in descending ? ordered.Reverse() : ordered)
@@ -66,7 +70,9 @@ public sealed partial class CampaignMapScene
                 row.SetText(3, $"{troop.AtkBuilding} → {troop.AtkBuilding + maxResearchBonus}");
                 row.SetText(4, $"{troop.Df} → {troop.Df + maxResearchBonus}");
                 row.SetText(5, troop.MovementPerDay.ToString());
-                row.SetText(6, $"{troop.RangeUnit} / {troop.RangeBuilding} / {troop.RangeCastle}");
+                row.SetText(6, troop.RangeUnit.ToString());
+                row.SetText(7, troop.RangeBuilding.ToString());
+                row.SetText(8, troop.RangeCastle.ToString());
             }
         }
         FillRows();
@@ -89,6 +95,8 @@ public sealed partial class CampaignMapScene
         const float height = 390f;
         var box = SystemView(troop.Name, width, out var scroll, out var panel, out var titleRow);
         panel.Name = "TroopGuideDetailModal";
+        // 공통 금색 이미지 테두리 적용
+        ApplyUnitMenuFrame(panel);
         var back = titleRow.GetChild<Button>(0);
         back.ButtonDown -= OpenSystemPalette;
         back.ButtonDown += OpenTroopGuide;
@@ -184,8 +192,11 @@ public sealed partial class CampaignMapScene
         var descendingFirst = table?.GetRoot()?.GetFirstChild()?.GetText(0);
         var passed = trigger is not null
             && _modalLayer?.FindChild("SystemViewBack", true, false) is Button
-            && table?.Columns == 7 && table.ColumnTitlesVisible
+            && table?.Columns == 9 && table.ColumnTitlesVisible
             && table.GetColumnTitle(1) == "병종"
+            && table.GetColumnTitle(6) == "부대 사거리"
+            && table.GetColumnTitle(7) == "건물 사거리"
+            && table.GetColumnTitle(8) == "성 사거리"
             && ascendingFirst != descendingFirst && labels.Any(text => text.Contains("+13"))
             && validItems;
         var geukFeatures = TroopGuideFeatures(_troops.First(t => t.Code == "geukbyeong"),
