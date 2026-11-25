@@ -146,6 +146,7 @@ public sealed partial class CampaignMapScene : Node3D
     private readonly Dictionary<int, HexCoord> _animStartOverrides = new();
     private int _animAtkIdx;
     private readonly List<(double Time, int UnitId, Vector3 FaceTo)> _animAttacks = new(); // 교전·공성 공격 모션
+    private double _playbackVisualEndTime;
     private int _animUpdIdx;
     private readonly List<(double Time, int UnitId, int Troops)> _animUpdates = new(); // 병력 갱신(라벨·편대 규모)
     private readonly List<(double Time, IReadOnlyList<CombatUnit> Units)> _animUnitSnapshots = new();
@@ -5329,6 +5330,11 @@ public sealed partial class CampaignMapScene : Node3D
         _animSkillEffects.Sort((a, b) => a.Time.CompareTo(b.Time));
         _animBeastEffects.Sort((a, b) => a.Time.CompareTo(b.Time));
         _animSiegeSkillEffects.Sort((a, b) => a.Time.CompareTo(b.Time));
+        // 다수의 액티브가 같은 공격턴에 발동하면 마지막 효과가 기본 7일 재생 끝을 넘을 수 있다.
+        // 모션/이펙트가 끝나기 전에 Redraw로 토큰을 교체하지 않도록 여유 시간을 둔다.
+        _playbackVisualEndTime = System.Math.Max(AnimDays * DaySeconds,
+            new[] { _animActives.LastOrDefault().Time, _animSkillEffects.LastOrDefault().Time,
+                _animSiegeSkillEffects.LastOrDefault().Time }.Max() + 0.45);
         _nextUnitSkillEffectToPrepare = 0;
         _nextSiegeSkillEffectToPrepare = 0;
         _animRuinCounters.Sort((a, b) => a.Time.CompareTo(b.Time));
@@ -8392,7 +8398,9 @@ private void ApplyBuildingButtonEffect(Button button)
 
         if (_advancing)
         {
-            _animT += delta;
+            // 점령 연출이 지도를 덮는 동안 다음 날 공격/스킬이 보이지 않은 채 소비되지 않게 한다.
+            // 큰 프레임 지연도 공격턴 전체를 한 프레임에 건너뛰지 않도록 제한한다.
+            if (!_capturePresentationPlaying) _animT += System.Math.Min(delta, 0.05);
             PrepareNextSkillEffect();
             ApplyDuePlaybackSnapshots();
             ApplyDueCityVitals();
@@ -8473,8 +8481,8 @@ private void ApplyBuildingButtonEffect(Button button)
             ApplyGaugePlaybackUpdates(_animT);
 
             // 여러 부대가 같은 순간 발동해도 무거운 3D 효과 생성은 프레임마다 나눈다.
-            // 계산된 피해와 발동 순서는 그대로이며 재생 마지막에는 대기 중인 연출을 모두 처리한다.
-            var activeVisualBudget = _animT >= AnimDays * DaySeconds ? int.MaxValue : 1;
+            // 재생 종료도 대기 중인 효과를 모두 소비할 때까지 기다린다.
+            var activeVisualBudget = 1;
             while (activeVisualBudget > 0 && _animActiveIdx < _animActives.Count
                 && _animActives[_animActiveIdx].Time <= _animT)
             {
@@ -8698,10 +8706,14 @@ private void ApplyBuildingButtonEffect(Button button)
             var attacking = dayElapsed >= MoveSeconds;
             _dayTurnLabel.Text = attacking ? "⚔ 공격턴" : "▷ 이동턴";
             _dayTurnLabel.AddThemeColorOverride("font_color", attacking ? new Color(0.98f, 0.62f, 0.42f) : new Color(0.6f, 0.85f, 0.7f));
-            _advanceBtn.Progress = (float)(_animT / (AnimDays * DaySeconds));
+            _advanceBtn.Progress = (float)System.Math.Min(1, _animT / (AnimDays * DaySeconds));
             HideEnteredFieldGarrisons();
 
-            if (_animT >= AnimDays * DaySeconds) { FinishAdvance(); }
+            if (!_capturePresentationPlaying && _animT >= _playbackVisualEndTime
+                && _animActiveIdx == _animActives.Count
+                && _animSkillEffectIdx == _animSkillEffects.Count
+                && _animSiegeSkillEffectIdx == _animSiegeSkillEffects.Count)
+            { FinishAdvance(); }
         }
     }
 
