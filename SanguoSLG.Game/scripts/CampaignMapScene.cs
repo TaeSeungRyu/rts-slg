@@ -12128,7 +12128,20 @@ CenterAndDrag(panel, titleRow, mw, mh, box);
         var vp = GetViewport().GetVisibleRect().Size;
         var mw = Mathf.Clamp(vp.X * 0.44f, 420f, 640f);
         var mh = Mathf.Clamp(vp.Y * 0.85f, 360f, 720f);
-        var box = SystemView("전체 도시 목록", mw, out var scroll, out var panel, out var titleRow);
+        var box = SystemView("전체 도시 목록", mw, out var scroll, out var panel, out var titleRow, useModalChrome: true);
+        panel.CustomMinimumSize = new Vector2(mw, mh);
+
+var topMargin = new MarginContainer
+{
+    SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+    SizeFlagsVertical = Control.SizeFlags.ShrinkBegin,
+};
+
+// 우측 영역 상단 여백
+topMargin.AddThemeConstantOverride("margin_top", 5);
+
+box.AddChild(topMargin);
+
 
         foreach (var c in _state.Cities.OrderBy(c => c.Id.Value))
         {
@@ -12159,12 +12172,30 @@ CenterAndDrag(panel, titleRow, mw, mh, box);
                 _camera.FocusOn(_view.HexToWorld(city.Position));
             };
             row.AddChild(move);
-            box.AddChild(row);
+
+var rowMargin = new MarginContainer
+{
+    SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+};
+
+rowMargin.AddThemeConstantOverride("margin_right", 8);
+
+rowMargin.AddChild(row);
+box.AddChild(rowMargin);
+
         }
 
-        var contentH = box.GetCombinedMinimumSize().Y;
-        scroll.CustomMinimumSize = new Vector2(mw, Mathf.Min(contentH, mh));
-        CenterAndDrag(panel, titleRow, mw, mh, box);
+scroll.CustomMinimumSize = new Vector2(0, mh - 280f);
+
+scroll.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+scroll.SizeFlagsVertical = Control.SizeFlags.ShrinkBegin;
+
+scroll.HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled;
+scroll.VerticalScrollMode = ScrollContainer.ScrollMode.Auto;
+
+CenterAndDrag(panel, titleRow, mw, mh, box);
+
+
     }
 
     // 읽기 전용 도시 정보 — 소유·정찰 시에만 수치 노출, 아니면 "정찰 필요"로 가린다.
