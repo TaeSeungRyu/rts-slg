@@ -16,10 +16,14 @@ public sealed partial class SkillGuideEffectPreview3D : SubViewportContainer
     private ActiveSkill? _skill;
     private Godot.Timer? _timer;
     private int _day;
+    private int _generation;
     private readonly Label _status;
+    private readonly Button _playButton;
 
     public string? SkillCode => _skill?.Code;
     public int Day => _day;
+    public bool IsPlaying { get; private set; }
+    public Button PlayButton => _playButton;
     public bool EffectAttached { get; private set; }
     public bool HasUnitModels => _allyUnit is not null && _enemyUnit is not null;
     public int CombatMotionCount => (_allyUnit?.AttackMotionStartCount ?? 0) + (_enemyUnit?.AttackMotionStartCount ?? 0);
@@ -32,13 +36,13 @@ public sealed partial class SkillGuideEffectPreview3D : SubViewportContainer
     public SkillGuideEffectPreview3D()
     {
         Name = "SkillGuideEffectPreview";
-        CustomMinimumSize = new Vector2(220, 142);
+        CustomMinimumSize = new Vector2(420, 240);
         Stretch = true;
-        MouseFilter = MouseFilterEnum.Ignore;
+        MouseFilter = MouseFilterEnum.Pass;
         _viewport = new SubViewport
         {
             Name = "SkillGuideBattleViewport",
-            Size = new Vector2I(440, 284),
+            Size = new Vector2I(840, 480),
             OwnWorld3D = true,
             RenderTargetUpdateMode = SubViewport.UpdateMode.Always,
             TransparentBg = false,
@@ -48,11 +52,21 @@ public sealed partial class SkillGuideEffectPreview3D : SubViewportContainer
         _status = new Label { Name = "SkillGuidePreviewStatus", Text = "액티브 스킬을 선택하세요",
             Position = new Vector2(12, 8), MouseFilter = MouseFilterEnum.Ignore };
         AddChild(_status);
+        _playButton = new Button { Name = "SkillGuidePlay", Text = "▶ PLAY",
+            CustomMinimumSize = new Vector2(112, 42), Visible = false,
+            MouseFilter = MouseFilterEnum.Stop };
+        _playButton.SetAnchorsPreset(LayoutPreset.Center);
+        _playButton.GrowHorizontal = GrowDirection.Both;
+        _playButton.GrowVertical = GrowDirection.Both;
+        _playButton.Pressed += StartPlayback;
+        AddChild(_playButton);
     }
 
     public void ShowSkill(ActiveSkill? skill)
     {
+        ++_generation;
         _timer?.Stop();
+        IsPlaying = false;
         _skill = skill;
         _day = 0;
         EffectAttached = false;
@@ -122,6 +136,7 @@ public sealed partial class SkillGuideEffectPreview3D : SubViewportContainer
         _enemy = Unit(1, HexPosition(1, 0) * 0.58f + Vector3.Up * tileTop, out _enemyUnit);
         _status.Visible = skill is not null;
         _status.Text = skill is null ? "" : "교전 준비 · ○ ○ ○ ○ ○";
+        _playButton.Visible = skill is not null;
         if (skill is null) return;
         _timer ??= new Godot.Timer { WaitTime = 0.7, OneShot = false };
         if (_timer.GetParent() is null)
@@ -129,6 +144,13 @@ public sealed partial class SkillGuideEffectPreview3D : SubViewportContainer
             AddChild(_timer);
             _timer.Timeout += NextDay;
         }
+    }
+
+    public void StartPlayback()
+    {
+        if (_skill is null || IsPlaying || _timer is null) return;
+        IsPlaying = true;
+        _playButton.Visible = false;
         _timer.Start();
     }
 
@@ -160,7 +182,7 @@ public sealed partial class SkillGuideEffectPreview3D : SubViewportContainer
 
     private void NextDay()
     {
-        if (_skill is null || _ally is null || _enemy is null) return;
+        if (!IsPlaying || _skill is null || _ally is null || _enemy is null) return;
         _day++;
         if (_day <= 5)
         {
@@ -183,16 +205,24 @@ public sealed partial class SkillGuideEffectPreview3D : SubViewportContainer
         if (!EffectAttached)
             _status.Text = $"다음 교전 · {_skill.Name} 발동";
         var completedSkill = _skill;
+        var completedGeneration = _generation;
         GetTree().CreateTimer(1.2).Timeout += () =>
         {
-            if (IsInsideTree() && ReferenceEquals(_skill, completedSkill)) ShowSkill(completedSkill);
+            if (IsInsideTree() && _generation == completedGeneration
+                && ReferenceEquals(_skill, completedSkill)) ShowSkill(completedSkill);
         };
     }
 
     public void AdvanceToActivationForQa()
     {
+        StartPlayback();
         for (var day = 0; day < 6; day++) NextDay();
     }
 
-    public override void _ExitTree() => _timer?.Stop();
+    public override void _ExitTree()
+    {
+        ++_generation;
+        _timer?.Stop();
+        IsPlaying = false;
+    }
 }
