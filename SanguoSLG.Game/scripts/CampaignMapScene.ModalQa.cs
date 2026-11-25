@@ -176,6 +176,18 @@ public sealed partial class CampaignMapScene
         GetTree().Quit(passed ? 0 : 1);
     }
 
+    private async void RunCityRosterBottomQa()
+    {
+        OpenCityRoster();
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        var clearance = _modalLayer?.FindChild("CityRosterBottomClearance", true, false) as Control;
+        var scroll = _modalLayer?.FindChild("ModalChromeBodyScroll", true, false) as ScrollContainer;
+        var passed = clearance is { CustomMinimumSize.Y: >= 24f }
+            && scroll is not null && clearance.GetParent() == scroll.GetChild(0);
+        GD.Print($"[city-roster-bottom-qa] passed={passed} clearance={clearance?.CustomMinimumSize.Y}");
+        GetTree().Quit(passed ? 0 : 1);
+    }
+
     private async void RunSaveSlotUiQa()
     {
         OpenSaveSlotList();

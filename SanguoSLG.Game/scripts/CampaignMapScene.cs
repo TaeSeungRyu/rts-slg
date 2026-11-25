@@ -818,6 +818,7 @@ public sealed partial class CampaignMapScene : Node3D
         if (args.Contains("--maptestportraitqa")) CallDeferred(nameof(RunPortraitLoaderQa));
         if (args.Contains("--maptestportraittreeqa")) CallDeferred(nameof(RunPortraitTreeQa));
         if (args.Contains("--maptestgeneralrosterqa")) CallDeferred(nameof(RunGeneralRosterPerformanceQa));
+        if (args.Contains("--maptestcityrosterbottomqa")) CallDeferred(nameof(RunCityRosterBottomQa));
         if (args.Contains("--maptestreportmodalqa")) CallDeferred(nameof(RunReportModalQa));
         if (args.Contains("--maptestnavalcomposeqa")) CallDeferred(nameof(RunNavalComposeQa));
         if (args.Contains("--maptestseasonqa")) CallDeferred(nameof(RunSeasonQa));
@@ -12116,6 +12117,10 @@ rowMargin.AddChild(row);
 box.AddChild(rowMargin);
 
         }
+
+        box.AddChild(new Control { Name = "CityRosterBottomClearance",
+            CustomMinimumSize = new Vector2(0, 30),
+            MouseFilter = Control.MouseFilterEnum.Ignore });
 
 scroll.CustomMinimumSize = new Vector2(0, mh - 280f);
 
