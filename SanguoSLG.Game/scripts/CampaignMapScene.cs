@@ -11653,77 +11653,9 @@ ApplyUnitMenuFrame(panel);
         CenterAndDrag(panel, titleRow, mw, mh, box);
     }
 
-    private void OpenSaveSlotList()
-    {
-        const float mw = 920f;
-        const float mh = 430f;
-        var box = SystemView("게임 저장", mw, out var scroll, out var panel, out var titleRow);
-        scroll.Name = "SaveSlotOuterScroll";
-        scroll.VerticalScrollMode = ScrollContainer.ScrollMode.Disabled;
-        var guide = MakeLabel("저장할 슬롯을 선택하세요.", 13, Parchment);
-        guide.HorizontalAlignment = HorizontalAlignment.Center;
-        box.AddChild(guide);
+    private void OpenSaveSlotList() => OpenSaveSlotWorkspace(false);
 
-        var grid = new GridContainer { Name = "SaveSlotGrid", Columns = 4 };
-        grid.SetMeta("slot_rows", 5);
-        grid.AddThemeConstantOverride("h_separation", 10);
-        grid.AddThemeConstantOverride("v_separation", 8);
-        box.AddChild(grid);
-        foreach (var info in SaveSlots.InspectAll())
-        {
-            var selectedSlot = info.Slot;
-            var status = SlotStatus(info, emptyText: "빈 슬롯");
-            var button = MakeButton($"슬롯 {info.Slot:00}    {status}");
-            button.Name = $"SaveSlot{info.Slot:00}";
-            button.SetMeta("save_slot_index", info.Slot);
-            button.CustomMinimumSize = new Vector2(210, 48);
-            button.Alignment = HorizontalAlignment.Left;
-            var action = info.Exists ? "저장 데이터를 덮어쓰시겠습니까?" : "저장하시겠습니까?";
-            button.Pressed += () => ShowConfirm("게임 저장 확인",
-                $"슬롯 {selectedSlot:00}에 현재 진행 상황을 {action}", () => SaveGame(selectedSlot));
-            grid.AddChild(button);
-        }
-
-        scroll.CustomMinimumSize = new Vector2(mw, mh);
-        CenterAndDrag(panel, titleRow, mw, mh, box);
-    }
-
-    private void OpenLoadSlotList()
-    {
-        const float mw = 920f;
-        const float mh = 430f;
-        var box = SystemView("게임 불러오기", mw, out var scroll, out var panel, out var titleRow);
-        scroll.Name = "LoadSlotOuterScroll";
-        scroll.VerticalScrollMode = ScrollContainer.ScrollMode.Disabled;
-        var guide = MakeLabel("불러올 슬롯을 선택하세요.", 13, Parchment);
-        guide.HorizontalAlignment = HorizontalAlignment.Center;
-        box.AddChild(guide);
-
-        var grid = new GridContainer { Name = "LoadSlotGrid", Columns = 4 };
-        grid.SetMeta("slot_rows", 5);
-        grid.AddThemeConstantOverride("h_separation", 10);
-        grid.AddThemeConstantOverride("v_separation", 8);
-        box.AddChild(grid);
-        foreach (var info in SaveSlots.InspectAll())
-        {
-            var selectedSlot = info.Slot;
-            var status = SlotStatus(info, emptyText: "저장 정보 없음");
-            var button = MakeButton($"슬롯 {info.Slot:00}    {status}");
-            button.Name = $"LoadSlot{info.Slot:00}";
-            button.SetMeta("load_slot_index", info.Slot);
-            button.CustomMinimumSize = new Vector2(210, 48);
-            button.Alignment = HorizontalAlignment.Left;
-            button.Disabled = !info.Exists || info.Corrupt;
-            button.TooltipText = info.Corrupt ? "손상된 저장 파일은 불러올 수 없습니다."
-                : !info.Exists ? "빈 슬롯입니다." : "";
-            button.Pressed += () => ShowConfirm("게임 불러오기 확인",
-                $"현재 진행을 종료하고 슬롯 {selectedSlot:00}의 게임을 불러오시겠습니까?", () => LoadGame(selectedSlot));
-            grid.AddChild(button);
-        }
-
-        scroll.CustomMinimumSize = new Vector2(mw, mh);
-        CenterAndDrag(panel, titleRow, mw, mh, box);
-    }
+    private void OpenLoadSlotList() => OpenSaveSlotWorkspace(true);
 
     // 세이브 슬롯 경로(user:// — Godot 사용자 데이터 폴더의 실제 경로).
     private static string LegacySavePath => ProjectSettings.GlobalizePath("user://sanguo-save.json");

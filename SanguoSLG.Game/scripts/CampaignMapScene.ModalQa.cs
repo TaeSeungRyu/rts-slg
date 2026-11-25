@@ -187,7 +187,9 @@ public sealed partial class CampaignMapScene
             && slots.Select(button => button.GetMeta("save_slot_index").AsInt32()).SequenceEqual(Enumerable.Range(1, 20));
         var grid = _modalLayer?.FindChild("SaveSlotGrid", true, false) as GridContainer;
         var scroll = _modalLayer?.FindChild("SaveSlotOuterScroll", true, false) as ScrollContainer;
-        var layout = grid?.Columns == 4 && grid.GetMeta("slot_rows").AsInt32() == 5
+        var layout = grid?.Columns == 2
+            && _modalLayer?.FindChild("SaveSlotListScroll", true, false) is ScrollContainer
+            && _modalLayer?.FindChildren("SaveSlotRulerPortrait", "TextureRect", true, false).Count == 20
             && scroll?.VerticalScrollMode == ScrollContainer.ScrollMode.Disabled
             && scroll.GetVScrollBar().Visible == false;
         slots.FirstOrDefault()?.EmitSignal(Button.SignalName.Pressed);
@@ -211,7 +213,9 @@ public sealed partial class CampaignMapScene
             && slots.Select(button => button.GetMeta("load_slot_index").AsInt32()).SequenceEqual(Enumerable.Range(1, 20));
         var grid = _modalLayer?.FindChild("LoadSlotGrid", true, false) as GridContainer;
         var scroll = _modalLayer?.FindChild("LoadSlotOuterScroll", true, false) as ScrollContainer;
-        var layout = grid?.Columns == 4 && grid.GetMeta("slot_rows").AsInt32() == 5
+        var layout = grid?.Columns == 2
+            && _modalLayer?.FindChild("LoadSlotListScroll", true, false) is ScrollContainer
+            && _modalLayer?.FindChildren("SaveSlotRulerPortrait", "TextureRect", true, false).Count == 20
             && scroll?.VerticalScrollMode == ScrollContainer.ScrollMode.Disabled
             && scroll.GetVScrollBar().Visible == false;
         var enabled = slots.FirstOrDefault(button => !button.Disabled);
@@ -220,8 +224,9 @@ public sealed partial class CampaignMapScene
         var confirmation = enabled is null || (_confirmLayer is not null
             && _confirmLayer.FindChildren("*", "Label", true, false).OfType<Label>()
                 .Any(label => label.Text.Contains("슬롯") && label.Text.Contains("불러오")));
-        var emptySlotsDisabled = slots.Where(button => button.Text.Contains("저장 정보 없음")).All(button => button.Disabled);
-        var corruptSlotsDisabled = slots.Where(button => button.Text.Contains("손상된 데이터")).All(button => button.Disabled);
+        var infos = SaveSlots.InspectAll();
+        var emptySlotsDisabled = infos.Where(info => !info.Exists).All(info => slots.First(button => button.GetMeta("load_slot_index").AsInt32() == info.Slot).Disabled);
+        var corruptSlotsDisabled = infos.Where(info => info.Corrupt).All(info => slots.First(button => button.GetMeta("load_slot_index").AsInt32() == info.Slot).Disabled);
         var passed = slotCount && layout && confirmation && emptySlotsDisabled && corruptSlotsDisabled;
         GD.Print($"[load-slot-ui-qa] passed={passed} slots={slots.Count} layout={layout} confirmation={confirmation} emptyDisabled={emptySlotsDisabled} corruptDisabled={corruptSlotsDisabled}");
         GetTree().Quit(passed ? 0 : 1);
