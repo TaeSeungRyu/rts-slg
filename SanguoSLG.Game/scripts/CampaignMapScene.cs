@@ -11805,6 +11805,10 @@ ApplyUnitMenuFrame(panel);
         close.ButtonDown += CloseModal;
 titleRow.AddChild(close);
 
+        // 제목 가운데 정렬
+    title.HorizontalAlignment = HorizontalAlignment.Center;
+    title.VerticalAlignment = VerticalAlignment.Center;
+
 // ModalChrome 전용 버튼 크기 및 정렬
 if (panel is ModalChrome)
 {

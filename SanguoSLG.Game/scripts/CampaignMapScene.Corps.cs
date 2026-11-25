@@ -218,14 +218,23 @@ overview.AddChild(overviewRow);
         // Y는 헤더·본문·푸터의 전체 높이이며 뷰포트 비율이 상한이다.
         var width = Mathf.Min(1040f, GetViewport().GetVisibleRect().Size.X * 0.94f);
         var height = Mathf.Min(690f, GetViewport().GetVisibleRect().Size.Y * 0.88f);
+
+
+
+        
         var box = SystemView(existing is null ? "새 군단 편성" : $"제{existing.Id}군단 편집", width,
             out var scroll, out var panel, out var titleRow, useModalChrome: true);
         scroll.VerticalScrollMode = ScrollContainer.ScrollMode.Disabled;
-        box.AddChild(MakeLabel("담당 거점과 군단장을 고른 뒤 운영 방침을 정하세요.", 13, Parchment));
+        box.AddChild(MakeLabel("\n담당 거점과 군단장을 고른 뒤 운영 방침을 정하세요.", 13, Parchment));
         var body = new HBoxContainer { SizeFlagsVertical = Control.SizeFlags.ExpandFill };
         // 왼쪽 거점 선택과 오른쪽 군단장/방침 사이의 가로 간격(px).
         body.AddThemeConstantOverride("separation", 14);
         box.AddChild(body);
+        
+
+
+
+
 
         var leftFrame = CorpsPanel(14, out var left);
         leftFrame.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
@@ -342,7 +351,7 @@ overview.AddChild(overviewRow);
         }
         leaderOption.ItemSelected += _ => UpdateCommanderPreview();
         RefreshCommanders();
-        box.AddChild(GoldRule());
+     //   box.AddChild(GoldRule());
         var actions = new HBoxContainer();
         box.AddChild(actions);
         var spacer = new Control { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
