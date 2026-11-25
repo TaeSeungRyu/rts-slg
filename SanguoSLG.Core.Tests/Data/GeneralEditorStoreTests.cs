@@ -77,7 +77,7 @@ public class GeneralEditorStoreTests
                 ["naval"] = "F",
                 ["supply"] = "C",
             },
-            101,
+            256,
             50,
             60,
             "missing",

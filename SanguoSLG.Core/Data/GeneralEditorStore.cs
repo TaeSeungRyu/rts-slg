@@ -384,9 +384,9 @@ public sealed class GeneralEditorStore
 
     private static void ValidateRange(List<string> errors, int id, string label, int value)
     {
-        if (value is < 1 or > 100)
+        if (value is < 1 or > 255)
         {
-            errors.Add($"{id}: {label}은 1~100이어야 합니다.");
+            errors.Add($"{id}: {label}은 1~255이어야 합니다.");
         }
     }
 
