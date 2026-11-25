@@ -325,7 +325,7 @@ public sealed class RenewalAdvanceSimulator
         RenewalSpatialIndex spatialIndex)
     {
         if (!unit.IsActive || unit.Mode == RenewalOrderMode.Standby || unit.Arrived
-            || unit.MovementPerDay == 0
+            || unit.EffectiveMovementTenths == 0
             || unit.StopReason is RenewalStopReason.NoPath or RenewalStopReason.TargetInRange)
         {
             return unit;
@@ -333,9 +333,9 @@ public sealed class RenewalAdvanceSimulator
 
         var speedPercent = (_movementMap?.SpeedPercentAt(unit.Position, UnitCollisionRadius) ?? 100)
             * unit.SpeedPercent / 100;
-        var numerator = checked(unit.MovementPerDay * (int)ContinuousPosition.UnitsPerTile
+        var numerator = checked(unit.EffectiveMovementTenths * (int)ContinuousPosition.UnitsPerTile
             * speedPercent + unit.MovementRemainder);
-        var divisor = MovementTicksPerDay * 100;
+        var divisor = MovementTicksPerDay * 1000;
         var remaining = (long)(numerator / divisor);
         var remainder = numerator % divisor;
         var current = unit with { MovementRemainder = remainder, StopReason = RenewalStopReason.None, BlockingUnit = null };
@@ -467,7 +467,7 @@ public sealed class RenewalAdvanceSimulator
         var followed = unit.PursuitTarget ?? unit.AssignedTarget;
         if (followed is { } targetId && unit.LastKnownTargetPosition is { } targetPosition
             && target.DistanceTo(targetPosition)
-                <= Math.Max(0, RangeFor(unit, targetId)) * ContinuousPosition.UnitsPerTile)
+                <= Math.Max(0, RangeForTenths(unit, targetId)) * ContinuousPosition.UnitsPerTile / 10)
         {
             return unit with
             {
@@ -607,7 +607,7 @@ public sealed class RenewalAdvanceSimulator
         int day, int movementTick)
     {
         var targetPosition = TargetPositionFor(unit, target);
-        var range = Math.Max(0, RangeFor(unit, target.Id)) * ContinuousPosition.UnitsPerTile;
+        var range = Math.Max(0, RangeForTenths(unit, target.Id)) * ContinuousPosition.UnitsPerTile / 10;
         if (unit.Position.DistanceTo(targetPosition) <= range)
         {
             return unit with
@@ -718,11 +718,11 @@ public sealed class RenewalAdvanceSimulator
         RenewalTargetId.ForUnit(unit.Id), unit.Owner, unit.Position, unit.IsActive,
         unit.IsVisible, unit.CommandId);
 
-    private static int RangeFor(RenewalUnitState unit, RenewalTargetId target) => target.Kind switch
+    private static int RangeForTenths(RenewalUnitState unit, RenewalTargetId target) => target.Kind switch
     {
-        RenewalTargetKind.Building => unit.BuildingAttackRange,
-        RenewalTargetKind.Site => unit.CastleAttackRange,
-        _ => unit.AttackRange,
+        RenewalTargetKind.Building => unit.BuildingAttackRange * 10,
+        RenewalTargetKind.Site => unit.CastleAttackRange * 10,
+        _ => unit.EffectiveAttackRangeTenths,
     };
 
     private static IReadOnlyList<RenewalTargetState> Targets(RenewalAdvanceState state) =>

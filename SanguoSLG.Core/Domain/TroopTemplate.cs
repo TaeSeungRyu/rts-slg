@@ -29,4 +29,10 @@ public sealed record TroopTemplate(
     int RangeBuilding = 1,
     int RangeCastle = 1,
     int ProvisionsCapacity = 300,
-    int Vision = 3);
+    int Vision = 3,
+    int MovementTenths = 0,
+    int RangeUnitTenths = 0)
+{
+    public int EffectiveMovementTenths => MovementTenths > 0 ? MovementTenths : MovementPerDay * 10;
+    public int EffectiveRangeUnitTenths => RangeUnitTenths > 0 ? RangeUnitTenths : RangeUnit * 10;
+}

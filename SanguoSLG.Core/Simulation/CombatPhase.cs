@@ -20,7 +20,7 @@ public static class CombatPhase
         bool InRange(CombatUnit source, CombatUnit target) =>
             (source.RenewalPosition ?? RenewalMovement.RenewalHexSpace.Center(source.Field.Position))
                 .DistanceTo(target.RenewalPosition ?? RenewalMovement.RenewalHexSpace.Center(target.Field.Position))
-            <= source.Field.AttackRange * RenewalMovement.ContinuousPosition.UnitsPerTile;
+            <= source.Field.EffectiveAttackRangeTenths * RenewalMovement.ContinuousPosition.UnitsPerTile / 10;
         long DistanceSquared(CombatUnit source, CombatUnit target) =>
             (source.RenewalPosition ?? RenewalMovement.RenewalHexSpace.Center(source.Field.Position))
                 .DistanceSquaredTo(target.RenewalPosition

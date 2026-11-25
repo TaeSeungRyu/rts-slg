@@ -18,6 +18,8 @@ public sealed class TroopCatalogLoader
                 Name = special.Name,
                 Df = special.DfOverride ?? basis.Df,
                 AtkBuilding = special.BuildingAtkOverride ?? basis.AtkBuilding,
+                MovementTenths = special.MovementTenths ?? basis.MovementTenths,
+                RangeUnitTenths = special.RangeUnitTenths ?? basis.RangeUnitTenths,
             });
         }
         return result;

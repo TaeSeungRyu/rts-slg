@@ -50,7 +50,8 @@ public sealed class RuinCombat
                 var continuousPosition = attacker.RenewalPosition
                     ?? RenewalMovement.RenewalHexSpace.Center(attacker.Field.Position);
                 if (continuousPosition.DistanceTo(RenewalMovement.RenewalHexSpace.Center(ruin.Position))
-                    > (long)attacker.Field.AttackRange * RenewalMovement.ContinuousPosition.UnitsPerTile) continue;
+                    > (long)attacker.Field.EffectiveAttackRangeTenths
+                        * RenewalMovement.ContinuousPosition.UnitsPerTile / 10) continue;
 
                 var ruinStats = new CombatStats(defenders, AtkStat: 8, DfStat: 10,
                     AptitudePercent: AptitudeGrade.A.Percent());

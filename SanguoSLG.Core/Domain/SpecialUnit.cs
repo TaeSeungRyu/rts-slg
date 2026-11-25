@@ -25,4 +25,6 @@ public sealed record SpecialUnit(
     int AtkBonusBuilding,
     int AtkBonusImpassable,
     IReadOnlyDictionary<TroopClass, int> AtkBonusVsClass,
-    IReadOnlyDictionary<TroopClass, int> AttackerBonusFromClass);
+    IReadOnlyDictionary<TroopClass, int> AttackerBonusFromClass,
+    int? MovementTenths = null,
+    int? RangeUnitTenths = null);

@@ -44,7 +44,9 @@ public static class UnitAssembler
         var domain = template.Class == TroopClass.Naval ? MovementDomain.DeepWater : MovementDomain.Land;
         var field = new FieldUnit(id, owner, position,
             template.MovementPerDay, template.Detection, template.RangeUnit,
-            domain, mode, target, commandOrder, template.RangeCastle, waypoints);
+            domain, mode, target, commandOrder, template.RangeCastle, waypoints,
+            MovementTenths: template.EffectiveMovementTenths,
+            AttackRangeTenths: template.EffectiveRangeUnitTenths);
 
         var state = UnitCombatState.Create(
             vanguard.Intellect,

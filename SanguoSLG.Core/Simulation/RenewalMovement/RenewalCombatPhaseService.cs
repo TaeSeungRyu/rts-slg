@@ -818,7 +818,8 @@ public sealed class RenewalCombatPhaseService
     };
 
     private static bool InRange(RenewalUnitState unit, ContinuousPosition target) =>
-        InRange(unit, target, unit.AttackRange);
+        unit.Position.DistanceTo(target)
+            <= (long)unit.EffectiveAttackRangeTenths * ContinuousPosition.UnitsPerTile / 10;
 
     private static bool InRange(RenewalUnitState unit, ContinuousPosition target, int range) =>
         unit.Position.DistanceTo(target)

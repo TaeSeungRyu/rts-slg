@@ -34,7 +34,17 @@ public sealed class SpecialUnitLoader
         d.AtkBonusBuilding,
         d.AtkBonusImpassable,
         MapClassMap(d.AtkBonusVsClass),
-        MapClassMap(d.AttackerBonusFromClass));
+        MapClassMap(d.AttackerBonusFromClass),
+        Tenths(d.MovementPerDay, d.Code, "이동속도"),
+        Tenths(d.RangeUnit, d.Code, "부대 사거리"));
+
+    private static int? Tenths(decimal? value, string code, string name)
+    {
+        if (value is null) return null;
+        if (value <= 0 || value > 10 || value * 10 != decimal.Truncate(value.Value * 10))
+            throw new InvalidDataException($"{code}: {name}은 0 초과 10 이하의 소수 첫째 자리까지여야 합니다.");
+        return (int)(value * 10);
+    }
 
     private static IReadOnlyDictionary<TroopClass, int> MapClassMap(Dictionary<string, int>? raw)
     {
@@ -75,5 +85,7 @@ public sealed class SpecialUnitLoader
         public int AtkBonusImpassable { get; init; }
         public Dictionary<string, int>? AtkBonusVsClass { get; init; }
         public Dictionary<string, int>? AttackerBonusFromClass { get; init; }
+        public decimal? MovementPerDay { get; init; }
+        public decimal? RangeUnit { get; init; }
     }
 }

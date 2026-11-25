@@ -36,8 +36,12 @@ public sealed record RenewalUnitState(
     long? ProductionOperationId = null,
     UnitId? BlockingUnit = null,
     bool AiAdvanceIgnoresOtherSites = false,
-    int SpeedPercent = 100)
+    int SpeedPercent = 100,
+    int MovementTenths = 0,
+    int AttackRangeTenths = 0)
 {
+    public int EffectiveMovementTenths => MovementTenths > 0 ? MovementTenths : MovementPerDay * 10;
+    public int EffectiveAttackRangeTenths => AttackRangeTenths > 0 ? AttackRangeTenths : AttackRange * 10;
     public static RenewalUnitState Create(UnitId id, ContinuousPosition position,
         ContinuousPosition destination, int movementPerDay)
     {

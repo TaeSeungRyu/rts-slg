@@ -58,6 +58,16 @@ public sealed class RenewalAdvanceSimulatorTests
             new ContinuousPosition(destinationX, 0), speed);
 
     [Fact]
+    public void 소수_이동속도는_하루_이동거리에도_반영된다()
+    {
+        var simulator = new RenewalAdvanceSimulator();
+        var unit = Unit(speed: 2) with { MovementTenths = 22 };
+        var result = simulator.StepPhase(simulator.Start([unit]));
+
+        Assert.Equal(ContinuousPosition.UnitsPerTile * 22 / 10, result.State.Units[0].Position.X);
+    }
+
+    [Fact]
     public void 이동_50틱은_정확히_하루_속도만큼_이동하고_후처리로_전환한다()
     {
         var simulator = new RenewalAdvanceSimulator();

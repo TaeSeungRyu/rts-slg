@@ -12,6 +12,22 @@ using Xunit;
 public class CombatPhaseTests
 {
     [Theory]
+    [InlineData(12, 1199, true)]
+    [InlineData(12, 1201, false)]
+    [InlineData(15, 1499, true)]
+    [InlineData(15, 1501, false)]
+    public void 소수_부대사거리는_연속위치_교전판정에_반영된다(int rangeTenths, long targetX, bool expected)
+    {
+        var attacker = CombatUnitAt(1, 1, new(0, 0), new ContinuousPosition(0, 0)) with
+        { Field = Unit(1, 1, new(0, 0), UnitMode.Advance) with { AttackRangeTenths = rangeTenths } };
+        var target = CombatUnitAt(2, 2, new(1, 0), new ContinuousPosition(targetX, 0)) with
+        { Field = Unit(2, 2, new(1, 0), UnitMode.March) };
+
+        Assert.Equal(expected, CombatPhase.DetectEngagements([attacker, target])
+            .Any(value => value.Attacker == attacker.Id));
+    }
+
+    [Theory]
     [InlineData("catapult")]
     [InlineData("siege_tower")]
     public void 투석기와_공성탑은_전진중_사거리내_적둘을_모두_공격대상으로_잡는다(string troopCode)

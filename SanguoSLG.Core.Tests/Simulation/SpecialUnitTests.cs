@@ -31,6 +31,21 @@ public class SpecialUnitTests
         => Assert.Equal(8, S.Count);
 
     [Fact]
+    public void 병종목록은_새_공격방어와_소수_이동사거리를_보존한다()
+    {
+        var catalog = new TroopCatalogLoader().LoadFromDirectory(TestData.DataDirectory())
+            .ToDictionary(troop => troop.Code);
+        Assert.Equal((22, 12), (catalog["geukbyeong"].EffectiveMovementTenths,
+            catalog["geukbyeong"].EffectiveRangeUnitTenths));
+        Assert.Equal((28, 15), (catalog["horse_archer"].EffectiveMovementTenths,
+            catalog["horse_archer"].EffectiveRangeUnitTenths));
+        Assert.Equal(27, catalog["cataphract"].EffectiveMovementTenths);
+        Assert.Equal(22, catalog["hwarang"].EffectiveRangeUnitTenths);
+        Assert.Equal(10, catalog["catapult"].AtkUnit);
+        Assert.Equal(14, catalog["thunder_cart"].Df);
+    }
+
+    [Fact]
     public void 등갑병_df를_상병판정14로()
         => Assert.Equal(14, Field("deunggap").DfStat); // 기반 도검 df10 → 14
 
@@ -71,11 +86,11 @@ public class SpecialUnitTests
     }
 
     [Fact]
-    public void 극병_기병상대_공격가산10_궁병에게_받는피해가산10()
+    public void 극병_기병상대_공격가산15_궁병에게_받는피해가산10()
     {
-        // 극병(도검 기반)이 기병을 칠 때 +10
+        // 극병(도검 기반)이 기병을 칠 때 +15
         var vsCav = CombatStatsBuilder.MatchupAtkBonus(S["geukbyeong"], TroopClass.Infantry, null, TroopClass.Cavalry);
-        Assert.Equal(10, vsCav);
+        Assert.Equal(15, vsCav);
 
         // 궁병이 극병을 칠 때 공격자(궁병)가 +10 (= 극병 받는 피해 +10%)
         var archerVsGeuk = CombatStatsBuilder.MatchupAtkBonus(null, TroopClass.Archer, S["geukbyeong"], TroopClass.Infantry);
@@ -87,7 +102,7 @@ public class SpecialUnitTests
     }
 
     [Fact]
-    public void 극병_기병교전_피해가_10퍼센트높다()
+    public void 극병_기병교전_피해가_15퍼센트높다()
     {
         var geuk = Field("geukbyeong");
         var geukVsCav = geuk with { AtkBonusPercent = geuk.AtkBonusPercent + CombatStatsBuilder.MatchupAtkBonus(S["geukbyeong"], TroopClass.Infantry, null, TroopClass.Cavalry) };
@@ -96,7 +111,7 @@ public class SpecialUnitTests
 
         var geukDmg = Resolver.Damage(geukVsCav, cavalry);
         var plainDmg = Resolver.Damage(plainSword, cavalry);
-        Assert.Equal(696, geukDmg);   // 633 × 1.1
+        Assert.Equal(728, geukDmg);   // 633 × 1.15
         Assert.Equal(633, plainDmg);  // 1만·8·95÷(1000·12)
     }
 }

@@ -290,7 +290,7 @@ public sealed class RenewalCampaignAdvanceRunner(
                 || liveBuildings.Any(building => building.GarrisonUnit == unit.Id)
                 || !positions.TryGetValue(unit.Id, out var stoppedUnit) || !stoppedUnit.IsActive
                 || stoppedUnit.StopReason != RenewalStopReason.EnemyBlocked) continue;
-            var radius = (long)unit.Field.AttackRange * ContinuousPosition.UnitsPerTile;
+            var radius = (long)unit.Field.EffectiveAttackRangeTenths * ContinuousPosition.UnitsPerTile / 10;
             var blocker = moved.Where(candidate => (_campaign?.AreHostile(candidate.Field.Owner, unit.Field.Owner)
                     ?? candidate.Field.Owner != unit.Field.Owner)
                     && candidate.Id == stoppedUnit.BlockingUnit
@@ -415,7 +415,9 @@ public sealed class RenewalCampaignAdvanceRunner(
             AiAdvanceIgnoresOtherSites: unit.AiAdvanceIgnoresOtherSites,
             SpeedPercent: OperationalPassiveRules.MovementPercent(unit.Class,
                 _campaign?.Generals.FirstOrDefault(general => general.Id == unit.VanguardId),
-                _campaign?.Generals.FirstOrDefault(general => general.Id == unit.AdjutantId)));
+                _campaign?.Generals.FirstOrDefault(general => general.Id == unit.AdjutantId)),
+            MovementTenths: unit.Field.EffectiveMovementTenths,
+            AttackRangeTenths: unit.Field.EffectiveAttackRangeTenths);
     }
 
     private RenewalTargetId? AssignedTarget(CombatUnit source,
@@ -478,5 +480,6 @@ public sealed class RenewalCampaignAdvanceRunner(
             RenewalOrderMode.Attack => UnitMode.Attack,
             _ => UnitMode.Standby,
         }, RenewalHexSpace.NearestHex(unit.Destination), checked((int)unit.CommandId),
-        unit.CastleAttackRange);
+        unit.CastleAttackRange, MovementTenths: unit.EffectiveMovementTenths,
+        AttackRangeTenths: unit.EffectiveAttackRangeTenths);
 }

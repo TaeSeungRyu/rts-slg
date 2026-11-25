@@ -26,7 +26,11 @@ public sealed record FieldUnit(
     IReadOnlyList<RenewalMovement.ContinuousPosition>? ContinuousWaypoints = null,
     UnitId? AssignedUnitTarget = null,
     RenewalMovement.RenewalTargetId? PursuitTarget = null,
-    UnitId? FollowUnitId = null)
+    UnitId? FollowUnitId = null,
+    int MovementTenths = 0,
+    int AttackRangeTenths = 0)
 {
+    public int EffectiveMovementTenths => MovementTenths > 0 ? MovementTenths : Speed * 10;
+    public int EffectiveAttackRangeTenths => AttackRangeTenths > 0 ? AttackRangeTenths : AttackRange * 10;
     public FieldUnit MoveTo(HexCoord position) => this with { Position = position };
 }
