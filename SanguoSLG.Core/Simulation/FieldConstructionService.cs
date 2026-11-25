@@ -37,9 +37,11 @@ public sealed class FieldConstructionService(
         {
             return CommandResult.Fail("알 수 없는 건축물입니다.", state);
         }
-        if (unit.Pool.Active < MinimumTroops)
+        if (unit.Pool.Active < (unit.IsConstructionUnit ? 500 : MinimumTroops))
         {
-            return CommandResult.Fail("건축에는 병력 1,000명 이상이 필요합니다.", state);
+            return CommandResult.Fail(unit.IsConstructionUnit
+                ? "건설부대는 병력 500명 이상이 필요합니다."
+                : "건축에는 병력 1,000명 이상이 필요합니다.", state);
         }
         if (unit.Field.Position.Distance(request.Position) > 1)
         {
@@ -177,6 +179,8 @@ public sealed class FieldConstructionService(
             Provisions = unit.Provisions - definition.ProvisionsCost,
             Pool = new TroopPool(unit.Pool.Active - definition.TroopCost, unit.Pool.Wounded),
             IsConstructing = true,
+            ConstructionDefinitionCode = null,
+            ConstructionPlot = null,
             Field = unit.Field with { Mode = UnitMode.Advance, Target = null, Waypoints = null },
         };
     }

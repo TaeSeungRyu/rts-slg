@@ -606,7 +606,8 @@ public sealed partial class CampaignMapScene : Node3D
         _provPer10kPerDay = _balance.ProvisionsPer10kPerDay;
 
         _commander = new CommandService(_cb, _troops, _balance, _adminSkills);
-        _deployer = new DeployService(_cb, _troops, actives, passives, _adminSkills, _balance);
+        _deployer = new DeployService(_cb, _troops, actives, passives, _adminSkills, _balance,
+            _fieldBuildingDefinitions);
         var scenario = _scenarioOverride ?? CreatedGeneralPresets.ApplyAtNewGame(
             new ScenarioLoader().LoadFromDirectory(dataDirectory));
         _passability = new PassabilityMap(_map, [], _cities,
@@ -694,7 +695,8 @@ public sealed partial class CampaignMapScene : Node3D
                 moveEveryDays: scenario.Balance.ClimateMoveEveryDays,
                 winterSnowPercent: scenario.Balance.ClimateWinterSnowPercent,
                 minDurationDays: scenario.Balance.ClimateMinDurationDays,
-                maxDurationDays: scenario.Balance.ClimateMaxDurationDays));
+                maxDurationDays: scenario.Balance.ClimateMaxDurationDays),
+            fieldConstruction: _fieldConstruction);
         _vision = new BattlefieldVision(scenario.Balance, _troops, _fieldBuildingDefinitions);
         _fog = new BattlefieldFogView(_view);
         _fog.RegisterMap();

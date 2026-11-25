@@ -52,6 +52,31 @@ public sealed class FieldConstructionServiceTests
     }
 
     [Fact]
+    public void 건설전용부대는_오백명부터_착공하며_전투하지_않는다()
+    {
+        var builder = Unit(500) with
+        {
+            IsConstructionUnit = true,
+            ConstructionDefinitionCode = "palisade",
+            ConstructionPlot = new HexCoord(2, 2),
+            SupplyUpkeepPercent = 20,
+            Stats = new CombatStats(500, 1, 1, 1),
+        };
+        Assert.False(builder.CanInitiateCombat);
+        Assert.False(builder.CanCounterCombat);
+        Assert.Equal(20, builder.ProvisionsUpkeepPercent);
+        var result = Service().Start(State(builder), Player,
+            new(builder.Id, "palisade", builder.Field.Position));
+        Assert.True(result.Ok, result.Error);
+        var started = Assert.Single(result.State.Armies);
+        Assert.True(started.IsConstructing);
+        Assert.Null(started.ConstructionDefinitionCode);
+        Assert.Null(started.ConstructionPlot);
+        Assert.False(Service().Start(State(builder with { Pool = new TroopPool(499, 0) }), Player,
+            new(builder.Id, "palisade", builder.Field.Position)).Ok);
+    }
+
+    [Fact]
     public void 착공은_휴대자원을_한번만_차감하고_타일을_예약한다()
     {
         var started = Service(TerrainType.Forest).Start(State(Unit()), Player,

@@ -43,6 +43,7 @@ public sealed class CampaignEngine
     private readonly RuinCombat? _ruinCombat;
     private readonly FieldBuildingCombat? _fieldBuildingCombat;
     private readonly IReadOnlyList<FieldBuildingDefinition> _fieldBuildingDefinitions;
+    private readonly FieldConstructionService? _fieldConstruction;
     private readonly FieldScoutPostService? _fieldScoutPosts;
     private readonly EventHuntService? _eventHunts;
     private readonly SummonService? _summons;
@@ -58,7 +59,8 @@ public sealed class CampaignEngine
         IReadOnlyList<FieldBuildingDefinition>? fieldBuildingDefinitions = null,
         EventHuntService? eventHunts = null, SummonService? summons = null,
         IReadOnlyList<AncientRelicDefinition>? ancientRelics = null,
-        ClimateController? climate = null)
+        ClimateController? climate = null,
+        FieldConstructionService? fieldConstruction = null)
     {
         _field = field;
         _world = world;
@@ -74,6 +76,7 @@ public sealed class CampaignEngine
         _ruinCombat = ruinCombat;
         _fieldBuildingCombat = fieldBuildingCombat;
         _fieldBuildingDefinitions = fieldBuildingDefinitions ?? [];
+        _fieldConstruction = fieldConstruction;
         _fieldScoutPosts = _fieldBuildingDefinitions.Count > 0
             ? new FieldScoutPostService(_fieldBuildingDefinitions)
             : null;
@@ -344,6 +347,23 @@ public sealed class CampaignEngine
             }
 
             turn = StripProductionUnits(turn, productionUnitIds);
+            if (_fieldConstruction is not null)
+            {
+                var constructionState = work with { Day = simulationDay, FieldArmies = turn.Units };
+                foreach (var builder in turn.Units.Where(unit => unit.IsConstructionUnit
+                    && !unit.IsConstructing && !unit.IsWaitingDeployment
+                    && unit.ConstructionDefinitionCode is not null
+                    && unit.ConstructionPlot is not null).ToList())
+                {
+                    var plot = builder.ConstructionPlot!.Value;
+                    if (builder.Field.Position.Distance(plot) > 1) continue;
+                    var result = _fieldConstruction.Start(constructionState, builder.Field.Owner,
+                        new FieldConstructionRequest(builder.Id, builder.ConstructionDefinitionCode!, plot));
+                    if (result.Ok) constructionState = result.State;
+                }
+                work = constructionState with { Day = work.Day };
+                turn = turn with { Units = constructionState.Armies };
+            }
             if (_eventHunts is not null)
             {
                 turn = _eventHunts.ApplyDragonSplash(armies, turn);

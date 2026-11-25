@@ -20,7 +20,8 @@ public sealed record DeployRequest(
     DeploymentDirection? EgressDirection = null,
     HexCoord? EgressExit = null,
     RenewalMovement.ContinuousPosition? ContinuousTarget = null,
-    IReadOnlyList<RenewalMovement.ContinuousPosition>? ContinuousWaypoints = null);
+    IReadOnlyList<RenewalMovement.ContinuousPosition>? ContinuousWaypoints = null,
+    string? ConstructionDefinitionCode = null);
 
 /// <summary>보급부대 편성 한 줄 — 병종과 데려갈 병력(0 이하면 그 병종 전량).</summary>
 public sealed record SupplyLine(string TroopCode, int Troops);
@@ -111,6 +112,7 @@ public sealed class DeployService
     private readonly IReadOnlyDictionary<string, PassiveSkill> _passives;
     private readonly IReadOnlyDictionary<string, AdminSkill> _adminSkills;
     private readonly BalanceConfig _economy;
+    private readonly IReadOnlyDictionary<string, FieldBuildingDefinition> _fieldBuildings;
 
     public CommandBalance Balance => _b;
     public IReadOnlyDictionary<string, TroopTemplate> Troops => _troops;
@@ -120,7 +122,8 @@ public sealed class DeployService
 
     public DeployService(CommandBalance balance, IReadOnlyList<TroopTemplate> troops,
         IReadOnlyList<ActiveSkill> actives, IReadOnlyList<PassiveSkill> passives,
-        IReadOnlyList<AdminSkill>? adminSkills = null, BalanceConfig? economy = null)
+        IReadOnlyList<AdminSkill>? adminSkills = null, BalanceConfig? economy = null,
+        IReadOnlyList<FieldBuildingDefinition>? fieldBuildings = null)
     {
         _b = balance;
         _troops = troops.ToDictionary(t => t.Code);
@@ -128,6 +131,7 @@ public sealed class DeployService
         _passives = passives.ToDictionary(p => p.Code);
         _adminSkills = (adminSkills ?? []).ToDictionary(a => a.Code);
         _economy = economy ?? new BalanceConfig(MonthlyTaxPerCity: 100);
+        _fieldBuildings = (fieldBuildings ?? []).ToDictionary(building => building.Code);
     }
 
     public CommandResult Deploy(GameState state, DeployRequest req)
@@ -158,6 +162,18 @@ public sealed class DeployService
         }
 
         var troops = req.Troops <= 0 ? garrison.Troops : req.Troops;
+        FieldBuildingDefinition? construction = null;
+        if (req.ConstructionDefinitionCode is { } constructionCode)
+        {
+            if (!_fieldBuildings.TryGetValue(constructionCode, out construction))
+                return CommandResult.Fail("건설 대상을 선택해야 합니다.", state);
+            if (req.Target is null || req.Mode != UnitMode.March || req.Adjutant is not null)
+                return CommandResult.Fail("건설부대는 목표와 주장 한 명을 지정해야 합니다.", state);
+            if (troops < System.Math.Max(500, construction.TroopCost + 1))
+                return CommandResult.Fail("건설부대는 병력 500명 이상이 필요합니다.", state);
+            if (req.Gold < construction.GoldCost)
+                return CommandResult.Fail("건설 비용만큼 금을 휴대해야 합니다.", state);
+        }
         if (troops > garrison.Troops)
         {
             return CommandResult.Fail("대기 병력이 부족하다.", state);
@@ -221,6 +237,8 @@ public sealed class DeployService
         var capacity = (template.ProvisionsCapacity + backpack) * troops / 10000;
         var wanted = req.Provisions < 0 ? capacity : System.Math.Min(req.Provisions, capacity);
         var carried = System.Math.Min(wanted, city.Provisions);
+        if (construction is not null && carried < construction.ProvisionsCost)
+            return CommandResult.Fail("건설 비용만큼 군량을 휴대해야 합니다.", state);
 
         // 세력 병종 연구 단계를 스탯에 반영(design-combat "병종 연구").
         var research = state.ResearchOf(city.Owner, template.Code);
@@ -234,6 +252,16 @@ public sealed class DeployService
                 ContinuousWaypoints = req.ContinuousWaypoints },
             OriginCity = city.Id, DeploymentDelayDays = req.DelayDays, EgressDirection = egressDirection,
             EgressExit = egressExit, AwaitingEgress = egressExit.HasValue };
+        if (construction is not null)
+            unit = unit with
+            {
+                IsConstructionUnit = true,
+                ConstructionDefinitionCode = construction.Code,
+                ConstructionPlot = req.Target,
+                SupplyUpkeepPercent = 20,
+                Stats = unit.Stats with { AtkStat = 1, DfStat = 1,
+                    AptitudePercent = 1, AtkBonusPercent = 100, DfBonusPercent = 100 },
+            };
 
         var garrisons = state.Garrisons
             .Select(g => g == garrison ? g with { Troops = g.Troops - troops } : g)

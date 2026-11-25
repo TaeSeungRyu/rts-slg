@@ -59,7 +59,10 @@ public sealed record CombatUnit(
     bool AiAdvanceIgnoresOtherSites = false,
     CityId? AiSupportDefendedCity = null,
     string? AiRuinTarget = null,
-    ArcherArrowMode ArrowMode = ArcherArrowMode.Normal)
+    ArcherArrowMode ArrowMode = ArcherArrowMode.Normal,
+    bool IsConstructionUnit = false,
+    string? ConstructionDefinitionCode = null,
+    HexCoord? ConstructionPlot = null)
 {
     public UnitId Id => Field.Id;
 
@@ -79,10 +82,10 @@ public sealed record CombatUnit(
     public bool TracksProvisions => Provisions >= 0;
 
     /// <summary>수송부대는 물자 운반 전용이라 공격·반격·공성·점령을 할 수 없다. 집단군은 전투 가능하다.</summary>
-    public bool CanInitiateCombat => !IsTransport && !IsConstructing && !IsWildBeast && BanditWaitDays <= 0
+    public bool CanInitiateCombat => !IsTransport && !IsConstructionUnit && !IsConstructing && !IsWildBeast && BanditWaitDays <= 0
         && SummonLockDay is null;
 
-    public bool CanCounterCombat => !IsTransport && !IsConstructing && SummonLockDay is null;
+    public bool CanCounterCombat => !IsTransport && !IsConstructionUnit && !IsConstructing && SummonLockDay is null;
 
     /// <summary>수송부대는 적에게 잡히면 노획 대상이 되는 금과 군량을 갖는다.</summary>
     public int CarryingGold => LootGold + CargoGold;
