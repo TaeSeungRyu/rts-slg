@@ -973,7 +973,7 @@ public partial class GeneralEditorScene : Control
         var spin = new SpinBox
         {
             MinValue = 1,
-            MaxValue = 100,
+            MaxValue = 255,
             Step = 1,
             Rounded = true,
             CustomMinimumSize = new Vector2(0, 38),
