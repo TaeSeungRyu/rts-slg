@@ -54,6 +54,34 @@ public class DeployServiceTests
     };
 
     [Fact]
+    public void 건설편성은_단일병종과_비용을_검증하고_전투력을_최하로_설정한다()
+    {
+        var city = Town(1, new HexCoord(2, 0));
+        var commander = Gen(1);
+        var state = State([city], [commander],
+            garrisons: [new GarrisonForce(city.Id, "swordsman", 1000, 60)],
+            postings: [At(1, 1)]);
+        var definitions = new FieldBuildingLoader().LoadFromDirectory(TestData.DataDirectory());
+        var deployer = new DeployService(B, Troops, Actives, Passives,
+            fieldBuildings: definitions);
+        var request = new DeployRequest(city.Id, "swordsman", 500, commander.Id,
+            Mode: UnitMode.March, Target: new HexCoord(4, 0), Gold: 100,
+            ConstructionDefinitionCode: "palisade");
+        var result = deployer.Deploy(state, request);
+        Assert.True(result.Ok, result.Error);
+        var unit = Assert.Single(result.State.Armies);
+        Assert.True(unit.IsConstructionUnit);
+        Assert.False(unit.CanInitiateCombat);
+        Assert.False(unit.CanCounterCombat);
+        Assert.Equal(20, unit.ProvisionsUpkeepPercent);
+        Assert.Equal(1, unit.Stats.AtkStat);
+        Assert.Equal(1, unit.Stats.DfStat);
+        Assert.Equal("palisade", unit.ConstructionDefinitionCode);
+        Assert.False(deployer.Deploy(state, request with { Gold = 99 }).Ok);
+        Assert.False(deployer.Deploy(state, request with { Troops = 499 }).Ok);
+    }
+
+    [Fact]
     public void 상급지휘_패시브는_일반부대_편성한도를_늘린다()
     {
         var city = Town(1, new HexCoord(2, 0));

@@ -1,0 +1,421 @@
+using Godot;
+using SanguoSLG.Core.Domain;
+using SanguoSLG.Core.Simulation;
+
+namespace SanguoSLG.Game;
+
+public sealed partial class CampaignMapScene
+{
+    private int _constructionSelectedIndex = -1;
+    private static readonly string[] ConstructionCodes =
+        ["palisade", "scout_post", "watchtower", "fort", "formation"];
+
+    private void OpenConstructionHub(CityId cityId)
+    {
+        _depModalCity = cityId;
+        if (_modalLayer is not null) { FadeOutModal(_modalLayer); _modalLayer = null; }
+        var layer = new CanvasLayer { Layer = 20 };
+        AddChild(layer);
+        _modalLayer = layer;
+        var backdrop = new ColorRect { Color = new Color(0, 0, 0, 0.68f),
+            MouseFilter = Control.MouseFilterEnum.Stop };
+        backdrop.SetAnchorsPreset(Control.LayoutPreset.FullRect);
+        layer.AddChild(backdrop);
+        var viewport = GetViewport().GetVisibleRect().Size;
+        var height = Mathf.Min(viewport.Y - 28f, 970f);
+        var width = Mathf.Min(viewport.X - 28f, height * 1.5f);
+        var panel = new PanelContainer { Name = "ConstructionCommandCenter",
+            CustomMinimumSize = new Vector2(width, height), Size = new Vector2(width, height),
+            Position = (viewport - new Vector2(width, height)) / 2f,
+            MouseFilter = Control.MouseFilterEnum.Stop };
+        panel.SetMeta("modal_root", true);
+        panel.AddThemeStyleboxOverride("panel", new StyleBoxEmpty());
+        layer.AddChild(panel);
+        var background = new TextureRect { Name = "ConstructionCommandBackground",
+            Texture = GD.Load<Texture2D>(DeployCommandAssetRoot + "deploy_command_panel.png"),
+            ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
+            StretchMode = TextureRect.StretchModeEnum.Scale,
+            MouseFilter = Control.MouseFilterEnum.Ignore };
+        background.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
+        panel.AddChild(background);
+        var safe = new MarginContainer();
+        safe.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
+        safe.AddThemeConstantOverride("margin_left", 45);
+        safe.AddThemeConstantOverride("margin_right", 45);
+        safe.AddThemeConstantOverride("margin_top", 13);
+        safe.AddThemeConstantOverride("margin_bottom", 38);
+        panel.AddChild(safe);
+        var root = new VBoxContainer { SizeFlagsVertical = Control.SizeFlags.ExpandFill };
+        root.AddThemeConstantOverride("separation", 8);
+        safe.AddChild(root);
+        var name = _state.Cities.First(city => city.Id == cityId).Name;
+        var header = new HBoxContainer { CustomMinimumSize = new Vector2(0, 76) };
+        header.AddChild(new Control { CustomMinimumSize = new Vector2(28, 0) });
+        var title = MakeLabel($"건설 지휘소  《 {name} 》", 26, GoldBright);
+        title.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+        title.VerticalAlignment = VerticalAlignment.Center;
+        header.AddChild(title);
+        var close = CommandCenterButton("×", false, new Vector2(30, 30));
+        close.Name = "ConstructionCommandClose";
+        close.SizeFlagsVertical = Control.SizeFlags.ShrinkCenter;
+        close.Pressed += () => { CloseModal(); SelectCity(cityId); };
+        header.AddChild(close);
+        root.AddChild(header);
+
+        var mine = Enumerable.Range(0, _pendingDeploys.Count)
+            .Where(index => _pendingDeploys[index].Req.City == cityId
+                && _pendingDeploys[index].Req.ConstructionDefinitionCode is not null).ToList();
+        if (!mine.Contains(_constructionSelectedIndex)) _constructionSelectedIndex = mine.FirstOrDefault(-1);
+        var status = new HBoxContainer { CustomMinimumSize = new Vector2(0, 48) };
+        status.AddChild(MakeLabel($"예약된 건설부대  {mine.Count}", 17, GoldBright));
+        status.AddChild(new Control { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill });
+        var add = CommandCenterButton("＋ 신규 편성", true, new Vector2(170, 42));
+        add.Name = "ConstructionCommandNewUnit";
+        add.Pressed += () => OpenConstructionCompose(-1);
+        status.AddChild(add);
+        root.AddChild(status);
+
+        var columns = new HBoxContainer { Name = "ConstructionCommandColumns",
+            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+            SizeFlagsVertical = Control.SizeFlags.ExpandFill };
+        columns.AddThemeConstantOverride("separation", 12);
+        root.AddChild(columns);
+        var left = CommandCenterSection("예약 건설부대 목록");
+        left.CustomMinimumSize = new Vector2(405, 0);
+        left.SizeFlagsVertical = Control.SizeFlags.ExpandFill;
+        columns.AddChild(left);
+        var listScroll = new ScrollContainer { Name = "ConstructionCommandUnitList",
+            SizeFlagsVertical = Control.SizeFlags.ExpandFill,
+            HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled };
+        GameUiSkin.ApplyQuickListScroll(listScroll);
+        left.AddChild(listScroll);
+        var listInset = new MarginContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+        listInset.AddThemeConstantOverride("margin_right", 6);
+        listScroll.AddChild(listInset);
+        var list = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+        list.AddThemeConstantOverride("separation", 8);
+        listInset.AddChild(list);
+        foreach (var index in mine)
+        {
+            var request = _pendingDeploys[index].Req;
+            var selected = index == _constructionSelectedIndex;
+            var card = CommandCenterButton("", selected, new Vector2(0, 112));
+            card.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+            card.Pressed += () => { _constructionSelectedIndex = index; OpenConstructionHub(cityId); };
+            list.AddChild(card);
+            var cardRow = new HBoxContainer { MouseFilter = Control.MouseFilterEnum.Ignore };
+            cardRow.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect,
+                Control.LayoutPresetMode.Minsize, 14);
+            cardRow.AddThemeConstantOverride("separation", 10);
+            card.AddChild(cardRow);
+            cardRow.AddChild(DeployUnitArtwork(UnitCard("supply", TroopClass.Supply), 66));
+            var detail = new VBoxContainer { MouseFilter = Control.MouseFilterEnum.Ignore };
+            cardRow.AddChild(detail);
+            detail.AddChild(MakeLabel($"{TroopName(request.TroopCode)} {request.Troops:N0}명", 17, GoldBright));
+            detail.AddChild(MakeLabel($"{_state.Generals.First(g => g.Id == request.Vanguard).Name} · {_fieldBuildingDefinitions.First(b => b.Code == request.ConstructionDefinitionCode).Name}",
+                12, Parchment));
+            detail.AddChild(MakeLabel(request.Target is { } target ? $"목표 ({target.Q},{target.R})" : "목표 미지정", 12, Gold));
+        }
+        if (mine.Count == 0) list.AddChild(MakeLabel("예약된 건설부대가 없습니다.", 15, Parchment));
+        var right = CommandCenterSection("선택 건설부대 정보");
+        right.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+        right.SizeFlagsVertical = Control.SizeFlags.ExpandFill;
+        columns.AddChild(right);
+        BuildConstructionHubDetail(right, cityId);
+        var footer = new HBoxContainer { CustomMinimumSize = new Vector2(0, 43) };
+        footer.AddThemeConstantOverride("separation", 8);
+        if (_constructionSelectedIndex >= 0)
+        {
+            var selected = _constructionSelectedIndex;
+            var remove = CommandCenterButton("부대 삭제", false, new Vector2(132, 42));
+            remove.Pressed += () => { _pendingDeploys.RemoveAt(selected); _constructionSelectedIndex = -1; OpenConstructionHub(cityId); };
+            footer.AddChild(remove);
+            var edit = CommandCenterButton("편성 수정", false, new Vector2(145, 42));
+            edit.Pressed += () => OpenConstructionCompose(selected);
+            footer.AddChild(edit);
+        }
+        footer.AddChild(new Control { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill });
+        var done = CommandCenterButton("확인", true, new Vector2(190, 42));
+        done.Pressed += () => { CloseModal(); SelectCity(cityId); };
+        footer.AddChild(done);
+        root.AddChild(footer);
+        CenterAndDrag(panel, header, width, height, root);
+        panel.Size = new Vector2(width, height);
+        panel.Position = (viewport - panel.Size) / 2f;
+        DrawDeployPaths();
+    }
+
+    private void BuildConstructionHubDetail(VBoxContainer right, CityId cityId)
+    {
+        if (_constructionSelectedIndex < 0 || _constructionSelectedIndex >= _pendingDeploys.Count)
+        {
+            right.AddChild(MakeLabel("왼쪽에서 건설부대를 선택하세요.", 16, Parchment));
+            return;
+        }
+        var index = _constructionSelectedIndex;
+        var request = _pendingDeploys[index].Req;
+        var building = _fieldBuildingDefinitions.First(b => b.Code == request.ConstructionDefinitionCode);
+        var leader = _state.Generals.First(g => g.Id == request.Vanguard);
+        var overview = new PanelContainer();
+        overview.AddThemeStyleboxOverride("panel", Frame(Colors.Transparent, Gold, 1, 5, 10));
+        var overviewRow = new HBoxContainer();
+        overviewRow.AddThemeConstantOverride("separation", 12);
+        overviewRow.AddChild(DeployUnitArtwork(UnitCard("supply", TroopClass.Supply), 76));
+        overviewRow.AddChild(MakeLabel($"{TroopName(request.TroopCode)} {request.Troops:N0}명\n주장 {leader.Name} · 군량 {request.Provisions:N0} · 금 {request.Gold:N0}", 16, GoldBright));
+        overview.AddChild(overviewRow);
+        right.AddChild(overview);
+        right.AddChild(MakeLabel("건설 대상", 17, GoldBright));
+        var targets = new ScrollContainer { Name = "ConstructionTargetsScroll",
+            CustomMinimumSize = new Vector2(0, 110),
+            HorizontalScrollMode = ScrollContainer.ScrollMode.Auto,
+            VerticalScrollMode = ScrollContainer.ScrollMode.Disabled };
+        right.AddChild(targets);
+        var choices = new HBoxContainer();
+        choices.AddThemeConstantOverride("separation", 7);
+        targets.AddChild(choices);
+        for (var i = 0; i < ConstructionCodes.Length; i++)
+        {
+            var definition = _fieldBuildingDefinitions.FirstOrDefault(b => b.Code == ConstructionCodes[i]);
+            if (definition is null) continue;
+            var choice = CommandCenterButton("", definition.Code == building.Code, new Vector2(105, 94));
+            choice.TooltipText = $"{definition.Name} · 금 {definition.GoldCost} · 군량 {definition.ProvisionsCost}";
+            choices.AddChild(choice);
+            var content = new VBoxContainer { MouseFilter = Control.MouseFilterEnum.Ignore };
+            content.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
+            choice.AddChild(content);
+            var image = new TextureRect { Texture = GD.Load<Texture2D>($"res://assets/ui/game/struct_card/{i}.png"),
+                CustomMinimumSize = new Vector2(50, 50),
+                ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
+                StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
+                MouseFilter = Control.MouseFilterEnum.Ignore };
+            content.AddChild(image);
+            content.AddChild(MakeLabel(definition.Name, 12, GoldBright));
+            choice.Pressed += () =>
+            {
+                var updated = request with { ConstructionDefinitionCode = definition.Code,
+                    Gold = System.Math.Max(request.Gold, definition.GoldCost),
+                    Provisions = System.Math.Max(request.Provisions, definition.ProvisionsCost) };
+                _pendingDeploys[index] = (updated, _pendingDeploys[index].Label);
+                OpenConstructionHub(cityId);
+            };
+        }
+        var cost = new PanelContainer();
+        cost.AddThemeStyleboxOverride("panel", Frame(Colors.Transparent, Gold, 1, 5, 10));
+        cost.AddChild(MakeLabel($"{building.Name} · 금 {building.GoldCost:N0} · 군량 {building.ProvisionsCost:N0} · {building.BuildDays}일\n이동 중 군량 소비 80% 감소 · 공격/방어 최하", 14, Parchment));
+        right.AddChild(cost);
+        var destination = new HBoxContainer();
+        destination.AddChild(MakeLabel(request.Target is { } hex
+            ? $"현재 목표: ({hex.Q},{hex.R})" : "현재 목표: 미지정", 14, GoldBright));
+        destination.AddChild(new Control { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill });
+        var targetButton = CommandCenterButton("목표 지정", true, new Vector2(132, 38));
+        targetButton.Pressed += () => BeginTargeting(index);
+        destination.AddChild(targetButton);
+        right.AddChild(destination);
+    }
+
+    private void OpenConstructionCompose(int editIndex)
+    {
+        var cityId = _depModalCity;
+        var city = _state.Cities.First(c => c.Id == cityId);
+        var old = editIndex >= 0 && editIndex < _pendingDeploys.Count
+            ? _pendingDeploys[editIndex].Req : null;
+        var definition = _fieldBuildingDefinitions.First(b => b.Code == (old?.ConstructionDefinitionCode ?? "palisade"));
+        string? troopCode = old?.TroopCode;
+        var amount = old?.Troops ?? 0;
+        GeneralId? leaderId = old?.Vanguard;
+        var gold = old?.Gold ?? definition.GoldCost;
+        var provisions = old?.Provisions ?? definition.ProvisionsCost;
+        var delay = old?.DelayDays ?? 0;
+        if (_modalLayer is not null) { FadeOutModal(_modalLayer); _modalLayer = null; }
+        var layer = new CanvasLayer { Layer = 20 };
+        AddChild(layer);
+        _modalLayer = layer;
+        var backdrop = new ColorRect { Color = new Color(0, 0, 0, 0.68f), MouseFilter = Control.MouseFilterEnum.Stop };
+        backdrop.SetAnchorsPreset(Control.LayoutPreset.FullRect);
+        layer.AddChild(backdrop);
+        var modal = new ConstructionComposeModal(GetViewport().GetVisibleRect().Size,
+            GD.Load<Texture2D>(DeployCommandAssetRoot + "deploy_command_panel.png"), _font,
+            $"건설부대 편성  《 {city.Name} 》");
+        layer.AddChild(modal);
+        modal.BackButton.Pressed += () => OpenConstructionHub(cityId);
+        ApplyDeployComposeButtonTexture(modal.BackButton, false);
+        GameUiSkin.ApplyQuickListScroll(modal.LeftScroll);
+        var left = modal.LeftContent;
+        var right = modal.RightContent;
+        left.AddChild(MakeLabel("병종 선택 (1종)", 16, GoldBright));
+        var troopScroll = new ScrollContainer { CustomMinimumSize = new Vector2(0, 210),
+            HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled };
+        GameUiSkin.ApplyQuickListScroll(troopScroll);
+        left.AddChild(troopScroll);
+        var troopInset = new MarginContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+        troopInset.AddThemeConstantOverride("margin_right", 7);
+        troopScroll.AddChild(troopInset);
+        var troopGrid = new GridContainer { Name = "ConstructionTroopGrid", Columns = 2,
+            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+        troopGrid.AddThemeConstantOverride("h_separation", 7);
+        troopGrid.AddThemeConstantOverride("v_separation", 7);
+        troopInset.AddChild(troopGrid);
+        var amountSpin = ApplyNumberInputStyle(new SpinBox { MinValue = 500, MaxValue = 500,
+            Step = 100, Value = amount > 0 ? amount : 500,
+            CustomMinimumSize = new Vector2(130, 30) });
+        var troopButtons = new List<(string Code, PanelContainer Card)>();
+        void RefreshTroops()
+        {
+            foreach (var (code, card) in troopButtons)
+                card.AddThemeStyleboxOverride("panel", Frame(code == troopCode
+                    ? new Color("6a2018") : InkSoft, code == troopCode ? GoldBright : Gold,
+                    code == troopCode ? 2 : 1, 7, 8));
+        }
+        var reserved = ReservedTroopsByCode(cityId, editIndex, editingSupply: false);
+        foreach (var garrison in _state.Garrisons.Where(g => g.City == cityId && !g.Trainee && g.Troops > 0))
+        {
+            var available = garrison.Troops - reserved.GetValueOrDefault(garrison.TroopCode);
+            if (available < 500) continue;
+            var template = _troops.FirstOrDefault(t => t.Code == garrison.TroopCode);
+            if (template?.Class == TroopClass.Naval) continue;
+            var code = garrison.TroopCode;
+            var card = DeployCard(UnitCard(code, template?.Class), template?.Name ?? code,
+                $"{available:N0}명 · 훈{garrison.TrainingLevel}");
+            troopButtons.Add((code, card));
+            card.GuiInput += input =>
+            {
+                if (input is not InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left }) return;
+                troopCode = code;
+                amountSpin.MaxValue = System.Math.Min(available, DeployMaxTroopsFor(cityId, leaderId));
+                amountSpin.Value = System.Math.Min(amount > 0 ? amount : available, amountSpin.MaxValue);
+                amount = (int)amountSpin.Value;
+                RefreshTroops();
+            };
+            troopGrid.AddChild(card);
+        }
+        if (troopCode is not null)
+        {
+            var current = _state.Garrisons.FirstOrDefault(force => force.City == cityId
+                && force.TroopCode == troopCode);
+            if (current is not null)
+            {
+                amountSpin.MaxValue = System.Math.Max(500,
+                    System.Math.Min(current.Troops - reserved.GetValueOrDefault(troopCode),
+                        DeployMaxTroopsFor(cityId, leaderId)));
+                amountSpin.Value = System.Math.Clamp(amount, 500, (int)amountSpin.MaxValue);
+            }
+        }
+        RefreshTroops();
+        left.AddChild(MakeLabel("병력 수량 (최소 500명)", 13, GoldBright));
+        amountSpin.ValueChanged += value => amount = (int)value;
+        left.AddChild(amountSpin);
+        left.AddChild(DeployComposeResourceHeading("food.png", "휴대 군량"));
+        var provisionSpin = ApplyNumberInputStyle(new SpinBox { MinValue = 0,
+            MaxValue = city.Provisions, Step = 1, Value = provisions,
+            CustomMinimumSize = new Vector2(150, 30) });
+        provisionSpin.ValueChanged += value => provisions = (int)value;
+        left.AddChild(provisionSpin);
+        left.AddChild(DeployComposeResourceHeading("money.png", "휴대 금"));
+        var goldSpin = ApplyNumberInputStyle(new SpinBox { MinValue = 0,
+            MaxValue = city.Gold, Step = 1, Value = gold,
+            CustomMinimumSize = new Vector2(150, 30) });
+        goldSpin.ValueChanged += value => gold = (int)value;
+        left.AddChild(goldSpin);
+        AddDeploymentDelaySelector(left, delay, days => delay = days);
+        right.AddChild(MakeLabel("주장 선택 (부관 없음)", 16, GoldBright));
+        var officerScroll = new ScrollContainer { SizeFlagsVertical = Control.SizeFlags.ExpandFill,
+            HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled };
+        GameUiSkin.ApplyQuickListScroll(officerScroll);
+        right.AddChild(officerScroll);
+        var officerList = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+        officerScroll.AddChild(officerList);
+        var reservedGenerals = ReservedDeployGenerals(editIndex, editingSupply: false);
+        var officerButtons = new List<(GeneralId Id, Button Button)>();
+        foreach (var id in _state.GeneralsAt(cityId).Where(id => !_state.IsGeneralBusy(id)
+            && !reservedGenerals.Contains(id)))
+        {
+            var general = _state.Generals.First(g => g.Id == id);
+            var button = MakeButton("");
+            button.CustomMinimumSize = new Vector2(0, 58);
+            button.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+            officerList.AddChild(button);
+            officerButtons.Add((id, button));
+            var row = new HBoxContainer { MouseFilter = Control.MouseFilterEnum.Ignore };
+            row.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
+            row.AddThemeConstantOverride("separation", 10);
+            button.AddChild(row);
+            row.AddChild(FixedIcon(CircularPortraitFor(id), 42));
+            row.AddChild(MakeLabel($"{general.Name}   무 {general.Might} · 지 {general.Intellect} · 정 {general.Politics}", 14, Parchment));
+            button.Pressed += () =>
+            {
+                leaderId = id;
+                foreach (var (officerId, choice) in officerButtons)
+                    ApplyDeployComposeButtonTexture(choice, officerId == leaderId);
+            };
+        }
+        foreach (var (id, button) in officerButtons)
+            ApplyDeployComposeButtonTexture(button, id == leaderId);
+        var summary = MakeLabel($"건설 대상 {definition.Name} · 금 {definition.GoldCost:N0} · 군량 {definition.ProvisionsCost:N0}",
+            13, GoldBright);
+        var footerRow = new HBoxContainer();
+        summary.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+        footerRow.AddChild(summary);
+        var confirm = CommandCenterButton("건설 예약", true, new Vector2(170, 42));
+        confirm.SizeFlagsHorizontal = Control.SizeFlags.ShrinkCenter;
+        footerRow.AddChild(confirm);
+        modal.FooterContent.AddChild(footerRow);
+        confirm.Pressed += () =>
+        {
+            if (troopCode is null || amount < 500 || leaderId is null)
+            { ShowNotice("건설 편성 불가", "병종 1개, 병력 500명 이상, 주장을 선택하세요."); return; }
+            if (gold < definition.GoldCost || provisions < definition.ProvisionsCost)
+            { ShowNotice("건설 편성 불가", "건설 비용만큼 금과 군량을 휴대해야 합니다."); return; }
+            var request = new DeployRequest(cityId, troopCode, amount, leaderId.Value,
+                Mode: UnitMode.March, Target: old?.Target,
+                Provisions: provisions, Gold: gold, DelayDays: delay,
+                ConstructionDefinitionCode: definition.Code);
+            var label = $"건설 {TroopName(troopCode)} {amount:N0}명 · {definition.Name}";
+            ShowConfirm("건설부대 예약 확인", label, () =>
+            {
+                if (_advancing || _state.IsGeneralBusy(leaderId.Value)
+                    || ReservedDeployGenerals(editIndex, editingSupply: false).Contains(leaderId.Value))
+                { ShowNotice("건설 편성 불가", "선택한 장수가 다른 업무를 수행 중입니다."); return; }
+                _state = _state.ReleaseOfficerDuties([leaderId.Value]);
+                if (editIndex >= 0) _pendingDeploys[editIndex] = (request, label);
+                else _pendingDeploys.Add((request, label));
+                _constructionSelectedIndex = editIndex >= 0 ? editIndex : _pendingDeploys.Count - 1;
+                OpenConstructionHub(cityId);
+            });
+        };
+    }
+
+    private async void RunConstructionUiQa()
+    {
+        var city = _state.Cities.First(candidate => candidate.Owner == Player && !candidate.IsPort);
+        OpenConstructionHub(city.Id);
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        var hub = _modalLayer?.FindChild("ConstructionCommandCenter", true, false) as PanelContainer;
+        var add = _modalLayer?.FindChild("ConstructionCommandNewUnit", true, false) as Button;
+        var passed = hub is not null && add is not null
+            && _modalLayer?.FindChild("ConstructionCommandBackground", true, false) is TextureRect;
+        add?.EmitSignal(Button.SignalName.Pressed);
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        passed &= _modalLayer?.FindChild("ConstructionComposeModal", true, false) is ConstructionComposeModal
+            && _modalLayer?.FindChild("ConstructionTroopGrid", true, false) is GridContainer troopGrid
+            && troopGrid.Columns == 2
+            && _modalLayer?.FindChild("ConstructionComposeOfficer", true, false) is VBoxContainer;
+        var garrison = _state.Garrisons.FirstOrDefault(force => force.City == city.Id && force.Troops >= 500);
+        var leader = _state.GeneralsAt(city.Id).FirstOrDefault();
+        if (garrison is not null && leader != default)
+        {
+            var index = _pendingDeploys.Count;
+            _pendingDeploys.Add((new DeployRequest(city.Id, garrison.TroopCode, 500, leader,
+                Mode: UnitMode.March, Provisions: 5, Gold: 100,
+                ConstructionDefinitionCode: "palisade"), "QA"));
+            _constructionSelectedIndex = index;
+            OpenConstructionHub(city.Id);
+            await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+            var choices = _modalLayer?.FindChild("ConstructionTargetsScroll", true, false) as ScrollContainer;
+            passed &= choices?.GetChild(0).GetChildCount() == ConstructionCodes.Length
+                && _modalLayer?.FindChild("ConstructionCommandUnitList", true, false) is ScrollContainer;
+            _pendingDeploys.RemoveAt(index);
+        }
+        GD.Print($"[construction-ui-qa] passed={passed}");
+        GetTree().Quit(passed ? 0 : 1);
+    }
+}

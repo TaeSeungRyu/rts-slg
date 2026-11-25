@@ -77,6 +77,28 @@ public sealed class FieldConstructionServiceTests
     }
 
     [Fact]
+    public void 건설부대는_목표에_도착하면_자동으로_착공한다()
+    {
+        var baseUnit = Unit(500);
+        var unit = baseUnit with
+        {
+            Field = baseUnit.Field with { Mode = UnitMode.Standby, Target = null, Waypoints = null },
+            IsConstructionUnit = true,
+            ConstructionDefinitionCode = "palisade",
+            ConstructionPlot = baseUnit.Field.Position,
+            SupplyUpkeepPercent = 20,
+            Stats = new CombatStats(500, 1, 1, 1),
+        };
+        var campaign = new CampaignEngine(Orchestrator(),
+            new WorldEngine(new BalanceConfig(MonthlyTaxPerCity: 100)),
+            fieldBuildingDefinitions: Definitions,
+            fieldConstruction: Service());
+        var next = campaign.AdvanceWeek(State(unit), out _);
+        Assert.Single(next.Buildings);
+        Assert.Null(Assert.Single(next.Armies).ConstructionDefinitionCode);
+    }
+
+    [Fact]
     public void 착공은_휴대자원을_한번만_차감하고_타일을_예약한다()
     {
         var started = Service(TerrainType.Forest).Start(State(Unit()), Player,

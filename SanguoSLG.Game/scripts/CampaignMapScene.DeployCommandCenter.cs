@@ -80,9 +80,10 @@ public sealed partial class CampaignMapScene
         root.AddChild(bottomRegion);
 
         var mine = Enumerable.Range(0, _pendingDeploys.Count)
-            .Where(index => _pendingDeploys[index].Req.City == cityId).ToList();
+            .Where(index => _pendingDeploys[index].Req.City == cityId
+                && _pendingDeploys[index].Req.ConstructionDefinitionCode is null).ToList();
         var queued = _state.Armies.Where(unit => unit.OriginCity == cityId && unit.IsWaitingDeployment
-            && unit.Field.Owner == Player).OrderBy(unit => unit.Field.CommandOrder)
+            && unit.Field.Owner == Player && !unit.IsConstructionUnit).OrderBy(unit => unit.Field.CommandOrder)
             .ThenBy(unit => unit.Id.Value).ToList();
         if (!mine.Contains(_depSelectedUnit)) _depSelectedUnit = mine.FirstOrDefault(-1);
 

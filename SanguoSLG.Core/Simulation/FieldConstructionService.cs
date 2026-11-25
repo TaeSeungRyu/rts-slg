@@ -155,7 +155,7 @@ public sealed class FieldConstructionService(
         });
     }
 
-    private static bool CanBuildOn(FieldBuildingKind kind, TerrainType terrain)
+    public static bool CanBuildOn(FieldBuildingKind kind, TerrainType terrain)
         => kind == FieldBuildingKind.ScoutPost
             ? terrain is TerrainType.Forest or TerrainType.Mountain
             : kind == FieldBuildingKind.Watchtower

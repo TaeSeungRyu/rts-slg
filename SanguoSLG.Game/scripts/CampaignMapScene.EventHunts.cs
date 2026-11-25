@@ -294,9 +294,9 @@ public sealed partial class CampaignMapScene
         AddChild(token);
         token.InitDisplay(_view, color,
             army.IsArmyGroup ? UnitController3D.ArmyGroupModelIndex
-                : army.IsSupply ? UnitController3D.SupplyModelIndex
+                : army.IsSupply || army.IsConstructionUnit ? UnitController3D.SupplyModelIndex
                 : TroopModelIndex.GetValueOrDefault(army.TroopCode, 0), army.Field.Position);
-        token.SetFormationSize(army.IsSupply || army.IsArmyGroup || army.Field.Owner == EventHuntService.EventFaction
+        token.SetFormationSize(army.IsSupply || army.IsConstructionUnit || army.IsArmyGroup || army.Field.Owner == EventHuntService.EventFaction
             ? 1 : FormationFor(army.Pool.Active));
         var label = new Label3D
         {

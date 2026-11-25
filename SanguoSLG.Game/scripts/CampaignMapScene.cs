@@ -883,6 +883,7 @@ public sealed partial class CampaignMapScene : Node3D
             CallDeferred(nameof(RunSupplyComposeRenewalQa));
         if (args.Any(argument => argument.StartsWith("--maptestsupplycommandcenterqa", StringComparison.Ordinal)))
             CallDeferred(nameof(RunSupplyCommandCenterQa));
+        if (args.Contains("--maptestconstructionuiqa")) CallDeferred(nameof(RunConstructionUiQa));
         if (args.Any(argument => argument.StartsWith("--maptesttransportcommandcenterqa", StringComparison.Ordinal)))
             CallDeferred(nameof(RunTransportCommandCenterQa));
         if (args.Any(argument => argument.StartsWith("--maptestarmygroupcommandcenterqa", StringComparison.Ordinal)))
@@ -2962,7 +2963,8 @@ public sealed partial class CampaignMapScene : Node3D
         }).ToList();
 
     private static string UnitCardCode(CombatUnit unit)
-        => unit.IsArmyGroup ? "army_group"
+        => unit.IsConstructionUnit ? "supply"
+            : unit.IsArmyGroup ? "army_group"
             : unit.IsTransport ? "transport"
             : unit.IsSupply ? "supply"
             : unit.TroopCode;
@@ -3356,7 +3358,12 @@ public sealed partial class CampaignMapScene : Node3D
         _targetEgressManual = _targetEgressDirection.HasValue;
         _targetStart = _state.Cities.FirstOrDefault(c => c.Id == reqCity)?.Position ?? default;
         RebuildTargetEdit();
-        ShowTargetHint((transport
+        var construction = !supply && !transport && !armyGroup && !naval
+            && idx >= 0 && idx < _pendingDeploys.Count
+            && _pendingDeploys[idx].Req.ConstructionDefinitionCode is not null;
+        ShowTargetHint((construction
+            ? "건설부대 목표 지정 · 건설할 육상 타일을 클릭 · '확인'으로 확정 · 우클릭 취소"
+            : transport
             ? "수송부대 목표 지정 · 도착할 아군 성을 클릭 · '확인'으로 확정 · 우클릭 취소"
             : naval
             ? "출항 목표 지정 · 물 타일 선택(소선은 소하천 포함) · '확인'으로 확정 · 우클릭 취소"
@@ -3623,6 +3630,7 @@ public sealed partial class CampaignMapScene : Node3D
     {
         var idx = _depTargetIndex;
         var reopenCombatDeployHub = false;
+        var reopenConstructionHub = false;
         var origin = TargetOriginCity();
         var egressDirection = _targetEgressDirection
             ?? (origin is not null ? DeploymentEgressRules.Recommend(origin, h,
@@ -3718,12 +3726,30 @@ public sealed partial class CampaignMapScene : Node3D
         }
         else if (idx >= 0 && idx < _pendingDeploys.Count)
         {
+            var (req, label) = _pendingDeploys[idx];
+            if (req.ConstructionDefinitionCode is { } constructionCode)
+            {
+                var definition = _fieldBuildingDefinitions.FirstOrDefault(b => b.Code == constructionCode);
+                if (definition is null || !_passability.CanEnter(MovementDomain.Land, h)
+                    || !FieldConstructionService.CanBuildOn(definition.Kind, _passability.TerrainAt(h)))
+                {
+                    RejectTarget("건설 목표 불가", "선택한 건축물을 설치할 수 있는 육상 타일을 선택하세요.");
+                    return;
+                }
+                _pendingDeploys[idx] = (req with { Target = h, Mode = UnitMode.March,
+                    Waypoints = waypoints, EgressDirection = egressDirection, EgressExit = egressExit,
+                    ContinuousTarget = continuousTarget, ContinuousWaypoints = continuousWaypoints }, label);
+                reopenConstructionHub = true;
+                _constructionSelectedIndex = idx;
+                _log.Text = $"건설부대 목표 → ({h.Q},{h.R}) · {definition.Name} 건설 예약";
+            }
+            else
+            {
             if (!IsLandDeployTarget(h))
             {
                 RejectTarget("출전 목표 불가", "전투편성 부대는 육상 타일 또는 도시만 목표로 지정할 수 있습니다. 항구에서는 '출항'을 사용하세요.");
                 return;
             }
-            var (req, label) = _pendingDeploys[idx];
             var enemyCity = CityAtHex(h, c => c.Owner != Player);
             var mode = enemyCity is not null || RuinAt(h) is not null ? UnitMode.Attack : req.Mode;
             _pendingDeploys[idx] = (req with { Target = h, Mode = mode, Waypoints = waypoints,
@@ -3735,10 +3761,16 @@ public sealed partial class CampaignMapScene : Node3D
             var tName = CityAtHex(h)?.Name ?? $"({h.Q},{h.R})";
             var wpNote = waypoints is { Count: > 0 } ? $" · 경유 {waypoints.Count}" : "";
             _log.Text = $"목표 → {tName}{(enemyCity is not null ? " (공격모드)" : "")}{wpNote} · 목표 확정";
+            }
         }
 
         FinishTargeting();
-        if (reopenCombatDeployHub)
+        if (reopenConstructionHub)
+        {
+            Redraw(_log.Text);
+            OpenConstructionHub(_depModalCity);
+        }
+        else if (reopenCombatDeployHub)
         {
             // 전투편성은 여러 예약의 목표를 연속으로 지정할 수 있도록 예약 목록으로 돌아간다.
             // 선택했던 부대를 유지해 확정 결과와 다음 조작 버튼을 즉시 확인하게 한다.
@@ -4630,8 +4662,8 @@ public sealed partial class CampaignMapScene : Node3D
         {
             var dr = _deployer.Deploy(_state, req);
             Dbg($"  deploy '{label}': ok={dr.Ok} err={dr.Error ?? "-"} armiesNow={dr.State.Armies.Count}");
-            if (dr.Ok) { _state = dr.State; deployNote.Add($"[출전] {label} 부대가 출진했습니다."); }
-            else { deployNote.Add($"[출전] 편성 실패({dr.Error})"); }
+            if (dr.Ok) { _state = dr.State; deployNote.Add($"[{(req.ConstructionDefinitionCode is null ? "출전" : "건설")}] {label} 부대가 출진했습니다."); }
+            else { deployNote.Add($"[{(req.ConstructionDefinitionCode is null ? "출전" : "건설")}] 편성 실패({dr.Error})"); }
         }
 
         _pendingDeploys.Clear();
@@ -8227,6 +8259,7 @@ private void ApplyBuildingButtonEffect(Button button)
 
         Add("전투편성", () => { if (_selected is { } c) { OpenDeployModal(c); } });
         Add("보급편성", () => { if (_selected is { } c) { OpenSupplyHub(c); } });
+        Add("건설편성", () => { if (_selected is { } c) { OpenConstructionHub(c); } });
         Add("수송편성", () => { if (_selected is { } c) { OpenTransportHub(c); } });
         if (_selected is { } selectedCity && _state.Cities.FirstOrDefault(c => c.Id == selectedCity) is { IsPort: true })
         {
@@ -19963,7 +19996,7 @@ if (_modalLayer is not null) { _modalLayer.Name = "ExplorationResultsModal"; }
             var token = _armyTokens[army.Id.Value];
             token.SetArrowMode(army.ArrowMode);
 
-            token.SetFormationSize(army.IsSupply || army.IsArmyGroup ? 1 : FormationFor(army.Pool.Active)); // 보급부대·집단군은 규모와 무관하게 단일 전용 모델
+            token.SetFormationSize(army.IsSupply || army.IsConstructionUnit || army.IsArmyGroup ? 1 : FormationFor(army.Pool.Active)); // 보급부대·집단군은 규모와 무관하게 단일 전용 모델
             var insideFieldBuilding = fieldGarrisonIds.Contains(army.Id);
             token.Visible = !army.IsWaitingDeployment && !insideFieldBuilding;
             if (army.RenewalPosition is { } continuousPosition)
