@@ -30,6 +30,9 @@ public static class CreatedGeneralStore
                 throw new InvalidDataException("생성 장수 ID는 10000 이상이며 중복될 수 없습니다.");
             if (string.IsNullOrWhiteSpace(entry.General.Name) || entry.General.Name.Length > 20)
                 throw new InvalidDataException("장수 이름은 1~20자여야 합니다.");
+            if (entry.General.Might is < 0 or > 255 || entry.General.Intellect is < 0 or > 255
+                || entry.General.Politics is < 0 or > 255)
+                throw new InvalidDataException("생성 장수의 능력치는 0~255이어야 합니다.");
             if (entry.Gender is not ("male" or "female") || entry.RecruitPointCost is < 0 or > 3000
                 || entry.RecruitGoldCost is < 0 or > 100000)
                 throw new InvalidDataException("성별 또는 영입 포인트가 올바르지 않습니다.");

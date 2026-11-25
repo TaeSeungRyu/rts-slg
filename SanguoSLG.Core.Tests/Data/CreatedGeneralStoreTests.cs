@@ -7,6 +7,18 @@ using SanguoSLG.Core.Simulation;
 public sealed class CreatedGeneralStoreTests
 {
     [Fact]
+    public void 생성_장수_능력치는_255까지_저장하고_초과값은_거부한다()
+    {
+        var aptitudes = new Dictionary<string, string> { ["infantry"] = "B" };
+        var entry = new CreatedGeneralRecord(new GeneralEditorRecord(10000, "창작", aptitudes,
+            255, 255, 255, null, [], [], 170, 0, "wei", ""), "male", 100);
+
+        Assert.Equal(255, Assert.Single(CreatedGeneralStore.Load(CreatedGeneralStore.Save([entry]))).General.Might);
+        Assert.Throws<InvalidDataException>(() => CreatedGeneralStore.Save(
+            [entry with { General = entry.General with { Might = 256 } }]));
+    }
+
+    [Fact]
     public void 실존_가상_장수를_선행조건으로_지정하고_없는장수와_순환은_거부한다()
     {
         var origin = new ScenarioLoader().LoadFromDirectory(TestData.DataDirectory());
