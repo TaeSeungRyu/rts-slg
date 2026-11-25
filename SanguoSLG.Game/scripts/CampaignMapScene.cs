@@ -11845,9 +11845,27 @@ return box;
         _state = new HeroUnlockService().Evaluate(_state);
         TraceRoster("evaluate");
         var vp = GetViewport().GetVisibleRect().Size;
-        var mw = Mathf.Clamp(vp.X * 0.92f, 980f, 1500f);
+        var mw = Mathf.Clamp(vp.X * 0.92f, 780f, 1300f);
         var mh = Mathf.Clamp(vp.Y * 0.85f, 380f, 760f);
-        var box = SystemView("전체 장수 목록", mw, out var scroll, out var panel, out var titleRow);
+        var box = SystemView("전체 장수 목록", mw, out var scroll, out var panel, out var titleRow, useModalChrome: true);
+        panel.CustomMinimumSize = new Vector2(mw, mh);
+scroll.VerticalScrollMode = ScrollContainer.ScrollMode.Disabled;
+scroll.HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled;
+
+var topMargin = new MarginContainer
+{
+    SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+    SizeFlagsVertical = Control.SizeFlags.ShrinkBegin,
+};
+
+// 우측 영역 상단 여백
+topMargin.AddThemeConstantOverride("margin_top", 5);
+
+box.AddChild(topMargin);
+
+
+
+
         var rosterLayer = _modalLayer;
         TraceRoster("scaffold");
 
@@ -11932,13 +11950,30 @@ return box;
         searchRow.AddChild(resultCount);
         box.AddChild(searchRow);
 
-        var tree = new Tree
-        {
-            Columns = 16, ColumnTitlesVisible = true, HideRoot = true, SelectMode = Tree.SelectModeEnum.Row,
-            Name = "GeneralRosterPageTree",
-            CustomMinimumSize = new Vector2(0, Mathf.Min(mh - 130, 44 + GeneralRosterPageSize * 28)),
-            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
-        };
+var tree = new Tree
+{
+    Columns = 16,
+    ColumnTitlesVisible = true,
+    HideRoot = true,
+    SelectMode = Tree.SelectModeEnum.Row,
+    Name = "GeneralRosterPageTree",
+
+    CustomMinimumSize = new Vector2(0, Mathf.Max(100f, mh - 376f)),
+
+    SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+    SizeFlagsVertical = Control.SizeFlags.ShrinkBegin,
+
+    ScrollVerticalEnabled = true,
+    ScrollHorizontalEnabled = false,
+};
+
+        // var tree = new Tree
+        // {
+        //     Columns = 16, ColumnTitlesVisible = true, HideRoot = true, SelectMode = Tree.SelectModeEnum.Row,
+        //     Name = "GeneralRosterPageTree",
+        //     CustomMinimumSize = new Vector2(0, Mathf.Min(mh - 130, 44 + GeneralRosterPageSize * 28)),
+        //     SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+        // };
         tree.AddThemeFontOverride("font", _font);
         tree.AddThemeFontSizeOverride("font_size", 13);
         tree.AddThemeFontOverride("title_button_font", _font);
@@ -12045,10 +12080,19 @@ return box;
         box.AddChild(pager);
         RenderPage();
         TraceRoster("tree-added");
-        var contentH = box.GetCombinedMinimumSize().Y;
-        TraceRoster("minimum-size");
-        scroll.CustomMinimumSize = new Vector2(mw, Mathf.Min(contentH, mh));
-        CenterAndDrag(panel, titleRow, mw, mh, box);
+        // var contentH = box.GetCombinedMinimumSize().Y;
+        // TraceRoster("minimum-size");
+        // scroll.CustomMinimumSize = new Vector2(mw, Mathf.Min(contentH, mh));
+        // CenterAndDrag(panel, titleRow, mw, mh, box);
+
+TraceRoster("minimum-size");
+
+scroll.CustomMinimumSize = new Vector2(0, 0);
+scroll.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+scroll.SizeFlagsVertical = Control.SizeFlags.ExpandFill;
+
+CenterAndDrag(panel, titleRow, mw, mh, box);
+
     }
 
     private async void HydrateGeneralRosterPage(Tree tree,

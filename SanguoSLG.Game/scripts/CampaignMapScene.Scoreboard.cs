@@ -24,14 +24,14 @@ public sealed partial class CampaignMapScene
     {
         if (_modalLayer is not null) { FadeOutModal(_modalLayer); _modalLayer = null; }
         const float width = 660;
-        const float height = 640;
+        const float height = 740;
 
 
-        var box = SystemView("세력 기록", width, out var scroll, out var panel, out var titleRow);
-
+        var box = SystemView("세력 기록", width, out var scroll, out var panel, out var titleRow, useModalChrome: true);
+        panel.CustomMinimumSize = new Vector2(width, height);
 
         // 공통 금색 이미지 테두리 적용
-        ApplyUnitMenuFrame(panel);
+        //ApplyUnitMenuFrame(panel);
 
         scroll.VerticalScrollMode = ScrollContainer.ScrollMode.Disabled;
 
@@ -53,13 +53,26 @@ public sealed partial class CampaignMapScene
             + (history?.RuinDefenderStrength ?? 0) / weights.RuinStrengthDivisor
             + garrison / weights.TroopsPerPoint + field / weights.TroopsPerPoint
             - (history?.BattleFatalitiesEstimated ?? 0) / weights.FatalitiesPerPoint;
-        var scoreText = MakeLabel($"전략 점수  {Math.Max(0, score):N0}", 26, GoldBright);
-        scoreText.HorizontalAlignment = HorizontalAlignment.Center;
-        box.AddChild(scoreText);
+
+
+var scoreMargin = new MarginContainer
+{
+    SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+};
+
+scoreMargin.AddThemeConstantOverride("margin_top", 7);
+box.AddChild(scoreMargin);
+
+var scoreText = MakeLabel($"전략 점수  {Math.Max(0, score):N0}", 20, GoldBright);
+scoreText.HorizontalAlignment = HorizontalAlignment.Center;
+
+scoreMargin.AddChild(scoreText);
+
+
         box.AddChild(MakeLabel("점령·연구·병력은 현재 상태, 누적 수치는 기록 시작 이후 기준입니다.", 13, Parchment));
         box.AddChild(GoldRule());
         var table = new GridContainer { Name = "FactionStatisticsTable", Columns = 2 };
-        table.AddThemeConstantOverride("h_separation", 24);
+        table.AddThemeConstantOverride("h_separation", 20);
         table.AddThemeConstantOverride("v_separation", 8);
         box.AddChild(table);
         var elapsed = TimeSpan.FromSeconds(_state.PlaySeconds);
@@ -84,10 +97,10 @@ public sealed partial class CampaignMapScene
         };
         foreach (var (label, value) in rows)
         {
-            var name = MakeLabel(label, 15, Parchment);
-            name.CustomMinimumSize = new Vector2(260, 26);
+            var name = MakeLabel(label, 14, Parchment);
+            name.CustomMinimumSize = new Vector2(260, 25);
             table.AddChild(name);
-            var amount = MakeLabel(value, 15, GoldBright);
+            var amount = MakeLabel(value, 14, GoldBright);
             amount.HorizontalAlignment = HorizontalAlignment.Right;
             amount.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
             table.AddChild(amount);
