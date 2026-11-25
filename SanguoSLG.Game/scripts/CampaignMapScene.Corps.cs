@@ -89,10 +89,30 @@ public sealed partial class CampaignMapScene
         var owned = _state.Cities.Count(city => city.Owner == Player);
         var delegated = _state.Corps.Where(entry => entry.Faction == Player)
             .SelectMany(entry => entry.Cities).Distinct().Count();
-        var overviewFrame = CorpsPanel(10, out var overview);
-        box.AddChild(overviewFrame);
-        var overviewRow = new HBoxContainer();
-        overview.AddChild(overviewRow);
+
+
+        // var overviewFrame = CorpsPanel(10, out var overview);
+        // box.AddChild(overviewFrame);
+        // var overviewRow = new HBoxContainer();
+        // overview.AddChild(overviewRow);
+var overviewFrame = CorpsPanel(10, out var overview);
+
+// 상단 여백 추가
+var overviewMargin = new MarginContainer
+{
+    SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+};
+
+overviewMargin.AddThemeConstantOverride("margin_top", 10);
+
+box.AddChild(overviewMargin);
+overviewMargin.AddChild(overviewFrame);
+
+var overviewRow = new HBoxContainer();
+overview.AddChild(overviewRow);
+
+
+
         var overviewText = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
         overviewRow.AddChild(overviewText);
         overviewText.AddChild(MakeLabel("군단 운영", 20, GoldBright));

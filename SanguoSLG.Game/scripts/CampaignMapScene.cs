@@ -11792,7 +11792,7 @@ ApplyUnitMenuFrame(panel);
         else box.AddChild(titleRow);
         var back = MakeButton("◀");
         back.Name = "SystemViewBack";
-        back.CustomMinimumSize = new Vector2(40, 30);
+        back.CustomMinimumSize = new Vector2(30, 30);
         back.ButtonDown += OpenSystemPalette;
         titleRow.AddChild(back);
         var title = MakeLabel(titleText, 17, Gold);
@@ -11801,11 +11801,22 @@ ApplyUnitMenuFrame(panel);
         titleRow.AddChild(title);
         var close = MakeButton("✕");
         close.Name = "SystemViewClose";
-        close.CustomMinimumSize = new Vector2(40, 30);
+        close.CustomMinimumSize = new Vector2(30, 30);
         close.ButtonDown += CloseModal;
-        titleRow.AddChild(close);
-        if (panel is not ModalChrome) box.AddChild(GoldRule());
-        return box;
+titleRow.AddChild(close);
+
+// ModalChrome 전용 버튼 크기 및 정렬
+if (panel is ModalChrome)
+{
+    back.CustomMinimumSize = new Vector2(30, 30);
+    back.SizeFlagsVertical = Control.SizeFlags.ShrinkCenter;
+
+    close.CustomMinimumSize = new Vector2(30, 30);
+    close.SizeFlagsVertical = Control.SizeFlags.ShrinkCenter;
+}
+
+if (panel is not ModalChrome) box.AddChild(GoldRule());
+return box;
     }
 
     // 전체 장수 목록 — 소속·위치·능력. 행 클릭 = 장수 상세(포로/재야/야전 포함).
