@@ -50,6 +50,12 @@ public sealed partial class CampaignMapScene
         OpenArmyCorpsList();
         var cards = _modalLayer?.FindChild("ArmyCorpsCards", true, false) as GridContainer;
         var cardsValid = cards is not null && cards.Columns == 2;
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        var listPanel = _modalLayer?.GetChildren().OfType<PanelContainer>()
+            .FirstOrDefault(candidate => candidate.HasMeta("modal_root"));
+        var viewport = GetViewport().GetVisibleRect().Size;
+        var centered = listPanel is not null
+            && Mathf.Abs(listPanel.Position.Y + listPanel.Size.Y * 0.5f - viewport.Y * 0.5f) <= 2f;
         OpenArmyCorpsEditor(null);
         var cityGrid = _modalLayer?.FindChild("ArmyCorpsCityGrid", true, false) as GridContainer;
         var commanderPreview = _modalLayer?.FindChild("ArmyCorpsCommanderPreview", true, false) as HBoxContainer;
@@ -61,9 +67,9 @@ public sealed partial class CampaignMapScene
         await ToSignal(GetTree().CreateTimer(0.2), SceneTreeTimer.SignalName.Timeout);
         var leftovers = GetChildren().OfType<CanvasLayer>().Count(layer =>
             layer.GetChildren().OfType<PanelContainer>().Any(panel => panel.HasMeta("modal_root")));
-        var passed = cardsValid && editorValid && close is not null
+        var passed = cardsValid && centered && editorValid && close is not null
             && _modalLayer is null && leftovers == 0;
-        GD.Print($"[maptestcorpsmodalqa] cards={cardsValid} editor={editorValid} close={close is not null} leftovers={leftovers} passed={passed}");
+        GD.Print($"[maptestcorpsmodalqa] cards={cardsValid} centered={centered} editor={editorValid} close={close is not null} leftovers={leftovers} passed={passed}");
         GetTree().Quit(passed ? 0 : 1);
     }
 
@@ -144,6 +150,28 @@ public sealed partial class CampaignMapScene
         // 전체 높이를 넣으면 장식 높이가 추가되어 화면 아래로 밀려난다.
         panel.CustomMinimumSize = new Vector2(width, height);
         CenterAndDrag(panel, titleRow, width, height, box);
+        CenterCorpsPanelAfterLayout(panel, width, height);
+    }
+
+    private void CenterCorpsPanelAfterLayout(PanelContainer panel, float width, float height)
+    {
+        // CustomMinimumSize만 바꾼 직후에는 Container의 실제 Size가 아직 0이거나
+        // 이전 화면의 값일 수 있다. 이번 프레임에서 먼저 목표 폭·높이를 적용한다.
+        panel.Size = new Vector2(width, height);
+        void Center()
+        {
+            if (!GodotObject.IsInstanceValid(panel) || !panel.IsInsideTree()
+                || panel.IsQueuedForDeletion()) return;
+            // 자식 레이아웃이 확정된 다음 실제 외곽 Size로 중심을 맞춘다.
+            // 가장자리 8px은 화면 경계 안전 여백이다. 위치를 미세 조정하려면
+            // 이 식의 X/Y에 원하는 픽셀 오프셋을 더하면 된다.
+            var viewport = GetViewport().GetVisibleRect().Size;
+            panel.Position = new Vector2(
+                Mathf.Max(8f, (viewport.X - panel.Size.X) * 0.5f),
+                Mathf.Max(8f, (viewport.Y - panel.Size.Y) * 0.5f));
+        }
+        Center();
+        Callable.From(Center).CallDeferred();
     }
 
     private PanelContainer CorpsPanel(int padding, out VBoxContainer contents)
