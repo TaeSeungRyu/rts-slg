@@ -25,8 +25,18 @@ public sealed partial class CampaignMapScene
         if (_modalLayer is not null) { FadeOutModal(_modalLayer); _modalLayer = null; }
         const float width = 660;
         const float height = 640;
+
+
         var box = SystemView("세력 기록", width, out var scroll, out var panel, out var titleRow);
+
+
+        // 공통 금색 이미지 테두리 적용
+        ApplyUnitMenuFrame(panel);
+
         scroll.VerticalScrollMode = ScrollContainer.ScrollMode.Disabled;
+
+
+
         var owned = _state.Cities.Where(city => city.Owner == Player).ToArray();
         var ownedIds = owned.Select(city => city.Id).ToHashSet();
         var history = _state.Scoreboard.FirstOrDefault(row => row.Faction == Player);

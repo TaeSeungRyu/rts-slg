@@ -11602,23 +11602,23 @@ ApplyUnitMenuFrame(panel);
         close.ButtonDown += CloseModal;
         titleRow.AddChild(close);
         box.AddChild(GoldRule());
-void Item(string label, System.Action open)
-{
-    var b = new CommandPaletteButton
-    {
-        Text = label,
-        ArtworkWidthScale = 1f, // 가로 너비 50% 증가
-    };
+        void Item(string label, System.Action open)
+        {
+            var b = new CommandPaletteButton
+            {
+                Text = label,
+                ArtworkWidthScale = 1f, // 가로 너비 50% 증가
+            };
 
-    b.AddThemeFontSizeOverride("font_size", 14);
-    b.CustomMinimumSize = new Vector2(0, 40);
-    b.Alignment = HorizontalAlignment.Center;
+            b.AddThemeFontSizeOverride("font_size", 14);
+            b.CustomMinimumSize = new Vector2(0, 40);
+            b.Alignment = HorizontalAlignment.Center;
 
-    GameUiSkin.ApplyLongCommandArtwork(b);
+            GameUiSkin.ApplyLongCommandArtwork(b);
 
-    b.Pressed += open;
-    box.AddChild(b);
-}
+            b.Pressed += open;
+            box.AddChild(b);
+        }
 
         // void Item(string label, System.Action open)
         // {
