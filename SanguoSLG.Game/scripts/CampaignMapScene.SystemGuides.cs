@@ -87,54 +87,254 @@ public sealed partial class CampaignMapScene
         CenterAndDrag(panel, titleRow, width, height, box);
     }
 
-    private void OpenTroopGuideDetail(string code)
+private void OpenTroopGuideDetail(string code)
+{
+    const float width = 720f;
+    const float height = 460f;
+
+    // ==========================================
+    // UI 설정값
+    // ==========================================
+    const int statColumnGap = 6;
+    const int statRowGap = 6;
+    const int sectionGap = 8;
+    const int statCardHeight = 46;
+    const int statLabelFontSize = 12;
+    const int statValueFontSize = 18;
+
+    var troop = _troops.FirstOrDefault(
+        candidate => candidate.Code == code);
+
+    if (troop is null) return;
+
+    var special = new SanguoSLG.Core.Data.SpecialUnitLoader()
+        .LoadFromDirectory(_dataDirectory)
+        .FirstOrDefault(candidate => candidate.Code == code);
+
+    var box = SystemView(
+        troop.Name, width,
+        out var scroll, out var panel, out var titleRow);
+
+    panel.Name = "TroopGuideDetailModal";
+
+    ApplyUnitMenuFrame(panel);
+
+    // 뒤로가기
+    var back = titleRow.GetChild<Button>(0);
+    back.ButtonDown -= OpenSystemPalette;
+    back.ButtonDown += OpenTroopGuide;
+    back.Text = "◀";
+
+    // ==========================================
+    // 상단 좌우 레이아웃
+    // ==========================================
+    var top = new HBoxContainer();
+    top.AddThemeConstantOverride("separation", 16);
+    box.AddChild(top);
+
+    // ==========================================
+    // 좌측 병종 이미지
+    // ==========================================
+    var artworkFrame = new PanelContainer
     {
-        var troop = _troops.FirstOrDefault(candidate => candidate.Code == code);
-        if (troop is null) return;
-        var special = new SanguoSLG.Core.Data.SpecialUnitLoader().LoadFromDirectory(_dataDirectory)
-            .FirstOrDefault(candidate => candidate.Code == code);
-        const float width = 720f;
-        const float height = 390f;
-        var box = SystemView(troop.Name, width, out var scroll, out var panel, out var titleRow);
-        panel.Name = "TroopGuideDetailModal";
-        // 공통 금색 이미지 테두리 적용
-        ApplyUnitMenuFrame(panel);
-        var back = titleRow.GetChild<Button>(0);
-        back.ButtonDown -= OpenSystemPalette;
-        back.ButtonDown += OpenTroopGuide;
-        back.Text = "◀";
-        var top = new HBoxContainer();
-        top.AddThemeConstantOverride("separation", 16);
-        box.AddChild(top);
-        var artworkFrame = new PanelContainer { CustomMinimumSize = new Vector2(198, 142),
-            SizeFlagsHorizontal = Control.SizeFlags.ShrinkBegin, ClipContents = true };
-        artworkFrame.AddThemeStyleboxOverride("panel", Frame(new Color(0.045f, 0.035f, 0.03f),
-            new Color(Gold, 0.6f), 1, 7, 5));
-        artworkFrame.AddChild(new TextureRect { Texture = UnitCard(troop.Code, troop.Class),
-            CustomMinimumSize = new Vector2(188, 132),
-            ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
-            StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered });
-        top.AddChild(artworkFrame);
-        var summary = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
-        top.AddChild(summary);
-        summary.AddChild(MakeLabel($"병종  {ClassName(troop.Class)}", 18, Gold));
-        summary.AddChild(MakeLabel($"부대 공격 {troop.AtkUnit}  ·  건물 공격 {troop.AtkBuilding}  ·  방어 {troop.Df}", 14, Parchment));
-        summary.AddChild(MakeLabel($"이동 {TroopGuideTenths(troop.EffectiveMovementTenths)}/일  ·  시야 {troop.Vision}", 14, Parchment));
-        summary.AddChild(MakeLabel($"사거리  부대 {TroopGuideTenths(troop.EffectiveRangeUnitTenths)} / 건물 {troop.RangeBuilding} / 성 {troop.RangeCastle}", 14, Parchment));
-        box.AddChild(GoldRule());
-        box.AddChild(MakeLabel("병종 특징", 18, Gold));
-        foreach (var line in TroopGuideFeatures(troop, special))
+        CustomMinimumSize = new Vector2(198, 142),
+        SizeFlagsHorizontal = Control.SizeFlags.ShrinkBegin,
+        SizeFlagsVertical = Control.SizeFlags.ShrinkBegin,
+        ClipContents = true,
+    };
+
+    artworkFrame.AddThemeStyleboxOverride(
+        "panel",
+        Frame(
+            new Color(0.045f, 0.035f, 0.03f),
+            new Color(Gold, 0.6f),
+            1, 7, 5
+        )
+    );
+
+    artworkFrame.AddChild(new TextureRect
+    {
+        Texture = UnitCard(troop.Code, troop.Class),
+        CustomMinimumSize = new Vector2(188, 132),
+        ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
+        StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
+    });
+
+    top.AddChild(artworkFrame);
+
+    // ==========================================
+    // 우측 능력치 영역
+    // ==========================================
+    var summary = new VBoxContainer
+    {
+        SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+    };
+
+    summary.AddThemeConstantOverride("separation", sectionGap);
+    top.AddChild(summary);
+
+    // 병종 제목
+    var classRow = new HBoxContainer();
+    classRow.AddThemeConstantOverride("separation", 12);
+
+    classRow.AddChild(MakeLabel("병종", 16, Gold));
+    classRow.AddChild(
+        MakeLabel(ClassName(troop.Class), 18, Parchment)
+    );
+
+    summary.AddChild(classRow);
+
+    // ==========================================
+    // 능력치 카드 생성 함수
+    // ==========================================
+    PanelContainer CreateStatCard(string caption, string value)
+    {
+        var card = new PanelContainer
         {
-            var feature = MakeLabel($"• {line}", 15, Parchment);
-            feature.AutowrapMode = TextServer.AutowrapMode.WordSmart;
-            box.AddChild(feature);
-        }
-        // DeployScaffold의 ScrollContainer는 최소 높이가 0이면 자식 높이를 전달하지 않아
-        // 내용이 접힌 얇은 패널만 표시된다.
-        scroll.CustomMinimumSize = new Vector2(width, height);
-        CenterAndDrag(panel, titleRow, width, height, box);
+            CustomMinimumSize = new Vector2(0, statCardHeight),
+            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+        };
+
+        card.AddThemeStyleboxOverride(
+            "panel",
+            Frame(
+                new Color("211711"),
+                new Color(Gold, 0.25f),
+                1, 5, 4
+            )
+        );
+
+        var content = new VBoxContainer
+        {
+            Alignment = BoxContainer.AlignmentMode.Center,
+        };
+
+        content.AddThemeConstantOverride("separation", 2);
+        card.AddChild(content);
+
+        var captionLabel = MakeLabel(
+            caption, statLabelFontSize, Parchment);
+
+        captionLabel.HorizontalAlignment =
+            HorizontalAlignment.Center;
+
+        content.AddChild(captionLabel);
+
+        var valueLabel = MakeLabel(
+            value, statValueFontSize, GoldBright);
+
+        valueLabel.HorizontalAlignment =
+            HorizontalAlignment.Center;
+
+        content.AddChild(valueLabel);
+
+        return card;
     }
 
+    // ==========================================
+    // 능력치 그룹 생성 함수
+    // ==========================================
+    GridContainer CreateStatSection(string sectionTitle)
+    {
+        var section = new PanelContainer
+        {
+            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+        };
+
+        section.AddThemeStyleboxOverride(
+            "panel",
+            Frame(
+                new Color("302219"),
+                new Color(Gold, 0.35f),
+                1, 6, 8
+            )
+        );
+
+        summary.AddChild(section);
+
+        var content = new VBoxContainer();
+        content.AddThemeConstantOverride("separation", 6);
+        section.AddChild(content);
+
+        content.AddChild(
+            MakeLabel(sectionTitle, 14, GoldBright)
+        );
+
+        var grid = new GridContainer
+        {
+            Columns = 3,
+            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+        };
+
+        grid.AddThemeConstantOverride(
+            "h_separation", statColumnGap);
+
+        grid.AddThemeConstantOverride(
+            "v_separation", statRowGap);
+
+        content.AddChild(grid);
+
+        return grid;
+    }
+
+    // ==========================================
+    // 기본 능력치
+    // ==========================================
+    var basicStats = CreateStatSection("기본 능력치");
+
+    basicStats.AddChild(
+        CreateStatCard("부대 공격", troop.AtkUnit.ToString()));
+
+    basicStats.AddChild(
+        CreateStatCard("건물 공격", troop.AtkBuilding.ToString()));
+
+    basicStats.AddChild(
+        CreateStatCard("방어", troop.Df.ToString()));
+
+    basicStats.AddChild(
+        CreateStatCard("이동/일", TroopGuideTenths(troop.EffectiveMovementTenths)));
+
+    basicStats.AddChild(
+        CreateStatCard("시야", troop.Vision.ToString()));
+
+    // ==========================================
+    // 공격 사거리
+    // ==========================================
+    var rangeStats = CreateStatSection("공격 사거리");
+
+    rangeStats.AddChild(
+        CreateStatCard("부대", TroopGuideTenths(troop.EffectiveRangeUnitTenths)));
+
+    rangeStats.AddChild(
+        CreateStatCard("건물", troop.RangeBuilding.ToString()));
+
+    rangeStats.AddChild(
+        CreateStatCard("성", troop.RangeCastle.ToString()));
+
+    // ==========================================
+    // 병종 특징 (기존 기능 유지)
+    // ==========================================
+    box.AddChild(GoldRule());
+
+    box.AddChild(MakeLabel("병종 특징", 18, Gold));
+
+    foreach (var line in TroopGuideFeatures(troop, special))
+    {
+        var feature = MakeLabel($"• {line}", 15, Parchment);
+
+        feature.AutowrapMode =
+            TextServer.AutowrapMode.WordSmart;
+
+        box.AddChild(feature);
+    }
+
+    // ==========================================
+    // 모달 크기 및 배치
+    // ==========================================
+    scroll.CustomMinimumSize = new Vector2(width, height);
+
+    CenterAndDrag(panel, titleRow, width, height, box);
+}
     private static string TroopGuideTenths(int tenths) =>
         (tenths / 10m).ToString("0.#", System.Globalization.CultureInfo.InvariantCulture);
 

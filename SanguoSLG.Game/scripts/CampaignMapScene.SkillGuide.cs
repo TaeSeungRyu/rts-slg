@@ -66,10 +66,30 @@ public partial class CampaignMapScene
             SizeFlagsStretchRatio = SkillGuideLeftRatio };
         left.AddThemeConstantOverride("separation", 8);
         columns.AddChild(left);
-        var search = new LineEdit { Name = "SkillGuideSearch", PlaceholderText = "스킬 이름 검색",
-            MaxLength = 30, SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
-        left.AddChild(search);
-        NativeTextInputDialog.Attach(search);
+
+
+var searchMargin = new MarginContainer
+{
+    SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+};
+
+searchMargin.AddThemeConstantOverride("margin_top", 5);
+left.AddChild(searchMargin);
+
+var search = new LineEdit
+{
+    Name = "SkillGuideSearch",
+    PlaceholderText = "스킬 이름 검색",
+    MaxLength = 30,
+    SizeFlagsHorizontal = Control.SizeFlags.ExpandFill
+};
+
+searchMargin.AddChild(search);
+NativeTextInputDialog.Attach(search);
+
+
+
+
         var filters = new HBoxContainer { Name = "SkillGuideFilters" };
         filters.AddThemeConstantOverride("separation", 6);
         left.AddChild(filters);
@@ -115,13 +135,13 @@ public partial class CampaignMapScene
         category.Name = "SkillGuideCategory";
         headerText.AddChild(category);
 
-        var previewFrame = new PanelContainer { Name = "SkillGuidePreviewFrame",
-            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
-        previewFrame.AddThemeStyleboxOverride("panel", Frame(InkSoft, Gold, 1, 6, 4));
-        right.AddChild(previewFrame);
-        var preview = new SkillGuideEffectPreview3D { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
-            CustomMinimumSize = new Vector2(SkillGuidePreviewWidth, SkillGuidePreviewHeight) };
-        previewFrame.AddChild(preview);
+        // var previewFrame = new PanelContainer { Name = "SkillGuidePreviewFrame",
+        //     SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+        // previewFrame.AddThemeStyleboxOverride("panel", Frame(InkSoft, Gold, 1, 6, 4));
+        // right.AddChild(previewFrame);
+        // var preview = new SkillGuideEffectPreview3D { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+        //     CustomMinimumSize = new Vector2(SkillGuidePreviewWidth, SkillGuidePreviewHeight) };
+        // previewFrame.AddChild(preview);
 
         var statRow = new HBoxContainer { Name = "SkillGuideStatCards" };
         statRow.AddThemeConstantOverride("separation", 6);
@@ -207,9 +227,9 @@ public partial class CampaignMapScene
                 : entry is null ? "" : "패시브 효과는 해당 스킬의 적용 조건에서 발동합니다.";
             noteText.Text = entry?.Kind == "패시브"
                 ? "레벨 1~3의 효과가 위에 순서대로 표시됩니다."
-                : entry is null ? "" : "3D 미리보기는 PLAY를 누르면 한 번 재생됩니다.";
-            previewFrame.Visible = entry?.Active is not null;
-            preview.ShowSkill(entry?.Active);
+                : entry is null ? "" : "방어 > 계략 = 공격 순서로 액티브 스킬은 반영 됩니다.";
+            //previewFrame.Visible = entry?.Active is not null;
+            //preview.ShowSkill(entry?.Active);
             RefreshButtonStyles();
         }
         void Refill()
@@ -228,18 +248,47 @@ public partial class CampaignMapScene
                 button.AddThemeStyleboxOverride("hover", Frame(new Color("422019"), GoldBright, 1, 6, 7));
                 button.AddThemeStyleboxOverride("pressed", Frame(new Color("5d2119"), GoldBright, 2, 6, 7));
                 cards.AddChild(button);
-                var content = new HBoxContainer { MouseFilter = Control.MouseFilterEnum.Ignore };
-                content.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
-                content.AddThemeConstantOverride("separation", 9);
-                button.AddChild(content);
-                var image = ActiveSkillIcons.Preview(null, 46);
-                image.Name = "SkillGuideListIcon";
-                image.Texture = Icon(entry);
-                image.MouseFilter = Control.MouseFilterEnum.Ignore;
-                content.AddChild(image);
-                var text = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
-                    MouseFilter = Control.MouseFilterEnum.Ignore };
-                content.AddChild(text);
+
+var content = new HBoxContainer
+{
+    MouseFilter = Control.MouseFilterEnum.Ignore
+};
+
+content.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
+
+// 카드 내부 왼쪽 여백
+content.OffsetLeft = 5;
+
+content.AddThemeConstantOverride("separation", 12);
+button.AddChild(content);
+
+
+
+var image = ActiveSkillIcons.Preview(null, 46);
+image.Name = "SkillGuideListIcon";
+image.Texture = Icon(entry);
+image.MouseFilter = Control.MouseFilterEnum.Ignore;
+
+// 이미지 세로 가운데 정렬
+image.SizeFlagsVertical = Control.SizeFlags.ShrinkCenter;
+
+content.AddChild(image);
+
+var text = new VBoxContainer
+{
+    SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+    SizeFlagsVertical = Control.SizeFlags.ShrinkCenter,
+    Alignment = BoxContainer.AlignmentMode.Center,
+    MouseFilter = Control.MouseFilterEnum.Ignore
+};
+
+content.AddChild(text);
+
+
+
+
+
+
                 text.AddChild(MakeLabel(entry.Name, 14, GoldBright));
                 text.AddChild(MakeLabel($"{entry.Kind} · {entry.Form}", 11, Gold));
                 button.Pressed += () => Select(entry);
