@@ -8,19 +8,32 @@ public sealed partial class CampaignMapScene
     {
         const float width = 1040f;
         const float height = 650f;
-        var box = SystemView("부대설명", width, out var scroll, out var panel, out var titleRow);
+        var box = SystemView("부대설명", width, out var scroll, out var panel, out var titleRow, useModalChrome: true);
         panel.Name = "TroopGuideListModal";
+        panel.CustomMinimumSize = new Vector2(width, height);
+        //scroll.VerticalScrollMode = ScrollContainer.ScrollMode.Disabled;        
+scroll.VerticalScrollMode = ScrollContainer.ScrollMode.Disabled;
+scroll.HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled;        
         // 공통 금색 이미지 테두리 적용
-        ApplyUnitMenuFrame(panel);        
+        //ApplyUnitMenuFrame(panel);        
         var maxResearchBonus = SanguoSLG.Core.Simulation.ResearchCurve.Bonus(10);
-        box.AddChild(MakeLabel($"기본 → 해당 병종 연구 Lv.10 최대치 (공격·방어 각각 +{maxResearchBonus}). 이동·사거리는 연구로 변하지 않습니다. 헤더를 눌러 정렬하세요.", 13, Parchment));
-        var table = new Tree
-        {
-            Name = "TroopGuideTable", Columns = 9, ColumnTitlesVisible = true,
-            HideRoot = true, SelectMode = Tree.SelectModeEnum.Row,
-            CustomMinimumSize = new Vector2(0, height - 110),
-            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
-        };
+        box.AddChild(MakeLabel($"\n기본 → 해당 병종 연구 Lv.10 최대치 (공격·방어 각각 +{maxResearchBonus}). 이동·사거리는 연구로 변하지 않습니다. 헤더를 눌러 정렬하세요.", 13, Parchment));
+var table = new Tree
+{
+    Name = "TroopGuideTable",
+    Columns = 9,
+    ColumnTitlesVisible = true,
+    HideRoot = true,
+    SelectMode = Tree.SelectModeEnum.Row,
+
+    CustomMinimumSize = new Vector2(0, 450f),
+
+    SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+    SizeFlagsVertical = Control.SizeFlags.ShrinkBegin,
+
+    ScrollVerticalEnabled = true,
+    ScrollHorizontalEnabled = false,
+};
         table.AddThemeFontOverride("font", _font);
         table.AddThemeFontSizeOverride("font_size", 14);
         table.AddThemeFontOverride("title_button_font", _font);
@@ -83,8 +96,13 @@ public sealed partial class CampaignMapScene
             if (code is "supply" or "transport") OpenSupportTroopGuideDetail(code);
             else if (!string.IsNullOrWhiteSpace(code)) OpenTroopGuideDetail(code);
         };
-        scroll.CustomMinimumSize = new Vector2(width, height);
-        CenterAndDrag(panel, titleRow, width, height, box);
+        // scroll.CustomMinimumSize = new Vector2(width, height);
+        // CenterAndDrag(panel, titleRow, width, height, box);
+scroll.CustomMinimumSize = new Vector2(0, 0);
+scroll.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+scroll.SizeFlagsVertical = Control.SizeFlags.ExpandFill;
+
+CenterAndDrag(panel, titleRow, width, height, box);        
     }
 
 private void OpenTroopGuideDetail(string code)

@@ -110,12 +110,31 @@ NativeTextInputDialog.Attach(search);
             Color = new Color("95632b"), CustomMinimumSize = new Vector2(2, 0),
             MouseFilter = Control.MouseFilterEnum.Ignore };
         columns.AddChild(divider);
-        var right = new VBoxContainer { Name = "SkillGuideDetailBox",
-            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
-            SizeFlagsVertical = Control.SizeFlags.ExpandFill,
-            SizeFlagsStretchRatio = SkillGuideRightRatio };
-        right.AddThemeConstantOverride("separation", 8);
-        columns.AddChild(right);
+
+
+var rightMargin = new MarginContainer
+{
+    SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+    SizeFlagsVertical = Control.SizeFlags.ExpandFill,
+    SizeFlagsStretchRatio = SkillGuideRightRatio
+};
+
+// 우측 영역 상단 여백
+rightMargin.AddThemeConstantOverride("margin_top", 5);
+
+columns.AddChild(rightMargin);
+
+var right = new VBoxContainer
+{
+    Name = "SkillGuideDetailBox",
+    SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+    SizeFlagsVertical = Control.SizeFlags.ExpandFill
+};
+
+right.AddThemeConstantOverride("separation", 8);
+rightMargin.AddChild(right);
+
+
         var header = new PanelContainer { Name = "SkillGuideCard",
             CustomMinimumSize = new Vector2(0, 76) };
         header.AddThemeStyleboxOverride("panel", Frame(InkSoft, Gold, 1, 8, 10));
