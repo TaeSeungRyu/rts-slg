@@ -11777,12 +11777,19 @@ ApplyUnitMenuFrame(panel);
     }
 
     // 시스템 모달 공통 헤더(◀ 시스템으로 복귀 · ✕ 닫기).
-    private VBoxContainer SystemView(string titleText, float mw, out ScrollContainer scroll, out PanelContainer panel, out HBoxContainer titleRow)
+    private VBoxContainer SystemView(string titleText, float mw, out ScrollContainer scroll, out PanelContainer panel,
+        out HBoxContainer titleRow, bool useModalChrome = false)
     {
         if (_modalLayer is not null) { FadeOutModal(_modalLayer); _modalLayer = null; }
-        var box = DeployScaffold(mw, out scroll, out panel);
-        titleRow = new HBoxContainer();
-        box.AddChild(titleRow);
+        // 군단 화면만 공통 금장 PNG 프레임을 선택한다. ModalChrome이 외곽 폭을 더하므로
+        // mw(화면상의 목표 폭)에서 그 폭을 먼저 빼야 다른 SystemView와 크기가 같다.
+        var contentWidth = useModalChrome && ModalChrome.HasRequiredAssets
+            ? mw - ModalChrome.HorizontalChromeExtras : mw;
+        var box = DeployScaffold(contentWidth, out scroll, out panel, useModalChrome);
+        titleRow = new HBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+        // PNG 헤더는 본문 스크롤 바깥에 둔다. 제목줄이 그대로 드래그 핸들이 된다.
+        if (panel is ModalChrome chrome) chrome.HeaderHost.AddChild(titleRow);
+        else box.AddChild(titleRow);
         var back = MakeButton("◀");
         back.Name = "SystemViewBack";
         back.CustomMinimumSize = new Vector2(40, 30);
@@ -11797,7 +11804,7 @@ ApplyUnitMenuFrame(panel);
         close.CustomMinimumSize = new Vector2(40, 30);
         close.ButtonDown += CloseModal;
         titleRow.AddChild(close);
-        box.AddChild(GoldRule());
+        if (panel is not ModalChrome) box.AddChild(GoldRule());
         return box;
     }
 

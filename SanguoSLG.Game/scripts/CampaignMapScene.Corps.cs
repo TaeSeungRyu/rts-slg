@@ -72,7 +72,8 @@ public sealed partial class CampaignMapScene
         if (_modalLayer is not null) { FadeOutModal(_modalLayer); _modalLayer = null; }
         var width = Mathf.Min(940f, GetViewport().GetVisibleRect().Size.X * 0.9f);
         var height = Mathf.Min(640f, GetViewport().GetVisibleRect().Size.Y * 0.86f);
-        var box = SystemView("군단편성", width, out var scroll, out var panel, out var titleRow);
+        var box = SystemView("군단편성", width, out var scroll, out var panel, out var titleRow,
+            useModalChrome: true);
         var owned = _state.Cities.Count(city => city.Owner == Player);
         var delegated = _state.Corps.Where(entry => entry.Faction == Player)
             .SelectMany(entry => entry.Cities).Distinct().Count();
@@ -139,7 +140,9 @@ public sealed partial class CampaignMapScene
             empty.AddChild(MakeLabel("아직 편성한 군단이 없습니다.", 18, GoldBright));
             empty.AddChild(MakeLabel("위의 ‘군단 편성’을 눌러 군단장과 담당 거점을 지정하세요.", 13, Parchment));
         }
-        scroll.CustomMinimumSize = new Vector2(width, height);
+        // 높이는 PNG 헤더/푸터를 포함한 외곽 패널에 지정한다. 본문 스크롤에
+        // 전체 높이를 넣으면 장식 높이가 추가되어 화면 아래로 밀려난다.
+        panel.CustomMinimumSize = new Vector2(width, height);
         CenterAndDrag(panel, titleRow, width, height, box);
     }
 
