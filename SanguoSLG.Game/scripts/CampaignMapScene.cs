@@ -621,7 +621,8 @@ public sealed partial class CampaignMapScene : Node3D
         _ancientRelics = new AncientRelicLoader().LoadFromDirectory(dataDirectory);
         _treasureDefinitions = _treasureDefinitions.Concat(_ancientRelics.Select(relic =>
             new EventTreasureDefinition(relic.Code, relic.Name, "ancient_relic", relic.Effect,
-                relic.Value))).ToList();
+                relic.Value))).Concat(MerchantCatalog.Artifacts.Select(artifact =>
+                    artifact.TreasureDefinition)).ToList();
         _eventHunts = new EventHuntService(_map, new EventUnitLoader().LoadFromDirectory(dataDirectory),
             _treasureDefinitions);
         var summonedUnitDefinitions = new SummonedUnitLoader().LoadFromDirectory(dataDirectory);
@@ -699,7 +700,8 @@ public sealed partial class CampaignMapScene : Node3D
                 winterSnowPercent: scenario.Balance.ClimateWinterSnowPercent,
                 minDurationDays: scenario.Balance.ClimateMinDurationDays,
                 maxDurationDays: scenario.Balance.ClimateMaxDurationDays),
-            fieldConstruction: _fieldConstruction);
+            fieldConstruction: _fieldConstruction,
+            merchantService: new MerchantService(_map));
         _vision = new BattlefieldVision(scenario.Balance, _troops, _fieldBuildingDefinitions);
         _fog = new BattlefieldFogView(_view);
         _fog.RegisterMap();
@@ -1187,6 +1189,8 @@ public sealed partial class CampaignMapScene : Node3D
         AddChild(_ruinLayer);
         _fieldBuildingLayer = new Node3D();
         AddChild(_fieldBuildingLayer);
+        _merchantLayer = new Node3D();
+        AddChild(_merchantLayer);
     }
 
     // 단색 아이콘 텍스처 생성(라디오 대체용) — (x,y)→색 함수로 채운다.
@@ -1838,6 +1842,7 @@ public sealed partial class CampaignMapScene : Node3D
             return;
         }
 
+        if (TryOpenMerchantAt(hex)) return;
         var city = CityAtHex(hex);
         if (city is not null)
         {
@@ -20026,6 +20031,7 @@ if (_modalLayer is not null) { _modalLayer.Name = "ExplorationResultsModal"; }
         RedrawFacilities();
         RedrawRuins();
         RedrawFieldBuildings();
+        RedrawMerchants();
         foreach (var child in _facilityLayer.GetChildren().OfType<Node3D>())
             _fog.Register(child, _view.WorldToHex(child.Position));
 
