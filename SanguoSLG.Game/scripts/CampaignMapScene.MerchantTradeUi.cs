@@ -33,7 +33,7 @@ public sealed partial class CampaignMapScene
         var header = new HBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
         if (chrome is not null) chrome.HeaderHost.AddChild(header);
         else body.AddChild(header);
-        header.AddChild(new Control { CustomMinimumSize = new Vector2(40f, 0f) });
+        header.AddChild(new Control { CustomMinimumSize = new Vector2(MerchantModalLayout.CloseButtonSize, 0f) });
         var title = MakeLabel($"◆ 상인 교역소 · {city.Name} ◆", MerchantModalLayout.TitleSize, GoldBright);
         title.HorizontalAlignment = HorizontalAlignment.Center;
         title.VerticalAlignment = VerticalAlignment.Center;
@@ -41,7 +41,9 @@ public sealed partial class CampaignMapScene
         title.MouseFilter = Control.MouseFilterEnum.Ignore;
         header.AddChild(title);
         var close = MakeButton("✕");
-        close.CustomMinimumSize = new Vector2(40f, 40f);
+        close.CustomMinimumSize = new Vector2(MerchantModalLayout.CloseButtonSize,
+            MerchantModalLayout.CloseButtonSize);
+        close.SizeFlagsVertical = Control.SizeFlags.ShrinkCenter;
         close.Pressed += CloseModal;
         header.AddChild(close);
 
