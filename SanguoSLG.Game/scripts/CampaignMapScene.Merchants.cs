@@ -73,6 +73,10 @@ public sealed partial class CampaignMapScene
         var height = Mathf.Min(650f, GetViewport().GetVisibleRect().Size.Y - 32f);
         var box = SystemView($"상인 · {city.Name}", width, out var scroll,
             out var panel, out var titleRow, useModalChrome: true);
+        // ModalChrome의 본문 뷰포트는 콘텐츠 최소 크기를 외곽에 전달하지 않는다.
+        // 상인 창은 외곽 크기를 지정해야 헤더·본문·푸터가 함께 펼쳐진다.
+        panel.CustomMinimumSize = new Vector2(width, height);
+        panel.Size = panel.CustomMinimumSize;
         var dismiss = titleRow.GetNodeOrNull<Button>("SystemViewBack");
         if (dismiss is not null)
         {
