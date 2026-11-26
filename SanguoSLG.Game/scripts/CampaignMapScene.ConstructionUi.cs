@@ -208,19 +208,32 @@ public sealed partial class CampaignMapScene
         {
             var definition = _fieldBuildingDefinitions.FirstOrDefault(b => b.Code == ConstructionCodes[i]);
             if (definition is null) continue;
-            var choice = CommandCenterButton("", definition.Code == building.Code, new Vector2(105, 94));
+            // 대상 버튼은 지휘소의 버튼 PNG를 쓰지 않는다. 투명 배경에 금장 테두리만 둔다.
+            var choice = MakeButton("");
+            choice.CustomMinimumSize = new Vector2(105, 94);
+            choice.AddThemeStyleboxOverride("normal", Frame(Colors.Transparent,
+                definition.Code == building.Code ? GoldBright : Gold,
+                definition.Code == building.Code ? 2 : 1, 4, 5));
+            choice.AddThemeStyleboxOverride("hover", Frame(Colors.Transparent, GoldBright, 2, 4, 5));
+            choice.AddThemeStyleboxOverride("pressed", Frame(Colors.Transparent, GoldBright, 2, 4, 5));
+            choice.AddThemeStyleboxOverride("focus", new StyleBoxEmpty());
             choice.TooltipText = $"{definition.Name} · 금 {definition.GoldCost} · 군량 {definition.ProvisionsCost}";
             choices.AddChild(choice);
-            var content = new VBoxContainer { MouseFilter = Control.MouseFilterEnum.Ignore };
+            var content = new VBoxContainer { MouseFilter = Control.MouseFilterEnum.Ignore,
+                Alignment = BoxContainer.AlignmentMode.Center };
             content.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
             choice.AddChild(content);
             var image = new TextureRect { Texture = GD.Load<Texture2D>($"res://assets/ui/game/struct_card/{i}.png"),
                 CustomMinimumSize = new Vector2(50, 50),
+                SizeFlagsHorizontal = Control.SizeFlags.ShrinkCenter,
                 ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
                 StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
                 MouseFilter = Control.MouseFilterEnum.Ignore };
             content.AddChild(image);
-            content.AddChild(MakeLabel(definition.Name, 12, GoldBright));
+            var caption = MakeLabel(definition.Name, 12, GoldBright);
+            caption.HorizontalAlignment = HorizontalAlignment.Center;
+            caption.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+            content.AddChild(caption);
             choice.Pressed += () =>
             {
                 var updated = request with { ConstructionDefinitionCode = definition.Code,
@@ -514,6 +527,10 @@ public sealed partial class CampaignMapScene
             var choices = _modalLayer?.FindChild("ConstructionTargetsScroll", true, false) as ScrollContainer;
             passed &= choices?.GetChild(0).GetChildCount() == ConstructionCodes.Length
                 && _modalLayer?.FindChild("ConstructionCommandUnitList", true, false) is ScrollContainer;
+            if (choices?.GetChild(0).GetChild(0) is Button firstChoice)
+                passed &= firstChoice.GetThemeStylebox("normal") is StyleBoxFlat
+                    && firstChoice.FindChildren("*", "Label", true, false).OfType<Label>()
+                        .Any(label => label.HorizontalAlignment == HorizontalAlignment.Center);
             _pendingDeploys.RemoveAt(index);
         }
         GD.Print($"[construction-ui-qa] passed={passed}");
