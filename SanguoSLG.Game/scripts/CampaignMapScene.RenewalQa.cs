@@ -27,7 +27,7 @@ public sealed partial class CampaignMapScene
         _playbackCityTroops.Clear();
         _animUnitSnapshotIdx = 0;
         _animCityVitalIdx = 0;
-        _animUnitSnapshots.Add((1.0, [unit with { Pool = new TroopPool(700, 300) }]));
+        _animUnitSnapshots.Add((1.0, [unit with { Pool = new TroopPool(700, 300) }], []));
         _animCityVitals.Add((1.0, city.Id, city.Wall, initialTroops + 700));
         _animCityVitals.Add((1.5, city.Id, 0, initialTroops + 600));
 

@@ -45,9 +45,12 @@ public sealed record AdvanceTurn(
     IReadOnlyList<FormationTrigger>? FormationResults = null,
     IReadOnlyList<FieldCombatExchange>? FieldCombatExchangeResults = null,
     IReadOnlyDictionary<Domain.UnitId, int>? EventBeastRecoveries = null,
-    IReadOnlyList<CombatUnit>? DefeatedUnits = null)
+    IReadOnlyList<CombatUnit>? DefeatedUnits = null,
+    IReadOnlyList<FieldBuilding>? StartedFieldBuildings = null)
 {
     public IReadOnlyList<CombatUnit> Deployments => ReleasedDeployments ?? [];
+    /// <summary>이 이동 조각에서 착공한 현장. 재생 화면이 주간 종료 전에 공사장을 표시한다.</summary>
+    public IReadOnlyList<FieldBuilding> BuildingStarts => StartedFieldBuildings ?? [];
     public IReadOnlyList<CombatUnit> EnteredCastle => Entered ?? [];
 
     public IReadOnlyDictionary<Domain.UnitId, int> Starvation => StarvationLoss ?? EmptyLoss;

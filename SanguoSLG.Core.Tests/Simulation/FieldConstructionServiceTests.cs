@@ -93,8 +93,11 @@ public sealed class FieldConstructionServiceTests
             new WorldEngine(new BalanceConfig(MonthlyTaxPerCity: 100)),
             fieldBuildingDefinitions: Definitions,
             fieldConstruction: Service());
-        var next = campaign.AdvanceWeek(State(unit), out _);
+        var next = campaign.AdvanceWeek(State(unit), out var turns);
         Assert.Single(next.Buildings);
+        Assert.Single(turns.SelectMany(turn => turn.BuildingStarts));
+        Assert.True(turns.First(turn => turn.BuildingStarts.Count > 0).Units
+            .Single(builder => builder.Id == unit.Id).IsConstructing);
         Assert.Null(Assert.Single(next.Armies).ConstructionDefinitionCode);
     }
 

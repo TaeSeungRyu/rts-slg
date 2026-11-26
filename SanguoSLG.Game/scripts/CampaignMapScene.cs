@@ -149,7 +149,8 @@ public sealed partial class CampaignMapScene : Node3D
     private double _playbackVisualEndTime;
     private int _animUpdIdx;
     private readonly List<(double Time, int UnitId, int Troops)> _animUpdates = new(); // 병력 갱신(라벨·편대 규모)
-    private readonly List<(double Time, IReadOnlyList<CombatUnit> Units)> _animUnitSnapshots = new();
+    private readonly List<(double Time, IReadOnlyList<CombatUnit> Units,
+        IReadOnlyList<FieldBuilding> BuildingStarts)> _animUnitSnapshots = new();
     private int _animUnitSnapshotIdx;
     private readonly List<(double Time, CityId City, int Wall, int Troops)> _animCityVitals = new();
     private int _animCityVitalIdx;
@@ -5202,7 +5203,7 @@ public sealed partial class CampaignMapScene : Node3D
             // 이 조각의 정산 반영: 병력 갱신(라벨·편대 규모) + 전멸/입성 부대 즉시 제거.
             var settleTime = atkTime + 0.55; // 공격 모션이 보인 뒤
             _animUnitSnapshots.Add((captures.Any(capture => capture.TurnIndex == ti)
-                ? settleTime + 0.08 : settleTime, turn.Units));
+                ? settleTime + 0.08 : settleTime, turn.Units, turn.BuildingStarts));
             ScheduleFieldBuildingCombat(turn, atkTime, settleTime);
             ScheduleScoutPostRemovals(turn, ((stopDay - 1) * DaySeconds) + MoveSeconds);
             var survivors = new HashSet<int>();
@@ -8758,7 +8759,15 @@ private void ApplyBuildingButtonEffect(Button button)
         while (_animUnitSnapshotIdx < _animUnitSnapshots.Count
             && _animUnitSnapshots[_animUnitSnapshotIdx].Time <= _animT)
         {
-            _state = _state with { FieldArmies = _animUnitSnapshots[_animUnitSnapshotIdx].Units };
+            var snapshot = _animUnitSnapshots[_animUnitSnapshotIdx];
+            _state = _state with { FieldArmies = snapshot.Units };
+            if (snapshot.BuildingStarts.Count > 0)
+            {
+                var known = _state.Buildings.Select(building => building.Id).ToHashSet();
+                _state = _state with { FieldBuildings = _state.Buildings
+                    .Concat(snapshot.BuildingStarts.Where(building => !known.Contains(building.Id))).ToList() };
+                RedrawFieldBuildings();
+            }
             // 주간 계산은 먼저 끝나지만 재생은 날짜별이다. 착공한 날의 스냅샷에서
             // 공구 모션을 갱신해야 이동 재생이 모두 끝날 때까지 착공이 숨겨지지 않는다.
             foreach (var builder in _state.Armies.Where(unit => unit.IsConstructionUnit))

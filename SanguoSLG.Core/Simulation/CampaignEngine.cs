@@ -349,6 +349,7 @@ public sealed class CampaignEngine
             turn = StripProductionUnits(turn, productionUnitIds);
             if (_fieldConstruction is not null)
             {
+                var existingBuildings = work.Buildings.Select(building => building.Id).ToHashSet();
                 var constructionState = work with { Day = simulationDay, FieldArmies = turn.Units };
                 foreach (var builder in turn.Units.Where(unit => unit.IsConstructionUnit
                     && !unit.IsConstructing && !unit.IsWaitingDeployment
@@ -362,7 +363,9 @@ public sealed class CampaignEngine
                     if (result.Ok) constructionState = result.State;
                 }
                 work = constructionState with { Day = work.Day };
-                turn = turn with { Units = constructionState.Armies };
+                turn = turn with { Units = constructionState.Armies,
+                    StartedFieldBuildings = constructionState.Buildings
+                        .Where(building => !existingBuildings.Contains(building.Id)).ToList() };
             }
             if (_eventHunts is not null)
             {
