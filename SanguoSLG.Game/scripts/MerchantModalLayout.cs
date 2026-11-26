@@ -13,6 +13,7 @@ internal static class MerchantModalLayout
     public const float ScrollContentGap = 8f;
     public const float PortraitHeight = 265f;
     public const float FooterButtonWidth = 180f;
+    public const int FooterClearance = 14;
     public const float CloseButtonSize = 30f;
     public const int TitleSize = 23;
     public const int SectionSize = 18;

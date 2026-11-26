@@ -207,8 +207,11 @@ public sealed partial class CampaignMapScene
             productButtons.Add((artifact, purchase));
         }
 
+        var footerInset = new MarginContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+        footerInset.AddThemeConstantOverride("margin_bottom", MerchantModalLayout.FooterClearance);
+        body.AddChild(footerInset);
         var footer = new HBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
-        body.AddChild(footer);
+        footerInset.AddChild(footer);
         footer.AddChild(new Control { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill });
         var dismiss = MakeButton("상인 떠나 보내기");
         dismiss.CustomMinimumSize = new Vector2(MerchantModalLayout.FooterButtonWidth, 38f);
