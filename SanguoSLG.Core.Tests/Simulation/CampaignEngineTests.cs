@@ -474,7 +474,7 @@ public class CampaignEngineTests
     }
 
     [Fact]
-    public void 공사장은_적군에게만_피해를_받고_체력이_다까이면_건설취소된다()
+    public void 공사장은_아군에게_피해를_받지않고_적군이_점유하면_즉시_취소된다()
     {
         // 공사 중 시설은 병력 1000짜리 무방비 목표(체력 1000, 진행당 인접 적 부대 하나에 500 피해).
         // 적대 세력만 공사를 유닛으로 보고 공격한다 — 같은 세력 부대는 피해를 주지 않는다.
@@ -498,13 +498,11 @@ public class CampaignEngineTests
         var afterAlly = engine.AdvanceWeek(allyState, out _);
         Assert.Equal(0, afterAlly.Commands.Single(x => x.Kind == CommandKind.Build).SiteDamage);
 
-        // 적 부대가 인접하면 매 진행 500 피해, 두 주면 1000 도달 → 건설 취소.
-        var foe = Army(2, 2, new HexCoord(10, 1), UnitMode.March, target: null);
+        // 적 부대가 공사 칸에 진입하면 체력 정산을 기다리지 않고 즉시 건설을 취소한다.
+        var foe = Army(2, 2, new HexCoord(10, 1), UnitMode.Standby, target: null);
         var foeState = allyState with { FieldArmies = new[] { foe } };
         var after1 = engine.AdvanceWeek(foeState, out _);
-        Assert.Equal(500, after1.Commands.Single(x => x.Kind == CommandKind.Build).SiteDamage);
-        var after2 = engine.AdvanceWeek(after1, out _);
-        Assert.DoesNotContain(after2.Commands, x => x.Kind == CommandKind.Build);
+        Assert.DoesNotContain(after1.Commands, x => x.Kind == CommandKind.Build);
     }
 
     [Fact]
