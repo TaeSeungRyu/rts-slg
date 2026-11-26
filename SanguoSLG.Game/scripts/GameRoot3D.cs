@@ -506,12 +506,9 @@ public partial class GameRoot3D : Node3D
         {
             foreach (var batch in map.Tiles().Chunk(320))
             {
-                mapView.Build(map, occupied, conditions, CampaignMapScene.TestPortTiles,
-                    batch, finish: false);
+                mapView.Build(map, occupied, conditions, CampaignMapScene.TestPortTiles, batch);
                 await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
             }
-            mapView.Build(map, occupied, conditions, CampaignMapScene.TestPortTiles,
-                Array.Empty<HexCoord>());
         }
         else mapView.Build(map, occupied, conditions, CampaignMapScene.TestPortTiles);
         WorldMapLoadMetrics.RecordTerrainBuild(terrainStarted);

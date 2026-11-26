@@ -170,7 +170,7 @@ public partial class MapView3D : Node3D
     /// <param name="conditions">타일별 파괴 상태. 정상이 아닌 타일에는 공통 파괴 레이어를 입힌다.</param>
     public void Build(HexMap map, System.Collections.Generic.ISet<HexCoord> occupied, TileConditionMap conditions,
         System.Collections.Generic.ISet<HexCoord>? cityPorts = null,
-        IEnumerable<HexCoord>? tiles = null, bool finish = true)
+        IEnumerable<HexCoord>? tiles = null)
     {
         foreach (var tile in tiles ?? map.Tiles())
         {
@@ -279,7 +279,6 @@ public partial class MapView3D : Node3D
             }
         }
 
-        if (finish) BuildWaterBorder(map);
     }
 
     private void AddFineDetail(Node3D detail)
@@ -1059,27 +1058,6 @@ public partial class MapView3D : Node3D
         return Mathf.Sign(modelSpan) == Mathf.Sign(connSpan)
             ? (scene2, a1 - t1)
             : (scene2, a1 - t2);
-    }
-
-    // 맵 경계 밖 2겹을 물 타일로 둘러 디오라마 느낌을 준다.
-    private void BuildWaterBorder(HexMap map)
-    {
-        const int rings = 4;
-        for (var q = map.MinQ - rings; q <= map.MaxQ + rings; q++)
-        {
-            for (var r = map.MinR - rings; r <= map.MaxR + rings; r++)
-            {
-                var coord = new HexCoord(q, r);
-                if (map.Contains(coord))
-                {
-                    continue;
-                }
-
-                var instance = _water.Instantiate<Node3D>();
-                instance.Position = HexToWorld(coord);
-                AddChild(instance);
-            }
-        }
     }
 
     /// <summary>3D 월드 위치(x-z 평면) → 가장 가까운 헥사 좌표. HexToWorld의 역변환.</summary>
