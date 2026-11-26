@@ -69,7 +69,9 @@ public sealed partial class CampaignMapScene
         var name = _state.Cities.First(city => city.Id == cityId).Name;
         // [제목줄 높이] 아래 상태줄(48)과 독립적으로 조절할 수 있다.
         var header = new HBoxContainer { CustomMinimumSize = new Vector2(0, 76) };
-        header.AddChild(new Control { CustomMinimumSize = new Vector2(28, 0) });
+        // 배경 PNG의 왼쪽 깃발은 약 50px까지 차지한다. 제목 시작을 깃발 바깥으로 보낸다.
+        header.AddChild(new Control { Name = "ConstructionTitleFlagClearance",
+            CustomMinimumSize = new Vector2(52, 0), MouseFilter = Control.MouseFilterEnum.Ignore });
         var title = MakeLabel($"건설 지휘소  《 {name} 》", 26, GoldBright);
         title.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
         title.VerticalAlignment = VerticalAlignment.Center;
@@ -473,7 +475,9 @@ public sealed partial class CampaignMapScene
         var hub = _modalLayer?.FindChild("ConstructionCommandCenter", true, false) as PanelContainer;
         var add = _modalLayer?.FindChild("ConstructionCommandNewUnit", true, false) as Button;
         var passed = hub is not null && add is not null
-            && _modalLayer?.FindChild("ConstructionCommandBackground", true, false) is TextureRect;
+            && _modalLayer?.FindChild("ConstructionCommandBackground", true, false) is TextureRect
+            && _modalLayer?.FindChild("ConstructionTitleFlagClearance", true, false) is Control clearance
+            && clearance.CustomMinimumSize.X >= 52;
         add?.EmitSignal(Button.SignalName.Pressed);
         await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
         passed &= _modalLayer?.FindChild("ConstructionComposeModal", true, false) is ConstructionComposeModal
