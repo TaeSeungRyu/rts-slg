@@ -9,8 +9,10 @@ internal static class TurnProgressLayout
     internal const float ScreenInset = 16f;
     internal const int PanelPadding = 5;
     internal const int RowGap = 3;
-    internal const int DayFontSize = 18;
-    internal const int TurnFontSize = 13;
+    internal const int DayFontSize = 20;
+    internal const int TurnFontSize = 15;
+    internal const int StatusShadowOffset = 2;
+    internal static readonly Color StatusShadow = new(0.78f, 0.80f, 0.82f, 0.7f);
     internal const int ButtonFontSize = 14;
     internal const float ButtonWidth = 141f;
     internal const float ButtonHeight = 34f;

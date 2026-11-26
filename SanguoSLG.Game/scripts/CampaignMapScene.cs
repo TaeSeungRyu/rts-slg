@@ -22612,6 +22612,12 @@ ApplyUnitMenuFrame(panel);
         _dayTurnLabel.HorizontalAlignment = HorizontalAlignment.Center;
         _dayTurnLabel.Visible = false;
         outer.AddChild(_dayTurnLabel);
+        foreach (var statusLabel in new[] { _dayLabel, _dayTurnLabel })
+        {
+            statusLabel.AddThemeColorOverride("font_shadow_color", TurnProgressLayout.StatusShadow);
+            statusLabel.AddThemeConstantOverride("shadow_offset_x", TurnProgressLayout.StatusShadowOffset);
+            statusLabel.AddThemeConstantOverride("shadow_offset_y", TurnProgressLayout.StatusShadowOffset);
+        }
 
         var panel = new PanelContainer { MouseFilter = Control.MouseFilterEnum.Pass };
         panel.CustomMinimumSize = new Vector2(TurnProgressLayout.PanelWidth, 0f);
