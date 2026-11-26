@@ -15,6 +15,7 @@ public partial class AdvanceButton : Control
 
     public Font? CaptionFont { get; set; }
     public ProgressBar? ProgressDisplay { get; set; }
+    public Control? ProgressHost { get; set; }
     public bool Busy { get; set; }
     public float Progress { get; set; }
     public System.Action? Pressed;
@@ -62,7 +63,7 @@ public partial class AdvanceButton : Control
     {
         if (ProgressDisplay is not null)
         {
-            ProgressDisplay.Visible = Busy;
+            if (ProgressHost is not null) ProgressHost.Visible = Busy;
             ProgressDisplay.Value = Mathf.Clamp(Progress, 0f, 1f) * 100f;
         }
         MouseDefaultCursorShape = Busy ? CursorShape.Arrow : CursorShape.PointingHand;

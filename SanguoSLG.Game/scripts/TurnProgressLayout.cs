@@ -17,6 +17,8 @@ internal static class TurnProgressLayout
     internal const float ProgressInset = 20f;
     internal const float ProgressTop = 8f;
     internal const float ProgressHeight = 8f;
+    internal const float ProgressWidthRatio = 0.8f;
+    internal const int ProgressExtraGap = 5;
     internal const int ProgressRadius = 4;
     internal static readonly Color BodyColor = new("#24150f");
     internal static readonly Color Gold = new("#dda94d");

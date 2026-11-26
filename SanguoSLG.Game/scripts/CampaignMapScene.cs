@@ -22624,8 +22624,10 @@ ApplyUnitMenuFrame(panel);
         var progress = new ProgressBar
         {
             ShowPercentage = false,
-            CustomMinimumSize = new Vector2(0f, TurnProgressLayout.ProgressHeight),
-            Visible = false,
+            CustomMinimumSize = new Vector2(
+                TurnProgressLayout.ButtonWidth * TurnProgressLayout.ProgressWidthRatio,
+                TurnProgressLayout.ProgressHeight),
+            Visible = true,
             MouseFilter = Control.MouseFilterEnum.Ignore,
         };
         progress.AddThemeStyleboxOverride("background", new StyleBoxFlat
@@ -22646,7 +22648,12 @@ ApplyUnitMenuFrame(panel);
             CornerRadiusBottomLeft = TurnProgressLayout.ProgressRadius,
             CornerRadiusBottomRight = TurnProgressLayout.ProgressRadius,
         });
-        vb.AddChild(progress);
+        var progressSpacing = new MarginContainer { Visible = false };
+        progressSpacing.AddThemeConstantOverride("margin_bottom", TurnProgressLayout.ProgressExtraGap);
+        var progressCenter = new CenterContainer();
+        progressSpacing.AddChild(progressCenter);
+        progressCenter.AddChild(progress);
+        vb.AddChild(progressSpacing);
 
         _advanceBtn = new AdvanceButton
         {
@@ -22654,6 +22661,7 @@ ApplyUnitMenuFrame(panel);
             TextureFilter = CanvasItem.TextureFilterEnum.LinearWithMipmaps,
             CaptionFont = _font,
             ProgressDisplay = progress,
+            ProgressHost = progressSpacing,
         };
         _advanceBtn.Pressed = OnAdvance;
         vb.AddChild(_advanceBtn);
