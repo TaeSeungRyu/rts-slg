@@ -12257,7 +12257,14 @@ CenterAndDrag(panel, titleRow, mw, mh, box);
         var vp = GetViewport().GetVisibleRect().Size;
         var mw = Mathf.Clamp(vp.X * 0.5f, 480f, 720f);
         var mh = Mathf.Clamp(vp.Y * 0.8f, 360f, 720f);
-        var box = SystemView("단서·보물 보관함", mw, out var scroll, out var panel, out var titleRow);
+
+
+
+        var box = SystemView("\n단서·보물 보관함", mw, out var scroll, out var panel, out var titleRow, useModalChrome: true);
+        panel.CustomMinimumSize = new Vector2(mw, mh);
+
+
+
         var clues = _state.Discoveries
             .Where(x => x.Faction == Player && x.RelicTreasureId.Length == 0)
             .Select(x => (Discovery: x, View: ExplorationRewardPresentation.From(x,

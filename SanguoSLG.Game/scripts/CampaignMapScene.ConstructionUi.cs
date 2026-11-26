@@ -296,11 +296,12 @@ if (_constructionSelectedIndex < 0 ||
 
 
 
+
 var isSelected = definition.Code == building.Code;
 
 // 일반 및 선택 상태
 choice.AddThemeStyleboxOverride("normal", Frame(
-    isSelected ? new Color("6a2018") : Colors.Transparent,
+    Colors.Transparent,
     isSelected ? GoldBright : Gold,
     isSelected ? 3 : 1,
     4, 5
@@ -308,15 +309,15 @@ choice.AddThemeStyleboxOverride("normal", Frame(
 
 // 마우스 Hover
 choice.AddThemeStyleboxOverride("hover", Frame(
-    isSelected ? new Color("802b20") : new Color("3d2a1c"),
-    GoldBright,
+    Colors.Transparent,
+    isSelected ? GoldBright : new Color("c49a55"),
     isSelected ? 3 : 2,
     4, 5
 ));
 
 // 마우스 클릭
 choice.AddThemeStyleboxOverride("pressed", Frame(
-    new Color("49150f"),
+    Colors.Transparent,
     GoldBright,
     3,
     4, 5
