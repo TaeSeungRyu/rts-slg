@@ -318,38 +318,54 @@ public sealed partial class CampaignMapScene
         left.AddChild(goldSpin);
         AddDeploymentDelaySelector(left, delay, days => delay = days);
         right.AddChild(MakeLabel("주장 선택 (부관 없음)", 16, GoldBright));
-        var officerScroll = new ScrollContainer { SizeFlagsVertical = Control.SizeFlags.ExpandFill,
-            HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled };
-        GameUiSkin.ApplyQuickListScroll(officerScroll);
-        right.AddChild(officerScroll);
-        var officerList = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
-        officerScroll.AddChild(officerList);
+        var officerTable = new Tree { Name = "ConstructionOfficerTable", Columns = 7,
+            ColumnTitlesVisible = true, HideRoot = true, SelectMode = Tree.SelectModeEnum.Row,
+            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+            SizeFlagsVertical = Control.SizeFlags.ExpandFill, ScrollVerticalEnabled = true };
+        officerTable.AddThemeFontOverride("font", _font);
+        officerTable.AddThemeFontSizeOverride("font_size", 13);
+        officerTable.AddThemeFontOverride("title_button_font", _font);
+        officerTable.AddThemeFontSizeOverride("title_button_font_size", 12);
+        foreach (var (column, title) in new[] { (0, "선택"), (1, "이름"), (2, "무"),
+            (3, "지"), (4, "정"), (5, "보급"), (6, "현재 담당업무") })
+            officerTable.SetColumnTitle(column, title);
+        foreach (var column in new[] { 0, 2, 3, 4, 5 })
+        {
+            officerTable.SetColumnExpand(column, false);
+            officerTable.SetColumnCustomMinimumWidth(column, column == 0 ? 52 : 42);
+        }
+        officerTable.SetColumnExpandRatio(1, 2);
+        officerTable.SetColumnExpandRatio(6, 2);
+        GameUiSkin.ApplyCommandTable(officerTable);
+        right.AddChild(officerTable);
         var reservedGenerals = ReservedDeployGenerals(editIndex, editingSupply: false);
-        var officerButtons = new List<(GeneralId Id, Button Button)>();
+        var officerRoot = officerTable.CreateItem();
         foreach (var id in _state.GeneralsAt(cityId).Where(id => !_state.IsGeneralBusy(id)
             && !reservedGenerals.Contains(id)))
         {
             var general = _state.Generals.First(g => g.Id == id);
-            var button = MakeButton("");
-            button.CustomMinimumSize = new Vector2(0, 58);
-            button.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
-            officerList.AddChild(button);
-            officerButtons.Add((id, button));
-            var row = new HBoxContainer { MouseFilter = Control.MouseFilterEnum.Ignore };
-            row.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
-            row.AddThemeConstantOverride("separation", 10);
-            button.AddChild(row);
-            row.AddChild(FixedIcon(CircularPortraitFor(id), 42));
-            row.AddChild(MakeLabel($"{general.Name}   무 {general.Might} · 지 {general.Intellect} · 정 {general.Politics}", 14, Parchment));
-            button.Pressed += () =>
-            {
-                leaderId = id;
-                foreach (var (officerId, choice) in officerButtons)
-                    ApplyDeployComposeButtonTexture(choice, officerId == leaderId);
-            };
+            var item = officerTable.CreateItem(officerRoot);
+            item.SetMetadata(0, id.Value);
+            item.SetCellMode(0, TreeItem.TreeCellMode.Check);
+            item.SetChecked(0, id == leaderId);
+            item.SetText(1, general.Name);
+            ApplyGeneralTreePortrait(item, 1, id, goldBorder: true);
+            item.SetText(2, general.Might.ToString());
+            item.SetText(3, general.Intellect.ToString());
+            item.SetText(4, general.Politics.ToString());
+            item.SetText(5, GradeText(general.AptitudeFor(TroopClass.Supply)));
+            item.SetText(6, CurrentDuty(id));
+            for (var column = 0; column < 7; column++) item.SetSelectable(column, true);
+            if (id == leaderId) item.Select(0);
         }
-        foreach (var (id, button) in officerButtons)
-            ApplyDeployComposeButtonTexture(button, id == leaderId);
+        officerTable.ItemSelected += () =>
+        {
+            var selected = officerTable.GetSelected();
+            if (selected is null) return;
+            leaderId = new GeneralId((int)selected.GetMetadata(0));
+            for (var item = officerRoot.GetFirstChild(); item is not null; item = item.GetNext())
+                item.SetChecked(0, (int)item.GetMetadata(0) == leaderId.Value.Value);
+        };
         var summary = MakeLabel($"건설 대상 {definition.Name} · 금 {definition.GoldCost:N0} · 군량 {definition.ProvisionsCost:N0}",
             13, GoldBright);
         var footerRow = new HBoxContainer();
@@ -398,7 +414,8 @@ public sealed partial class CampaignMapScene
         passed &= _modalLayer?.FindChild("ConstructionComposeModal", true, false) is ConstructionComposeModal
             && _modalLayer?.FindChild("ConstructionTroopGrid", true, false) is GridContainer troopGrid
             && troopGrid.Columns == 2
-            && _modalLayer?.FindChild("ConstructionComposeOfficer", true, false) is VBoxContainer;
+            && _modalLayer?.FindChild("ConstructionComposeOfficer", true, false) is VBoxContainer
+            && _modalLayer?.FindChild("ConstructionOfficerTable", true, false) is Tree;
         var garrison = _state.Garrisons.FirstOrDefault(force => force.City == city.Id && force.Troops >= 500);
         var leader = _state.GeneralsAt(city.Id).FirstOrDefault();
         if (garrison is not null && leader != default)
