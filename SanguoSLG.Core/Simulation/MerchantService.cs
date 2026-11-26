@@ -9,6 +9,11 @@ public sealed class MerchantService(HexMap map, Func<int, City, IRandomSource>? 
     public GameState Advance(GameState state, int fromDay, int toDay)
     {
         var visits = state.Merchants.ToList();
+        // Moving armies can enter a merchant's tile after the previous weekly spawn check.
+        // A visit ends before the next map redraw instead of leaving two models overlapped.
+        visits.RemoveAll(visit => state.Armies.Any(unit => unit.Pool.Active > 0
+            && !unit.IsWaitingDeployment && (unit.RenewalPosition is { } continuous
+                ? RenewalHexSpace.NearestHex(continuous) : unit.Field.Position) == visit.Position));
         for (var day = fromDay + 1; day <= toDay; day++)
         {
             var expiredCities = visits.Where(visit => visit.ExpiresDay <= day)

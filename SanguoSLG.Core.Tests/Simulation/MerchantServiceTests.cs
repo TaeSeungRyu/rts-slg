@@ -54,4 +54,18 @@ public sealed class MerchantServiceTests
         Assert.Equal(2, second.State.Treasures.Select(item => item.Id).Distinct().Count());
         Assert.Equal(code, second.State.Treasures[0].Code);
     }
+
+    [Fact]
+    public void 부대가_상인_칸을_점유하면_방문이_종료된다()
+    {
+        var service = new MerchantService(new HexMap(0, 12, 0, 12), (_, _) => new MinimumRandom());
+        var state = service.Advance(State(), 1, 8);
+        var plot = Assert.Single(state.Merchants).Position;
+        var unit = new CombatUnit(
+            new FieldUnit(new UnitId(1), Player, plot, 2, 2, 1,
+                MovementDomain.Land, UnitMode.Standby, null, 1),
+            new CombatStats(500, 5, 5), new TroopPool(500, 0), UnitCombatState.Create(60));
+        var occupied = state with { FieldArmies = [unit] };
+        Assert.Empty(service.Advance(occupied, 8, 9).Merchants);
+    }
 }
