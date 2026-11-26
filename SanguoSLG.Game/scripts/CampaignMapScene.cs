@@ -6753,13 +6753,12 @@ _terrainCard.AddChild(terrainFrame);
     }
 
 
-    private void ApplyUnitMenuFrame(PanelContainer panel, int contentPadding = 10)
+    private void ApplyUnitMenuFrame(PanelContainer panel, int contentPadding = 10,
+        int patchMargin = 28, float frameScale = 0.15f)
     {
         // ========================================
         // 디자인 설정
         // ========================================
-        const float frameScale = 0.15f;
-        const int patchMargin = 28;
         const int cornerRadius = 12;
 
         // ========================================
@@ -22620,8 +22619,9 @@ ApplyUnitMenuFrame(panel);
         }
 
         var panel = new PanelContainer { MouseFilter = Control.MouseFilterEnum.Pass };
-        panel.CustomMinimumSize = new Vector2(TurnProgressLayout.PanelWidth, 0f);
-        ApplyUnitMenuFrame(panel, TurnProgressLayout.PanelPadding);
+        panel.CustomMinimumSize = new Vector2(TurnProgressLayout.PanelWidth, TurnProgressLayout.PanelHeight);
+        ApplyUnitMenuFrame(panel, TurnProgressLayout.PanelPadding,
+            TurnProgressLayout.FramePatchMargin, TurnProgressLayout.FrameScale);
         outer.AddChild(panel);
         var vb = new VBoxContainer { Alignment = BoxContainer.AlignmentMode.End };
         vb.AddThemeConstantOverride("separation", TurnProgressLayout.RowGap);

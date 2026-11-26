@@ -5,9 +5,12 @@ using Godot;
 /// <summary>턴 진행 UI의 화면 위치, 크기, 색상을 한곳에서 조정한다.</summary>
 internal static class TurnProgressLayout
 {
-    internal const float PanelWidth = 152f;
+    internal const float PanelWidth = 160f;
+    internal const float PanelHeight = 64f;
     internal const float ScreenInset = 16f;
-    internal const int PanelPadding = 5;
+    internal const int PanelPadding = 8;
+    internal const int FramePatchMargin = 18;
+    internal const float FrameScale = 0.10f;
     internal const int RowGap = 3;
     internal const int DayFontSize = 20;
     internal const int TurnFontSize = 15;
