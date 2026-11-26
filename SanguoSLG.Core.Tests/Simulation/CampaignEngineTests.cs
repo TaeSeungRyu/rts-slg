@@ -11,6 +11,37 @@ using Xunit;
 /// <summary>캠페인 진행 = 7일 고정, 이동+전투 자동 연속, 내정과 한 시계(2026-08-16 확정).</summary>
 public class CampaignEngineTests
 {
+    [Fact]
+    public void 상인_유물은_장착시에만_부대_능력치에_적용된다()
+    {
+        var owner = new FactionId(1);
+        var general = new General(new GeneralId(1), "장수",
+            new Dictionary<TroopClass, AptitudeGrade> { [TroopClass.Infantry] = AptitudeGrade.A },
+            80, 90, 50);
+        var unit = Army(1, 1, new HexCoord(4, 4), UnitMode.Standby, null) with
+        {
+            VanguardId = general.Id,
+            Field = Army(1, 1, new HexCoord(4, 4), UnitMode.Standby, null).Field
+                with { MovementTenths = 20 },
+        };
+        var method = typeof(CampaignEngine).GetMethod("RefreshAptitudePercents",
+            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!;
+        CombatUnit Refresh(GameState game, CombatUnit army)
+            => Assert.Single((List<CombatUnit>)method.Invoke(Engine(),
+                [new List<CombatUnit> { army }, game])!);
+        var baseState = World(unit) with { Generals = [general] };
+        var horse = new FactionTreasure("horse", "red_hare", "적토마", owner, 1, "merchant", general.Id);
+        var mounted = Refresh(baseState with { FactionTreasures = [horse] }, unit);
+        Assert.Equal(22, mounted.Field.EffectiveMovementTenths);
+        Assert.Equal(20, Refresh(baseState, mounted).Field.EffectiveMovementTenths);
+        var book = new FactionTreasure("book", "art_of_war", "손자병법", owner, 1, "merchant", general.Id);
+        var learned = Refresh(baseState with { FactionTreasures = [book] }, unit);
+        Assert.Equal(92, learned.Intellect);
+        Assert.Equal(110, learned.RelicDefensePercent);
+        var blade = new FactionTreasure("blade", "green_dragon_blade", "청룡언월도", owner, 1, "merchant", general.Id);
+        Assert.Equal(84, Refresh(baseState with { FactionTreasures = [blade] }, unit).Might);
+    }
+
     private sealed class AlwaysSpawnRandom : IRandomSource
     {
         public int Next(int minInclusive, int maxExclusive) => minInclusive;
