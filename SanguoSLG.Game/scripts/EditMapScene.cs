@@ -492,7 +492,7 @@ public sealed partial class EditMapScene : Control
         var libraryButtons = _mapLibrary?.FindChildren("*", "Button", true, false)
             .OfType<Button>().Select(button => button.Text).ToArray() ?? [];
         valid &= !_mapSelectionMade && libraryButtons.Contains("×")
-            && libraryButtons.Contains("새 지도 추가 · 기본 지도에서 시작");
+            && libraryButtons.Contains("새 지도 추가");
         CloseMapLibrary();
         _terrainButtons.First(button => button.Text == "산1").EmitSignal(Button.SignalName.Pressed);
         valid &= _paintCode == 'M' && _terrainPaletteButtons['M'].ButtonPressed;

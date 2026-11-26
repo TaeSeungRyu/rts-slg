@@ -122,9 +122,52 @@ public sealed partial class EditMapScene
             remove.Pressed += () => ConfirmDeleteMap(path);
             actions.AddChild(remove);
         }
-        var add = new Button { Text = "새 지도 추가 · 기본 지도에서 시작" };
-        add.Pressed += () => CreateMapCopy(ScenarioMapPresetStore.Load(RootMapPath()));
+        var add = new Button { Text = "새 지도 추가" };
+        add.Pressed += OpenNewMapDialog;
         content.AddChild(add);
+    }
+
+    private void OpenNewMapDialog()
+    {
+        var source = ScenarioMapPresetStore.Load(RootMapPath());
+        var content = OpenEditorModal("새 지도 생성");
+        var useDefault = new CheckButton { Text = "기본 지도 복사", ButtonPressed = true };
+        content.AddChild(useDefault);
+        var dimensions = new HBoxContainer();
+        content.AddChild(dimensions);
+        var width = new SpinBox { MinValue = 4, MaxValue = 512, Step = 1,
+            Value = source.Width, CustomMinimumSize = new Vector2(100, 0) };
+        var height = new SpinBox { MinValue = 4, MaxValue = 512, Step = 1,
+            Value = source.Height, CustomMinimumSize = new Vector2(100, 0) };
+        dimensions.AddChild(new Label { Text = "가로" });
+        dimensions.AddChild(width);
+        dimensions.AddChild(new Label { Text = "세로" });
+        dimensions.AddChild(height);
+        void RefreshDimensions(bool copy)
+        {
+            width.Editable = height.Editable = !copy;
+            dimensions.Modulate = copy ? new Color(0.55f, 0.55f, 0.55f) : Colors.White;
+        }
+        useDefault.Toggled += RefreshDimensions;
+        RefreshDimensions(true);
+        var create = new Button { Text = "지도 생성" };
+        create.Pressed += () =>
+        {
+            try
+            {
+                var preset = useDefault.ButtonPressed ? source.Snapshot()
+                    : new ScenarioMapPreset(1, (int)width.Value, (int)height.Value,
+                        Enumerable.Repeat(new string('P', (int)width.Value), (int)height.Value).ToArray(), []);
+                preset.Validate();
+                CloseEditorModal();
+                CreateMapCopy(preset);
+            }
+            catch (Exception error)
+            {
+                ShowSaveResult("지도 생성 실패", error.Message);
+            }
+        };
+        content.AddChild(create);
     }
 
     private void RenameMap(string path, ScenarioMapVersion version)
