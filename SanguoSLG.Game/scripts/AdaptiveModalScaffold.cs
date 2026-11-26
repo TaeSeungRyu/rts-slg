@@ -33,6 +33,7 @@ public sealed partial class AdaptiveModalScaffold : PanelContainer
     {
         Default,
         EmptyCompact,
+        EmptyWide,
         CardSelection,
         DoctrineWorkflow,
         DenseResearch,
@@ -255,6 +256,7 @@ public sealed partial class AdaptiveModalScaffold : PanelContainer
             measuredContentWidth + ChromeHorizontalExtras));
 
         if (_widthProfile == WidthProfile.HeroRecruit
+            || _workspaceProfile == WorkspaceProfile.EmptyWide
             || (_workspaceProfile != WorkspaceProfile.Default
                 && _workspaceProfile != WorkspaceProfile.EmptyCompact
                 && _workspaceProfile != WorkspaceProfile.CommandTable))
@@ -392,6 +394,7 @@ public sealed partial class AdaptiveModalScaffold : PanelContainer
         var availableHeight = Mathf.Max(320f, viewportSize.Y - ViewportMargin * 2f);
         var widthRatio = contentLayout switch
         {
+            ContentLayout.Empty when workspaceProfile == WorkspaceProfile.EmptyWide => 0.82f,
             ContentLayout.Empty => 0.46f,
             ContentLayout.Table when profile == WidthProfile.Wide => 0.82f,
             ContentLayout.Table => 0.64f,
@@ -407,6 +410,7 @@ public sealed partial class AdaptiveModalScaffold : PanelContainer
         };
         var minimumWidth = contentLayout switch
         {
+            ContentLayout.Empty when workspaceProfile == WorkspaceProfile.EmptyWide => 960f,
             ContentLayout.Empty => 520f,
             ContentLayout.Table when profile == WidthProfile.Wide => 960f,
             ContentLayout.Table => 720f,
@@ -440,6 +444,7 @@ public sealed partial class AdaptiveModalScaffold : PanelContainer
         return profile switch
         {
             WorkspaceProfile.EmptyCompact => (220f, 340f),
+            WorkspaceProfile.EmptyWide => (220f, 340f),
             WorkspaceProfile.CardSelection => (580f, 740f + largeViewportBonus),
             WorkspaceProfile.DoctrineWorkflow => (808f, 860f + largeViewportBonus),
             WorkspaceProfile.DenseResearch => (700f, 780f + largeViewportBonus),

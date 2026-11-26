@@ -9382,7 +9382,9 @@ private void ApplyBuildingButtonEffect(Button button)
                 : DiplomacyTargets(command.Kind, city).Count > 0;
             return hasTargets
                 ? AdaptiveModalScaffold.WorkspaceProfile.MixedCommand
-                : AdaptiveModalScaffold.WorkspaceProfile.EmptyCompact;
+                : command.Kind == CommandKind.FormAlliance
+                    ? AdaptiveModalScaffold.WorkspaceProfile.EmptyWide
+                    : AdaptiveModalScaffold.WorkspaceProfile.EmptyCompact;
         }
         if (command.Kind == CommandKind.AppointRecruitmentOfficer)
             return AdaptiveModalScaffold.WorkspaceProfile.Recruitment;
