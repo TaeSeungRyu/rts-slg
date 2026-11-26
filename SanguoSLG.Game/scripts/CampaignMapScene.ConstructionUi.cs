@@ -351,13 +351,33 @@ public sealed partial class CampaignMapScene
         { if (!updatingFoodDefault) foodEdited = true; provisions = (int)value; };
         RefreshProvisions();
         left.AddChild(provisionLabel);
-        left.AddChild(provisionSpin);
+        // [휴대 자원] 슬라이더와 숫자 입력은 같은 값을 공유한다. 오른쪽 7px은 왼쪽 스크롤바 여백.
+        var provisionRow = new HBoxContainer();
+        provisionRow.AddThemeConstantOverride("separation", 8);
+        var provisionSlider = ApplySliderStyle(new HSlider { Name = "ConstructionProvisionSlider",
+            MinValue = definition.ProvisionsCost, MaxValue = provisionSpin.MaxValue, Step = 1,
+            Value = provisions, SizeFlagsHorizontal = Control.SizeFlags.ExpandFill });
+        provisionSlider.ValueChanged += value => provisionSpin.Value = value;
+        provisionSpin.ValueChanged += value => provisionSlider.Value = value;
+        provisionRow.AddChild(provisionSlider);
+        provisionRow.AddChild(provisionSpin);
+        left.AddChild(provisionRow);
         left.AddChild(DeployComposeResourceHeading("money.png", "휴대 금"));
         var goldSpin = ApplyNumberInputStyle(new SpinBox { MinValue = 0,
             MaxValue = city.Gold, Step = 1, Value = gold,
             CustomMinimumSize = new Vector2(150, 30) });
+        gold = (int)goldSpin.Value;
         goldSpin.ValueChanged += value => gold = (int)value;
-        left.AddChild(goldSpin);
+        var goldRow = new HBoxContainer();
+        goldRow.AddThemeConstantOverride("separation", 8);
+        var goldSlider = ApplySliderStyle(new HSlider { Name = "ConstructionGoldSlider",
+            MinValue = 0, MaxValue = System.Math.Max(1, city.Gold), Step = 1,
+            Value = gold, SizeFlagsHorizontal = Control.SizeFlags.ExpandFill });
+        goldSlider.ValueChanged += value => goldSpin.Value = value;
+        goldSpin.ValueChanged += value => goldSlider.Value = value;
+        goldRow.AddChild(goldSlider);
+        goldRow.AddChild(goldSpin);
+        left.AddChild(goldRow);
         AddDeploymentDelaySelector(left, delay, days => delay = days);
         right.AddChild(MakeLabel("주장 선택 (부관 없음)", 16, GoldBright));
         // [편성 오른쪽] 일반 장수 Tree 테이블. 이 칸은 테이블 자체만 세로 스크롤한다.
@@ -462,7 +482,9 @@ public sealed partial class CampaignMapScene
             && _modalLayer?.FindChild("ConstructionComposeOfficer", true, false) is VBoxContainer
             && _modalLayer?.FindChild("ConstructionOfficerTable", true, false) is Tree
             && _modalLayer?.FindChild("ConstructionProvision60Days", true, false) is Label
-            && _modalLayer?.FindChild("ConstructionProvisionInput", true, false) is SpinBox;
+            && _modalLayer?.FindChild("ConstructionProvisionInput", true, false) is SpinBox
+            && _modalLayer?.FindChild("ConstructionProvisionSlider", true, false) is HSlider
+            && _modalLayer?.FindChild("ConstructionGoldSlider", true, false) is HSlider;
         passed &= ConstructionProvisionsFor60Days(500, 0) == 1
             && ConstructionProvisionsFor60Days(10_000, 0) == 12
             && ConstructionProvisionsFor60Days(500, 5) == 6;
