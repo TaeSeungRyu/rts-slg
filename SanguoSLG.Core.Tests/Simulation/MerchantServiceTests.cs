@@ -1,6 +1,7 @@
 namespace SanguoSLG.Core.Tests.Simulation;
 
 using SanguoSLG.Core.Domain;
+using SanguoSLG.Core.Data;
 using SanguoSLG.Core.Simulation;
 using SanguoSLG.Core.Spatial;
 using Xunit;
@@ -67,5 +68,22 @@ public sealed class MerchantServiceTests
             new CombatStats(500, 5, 5), new TroopPool(500, 0), UnitCombatState.Create(60));
         var occupied = state with { FieldArmies = [unit] };
         Assert.Empty(service.Advance(occupied, 8, 9).Merchants);
+    }
+
+    [Fact]
+    public void 상인_재고와_가격은_저장후에도_유지된다()
+    {
+        var service = new MerchantService(new HexMap(0, 12, 0, 12), (_, _) => new MinimumRandom());
+        var state = service.Advance(State(), 1, 8);
+        var saved = SaveService.Deserialize(SaveService.Serialize(state));
+        var before = Assert.Single(state.Merchants);
+        var after = Assert.Single(saved.Merchants);
+        Assert.Equal(before.City, after.City);
+        Assert.Equal(before.Position, after.Position);
+        Assert.Equal(before.ArrivedDay, after.ArrivedDay);
+        Assert.Equal(before.ExpiresDay, after.ExpiresDay);
+        Assert.Equal(before.BuyGrainPercent, after.BuyGrainPercent);
+        Assert.Equal(before.SellGrainPercent, after.SellGrainPercent);
+        Assert.Equal(before.ArtifactCodes.ToArray(), after.ArtifactCodes.ToArray());
     }
 }
