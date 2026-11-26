@@ -8765,6 +8765,15 @@ private void ApplyBuildingButtonEffect(Button button)
                 var known = _state.Buildings.Select(building => building.Id).ToHashSet();
                 _state = _state with { FieldBuildings = _state.Buildings
                     .Concat(snapshot.BuildingStarts.Where(building => !known.Contains(building.Id))).ToList() };
+                foreach (var building in snapshot.BuildingStarts.Where(building => building.BuilderUnit is not null))
+                {
+                    var builder = snapshot.Units.FirstOrDefault(unit => unit.Id == building.BuilderUnit);
+                    if (builder is null || !_armyTokens.TryGetValue(builder.Id.Value, out var token)) continue;
+                    var destination = _view.HexToWorld(builder.Field.Position);
+                    if (token.Position.DistanceTo(destination) < 0.05f) continue;
+                    token.CreateTween().SetTrans(Tween.TransitionType.Sine)
+                        .SetEase(Tween.EaseType.InOut).TweenProperty(token, "position", destination, 0.35f);
+                }
                 RedrawFieldBuildings();
             }
             // 주간 계산은 먼저 끝나지만 재생은 날짜별이다. 착공한 날의 스냅샷에서
