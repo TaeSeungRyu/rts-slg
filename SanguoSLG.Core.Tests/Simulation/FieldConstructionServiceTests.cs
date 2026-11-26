@@ -99,6 +99,40 @@ public sealed class FieldConstructionServiceTests
         Assert.True(turns.First(turn => turn.BuildingStarts.Count > 0).Units
             .Single(builder => builder.Id == unit.Id).IsConstructing);
         Assert.Null(Assert.Single(next.Armies).ConstructionDefinitionCode);
+        Assert.NotEqual(baseUnit.Field.Position, Assert.Single(next.Armies).Field.Position);
+    }
+
+    [Theory]
+    [InlineData(1)]
+    [InlineData(2)]
+    public void 건설지점에_다른_부대가_있으면_착공하지_않고_건설명령을_취소한다(int occupantFaction)
+    {
+        var builder = Unit(500) with
+        {
+            IsConstructionUnit = true,
+            ConstructionDefinitionCode = "palisade",
+            ConstructionPlot = new HexCoord(2, 2),
+            Field = Unit(500).Field with { Mode = UnitMode.Standby, Target = null, Waypoints = null },
+        };
+        var occupant = Unit(1000) with { Field = Unit().Field with
+        {
+            Id = new UnitId(2), Owner = new FactionId(occupantFaction),
+            Mode = UnitMode.Standby, Target = null, Waypoints = null,
+        } };
+        var state = State(builder) with { FieldArmies = [builder, occupant] };
+        Assert.False(Service().Start(state, Player,
+            new(builder.Id, "palisade", builder.ConstructionPlot!.Value)).Ok);
+        var campaign = new CampaignEngine(Orchestrator(),
+            new WorldEngine(new BalanceConfig(MonthlyTaxPerCity: 100)),
+            fieldBuildingDefinitions: Definitions, fieldConstruction: Service());
+        var next = campaign.AdvanceWeek(state, out _);
+        Assert.Empty(next.Buildings);
+        var stopped = next.Armies.FirstOrDefault(unit => unit.Id == builder.Id);
+        if (stopped is not null)
+        {
+            Assert.Null(stopped.ConstructionDefinitionCode);
+            Assert.Null(stopped.ConstructionPlot);
+        }
     }
 
     [Fact]

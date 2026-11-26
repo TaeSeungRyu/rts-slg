@@ -2,12 +2,14 @@ namespace SanguoSLG.Core.Simulation;
 
 using SanguoSLG.Core.Domain;
 using SanguoSLG.Core.Spatial;
+using SanguoSLG.Core.Simulation.RenewalMovement;
 
 public sealed record FieldConstructionRequest(UnitId Unit, string DefinitionCode, HexCoord Position);
 
 public sealed class FieldConstructionService(
     IReadOnlyList<FieldBuildingDefinition> definitions,
-    Func<HexCoord, TerrainType> terrainAt)
+    Func<HexCoord, TerrainType> terrainAt,
+    Func<HexCoord, bool>? isMapTile = null)
 {
     public const int MinimumTroops = 1000;
 
@@ -55,6 +57,22 @@ public sealed class FieldConstructionService(
         {
             return CommandResult.Fail("이미 점유되거나 건축이 예약된 타일입니다.", state);
         }
+        if (HasOtherUnitAt(state, request.Position, unit.Id))
+        {
+            return CommandResult.Fail("건축 대상에 다른 부대가 있어 건축을 취소합니다.", state);
+        }
+        HexCoord? retreat = null;
+        if (unit.IsConstructionUnit && unit.Field.Position == request.Position)
+        {
+            retreat = request.Position.Neighbors().Where(candidate =>
+                (isMapTile?.Invoke(candidate) ?? true)
+                && TerrainRules.CanEnter(unit.Field.Domain, terrainAt(candidate))
+                && !IsOccupied(state, candidate)
+                && !HasOtherUnitAt(state, candidate, unit.Id))
+                .Select(candidate => (HexCoord?)candidate).FirstOrDefault();
+            if (retreat is null)
+                return CommandResult.Fail("건축 부대가 물러날 빈 타일이 없습니다.", state);
+        }
         if (unit.CarryingGold < definition.GoldCost)
         {
             return CommandResult.Fail("부대가 휴대한 금이 부족합니다.", state);
@@ -69,6 +87,9 @@ public sealed class FieldConstructionService(
         }
 
         var paid = Pay(unit, definition);
+        if (retreat is { } retreatPosition)
+            paid = paid with { Field = paid.Field with { Position = retreatPosition },
+                RenewalPosition = RenewalHexSpace.Center(retreatPosition) };
         var nextId = new FieldBuildingId(state.Buildings.Select(x => x.Id.Value).DefaultIfEmpty(0).Max() + 1);
         var completionDay = state.Day + definition.BuildDays;
         int? expiresDay = definition.LifetimeDays > 0 ? completionDay + definition.LifetimeDays : null;
@@ -167,6 +188,11 @@ public sealed class FieldConstructionService(
             || state.Placements.Any(x => x.Plot == position)
             || state.Ruins.Any(x => x.Position == position)
             || state.Cities.Any(x => CastleFootprint.TilesFor(x).Contains(position));
+
+    public static bool HasOtherUnitAt(GameState state, HexCoord position, UnitId builder)
+        => state.Armies.Any(x => x.Id != builder && x.Pool.Active > 0 && !x.IsWaitingDeployment
+            && (x.RenewalPosition is { } continuous
+                ? RenewalHexSpace.NearestHex(continuous) : x.Field.Position) == position);
 
     private static CombatUnit Pay(CombatUnit unit, FieldBuildingDefinition definition)
     {

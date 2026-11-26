@@ -625,7 +625,8 @@ public sealed partial class CampaignMapScene : Node3D
             _treasureDefinitions);
         var summonedUnitDefinitions = new SummonedUnitLoader().LoadFromDirectory(dataDirectory);
         _summons = new SummonService(_map, _treasureDefinitions, summonedUnitDefinitions);
-        _fieldConstruction = new FieldConstructionService(_fieldBuildingDefinitions, _passability.TerrainAt);
+        _fieldConstruction = new FieldConstructionService(_fieldBuildingDefinitions,
+            _passability.TerrainAt, _map.Contains);
         _unitCommander = new FieldUnitCommandService(
             (domain, hex) => _passability.CanEnter(domain, hex),
             (state, hex) => state.Ruins.Any(r => r.Position == hex)

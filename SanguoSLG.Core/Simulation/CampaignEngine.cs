@@ -358,6 +358,18 @@ public sealed class CampaignEngine
                 {
                     var plot = builder.ConstructionPlot!.Value;
                     if (builder.Field.Position.Distance(plot) > 1) continue;
+                    if (FieldConstructionService.HasOtherUnitAt(constructionState, plot, builder.Id))
+                    {
+                        constructionState = constructionState with { FieldArmies = constructionState.Armies
+                            .Select(unit => unit.Id == builder.Id ? unit with
+                            {
+                                ConstructionDefinitionCode = null,
+                                ConstructionPlot = null,
+                                Field = unit.Field with { Mode = UnitMode.Standby, Target = null,
+                                    Waypoints = null, ContinuousTarget = null, ContinuousWaypoints = null },
+                            } : unit).ToList() };
+                        continue;
+                    }
                     var result = _fieldConstruction.Start(constructionState, builder.Field.Owner,
                         new FieldConstructionRequest(builder.Id, builder.ConstructionDefinitionCode!, plot));
                     if (result.Ok) constructionState = result.State;
