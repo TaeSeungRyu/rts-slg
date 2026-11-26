@@ -5745,7 +5745,7 @@ public sealed partial class CampaignMapScene : Node3D
             _log.Text = $"[종료] {(alive.Count == 1 ? alive[0].Name + " 통일" : "무승부")} (주 {_week})";
         }
 
-        if (_selected is { } sel && _state.Cities.Any(c => c.Id == sel && c.Owner == Player))
+        if (_selected is { } sel && _state.Cities.Any(c => c.Id == sel))
         {
             var refreshDetail = _openCityDetailCity == sel;
             SelectCity(sel);
