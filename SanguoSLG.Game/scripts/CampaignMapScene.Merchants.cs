@@ -64,18 +64,6 @@ public sealed partial class CampaignMapScene
         => OpenMerchantTradeWindow(cityId);
 
     private void ConfirmMerchantAction(string message, Action onConfirm)
-    {
-        var dialog = new ConfirmationDialog
-        {
-            Title = "상인",
-            DialogText = message,
-            OkButtonText = "확인",
-        };
-        AddChild(dialog);
-        dialog.Confirmed += onConfirm;
-        dialog.Confirmed += dialog.QueueFree;
-        dialog.Canceled += dialog.QueueFree;
-        dialog.PopupCentered();
-    }
+        => ShowConfirm("상인 거래 확인", message, onConfirm);
 
 }
