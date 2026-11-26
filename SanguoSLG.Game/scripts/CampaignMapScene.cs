@@ -22635,80 +22635,17 @@ ApplyUnitMenuFrame(panel);
         outer.GrowVertical = Control.GrowDirection.Begin;
         outer.OffsetRight = -TurnProgressLayout.ScreenInset;
         outer.OffsetBottom = -TurnProgressLayout.ScreenInset;
-        outer.AddThemeConstantOverride("separation", TurnProgressLayout.RowGap);
         layer.AddChild(outer);
-
-        _dayLabel = MakeLabel("", TurnProgressLayout.DayFontSize, GoldBright);
-        _dayLabel.HorizontalAlignment = HorizontalAlignment.Center;
-        _dayLabel.Visible = false;
-        outer.AddChild(_dayLabel);
-
-        _dayTurnLabel = MakeLabel("", TurnProgressLayout.TurnFontSize, Parchment);
-        _dayTurnLabel.HorizontalAlignment = HorizontalAlignment.Center;
-        _dayTurnLabel.Visible = false;
-        outer.AddChild(_dayTurnLabel);
-        foreach (var statusLabel in new[] { _dayLabel, _dayTurnLabel })
-        {
-            statusLabel.AddThemeColorOverride("font_shadow_color", TurnProgressLayout.StatusShadow);
-            statusLabel.AddThemeConstantOverride("shadow_offset_x", TurnProgressLayout.StatusShadowOffset);
-            statusLabel.AddThemeConstantOverride("shadow_offset_y", TurnProgressLayout.StatusShadowOffset);
-            statusLabel.AddThemeConstantOverride("shadow_outline_size", TurnProgressLayout.StatusShadowOutline);
-        }
-
-        var panel = new PanelContainer { MouseFilter = Control.MouseFilterEnum.Pass };
-        panel.CustomMinimumSize = new Vector2(TurnProgressLayout.PanelWidth, TurnProgressLayout.PanelHeight);
-        ApplyUnitMenuFrame(panel, TurnProgressLayout.PanelPadding,
-            TurnProgressLayout.FramePatchMargin, TurnProgressLayout.FrameScale);
-        outer.AddChild(panel);
-        var vb = new VBoxContainer { Alignment = BoxContainer.AlignmentMode.End };
-        vb.AddThemeConstantOverride("separation", TurnProgressLayout.RowGap);
-        panel.AddChild(vb);
-
-        var progress = new ProgressBar
-        {
-            ShowPercentage = false,
-            CustomMinimumSize = new Vector2(
-                TurnProgressLayout.ButtonWidth * TurnProgressLayout.ProgressWidthRatio,
-                TurnProgressLayout.ProgressHeight),
-            Visible = true,
-            MouseFilter = Control.MouseFilterEnum.Ignore,
-        };
-        progress.AddThemeStyleboxOverride("background", new StyleBoxFlat
-        {
-            BgColor = TurnProgressLayout.ProgressTrack,
-            BorderColor = TurnProgressLayout.Gold,
-            BorderWidthLeft = 1, BorderWidthRight = 1, BorderWidthTop = 1, BorderWidthBottom = 1,
-            CornerRadiusTopLeft = TurnProgressLayout.ProgressRadius,
-            CornerRadiusTopRight = TurnProgressLayout.ProgressRadius,
-            CornerRadiusBottomLeft = TurnProgressLayout.ProgressRadius,
-            CornerRadiusBottomRight = TurnProgressLayout.ProgressRadius,
-        });
-        progress.AddThemeStyleboxOverride("fill", new StyleBoxFlat
-        {
-            BgColor = TurnProgressLayout.ProgressFill,
-            CornerRadiusTopLeft = TurnProgressLayout.ProgressRadius,
-            CornerRadiusTopRight = TurnProgressLayout.ProgressRadius,
-            CornerRadiusBottomLeft = TurnProgressLayout.ProgressRadius,
-            CornerRadiusBottomRight = TurnProgressLayout.ProgressRadius,
-        });
-        var progressSpacing = new MarginContainer { Visible = false, ZIndex = 11 };
-        progressSpacing.AddThemeConstantOverride("margin_bottom", TurnProgressLayout.ProgressExtraGap);
-        var progressCenter = new CenterContainer();
-        progressSpacing.AddChild(progressCenter);
-        progressCenter.AddChild(progress);
-        vb.AddChild(progressSpacing);
-
         _advanceBtn = new AdvanceButton
         {
-            ZIndex = 11,
             CustomMinimumSize = new Vector2(TurnProgressLayout.ButtonWidth, TurnProgressLayout.ButtonHeight),
             TextureFilter = CanvasItem.TextureFilterEnum.LinearWithMipmaps,
             CaptionFont = _font,
-            ProgressDisplay = progress,
-            ProgressHost = progressSpacing,
         };
         _advanceBtn.Pressed = OnAdvance;
-        vb.AddChild(_advanceBtn);
+        outer.AddChild(_advanceBtn);
+        _dayLabel = _advanceBtn.DayLabel;
+        _dayTurnLabel = _advanceBtn.TurnLabel;
     }
 
     private async void RunFieldConstructionUiQa()

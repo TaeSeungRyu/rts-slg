@@ -2,90 +2,133 @@ namespace SanguoSLG.Game;
 
 using Godot;
 
-/// <summary>우하단 진행 버튼의 표시와 입력만 담당한다. 턴 규칙은 호출자가 관리한다.</summary>
+/// <summary>대기 버튼과 진행 중 패널의 표시·입력만 담당한다.</summary>
 public partial class AdvanceButton : Control
 {
-    private const string AssetRoot = "res://assets/ui/new_game/buttons/primary_";
-    private Texture2D? _normal;
-    private Texture2D? _hoverImage;
-    private Texture2D? _pressedImage;
-    private bool _hover;
-    private bool _down;
-    private Label _caption = null!;
+    private Texture2D? _normal, _active, _disabled, _statusBackground;
+    private bool _hover, _down, _busy;
+    private Label _buttonCaption = null!;
+    private MarginContainer _statusHost = null!;
+    private ProgressBar _progress = null!;
 
     public Font? CaptionFont { get; set; }
-    public ProgressBar? ProgressDisplay { get; set; }
-    public Control? ProgressHost { get; set; }
-    public bool Busy { get; set; }
+    public Label DayLabel { get; private set; } = null!;
+    public Label TurnLabel { get; private set; } = null!;
+    private bool _disabledInput;
+    public bool Disabled
+    {
+        get => _disabledInput;
+        set { _disabledInput = value; QueueRedraw(); }
+    }
+    public bool Busy
+    {
+        get => _busy;
+        set
+        {
+            _busy = value;
+            if (value) _down = false;
+            CustomMinimumSize = value
+                ? new Vector2(TurnProgressLayout.StatusWidth, TurnProgressLayout.StatusHeight)
+                : new Vector2(TurnProgressLayout.ButtonWidth, TurnProgressLayout.ButtonHeight);
+            if (_statusHost is not null) _statusHost.Visible = value;
+            if (_buttonCaption is not null) _buttonCaption.Visible = !value;
+            QueueRedraw();
+        }
+    }
     public float Progress { get; set; }
     public System.Action? Pressed;
 
     public override void _Ready()
     {
         MouseFilter = MouseFilterEnum.Stop;
-        MouseDefaultCursorShape = CursorShape.PointingHand;
-        _normal = GD.Load<Texture2D>(AssetRoot + "normal.png");
-        _hoverImage = GD.Load<Texture2D>(AssetRoot + "hover.png");
-        _pressedImage = GD.Load<Texture2D>(AssetRoot + "pressed.png");
-        _caption = new Label
+        _normal = GD.Load<Texture2D>(TurnProgressLayout.AssetRoot + "normal.png");
+        _active = GD.Load<Texture2D>(TurnProgressLayout.AssetRoot + "active.png");
+        _disabled = GD.Load<Texture2D>(TurnProgressLayout.AssetRoot + "disable.png");
+        _statusBackground = GD.Load<Texture2D>(TurnProgressLayout.AssetRoot + "bg.png");
+
+        _buttonCaption = Caption("▶▶ 진행", TurnProgressLayout.ButtonFontSize);
+        AddChild(_buttonCaption);
+        _buttonCaption.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+
+        _statusHost = new MarginContainer { MouseFilter = MouseFilterEnum.Ignore };
+        AddChild(_statusHost);
+        _statusHost.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+        _statusHost.AddThemeConstantOverride("margin_left", TurnProgressLayout.StatusHorizontalInset);
+        _statusHost.AddThemeConstantOverride("margin_right", TurnProgressLayout.StatusHorizontalInset);
+        _statusHost.AddThemeConstantOverride("margin_top", TurnProgressLayout.StatusTopInset);
+        _statusHost.AddThemeConstantOverride("margin_bottom", TurnProgressLayout.StatusBottomInset);
+        var stack = new VBoxContainer { MouseFilter = MouseFilterEnum.Ignore };
+        stack.AddThemeConstantOverride("separation", TurnProgressLayout.StatusGap);
+        _statusHost.AddChild(stack);
+        DayLabel = Caption("", TurnProgressLayout.DayFontSize);
+        TurnLabel = Caption("", TurnProgressLayout.TurnFontSize);
+        stack.AddChild(DayLabel);
+        stack.AddChild(TurnLabel);
+        _progress = new ProgressBar
         {
-            Text = "▶▶ 진행",
-            HorizontalAlignment = HorizontalAlignment.Center,
-            VerticalAlignment = VerticalAlignment.Center,
+            ShowPercentage = false, MaxValue = 100,
+            CustomMinimumSize = new Vector2(0, TurnProgressLayout.ProgressHeight),
+            SizeFlagsHorizontal = SizeFlags.ExpandFill,
             MouseFilter = MouseFilterEnum.Ignore,
         };
-        AddChild(_caption);
-        _caption.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
-        _caption.AddThemeFontSizeOverride("font_size", TurnProgressLayout.ButtonFontSize);
-        if (CaptionFont is not null) _caption.AddThemeFontOverride("font", CaptionFont);
-        _caption.AddThemeConstantOverride("outline_size", 3);
-        _caption.AddThemeColorOverride("font_outline_color", TurnProgressLayout.TextOutline);
-        MouseEntered += () => _hover = true;
-        MouseExited += () => { _hover = false; _down = false; };
+        _progress.AddThemeStyleboxOverride("background", BarStyle(TurnProgressLayout.ProgressTrack));
+        _progress.AddThemeStyleboxOverride("fill", BarStyle(TurnProgressLayout.ProgressFill));
+        stack.AddChild(_progress);
+        stack.AddChild(Caption("진행 중", TurnProgressLayout.BusyFontSize));
+        MouseEntered += () => { _hover = true; QueueRedraw(); };
+        MouseExited += () => { _hover = false; _down = false; QueueRedraw(); };
+        Busy = _busy;
+    }
+
+    private static StyleBoxFlat BarStyle(Color color) => new()
+    {
+        BgColor = color,
+        CornerRadiusTopLeft = TurnProgressLayout.ProgressRadius,
+        CornerRadiusTopRight = TurnProgressLayout.ProgressRadius,
+        CornerRadiusBottomLeft = TurnProgressLayout.ProgressRadius,
+        CornerRadiusBottomRight = TurnProgressLayout.ProgressRadius,
+    };
+
+    private Label Caption(string text, int size)
+    {
+        var label = new Label
+        {
+            Text = text, HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center,
+            MouseFilter = MouseFilterEnum.Ignore,
+            SizeFlagsHorizontal = SizeFlags.ExpandFill,
+        };
+        label.AddThemeFontSizeOverride("font_size", size);
+        label.AddThemeColorOverride("font_color", TurnProgressLayout.ButtonText);
+        label.AddThemeConstantOverride("outline_size", 3);
+        label.AddThemeColorOverride("font_outline_color", TurnProgressLayout.TextOutline);
+        if (CaptionFont is not null) label.AddThemeFontOverride("font", CaptionFont);
+        return label;
     }
 
     public override void _GuiInput(InputEvent @event)
     {
-        if (Busy) return;
+        if (Busy || Disabled) return;
         if (@event is InputEventMouseButton { ButtonIndex: MouseButton.Left } mouse)
         {
             if (mouse.Pressed) _down = true;
-            else if (_down)
-            {
-                _down = false;
-                Pressed?.Invoke();
-            }
+            else if (_down) { _down = false; Pressed?.Invoke(); }
+            QueueRedraw();
             AcceptEvent();
         }
     }
 
     public override void _Process(double delta)
     {
-        _caption.Text = Busy ? "진행중" : "▶▶ 진행";
-        if (Busy) _down = false;
-        if (ProgressDisplay is not null)
-        {
-            if (ProgressHost is not null) ProgressHost.Visible = Busy;
-            ProgressDisplay.Value = Mathf.Clamp(Progress, 0f, 1f) * 100f;
-        }
-        MouseDefaultCursorShape = Busy ? CursorShape.Arrow : CursorShape.PointingHand;
-        _caption.AddThemeColorOverride("font_color", Busy
-            ? TurnProgressLayout.DisabledText : TurnProgressLayout.ButtonText);
-        QueueRedraw();
+        if (_progress is not null) _progress.Value = Mathf.Clamp(Progress, 0f, 1f) * 100f;
+        MouseDefaultCursorShape = Busy || Disabled ? CursorShape.Arrow : CursorShape.PointingHand;
     }
 
     public override void _Draw()
     {
-        // 상태별 PNG 크기가 달라도 버튼 슬롯과 클릭 영역은 고정한다.
-        var bounds = new Rect2(Vector2.Zero, Size);
-        var texture = Busy ? _pressedImage : _down ? _pressedImage
-            : _hover ? _hoverImage : _normal;
-        if (texture is not null)
-            DrawTextureRect(texture, bounds, false, Busy ? TurnProgressLayout.DisabledTint : Colors.White);
-        else
-        {
-            DrawRect(bounds, TurnProgressLayout.BodyColor);
-            DrawRect(bounds, TurnProgressLayout.Gold, false, 2f);
-        }
+        var texture = Busy ? _statusBackground : Disabled ? _disabled
+            : _down || _hover ? _active : _normal;
+        if (texture is null) texture = _disabled;
+        if (texture is not null) DrawTextureRect(texture, new Rect2(Vector2.Zero, Size), false);
     }
 }
