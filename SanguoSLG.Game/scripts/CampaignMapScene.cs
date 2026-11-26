@@ -8759,6 +8759,11 @@ private void ApplyBuildingButtonEffect(Button button)
             && _animUnitSnapshots[_animUnitSnapshotIdx].Time <= _animT)
         {
             _state = _state with { FieldArmies = _animUnitSnapshots[_animUnitSnapshotIdx].Units };
+            // 주간 계산은 먼저 끝나지만 재생은 날짜별이다. 착공한 날의 스냅샷에서
+            // 공구 모션을 갱신해야 이동 재생이 모두 끝날 때까지 착공이 숨겨지지 않는다.
+            foreach (var builder in _state.Armies.Where(unit => unit.IsConstructionUnit))
+                if (_armyTokens.TryGetValue(builder.Id.Value, out var token))
+                    SyncConstructionIndicator(token, builder.IsConstructing);
             foreach (var special in _state.Armies.Where(u => u.Field.Owner == WorldEngine.BanditFaction
                 || u.Field.Owner == EventHuntService.EventFaction))
                 if (_armyLabels.TryGetValue(special.Id.Value, out var label))
@@ -19950,6 +19955,24 @@ if (_modalLayer is not null) { _modalLayer.Name = "ExplorationResultsModal"; }
     }
 
 
+    private static void SyncConstructionIndicator(Node3D token, bool constructing)
+    {
+        var indicator = token.GetNodeOrNull<Node3D>("FieldConstructionIndicator");
+        if (!constructing)
+        {
+            indicator?.QueueFree();
+            return;
+        }
+        if (indicator is not null) return;
+        indicator = GD.Load<PackedScene>("res://assets/models/field-construction-tools.glb")?.Instantiate<Node3D>();
+        if (indicator is null) return;
+        indicator.Name = "FieldConstructionIndicator";
+        indicator.Position = new Vector3(0, 1.0f, 0);
+        indicator.Scale = Vector3.One * 0.62f;
+        token.AddChild(indicator);
+        PlayLoopingModelAnimations(indicator);
+    }
+
     private void Redraw(string note)
     {
         RefreshSeasonVisuals();
@@ -20011,23 +20034,7 @@ if (_modalLayer is not null) { _modalLayer.Name = "ExplorationResultsModal"; }
                 UpdateRiverImmersion(token, army, _view.HexToWorld(army.Field.Position));
                 token.DisplaySyncTo(army.Field.Position, 0.3f);
             }
-            var constructionIndicator = token.GetNodeOrNull<Node3D>("FieldConstructionIndicator");
-            if (army.IsConstructing && constructionIndicator is null)
-            {
-                constructionIndicator = GD.Load<PackedScene>("res://assets/models/field-construction-tools.glb")?.Instantiate<Node3D>();
-                if (constructionIndicator is not null)
-                {
-                    constructionIndicator.Name = "FieldConstructionIndicator";
-                    constructionIndicator.Position = new Vector3(0, 1.0f, 0);
-                    constructionIndicator.Scale = Vector3.One * 0.62f;
-                    token.AddChild(constructionIndicator);
-                    PlayLoopingModelAnimations(constructionIndicator);
-                }
-            }
-            else if (!army.IsConstructing && constructionIndicator is not null)
-            {
-                constructionIndicator.QueueFree();
-            }
+            SyncConstructionIndicator(token, army.IsConstructing);
             var lblNode = _armyLabels[army.Id.Value];
             lblNode.Position = _view.HexToWorld(army.Field.Position)
                 + new Vector3(0f, _view.TileTopY + CommanderPortraitView3D.TroopLabelHeightOffset, 0f);
