@@ -231,7 +231,7 @@ public sealed partial class CampaignMapScene
         var dismiss = MakeButton("상인 떠나 보내기");
         dismiss.CustomMinimumSize = new Vector2(MerchantModalLayout.FooterButtonWidth, 38f);
         dismiss.Disabled = city.Owner != Player;
-        dismiss.Pressed += () => ConfirmMerchantAction("상인을 떠나 보내시겠습니까?", () =>
+        dismiss.Pressed += () => ShowConfirm("상인 떠나 보내기", "상인을 떠나 보내시겠습니까?", () =>
         {
             _state = MerchantService.Dismiss(_state, cityId);
             CloseModal();
