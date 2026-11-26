@@ -22616,6 +22616,7 @@ ApplyUnitMenuFrame(panel);
             statusLabel.AddThemeColorOverride("font_shadow_color", TurnProgressLayout.StatusShadow);
             statusLabel.AddThemeConstantOverride("shadow_offset_x", TurnProgressLayout.StatusShadowOffset);
             statusLabel.AddThemeConstantOverride("shadow_offset_y", TurnProgressLayout.StatusShadowOffset);
+            statusLabel.AddThemeConstantOverride("shadow_outline_size", TurnProgressLayout.StatusShadowOutline);
         }
 
         var panel = new PanelContainer { MouseFilter = Control.MouseFilterEnum.Pass };
