@@ -4,6 +4,13 @@ using SanguoSLG.Core.Simulation;
 
 namespace SanguoSLG.Game;
 
+/// <summary>
+/// 건설 지휘소와 건설부대 편성의 콘텐츠·예약 이벤트. 프레임 그림은
+/// DeployCommandAssetRoot/deploy_command_panel.png, 버튼은 CommandCenterButton,
+/// 건축물 아이콘은 res://assets/ui/game/struct_card/0..4.png를 재사용한다.
+/// 편성 프레임의 구획 크기와 공통 여백은 ConstructionComposeModal의 부모인
+/// SupplyComposeModal.cs에서 정하므로, 이 파일은 각 구획 안의 콘텐츠만 배치한다.
+/// </summary>
 public sealed partial class CampaignMapScene
 {
     private int _constructionSelectedIndex = -1;
@@ -30,6 +37,7 @@ public sealed partial class CampaignMapScene
         backdrop.SetAnchorsPreset(Control.LayoutPreset.FullRect);
         layer.AddChild(backdrop);
         var viewport = GetViewport().GetVisibleRect().Size;
+        // [지휘소 전체 크기] 28은 화면 가장자리 여백, 970은 최대 높이, 1.5는 가로세로 비율.
         var height = Mathf.Min(viewport.Y - 28f, 970f);
         var width = Mathf.Min(viewport.X - 28f, height * 1.5f);
         var panel = new PanelContainer { Name = "ConstructionCommandCenter",
@@ -48,6 +56,8 @@ public sealed partial class CampaignMapScene
         panel.AddChild(background);
         var safe = new MarginContainer();
         safe.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
+        // [프레임 내부 여백] 좌우 값은 금장 측면 테두리와 콘텐츠 사이 간격.
+        // top/bottom은 PNG의 상단 장식·하단 장식에 콘텐츠가 닿지 않는 범위다.
         safe.AddThemeConstantOverride("margin_left", 45);
         safe.AddThemeConstantOverride("margin_right", 45);
         safe.AddThemeConstantOverride("margin_top", 13);
@@ -57,6 +67,7 @@ public sealed partial class CampaignMapScene
         root.AddThemeConstantOverride("separation", 8);
         safe.AddChild(root);
         var name = _state.Cities.First(city => city.Id == cityId).Name;
+        // [제목줄 높이] 아래 상태줄(48)과 독립적으로 조절할 수 있다.
         var header = new HBoxContainer { CustomMinimumSize = new Vector2(0, 76) };
         header.AddChild(new Control { CustomMinimumSize = new Vector2(28, 0) });
         var title = MakeLabel($"건설 지휘소  《 {name} 》", 26, GoldBright);
@@ -86,6 +97,7 @@ public sealed partial class CampaignMapScene
         var columns = new HBoxContainer { Name = "ConstructionCommandColumns",
             SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
             SizeFlagsVertical = Control.SizeFlags.ExpandFill };
+        // [좌우 칸 간격] 왼쪽 목록 폭은 아래 405, 남은 공간이 오른쪽 상세로 간다.
         columns.AddThemeConstantOverride("separation", 12);
         root.AddChild(columns);
         var left = CommandCenterSection("예약 건설부대 목록");
@@ -173,6 +185,7 @@ public sealed partial class CampaignMapScene
         overview.AddChild(overviewRow);
         right.AddChild(overview);
         right.AddChild(MakeLabel("건설 대상", 17, GoldBright));
+        // [건설 대상] 110은 아이콘 50px과 이름이 들어가는 가로 스크롤 영역의 높이.
         var targets = new ScrollContainer { Name = "ConstructionTargetsScroll",
             CustomMinimumSize = new Vector2(0, 110),
             HorizontalScrollMode = ScrollContainer.ScrollMode.Auto,
@@ -251,6 +264,7 @@ public sealed partial class CampaignMapScene
         var left = modal.LeftContent;
         var right = modal.RightContent;
         left.AddChild(MakeLabel("병종 선택 (1종)", 16, GoldBright));
+        // [편성 왼쪽] 병종 카드 영역 높이. 전체 왼쪽 칸의 스크롤은 부모 LeftScroll이 담당한다.
         var troopScroll = new ScrollContainer { CustomMinimumSize = new Vector2(0, 210),
             HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled };
         GameUiSkin.ApplyQuickListScroll(troopScroll);
@@ -331,6 +345,8 @@ public sealed partial class CampaignMapScene
         left.AddChild(goldSpin);
         AddDeploymentDelaySelector(left, delay, days => delay = days);
         right.AddChild(MakeLabel("주장 선택 (부관 없음)", 16, GoldBright));
+        // [편성 오른쪽] 일반 장수 Tree 테이블. 이 칸은 테이블 자체만 세로 스크롤한다.
+        // 열 제목과 최소 너비는 바로 아래 SetColumnTitle/SetColumnCustomMinimumWidth에서 조절한다.
         var officerTable = new Tree { Name = "ConstructionOfficerTable", Columns = 7,
             ColumnTitlesVisible = true, HideRoot = true, SelectMode = Tree.SelectModeEnum.Row,
             SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
@@ -381,6 +397,7 @@ public sealed partial class CampaignMapScene
         };
         var summary = MakeLabel($"건설 대상 {definition.Name} · 금 {definition.GoldCost:N0} · 군량 {definition.ProvisionsCost:N0}",
             13, GoldBright);
+        // [편성 하단] 부모 FooterContent의 높이·여백은 SupplyComposeModal.cs에서 결정한다.
         var footerRow = new HBoxContainer();
         summary.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
         footerRow.AddChild(summary);
