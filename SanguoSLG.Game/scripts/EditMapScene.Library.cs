@@ -230,7 +230,7 @@ public sealed partial class EditMapScene
             ? Directory.EnumerateFiles(CustomMapDirectory(), "*.json").Count() + 1 : 1;
         ScenarioMapPresetStore.Save(path, preset);
         LoadSelectedMap(path, preset, "사용자 지도 " + number);
-        ShowSaveResult("지도 생성 완료", $"새 지도 파일을 만들었습니다.\n{path}");
+        ShowSaveResult("지도 생성 완료", "새 지도를 만들었습니다.");
     }
 
     private void ConfirmDeleteMap(string path)
