@@ -195,24 +195,24 @@ public sealed partial class CampaignMapScene
 
 
 
-var panel = new PanelContainer
-{
-    MouseFilter = Control.MouseFilterEnum.Stop,
-    ClipContents = true,
-};
-
-panel.AnchorLeft = 0.14f;
-panel.AnchorRight = 0.86f;
-panel.AnchorTop = 0.67f;
-panel.AnchorBottom = 0.98f;
-
-layer.AddChild(panel);
-
-// 공통 금색 테두리 및 배경 적용
-ApplyUnitMenuFrame(panel);
-
-
-
+        var panel = new PanelContainer
+        {
+            MouseFilter = Control.MouseFilterEnum.Stop,
+            ClipContents = true,
+        };
+        panel.AnchorLeft = 0.14f;
+        panel.AnchorRight = 0.86f;
+        panel.AnchorTop = 0.67f;
+        panel.AnchorBottom = 0.98f;
+        layer.AddChild(panel);
+        ApplyUnitMenuFrame(panel);
+        // Preserve the shared frame and change only this modal's background.
+        if (panel.GetThemeStylebox("panel") is StyleBoxFlat originalStyle)
+        {
+            var storyStyle = (StyleBoxFlat)originalStyle.Duplicate();
+            storyStyle.BgColor = new Color("211511", 0.97f);
+            panel.AddThemeStyleboxOverride("panel", storyStyle);
+        }
 
         var frame = new VBoxContainer { SizeFlagsVertical = Control.SizeFlags.ExpandFill };
         panel.AddChild(frame);
@@ -221,14 +221,21 @@ ApplyUnitMenuFrame(panel);
         var title = MakeLabel(StoryTitle(story), 18, GoldBright);
         title.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
         heading.AddChild(title);
+        var pageIndicator = MakeLabel("", 12, Gold);
+        pageIndicator.VerticalAlignment = VerticalAlignment.Center;
+        heading.AddChild(pageIndicator);
         var close = MakeButton("✕");
-        close.CustomMinimumSize = new Vector2(34, 28);
+        close.CustomMinimumSize = new Vector2(30, 30);
+        close.AddThemeStyleboxOverride("normal", Frame(Colors.Transparent, Gold, 1, 4, 2));
+        close.AddThemeStyleboxOverride("hover", Frame(new Color("5b1712"), GoldBright, 1, 4, 2));
+        close.AddThemeStyleboxOverride("pressed", Frame(new Color("35100d"), GoldBright, 1, 4, 2));
+        close.AddThemeStyleboxOverride("focus", new StyleBoxEmpty());
         close.Pressed += CloseStoryModal;
         heading.AddChild(close);
         frame.AddChild(GoldRule());
         var row = new HBoxContainer { SizeFlagsVertical = Control.SizeFlags.ExpandFill, ClipContents = true };
         row.Name = "StoryDialogueRow";
-        row.AddThemeConstantOverride("separation", 16);
+        row.AddThemeConstantOverride("separation", 24);
         frame.AddChild(row);
         var diplomacy = story.Kind.StartsWith("alliance_", System.StringComparison.Ordinal);
         var portraitColumn = new VBoxContainer
@@ -247,16 +254,19 @@ ApplyUnitMenuFrame(panel);
             SizeFlagsVertical = Control.SizeFlags.ExpandFill,
             MouseFilter = Control.MouseFilterEnum.Ignore,
         };
-        portraitColumn.AddChild(portrait);
-        var portraitName = MakeLabel(StorySpeakerName(story.Speaker), 14, GoldBright);
+        portraitColumn.AddThemeConstantOverride("separation", 4);
+        AddStoryPortraitFrame(portraitColumn, portrait);
+        var portraitName = MakeLabel(StorySpeakerName(story.Speaker), 15, GoldBright);
         portraitName.Name = "StoryCurrentSpeaker";
         portraitName.HorizontalAlignment = HorizontalAlignment.Center;
         portraitName.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
-        portraitColumn.AddChild(portraitName);
+        AddStoryNamePlate(portraitColumn, portraitName);
         VBoxContainer? audienceColumn = null;
         Label? audienceName = null;
         TextureRect? rulerPortrait = null;
         TextureRect? advisorPortrait = null;
+        PanelContainer? rulerFrame = null;
+        PanelContainer? advisorFrame = null;
         if (diplomacy && story.SecondSpeaker is { } rulerId)
         {
             audienceColumn = new VBoxContainer
@@ -275,7 +285,8 @@ ApplyUnitMenuFrame(panel);
                 SizeFlagsVertical = Control.SizeFlags.ExpandFill,
                 Modulate = Colors.White,
             };
-            audienceColumn.AddChild(rulerPortrait);
+            audienceColumn.AddThemeConstantOverride("separation", 4);
+            rulerFrame = AddStoryPortraitFrame(audienceColumn, rulerPortrait);
             if (story.Kind.EndsWith("_advisor", System.StringComparison.Ordinal) && story.Amount > 0)
             {
                 advisorPortrait = new TextureRect
@@ -289,12 +300,12 @@ ApplyUnitMenuFrame(panel);
                     ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
                     Modulate = Colors.White,
                 };
-                audienceColumn.AddChild(advisorPortrait);
+                advisorFrame = AddStoryPortraitFrame(audienceColumn, advisorPortrait);
             }
             audienceName = MakeLabel(StorySpeakerName(rulerId), 13, GoldBright);
             audienceName.HorizontalAlignment = HorizontalAlignment.Center;
             audienceName.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
-            audienceColumn.AddChild(audienceName);
+            AddStoryNamePlate(audienceColumn, audienceName);
         }
         var content = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
         content.SizeFlagsStretchRatio = 7;
@@ -308,20 +319,24 @@ ApplyUnitMenuFrame(panel);
             var isOwn = current is null || current == story.Speaker;
             portraitColumn.Visible = isOwn;
             if (audienceColumn is not null) audienceColumn.Visible = !isOwn;
-            if (rulerPortrait is not null) rulerPortrait.Visible = !isOwn && current == story.SecondSpeaker;
-            if (advisorPortrait is not null)
-                advisorPortrait.Visible = !isOwn && current == new GeneralId(story.Amount);
+            if (rulerFrame is not null) rulerFrame.Visible = !isOwn && current == story.SecondSpeaker;
+            if (advisorFrame is not null)
+                advisorFrame.Visible = !isOwn && current == new GeneralId(story.Amount);
+            if (rulerPortrait is not null) rulerPortrait.Visible = rulerFrame?.Visible == true;
+            if (advisorPortrait is not null) advisorPortrait.Visible = advisorFrame?.Visible == true;
             if (audienceName is not null && current is { } generalId && !isOwn)
                 audienceName.Text = StorySpeakerName(generalId);
             foreach (var image in new[] { portrait, rulerPortrait, advisorPortrait })
             {
-                if (image is null || !image.Visible) continue;
+                if (image is null || !image.IsVisibleInTree()) continue;
                 var tween = CreateTween();
                 image.Modulate = new Color(0.7f, 0.7f, 0.7f);
                 tween.TweenProperty(image, "modulate", Colors.White, 0.15);
             }
         }
-        var line = MakeLabel(lines[0], 15, Parchment);
+        var line = MakeLabel(lines[0], 18, Parchment);
+        line.AddThemeConstantOverride("line_spacing", 8);
+        pageIndicator.Text = $"1 / {lines.Length}";
         HighlightSpeaker(lines[0]);
         line.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         line.SizeFlagsVertical = Control.SizeFlags.ExpandFill;
@@ -339,13 +354,14 @@ ApplyUnitMenuFrame(panel);
         }
         else content.AddChild(actions);
         actions.AddChild(new Control { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill });
-        var next = MakeButton("다음 ▶", accent: true);
-        next.CustomMinimumSize = new Vector2(86, 34);
+        var next = CommandCenterButton("다음 ▶", true, new Vector2(120, 38));
+        next.SizeFlagsHorizontal = Control.SizeFlags.ShrinkEnd;
         next.Pressed += () =>
         {
             if (++currentPage < lines.Length)
             {
                 line.Text = lines[currentPage];
+                pageIndicator.Text = $"{currentPage + 1} / {lines.Length}";
                 HighlightSpeaker(line.Text);
                 var pageSpeaker = StoryLineSpeaker(story, line.Text);
                 if (!diplomacy && pageSpeaker is { } general)
@@ -357,7 +373,7 @@ ApplyUnitMenuFrame(panel);
             if (currentPage >= lines.Length - 1)
             {
                 next.Visible = false;
-                if (replay) { var done = MakeButton("닫기"); done.Pressed += CloseStoryModal; actions.AddChild(done); }
+                if (replay) { var done = CommandCenterButton("닫기", false, new Vector2(120, 38)); done.Pressed += CloseStoryModal; actions.AddChild(done); }
                 else AddStoryChoices(actions, story, line);
             }
         };
@@ -365,7 +381,7 @@ ApplyUnitMenuFrame(panel);
         if (lines.Length == 1)
         {
             next.Visible = false;
-            if (replay) { var done = MakeButton("닫기"); done.Pressed += CloseStoryModal; actions.AddChild(done); }
+            if (replay) { var done = CommandCenterButton("닫기", false, new Vector2(120, 38)); done.Pressed += CloseStoryModal; actions.AddChild(done); }
             else AddStoryChoices(actions, story, line);
         }
     }
@@ -403,7 +419,7 @@ ApplyUnitMenuFrame(panel);
         foreach (var (choice, label) in new[]
             { ("a", definition?.OptionA ?? "확인"), ("b", definition?.OptionB ?? "넘어가기") })
         {
-            var button = MakeButton(label, choice == "a");
+            var button = CommandCenterButton(label, choice == "a", new Vector2(160, 38));
             button.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
             button.Pressed += () =>
             {
@@ -428,16 +444,41 @@ ApplyUnitMenuFrame(panel);
         }
     }
 
+    private PanelContainer AddStoryPortraitFrame(VBoxContainer column, TextureRect image)
+    {
+        var frame = new PanelContainer
+        {
+            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+            SizeFlagsVertical = Control.SizeFlags.ExpandFill,
+            MouseFilter = Control.MouseFilterEnum.Ignore,
+        };
+        frame.AddThemeStyleboxOverride("panel", Frame(new Color("211511"), Gold, 2, 4, 4));
+        image.MouseFilter = Control.MouseFilterEnum.Ignore;
+        column.AddChild(frame);
+        frame.AddChild(image);
+        return frame;
+    }
+
+    private void AddStoryNamePlate(VBoxContainer column, Label label)
+    {
+        var plate = new PanelContainer
+        {
+            CustomMinimumSize = new Vector2(0, 28),
+            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+            MouseFilter = Control.MouseFilterEnum.Ignore,
+        };
+        plate.AddThemeStyleboxOverride("panel", Frame(new Color("48241a"), Gold, 1, 4, 2));
+        label.HorizontalAlignment = HorizontalAlignment.Center;
+        label.VerticalAlignment = VerticalAlignment.Center;
+        label.MouseFilter = Control.MouseFilterEnum.Ignore;
+        column.AddChild(plate);
+        plate.AddChild(label);
+    }
+
     private Button MakeStoryConfirmButton()
     {
-        var button = MakeButton("확인", accent: true);
-        foreach (var state in new[] { "normal", "hover", "pressed" })
-        {
-            var style = (StyleBoxFlat)button.GetThemeStylebox(state).Duplicate();
-            style.ContentMarginLeft += 5;
-            style.ContentMarginRight += 5;
-            button.AddThemeStyleboxOverride(state, style);
-        }
+        var button = CommandCenterButton("확인", true, new Vector2(120, 38));
+        button.SizeFlagsHorizontal = Control.SizeFlags.ShrinkEnd;
         return button;
     }
 
@@ -603,7 +644,7 @@ ApplyUnitMenuFrame(panel);
                 && panel?.FindChildren("*", "Label", true, false).OfType<Label>()
                     .Any(label => label.Text == StoryTitle(story)
                         && label.GlobalPosition.Y + label.Size.Y <= row.GlobalPosition.Y) == true;
-            var portrait = row?.GetChild<Control>(0).GetChildren().OfType<TextureRect>().FirstOrDefault();
+            var portrait = row?.GetChild<Control>(0).FindChildren("*", "TextureRect", true, false).OfType<TextureRect>().FirstOrDefault();
             var portraitFitOk = portrait is not null
                 && portrait.StretchMode == TextureRect.StretchModeEnum.KeepAspectCentered
                 && portrait.Size.Y > 0 && portrait.Size.X > 0;
@@ -613,8 +654,8 @@ ApplyUnitMenuFrame(panel);
                 && nextButton.GlobalPosition.X > panel.GlobalPosition.X + panel.Size.X * 0.7f
                 && nextButton.GlobalPosition.Y > panel.GlobalPosition.Y + panel.Size.Y * 0.5f;
             var confirm = MakeStoryConfirmButton();
-            var confirmPadding = confirm.GetThemeStylebox("normal") is StyleBoxFlat confirmStyle
-                && confirmStyle.ContentMarginLeft >= 11 && confirmStyle.ContentMarginRight >= 11;
+            var confirmPadding = confirm.CustomMinimumSize.X >= 120f
+                    && confirm.CustomMinimumSize.Y >= 38f;
             confirm.Free();
             var hidden = !_reportPanel.Visible && _storyOpen && confirmPadding;
             CloseAnyModalOrPanel();
@@ -691,7 +732,7 @@ ApplyUnitMenuFrame(panel);
                 _state = _state with { PendingStoryEvents = _state.StoryPending.Append(audienceStory).ToArray() };
                 ShowStoryModal(audienceStory, false);
                 var audienceLines = StoryLines(audienceStory);
-                var ownPortrait = _modalLayer?.FindChild("StoryCurrentSpeaker", true, false)?.GetParent<Control>();
+                var ownPortrait = _modalLayer?.FindChild("StoryCurrentSpeaker", true, false)?.GetParent<Control>()?.GetParent<Control>();
                 var ownPage = ownPortrait?.Visible == true;
                 _modalLayer?.FindChildren("*", "Button", true, false).OfType<Button>()
                     .FirstOrDefault(button => button.Text == "다음 ▶")?.EmitSignal(Button.SignalName.Pressed);
