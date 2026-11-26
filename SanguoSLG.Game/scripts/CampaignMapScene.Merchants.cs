@@ -56,6 +56,7 @@ public sealed partial class CampaignMapScene
     {
         var visit = _state.Merchants.FirstOrDefault(item => item.Position == hex);
         if (visit is null) return false;
+        if (_advancing) return true;
         OpenMerchantModal(visit.City);
         return true;
     }
