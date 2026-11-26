@@ -974,15 +974,32 @@ public partial class MapView3D : Node3D
 
     public static void TintRiverTile(Node3D visual)
     {
-        var mesh = visual.FindChildren("*", "MeshInstance3D", true, false).OfType<MeshInstance3D>()
-            .FirstOrDefault(node => node.Name.ToString().Contains("water", System.StringComparison.OrdinalIgnoreCase))
-            ?? FindMesh(visual);
-        if (mesh is null) return;
-        mesh.MaterialOverride = new StandardMaterial3D
+        foreach (var mesh in visual.FindChildren("*", "MeshInstance3D", true, false).OfType<MeshInstance3D>())
         {
-            AlbedoColor = new Color(0.18f, 0.43f, 0.55f),
-            Roughness = 0.48f,
-        };
+            var name = mesh.Name.ToString();
+            if (name.Contains("water", System.StringComparison.OrdinalIgnoreCase))
+            {
+                // 얕은 물(.28, .58, .62)보다 명확히 밝은 청록색을 사용한다.
+                mesh.MaterialOverride = new StandardMaterial3D
+                {
+                    AlbedoColor = new Color(0.39f, 0.69f, 0.73f),
+                    Roughness = 0.48f,
+                };
+            }
+            else if (name.StartsWith("river-rock-", System.StringComparison.OrdinalIgnoreCase))
+            {
+                // GLB의 밝은 돌을 현무암 계열의 서로 다른 회갈색으로 구분한다.
+                var stone = name.EndsWith("-1", System.StringComparison.Ordinal) ? new Color(0.40f, 0.42f, 0.40f)
+                    : name.EndsWith("-2", System.StringComparison.Ordinal) ? new Color(0.47f, 0.46f, 0.42f)
+                    : new Color(0.35f, 0.39f, 0.39f);
+                mesh.MaterialOverride = new StandardMaterial3D
+                {
+                    AlbedoColor = stone,
+                    Roughness = 0.94f,
+                    Metallic = 0f,
+                };
+            }
+        }
     }
 
     public static void TintWaterTile(Node3D visual, TerrainType terrain)

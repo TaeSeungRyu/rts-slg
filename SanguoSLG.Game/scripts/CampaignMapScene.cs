@@ -885,6 +885,7 @@ public sealed partial class CampaignMapScene : Node3D
         if (args.Any(argument => argument.StartsWith("--maptestsupplycommandcenterqa", StringComparison.Ordinal)))
             CallDeferred(nameof(RunSupplyCommandCenterQa));
         if (args.Contains("--maptestconstructionuiqa")) CallDeferred(nameof(RunConstructionUiQa));
+        if (args.Contains("--maptestrivertintqa")) CallDeferred(nameof(RunRiverTintQa));
         if (args.Any(argument => argument.StartsWith("--maptesttransportcommandcenterqa", StringComparison.Ordinal)))
             CallDeferred(nameof(RunTransportCommandCenterQa));
         if (args.Any(argument => argument.StartsWith("--maptestarmygroupcommandcenterqa", StringComparison.Ordinal)))
