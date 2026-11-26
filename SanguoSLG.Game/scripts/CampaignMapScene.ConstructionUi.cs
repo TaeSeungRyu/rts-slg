@@ -72,10 +72,23 @@ public sealed partial class CampaignMapScene
         // 배경 PNG의 왼쪽 깃발은 약 50px까지 차지한다. 제목 시작을 깃발 바깥으로 보낸다.
         header.AddChild(new Control { Name = "ConstructionTitleFlagClearance",
             CustomMinimumSize = new Vector2(52, 0), MouseFilter = Control.MouseFilterEnum.Ignore });
-        var title = MakeLabel($"건설 지휘소  《 {name} 》", 26, GoldBright);
-        title.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
-        title.VerticalAlignment = VerticalAlignment.Center;
-        header.AddChild(title);
+
+
+var titleMargin = new MarginContainer
+{
+    SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+};
+
+titleMargin.AddThemeConstantOverride("margin_top", 15);
+header.AddChild(titleMargin);
+
+var title = MakeLabel($"건설 지휘소  《 {name} 》", 26, GoldBright);
+title.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+title.VerticalAlignment = VerticalAlignment.Center;
+titleMargin.AddChild(title);
+
+
+
         // 보급 지휘소 BuildSupplyHubHeader와 동일한 30×30 닫기 버튼 스타일.
         var close = MakeButton("×");
         close.CustomMinimumSize = new Vector2(30, 30);
@@ -98,10 +111,20 @@ public sealed partial class CampaignMapScene
         var status = new HBoxContainer { CustomMinimumSize = new Vector2(0, 48) };
         status.AddChild(MakeLabel($"예약된 건설부대  {mine.Count}", 17, GoldBright));
         status.AddChild(new Control { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill });
-        var add = CommandCenterButton("＋ 신규 편성", true, new Vector2(170, 42));
-        add.Name = "ConstructionCommandNewUnit";
-        add.Pressed += () => OpenConstructionCompose(-1);
-        status.AddChild(add);
+
+
+
+var addMargin = new MarginContainer();
+addMargin.AddThemeConstantOverride("margin_top", 20);
+status.AddChild(addMargin);
+
+var add = CommandCenterButton("＋ 신규 편성", true, new Vector2(170, 42));
+add.Name = "ConstructionCommandNewUnit";
+add.Pressed += () => OpenConstructionCompose(-1);
+addMargin.AddChild(add);
+
+
+
         root.AddChild(status);
 
         var columns = new HBoxContainer { Name = "ConstructionCommandColumns",
@@ -119,10 +142,26 @@ public sealed partial class CampaignMapScene
             HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled };
         GameUiSkin.ApplyQuickListScroll(listScroll);
         left.AddChild(listScroll);
-        var listInset = new MarginContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
-        listInset.AddThemeConstantOverride("margin_right", 6);
-        listScroll.AddChild(listInset);
-        var list = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+
+
+var listInset = new MarginContainer
+{
+    SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+    SizeFlagsVertical = Control.SizeFlags.ExpandFill,
+};
+
+listInset.AddThemeConstantOverride("margin_right", 6);
+listScroll.AddChild(listInset);
+
+var list = new VBoxContainer
+{
+    SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+    SizeFlagsVertical = Control.SizeFlags.ExpandFill,
+};
+
+
+
+
         list.AddThemeConstantOverride("separation", 8);
         listInset.AddChild(list);
         foreach (var index in mine)
@@ -139,14 +178,40 @@ public sealed partial class CampaignMapScene
             cardRow.AddThemeConstantOverride("separation", 10);
             card.AddChild(cardRow);
             cardRow.AddChild(DeployUnitArtwork(UnitCard("supply", TroopClass.Supply), 66));
-            var detail = new VBoxContainer { MouseFilter = Control.MouseFilterEnum.Ignore };
-            cardRow.AddChild(detail);
+            // var detail = new VBoxContainer { MouseFilter = Control.MouseFilterEnum.Ignore };
+            // cardRow.AddChild(detail);
+
+var detail = new VBoxContainer
+{
+    MouseFilter = Control.MouseFilterEnum.Ignore,
+    SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+    SizeFlagsVertical = Control.SizeFlags.ShrinkCenter,
+    Alignment = BoxContainer.AlignmentMode.Center,
+};
+
+cardRow.AddChild(detail);
+
             detail.AddChild(MakeLabel($"{TroopName(request.TroopCode)} {request.Troops:N0}명", 17, GoldBright));
             detail.AddChild(MakeLabel($"{_state.Generals.First(g => g.Id == request.Vanguard).Name} · {_fieldBuildingDefinitions.First(b => b.Code == request.ConstructionDefinitionCode).Name}",
                 12, Parchment));
             detail.AddChild(MakeLabel(request.Target is { } target ? $"목표 ({target.Q},{target.R})" : "목표 미지정", 12, Gold));
         }
-        if (mine.Count == 0) list.AddChild(MakeLabel("예약된 건설부대가 없습니다.", 15, Parchment));
+        //if (mine.Count == 0) list.AddChild(MakeLabel("예약된 건설부대가 없습니다.", 15, Parchment));
+
+if (mine.Count == 0)
+{
+    var emptyLabel = MakeLabel(
+        "예약된 건설부대가 없습니다.", 15, Parchment);
+
+    emptyLabel.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+    emptyLabel.SizeFlagsVertical = Control.SizeFlags.ExpandFill;
+
+    emptyLabel.HorizontalAlignment = HorizontalAlignment.Center;
+    emptyLabel.VerticalAlignment = VerticalAlignment.Center;
+
+    list.AddChild(emptyLabel);
+}
+
         var right = CommandCenterSection("선택 건설부대 정보");
         right.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
         right.SizeFlagsVertical = Control.SizeFlags.ExpandFill;
@@ -177,11 +242,28 @@ public sealed partial class CampaignMapScene
 
     private void BuildConstructionHubDetail(VBoxContainer right, CityId cityId)
     {
-        if (_constructionSelectedIndex < 0 || _constructionSelectedIndex >= _pendingDeploys.Count)
-        {
-            right.AddChild(MakeLabel("왼쪽에서 건설부대를 선택하세요.", 16, Parchment));
-            return;
-        }
+        // if (_constructionSelectedIndex < 0 || _constructionSelectedIndex >= _pendingDeploys.Count)
+        // {
+        //     right.AddChild(MakeLabel("왼쪽에서 건설부대를 선택하세요.", 16, Parchment));
+        //     return;
+        // }
+
+if (_constructionSelectedIndex < 0 ||
+    _constructionSelectedIndex >= _pendingDeploys.Count)
+{
+    var emptyLabel = MakeLabel(
+        "왼쪽에서 건설부대를 선택하세요.", 16, Parchment);
+
+    emptyLabel.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+    emptyLabel.SizeFlagsVertical = Control.SizeFlags.ExpandFill;
+
+    emptyLabel.HorizontalAlignment = HorizontalAlignment.Center;
+    emptyLabel.VerticalAlignment = VerticalAlignment.Center;
+
+    right.AddChild(emptyLabel);
+
+    return;
+}        
         var index = _constructionSelectedIndex;
         var request = _pendingDeploys[index].Req;
         var building = _fieldBuildingDefinitions.First(b => b.Code == request.ConstructionDefinitionCode);
@@ -211,11 +293,45 @@ public sealed partial class CampaignMapScene
             // 대상 버튼은 지휘소의 버튼 PNG를 쓰지 않는다. 투명 배경에 금장 테두리만 둔다.
             var choice = MakeButton("");
             choice.CustomMinimumSize = new Vector2(105, 94);
-            choice.AddThemeStyleboxOverride("normal", Frame(Colors.Transparent,
-                definition.Code == building.Code ? GoldBright : Gold,
-                definition.Code == building.Code ? 2 : 1, 4, 5));
-            choice.AddThemeStyleboxOverride("hover", Frame(Colors.Transparent, GoldBright, 2, 4, 5));
-            choice.AddThemeStyleboxOverride("pressed", Frame(Colors.Transparent, GoldBright, 2, 4, 5));
+
+
+
+var isSelected = definition.Code == building.Code;
+
+// 일반 및 선택 상태
+choice.AddThemeStyleboxOverride("normal", Frame(
+    isSelected ? new Color("6a2018") : Colors.Transparent,
+    isSelected ? GoldBright : Gold,
+    isSelected ? 3 : 1,
+    4, 5
+));
+
+// 마우스 Hover
+choice.AddThemeStyleboxOverride("hover", Frame(
+    isSelected ? new Color("802b20") : new Color("3d2a1c"),
+    GoldBright,
+    isSelected ? 3 : 2,
+    4, 5
+));
+
+// 마우스 클릭
+choice.AddThemeStyleboxOverride("pressed", Frame(
+    new Color("49150f"),
+    GoldBright,
+    3,
+    4, 5
+));
+
+            // choice.AddThemeStyleboxOverride("normal", Frame(Colors.Transparent,
+            //     definition.Code == building.Code ? GoldBright : Gold,
+            //     definition.Code == building.Code ? 2 : 1, 4, 5));
+            // choice.AddThemeStyleboxOverride("hover", Frame(Colors.Transparent, GoldBright, 2, 4, 5));
+            // choice.AddThemeStyleboxOverride("pressed", Frame(Colors.Transparent, GoldBright, 2, 4, 5));
+
+
+
+
+
             choice.AddThemeStyleboxOverride("focus", new StyleBoxEmpty());
             choice.TooltipText = $"{definition.Name} · 금 {definition.GoldCost} · 군량 {definition.ProvisionsCost}";
             choices.AddChild(choice);
