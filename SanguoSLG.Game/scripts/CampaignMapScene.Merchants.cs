@@ -22,7 +22,12 @@ public sealed partial class CampaignMapScene
         foreach (var visit in _state.Merchants)
         {
             if (_merchantViews.TryGetValue(visit.City.Value, out var view)
-                && view.ArrivedDay == visit.ArrivedDay) continue;
+                && view.ArrivedDay == visit.ArrivedDay)
+            {
+                if (view.Node.GetNodeOrNull<Label3D>("MerchantDays") is { } remaining)
+                    remaining.Text = $"상인 ({Math.Max(0, visit.ExpiresDay - _state.Day)}일 남음)";
+                continue;
+            }
             if (_merchantViews.Remove(visit.City.Value, out var old)) old.Node.QueueFree();
             var scene = GD.Load<PackedScene>("res://assets/models/troop-merchant.glb");
             var model = scene?.Instantiate<Node3D>();
@@ -36,7 +41,8 @@ public sealed partial class CampaignMapScene
             root.AddChild(model);
             var name = new Label3D
             {
-                Text = "상인",
+                Name = "MerchantDays",
+                Text = $"상인 ({Math.Max(0, visit.ExpiresDay - _state.Day)}일 남음)",
                 Billboard = BaseMaterial3D.BillboardModeEnum.Enabled,
                 Font = _font,
                 FontSize = 36,
