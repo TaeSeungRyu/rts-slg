@@ -10,6 +10,14 @@ public sealed partial class CampaignMapScene
     private static readonly string[] ConstructionCodes =
         ["palisade", "scout_post", "watchtower", "fort", "formation"];
 
+    private int ConstructionProvisionsFor60Days(int troops, int buildingProvisions)
+    {
+        // AdvanceOrchestrator의 병력 1만 명당 하루 소비량과 건설부대 소비율(20%)을 사용한다.
+        var consumption = ((long)troops * _balance.ProvisionsPer10kPerDay * 60 * 20
+            + 10_000_000L - 1) / 10_000_000L;
+        return buildingProvisions + (int)consumption;
+    }
+
     private void OpenConstructionHub(CityId cityId)
     {
         _depModalCity = cityId;
@@ -224,7 +232,7 @@ public sealed partial class CampaignMapScene
         var amount = old?.Troops ?? 0;
         GeneralId? leaderId = old?.Vanguard;
         var gold = old?.Gold ?? definition.GoldCost;
-        var provisions = old?.Provisions ?? definition.ProvisionsCost;
+        var provisions = ConstructionProvisionsFor60Days(System.Math.Max(500, amount), definition.ProvisionsCost);
         var delay = old?.DelayDays ?? 0;
         if (_modalLayer is not null) { FadeOutModal(_modalLayer); _modalLayer = null; }
         var layer = new CanvasLayer { Layer = 20 };
@@ -305,11 +313,16 @@ public sealed partial class CampaignMapScene
         amountSpin.ValueChanged += value => amount = (int)value;
         left.AddChild(amountSpin);
         left.AddChild(DeployComposeResourceHeading("food.png", "휴대 군량"));
-        var provisionSpin = ApplyNumberInputStyle(new SpinBox { MinValue = 0,
-            MaxValue = city.Provisions, Step = 1, Value = provisions,
-            CustomMinimumSize = new Vector2(150, 30) });
-        provisionSpin.ValueChanged += value => provisions = (int)value;
-        left.AddChild(provisionSpin);
+        var provisionLabel = MakeLabel("", 14, Parchment);
+        provisionLabel.Name = "ConstructionProvision60Days";
+        void RefreshProvisions()
+        {
+            provisions = ConstructionProvisionsFor60Days((int)amountSpin.Value, definition.ProvisionsCost);
+            provisionLabel.Text = $"{provisions:N0} · 60일분 (건설 비용 {definition.ProvisionsCost:N0} 포함)";
+        }
+        amountSpin.ValueChanged += _ => RefreshProvisions();
+        RefreshProvisions();
+        left.AddChild(provisionLabel);
         left.AddChild(DeployComposeResourceHeading("money.png", "휴대 금"));
         var goldSpin = ApplyNumberInputStyle(new SpinBox { MinValue = 0,
             MaxValue = city.Gold, Step = 1, Value = gold,
@@ -379,8 +392,8 @@ public sealed partial class CampaignMapScene
         {
             if (troopCode is null || amount < 500 || leaderId is null)
             { ShowNotice("건설 편성 불가", "병종 1개, 병력 500명 이상, 주장을 선택하세요."); return; }
-            if (gold < definition.GoldCost || provisions < definition.ProvisionsCost)
-            { ShowNotice("건설 편성 불가", "건설 비용만큼 금과 군량을 휴대해야 합니다."); return; }
+            if (gold < definition.GoldCost || provisions > city.Provisions)
+            { ShowNotice("건설 편성 불가", "건설 비용 또는 60일분 휴대 군량이 도시 보유량을 초과합니다."); return; }
             var request = new DeployRequest(cityId, troopCode, amount, leaderId.Value,
                 Mode: UnitMode.March, Target: old?.Target,
                 Provisions: provisions, Gold: gold, DelayDays: delay,
@@ -415,7 +428,11 @@ public sealed partial class CampaignMapScene
             && _modalLayer?.FindChild("ConstructionTroopGrid", true, false) is GridContainer troopGrid
             && troopGrid.Columns == 2
             && _modalLayer?.FindChild("ConstructionComposeOfficer", true, false) is VBoxContainer
-            && _modalLayer?.FindChild("ConstructionOfficerTable", true, false) is Tree;
+            && _modalLayer?.FindChild("ConstructionOfficerTable", true, false) is Tree
+            && _modalLayer?.FindChild("ConstructionProvision60Days", true, false) is Label;
+        passed &= ConstructionProvisionsFor60Days(500, 0) == 1
+            && ConstructionProvisionsFor60Days(10_000, 0) == 12
+            && ConstructionProvisionsFor60Days(500, 5) == 6;
         var garrison = _state.Garrisons.FirstOrDefault(force => force.City == city.Id && force.Troops >= 500);
         var leader = _state.GeneralsAt(city.Id).FirstOrDefault();
         if (garrison is not null && leader != default)
