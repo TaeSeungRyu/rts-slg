@@ -103,10 +103,10 @@ public sealed partial class CampaignMapScene
             SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
             SizeFlagsVertical = Control.SizeFlags.ExpandFill,
         };
-        right.AddThemeConstantOverride("separation", 10);
+        right.AddThemeConstantOverride("separation", 0);
         columns.AddChild(right);
         var tabs = new HBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
-        tabs.AddThemeConstantOverride("separation", 8);
+        tabs.AddThemeConstantOverride("separation", 0);
         right.AddChild(tabs);
         var grainTabButton = MakeButton("군량 거래");
         var artifactTabButton = MakeButton("유물 구매");
@@ -118,6 +118,21 @@ public sealed partial class CampaignMapScene
             tabs.AddChild(button);
         }
 
+        var tabContent = new PanelContainer
+        {
+            Name = "MerchantTabContent",
+            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+            SizeFlagsVertical = Control.SizeFlags.ExpandFill,
+        };
+        tabContent.AddThemeStyleboxOverride("panel", Frame(MerchantModalLayout.Panel,
+            MerchantModalLayout.Gold, 1, 0, 8));
+        right.AddChild(tabContent);
+        var pages = new VBoxContainer
+        {
+            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+            SizeFlagsVertical = Control.SizeFlags.ExpandFill,
+        };
+        tabContent.AddChild(pages);
         var grainTab = new HBoxContainer
         {
             Name = "MerchantGrainTab",
@@ -125,7 +140,7 @@ public sealed partial class CampaignMapScene
             SizeFlagsVertical = Control.SizeFlags.ExpandFill,
         };
         grainTab.AddThemeConstantOverride("separation", (int)MerchantModalLayout.CardGap);
-        right.AddChild(grainTab);
+        pages.AddChild(grainTab);
         var artifactTab = new VBoxContainer
         {
             Name = "MerchantArtifactTab",
@@ -134,7 +149,7 @@ public sealed partial class CampaignMapScene
             SizeFlagsVertical = Control.SizeFlags.ExpandFill,
         };
         artifactTab.AddThemeConstantOverride("separation", 10);
-        right.AddChild(artifactTab);
+        pages.AddChild(artifactTab);
 
         Action refresh = () => { };
         void Commit(CommandResult result)
@@ -363,11 +378,20 @@ public sealed partial class CampaignMapScene
 
     private void StyleMerchantTab(Button button, bool selected)
     {
-        button.AddThemeStyleboxOverride("normal", Frame(selected ? MerchantModalLayout.Selected
-            : MerchantModalLayout.Panel, selected ? GoldBright : MerchantModalLayout.Gold, 2, 7, 8));
-        button.AddThemeStyleboxOverride("hover", Frame(selected ? MerchantModalLayout.Selected
-            : MerchantModalLayout.Hover, GoldBright, 2, 7, 8));
-        button.AddThemeStyleboxOverride("pressed", Frame(MerchantModalLayout.Selected, GoldBright, 2, 7, 8));
+        StyleBoxFlat TabStyle(Color background, Color border, bool active)
+        {
+            var style = Frame(background, border, 1, 8, 8);
+            style.CornerRadiusBottomLeft = 0;
+            style.CornerRadiusBottomRight = 0;
+            style.BorderWidthBottom = active ? 0 : 1;
+            style.BorderWidthTop = active ? 3 : 1;
+            return style;
+        }
+        button.AddThemeStyleboxOverride("normal", TabStyle(selected ? MerchantModalLayout.Selected
+            : MerchantModalLayout.Panel, selected ? GoldBright : MerchantModalLayout.Gold, selected));
+        button.AddThemeStyleboxOverride("hover", TabStyle(selected ? MerchantModalLayout.Selected
+            : MerchantModalLayout.Hover, GoldBright, selected));
+        button.AddThemeStyleboxOverride("pressed", TabStyle(MerchantModalLayout.Selected, GoldBright, true));
         button.AddThemeColorOverride("font_color", selected ? GoldBright : Parchment);
     }
 }
