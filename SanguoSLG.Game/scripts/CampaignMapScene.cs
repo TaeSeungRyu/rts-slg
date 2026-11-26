@@ -6177,7 +6177,8 @@ public sealed partial class CampaignMapScene : Node3D
         layer.AddChild(center);
 
         var panel = new PanelContainer { MouseFilter = Control.MouseFilterEnum.Stop };
-        panel.AddThemeStyleboxOverride("panel", Frame(Ink, Gold, 2, 10, 14));
+        if (officer is not null) ApplyUnitMenuFrame(panel, contentPadding: 16);
+        else panel.AddThemeStyleboxOverride("panel", Frame(Ink, Gold, 2, 10, 14));
         panel.TextureFilter = CanvasItem.TextureFilterEnum.LinearWithMipmaps;
         center.AddChild(panel);
 
