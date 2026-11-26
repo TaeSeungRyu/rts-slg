@@ -367,6 +367,11 @@ public sealed partial class CampaignMapScene
         "gold_percent" => $"담당/주최 금 생산 +{definition.Value}%",
         "recruit_percent" => $"담당 병력 생산 +{definition.Value}%",
         "security_percent" => $"담당 치안 증가량 +{definition.Value}%",
+        "might_percent" => $"장착 시 무력 +{definition.Value}%",
+        "movement_percent" => $"장착 시 부대 이동 +{definition.Value}%",
+        "intellect_percent" => definition.Code == "art_of_war"
+            ? $"장착 시 지력 +{definition.Value}% · 지휘 병종 방어 +10%"
+            : $"장착 시 지력 +{definition.Value}%",
         _ => definition.Name,
     };
 

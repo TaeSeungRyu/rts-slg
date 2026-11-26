@@ -1303,8 +1303,25 @@ public sealed class CampaignEngine
                         && unit.Class is TroopClass.Infantry or TroopClass.Cavalry or TroopClass.Elephant
                         && equipped.Any(t => t.Code == "tiger_fang") ? 8 : 0)
                 : 0;
+            var vanguardArtifact = equipped.Select(item => MerchantCatalog.Find(item.Code))
+                .Where((artifact, index) => artifact is not null && equipped[index].EquippedBy == vanguardId)
+                .FirstOrDefault();
+            var adjutantArtifact = unit.AdjutantId is { } secondId
+                ? equipped.Select(item => MerchantCatalog.Find(item.Code))
+                    .Where((artifact, index) => artifact is not null && equipped[index].EquippedBy == secondId)
+                    .FirstOrDefault()
+                : null;
+            static int PercentStat(int value, MerchantArtifact? artifact, string effect)
+                => artifact?.Effect == effect ? Math.Min(255, (value * (100 + artifact.Value) + 50) / 100) : value;
+            var baseMovement = unit.MerchantBaseMovementTenths > 0
+                ? unit.MerchantBaseMovementTenths : unit.Field.EffectiveMovementTenths;
+            var movementBonus = Math.Max(
+                vanguardArtifact?.Effect == "movement_percent" ? vanguardArtifact.Value : 0,
+                adjutantArtifact?.Effect == "movement_percent" ? adjutantArtifact.Value : 0);
             return unit with
             {
+                Field = unit.Field with { MovementTenths = baseMovement * (100 + movementBonus) / 100 },
+                MerchantBaseMovementTenths = baseMovement,
                 Stats = unit.Stats with
                 {
                     AptitudePercent = grade.Percent() + AncientRelicEffects.UnitBonus(state, _ancientRelics,
@@ -1313,12 +1330,13 @@ public sealed class CampaignEngine
                 RelicAttackPercent = 100 + AncientRelicEffects.UnitBonus(state, _ancientRelics,
                     unit, "attack_percent"),
                 RelicDefensePercent = 100 + AncientRelicEffects.UnitBonus(state, _ancientRelics,
-                    unit, "defense_percent"),
-                Might = Math.Min(100, vanguard.Might
+                    unit, "defense_percent") + (vanguardArtifact?.DefensePercent ?? 0),
+                Might = Math.Min(255, PercentStat(vanguard.Might, vanguardArtifact, "might_percent")
                     + (equipped.Any(t => t.Code == "dragon_horn" && t.EquippedBy == vanguardId) ? 10 : 0)),
+                Intellect = PercentStat(vanguard.Intellect, vanguardArtifact, "intellect_percent"),
                 TreasureAdjutantMight = unit.AdjutantId is { } adjutantId
                     && byId.TryGetValue(adjutantId, out var adjutant)
-                    ? Math.Min(100, adjutant.Might
+                    ? Math.Min(255, PercentStat(adjutant.Might, adjutantArtifact, "might_percent")
                         + (equipped.Any(t => t.Code == "dragon_horn" && t.EquippedBy == adjutantId) ? 10 : 0))
                     : 0,
                 TreasureNormalAttackPercent = 100 + normalBonus,

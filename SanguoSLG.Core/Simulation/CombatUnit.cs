@@ -62,7 +62,8 @@ public sealed record CombatUnit(
     ArcherArrowMode ArrowMode = ArcherArrowMode.Normal,
     bool IsConstructionUnit = false,
     string? ConstructionDefinitionCode = null,
-    HexCoord? ConstructionPlot = null)
+    HexCoord? ConstructionPlot = null,
+    int MerchantBaseMovementTenths = 0)
 {
     public UnitId Id => Field.Id;
 
