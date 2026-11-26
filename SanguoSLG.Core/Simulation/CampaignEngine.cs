@@ -49,6 +49,7 @@ public sealed class CampaignEngine
     private readonly SummonService? _summons;
     private readonly IReadOnlyList<AncientRelicDefinition> _ancientRelics;
     private readonly ClimateController? _climate;
+    private readonly MerchantService? _merchantService;
 
     public CampaignEngine(IFieldAdvanceRunner field, WorldEngine world,
         CampaignSiege? siege = null, CityCapture? capture = null, IRandomSource? random = null,
@@ -60,7 +61,8 @@ public sealed class CampaignEngine
         EventHuntService? eventHunts = null, SummonService? summons = null,
         IReadOnlyList<AncientRelicDefinition>? ancientRelics = null,
         ClimateController? climate = null,
-        FieldConstructionService? fieldConstruction = null)
+        FieldConstructionService? fieldConstruction = null,
+        MerchantService? merchantService = null)
     {
         _field = field;
         _world = world;
@@ -84,6 +86,7 @@ public sealed class CampaignEngine
         _summons = summons;
         _ancientRelics = ancientRelics ?? [];
         _climate = climate;
+        _merchantService = merchantService;
     }
 
     /// <summary>7일을 진행한 새 상태를 반환한다. 야전 진행 보고 목록은 <paramref name="turns"/>로.</summary>
@@ -604,6 +607,7 @@ public sealed class CampaignEngine
         plunders = plunderReports;
         casualties = casualtyReports;
         var advanced = _world.AdvanceDays(afterField, WeekDays);
+        advanced = _merchantService?.Advance(advanced, state.Day, advanced.Day) ?? advanced;
         advanced = TreasureEquipmentService.ReconcileOwners(advanced);
         advanced = _eventHunts?.ScheduleDiscoveries(advanced) ?? advanced;
         if (_fieldScoutPosts is not null)
