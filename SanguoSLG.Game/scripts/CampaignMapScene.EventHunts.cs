@@ -34,6 +34,11 @@ public sealed partial class CampaignMapScene
     {
         if (_treasureTextures.TryGetValue(code, out var cached)) return cached;
         var path = $"res://assets/ui/items/{code}.png";
+        if (!Godot.FileAccess.FileExists(path) && MerchantCatalog.Find(code) is { } artifact)
+        {
+            var index = MerchantCatalog.Artifacts.ToList().FindIndex(item => item.Code == code) + 1;
+            path = $"res://assets/ui/game/merchant/{index:00}_{artifact.Name}.png";
+        }
         if (!Godot.FileAccess.FileExists(path)) return null;
         using var image = Image.LoadFromFile(ProjectSettings.GlobalizePath(path));
         if (image is null || image.IsEmpty()) return null;
