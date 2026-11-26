@@ -209,6 +209,35 @@ public sealed partial class CampaignMapScene
             root.AddChild(fleck);
             _climateFlecks.Add((fleck, patch.Kind == ClimateKind.Snow ? 0.13f : 0.65f));
         }
+        if (patch.Kind == ClimateKind.Rain)
+        {
+            var cloudScene = GD.Load<PackedScene>("res://assets/models/weather-rain-cloud.glb")?.Instantiate<Node3D>();
+            var cloudMesh = cloudScene?.FindChildren("*", "MeshInstance3D", true, false)
+                .OfType<MeshInstance3D>().FirstOrDefault()?.Mesh;
+            cloudScene?.Free();
+            if (cloudMesh is not null)
+            {
+                var cloudMaterial = new ShaderMaterial
+                {
+                    Shader = new Shader { Code = "shader_type spatial; render_mode unshaded, depth_draw_never; void fragment() { ALBEDO = vec3(0.82, 0.87, 0.92); float facing = abs(dot(normalize(NORMAL), normalize(VIEW))); ALPHA = 0.14 * smoothstep(0.05, 0.8, facing); }" },
+                };
+                foreach (var tile in tiles.Where((_, index) => index % Math.Max(1, tiles.Count / 3) == 0).Take(3))
+                {
+                    var cloud = new MeshInstance3D
+                    {
+                        Name = "RainSoftCloud", Mesh = cloudMesh,
+                        MaterialOverride = cloudMaterial,
+                        CastShadow = GeometryInstance3D.ShadowCastingSetting.Off,
+                        Position = _view.HexToWorld(tile) - originWorld
+                            + new Vector3(0f, _view.TileTopY + 0.75f, 0f),
+                        Scale = Vector3.One * 2.6f,
+                    };
+                    cloud.SetMeta("climate_cloud_q", tile.Q);
+                    cloud.SetMeta("climate_cloud_r", tile.R);
+                    root.AddChild(cloud);
+                }
+            }
+        }
         FadeClimatePatch(root, true);
         return root;
     }
@@ -256,6 +285,13 @@ public sealed partial class CampaignMapScene
         foreach (var (_, (patch, node)) in _climatePatchViews)
             foreach (var child in node.GetChildren().OfType<MeshInstance3D>())
             {
+                if (child.HasMeta("climate_cloud_q"))
+                {
+                    child.Visible = _visibleTiles.Contains(new HexCoord(
+                        child.GetMeta("climate_cloud_q").AsInt32(),
+                        child.GetMeta("climate_cloud_r").AsInt32()));
+                    continue;
+                }
                 if (!child.HasMeta("climate_q")) continue;
                 var tile = patch.Origin + new HexCoord(child.GetMeta("climate_q").AsInt32(),
                     child.GetMeta("climate_r").AsInt32());
@@ -275,9 +311,10 @@ public sealed partial class CampaignMapScene
             && _climatePatchViews.ContainsKey(snow.Id)
             && _climatePatchViews[snow.Id].Node.GetChildren().OfType<MeshInstance3D>()
                 .Count(child => child.Mesh is ArrayMesh) >= 4;
-        var cloudsRemoved = rain is not null && _climatePatchViews[rain.Id].Node
+        var softClouds = rain is not null && _climatePatchViews[rain.Id].Node
             .GetChildren().OfType<MeshInstance3D>()
-            .All(child => child.Mesh is not SphereMesh);
+            .Count(child => child.HasMeta("climate_cloud_q")
+                && child.MaterialOverride is ShaderMaterial) == 3;
         var terrainInfo = rain is not null && snow is not null
             && ClimateCombatRules.At(_displayClimate, rain.Origin) == ClimateKind.Rain
             && ClimateCombatRules.At(_displayClimate, snow.Origin) == ClimateKind.Snow;
@@ -295,9 +332,9 @@ public sealed partial class CampaignMapScene
             moved = _climatePatchViews[rain.Id].Node != beforeNode
                 && _climatePatchViews[rain.Id].Node.Position == _view.HexToWorld(shifted.Origin);
         }
-        var passed = rainVisual && snowVisual && cloudsRemoved && terrainInfo && moved;
+        var passed = rainVisual && snowVisual && softClouds && terrainInfo && moved;
         GD.Print($"[maptestclimateqa] passed={passed} rain={rainVisual} snow={snowVisual} "
-            + $"cloudsRemoved={cloudsRemoved} terrain={terrainInfo} moved={moved}");
+            + $"softClouds={softClouds} terrain={terrainInfo} moved={moved}");
         GetTree().Quit(passed ? 0 : 1);
     }
 
