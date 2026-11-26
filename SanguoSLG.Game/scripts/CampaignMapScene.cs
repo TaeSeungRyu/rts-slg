@@ -22637,6 +22637,24 @@ ApplyUnitMenuFrame(panel);
             Visible = false,
             MouseFilter = Control.MouseFilterEnum.Ignore,
         };
+        progress.AddThemeStyleboxOverride("background", new StyleBoxFlat
+        {
+            BgColor = TurnProgressLayout.ProgressTrack,
+            BorderColor = TurnProgressLayout.Gold,
+            BorderWidthLeft = 1, BorderWidthRight = 1, BorderWidthTop = 1, BorderWidthBottom = 1,
+            CornerRadiusTopLeft = TurnProgressLayout.ProgressRadius,
+            CornerRadiusTopRight = TurnProgressLayout.ProgressRadius,
+            CornerRadiusBottomLeft = TurnProgressLayout.ProgressRadius,
+            CornerRadiusBottomRight = TurnProgressLayout.ProgressRadius,
+        });
+        progress.AddThemeStyleboxOverride("fill", new StyleBoxFlat
+        {
+            BgColor = TurnProgressLayout.ProgressFill,
+            CornerRadiusTopLeft = TurnProgressLayout.ProgressRadius,
+            CornerRadiusTopRight = TurnProgressLayout.ProgressRadius,
+            CornerRadiusBottomLeft = TurnProgressLayout.ProgressRadius,
+            CornerRadiusBottomRight = TurnProgressLayout.ProgressRadius,
+        });
         vb.AddChild(progress);
 
         _advanceBtn = new AdvanceButton
