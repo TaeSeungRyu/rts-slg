@@ -604,6 +604,7 @@ public sealed partial class CampaignMapScene : Node3D
             .ToDictionary(region => region.Code, region => region.Name, System.StringComparer.OrdinalIgnoreCase);
         _balance = new BalanceConfig(MonthlyTaxPerCity: 100);
         _provPer10kPerDay = _balance.ProvisionsPer10kPerDay;
+        _fieldBuildingDefinitions = new FieldBuildingLoader().LoadFromDirectory(dataDirectory);
 
         _commander = new CommandService(_cb, _troops, _balance, _adminSkills);
         _deployer = new DeployService(_cb, _troops, actives, passives, _adminSkills, _balance,
@@ -612,7 +613,6 @@ public sealed partial class CampaignMapScene : Node3D
             new ScenarioLoader().LoadFromDirectory(dataDirectory));
         _passability = new PassabilityMap(_map, [], _cities,
             (_aiTestFixture?.Ruins ?? scenario.RuinList).Select(r => r.Position));
-        _fieldBuildingDefinitions = new FieldBuildingLoader().LoadFromDirectory(dataDirectory);
         _ai = new FactionAI(_commander, _deployer, map: _map, economy: _balance,
             fieldBuildingDefinitions: _fieldBuildingDefinitions);
         _treasureDefinitions = new EventTreasureLoader().LoadFromDirectory(dataDirectory);
