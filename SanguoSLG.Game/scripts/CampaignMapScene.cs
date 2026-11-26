@@ -22654,7 +22654,7 @@ ApplyUnitMenuFrame(panel);
             CornerRadiusBottomLeft = TurnProgressLayout.ProgressRadius,
             CornerRadiusBottomRight = TurnProgressLayout.ProgressRadius,
         });
-        var progressSpacing = new MarginContainer { Visible = false };
+        var progressSpacing = new MarginContainer { Visible = false, ZIndex = 11 };
         progressSpacing.AddThemeConstantOverride("margin_bottom", TurnProgressLayout.ProgressExtraGap);
         var progressCenter = new CenterContainer();
         progressSpacing.AddChild(progressCenter);
@@ -22663,6 +22663,7 @@ ApplyUnitMenuFrame(panel);
 
         _advanceBtn = new AdvanceButton
         {
+            ZIndex = 11,
             CustomMinimumSize = new Vector2(TurnProgressLayout.ButtonWidth, TurnProgressLayout.ButtonHeight),
             TextureFilter = CanvasItem.TextureFilterEnum.LinearWithMipmaps,
             CaptionFont = _font,

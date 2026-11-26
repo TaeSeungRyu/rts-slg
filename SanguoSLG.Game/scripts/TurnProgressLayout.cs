@@ -29,7 +29,7 @@ internal static class TurnProgressLayout
     internal static readonly Color Gold = new("#dda94d");
     internal static readonly Color ButtonText = new("#ffda87");
     internal static readonly Color DisabledText = new("#a69070");
-    internal static readonly Color DisabledTint = new(0.58f, 0.53f, 0.49f);
+    internal static readonly Color DisabledTint = new(0.82f, 0.76f, 0.68f);
     internal static readonly Color TextOutline = new("#140904");
     internal static readonly Color ProgressTrack = new("#24150f");
     internal static readonly Color ProgressFill = new("#ffc252");

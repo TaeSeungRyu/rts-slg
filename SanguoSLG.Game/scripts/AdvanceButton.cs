@@ -61,6 +61,8 @@ public partial class AdvanceButton : Control
 
     public override void _Process(double delta)
     {
+        _caption.Text = Busy ? "진행중" : "▶▶ 진행";
+        if (Busy) _down = false;
         if (ProgressDisplay is not null)
         {
             if (ProgressHost is not null) ProgressHost.Visible = Busy;
@@ -76,7 +78,8 @@ public partial class AdvanceButton : Control
     {
         // 상태별 PNG 크기가 달라도 버튼 슬롯과 클릭 영역은 고정한다.
         var bounds = new Rect2(Vector2.Zero, Size);
-        var texture = _down ? _pressedImage : _hover && !Busy ? _hoverImage : _normal;
+        var texture = Busy ? _pressedImage : _down ? _pressedImage
+            : _hover ? _hoverImage : _normal;
         if (texture is not null)
             DrawTextureRect(texture, bounds, false, Busy ? TurnProgressLayout.DisabledTint : Colors.White);
         else
