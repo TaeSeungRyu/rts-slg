@@ -12823,8 +12823,9 @@ var rootBox = box;
         var adminBonus = AdministrationGrowth.AbilityBonus(g.ClampedAdminLevel);
         var bonusSuffix = adminBonus > 0 ? $" (+{adminBonus:0.0})" : "";
         var equippedHorn = _state.Treasures.Any(t => t.EquippedBy == gid && t.Code == "dragon_horn");
-        var mightText = equippedHorn ? $"{g.Might} (+{System.Math.Min(10, 100 - g.Might)})" : g.Might.ToString();
-        foreach (var value in new[] { mightText, $"{g.Intellect}{bonusSuffix}", $"{g.Politics}{bonusSuffix}" })
+        var (equippedMight, equippedIntellect) = MerchantEquippedStats(g);
+        var mightText = equippedHorn ? $"{equippedMight} (+{System.Math.Min(10, 100 - equippedMight)})" : equippedMight.ToString();
+        foreach (var value in new[] { mightText, $"{equippedIntellect}{bonusSuffix}", $"{g.Politics}{bonusSuffix}" })
         {
             stat.AddChild(Cell(value, 17, Parchment));
         }

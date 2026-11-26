@@ -20,6 +20,16 @@ public sealed partial class CampaignMapScene
     private readonly Dictionary<string, ImageTexture> _treasureTextures = new(StringComparer.Ordinal);
     private IReadOnlyList<AncientRelicDefinition> _ancientRelics = [];
 
+    private (int Might, int Intellect) MerchantEquippedStats(General general)
+    {
+        var treasure = _state.Treasures.FirstOrDefault(item => item.EquippedBy == general.Id);
+        var artifact = treasure is null ? null : MerchantCatalog.Find(treasure.Code);
+        static int Apply(int value, MerchantArtifact? item, string effect) =>
+            item?.Effect == effect ? Math.Min(255, (value * (100 + item.Value) + 50) / 100) : value;
+        return (Apply(general.Might, artifact, "might_percent"),
+            Apply(general.Intellect, artifact, "intellect_percent"));
+    }
+
     private ImageTexture? TreasureTexture(string code)
     {
         if (_treasureTextures.TryGetValue(code, out var cached)) return cached;
