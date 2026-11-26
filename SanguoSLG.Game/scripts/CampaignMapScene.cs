@@ -22630,11 +22630,21 @@ ApplyUnitMenuFrame(panel);
         _dayTurnLabel.Visible = false;
         vb.AddChild(_dayTurnLabel);
 
+        var progress = new ProgressBar
+        {
+            ShowPercentage = false,
+            CustomMinimumSize = new Vector2(0f, TurnProgressLayout.ProgressHeight),
+            Visible = false,
+            MouseFilter = Control.MouseFilterEnum.Ignore,
+        };
+        vb.AddChild(progress);
+
         _advanceBtn = new AdvanceButton
         {
             CustomMinimumSize = new Vector2(TurnProgressLayout.ButtonWidth, TurnProgressLayout.ButtonHeight),
             TextureFilter = CanvasItem.TextureFilterEnum.LinearWithMipmaps,
             CaptionFont = _font,
+            ProgressDisplay = progress,
         };
         _advanceBtn.Pressed = OnAdvance;
         vb.AddChild(_advanceBtn);

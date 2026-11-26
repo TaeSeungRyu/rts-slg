@@ -14,6 +14,7 @@ public partial class AdvanceButton : Control
     private Label _caption = null!;
 
     public Font? CaptionFont { get; set; }
+    public ProgressBar? ProgressDisplay { get; set; }
     public bool Busy { get; set; }
     public float Progress { get; set; }
     public System.Action? Pressed;
@@ -59,6 +60,11 @@ public partial class AdvanceButton : Control
 
     public override void _Process(double delta)
     {
+        if (ProgressDisplay is not null)
+        {
+            ProgressDisplay.Visible = Busy;
+            ProgressDisplay.Value = Mathf.Clamp(Progress, 0f, 1f) * 100f;
+        }
         MouseDefaultCursorShape = Busy ? CursorShape.Arrow : CursorShape.PointingHand;
         _caption.AddThemeColorOverride("font_color", Busy
             ? TurnProgressLayout.DisabledText : TurnProgressLayout.ButtonText);
@@ -77,12 +83,5 @@ public partial class AdvanceButton : Control
             DrawRect(bounds, TurnProgressLayout.BodyColor);
             DrawRect(bounds, TurnProgressLayout.Gold, false, 2f);
         }
-        if (!Busy) return;
-        var track = new Rect2(TurnProgressLayout.ProgressInset, TurnProgressLayout.ProgressTop,
-            Size.X - TurnProgressLayout.ProgressInset * 2f, TurnProgressLayout.ProgressHeight);
-        DrawRect(track, TurnProgressLayout.ProgressTrack);
-        DrawRect(new Rect2(track.Position, new Vector2(track.Size.X * Mathf.Clamp(Progress, 0f, 1f), track.Size.Y)),
-            TurnProgressLayout.ProgressFill);
-        DrawRect(track, TurnProgressLayout.Gold, false, 1f);
     }
 }
