@@ -245,7 +245,7 @@ public sealed partial class CampaignMapScene
         var amount = old?.Troops ?? 0;
         GeneralId? leaderId = old?.Vanguard;
         var gold = old?.Gold ?? definition.GoldCost;
-        var provisions = ConstructionProvisionsFor60Days(System.Math.Max(500, amount), definition.ProvisionsCost);
+        var provisions = old?.Provisions ?? ConstructionProvisionsFor60Days(System.Math.Max(500, amount), definition.ProvisionsCost);
         var delay = old?.DelayDays ?? 0;
         if (_modalLayer is not null) { FadeOutModal(_modalLayer); _modalLayer = null; }
         var layer = new CanvasLayer { Layer = 20 };
@@ -327,16 +327,31 @@ public sealed partial class CampaignMapScene
         amountSpin.ValueChanged += value => amount = (int)value;
         left.AddChild(amountSpin);
         left.AddChild(DeployComposeResourceHeading("food.png", "휴대 군량"));
-        var provisionLabel = MakeLabel("", 14, Parchment);
+        var provisionLabel = MakeLabel("", 13, Parchment);
         provisionLabel.Name = "ConstructionProvision60Days";
+        var provisionSpin = ApplyNumberInputStyle(new SpinBox { Name = "ConstructionProvisionInput",
+            MinValue = definition.ProvisionsCost, MaxValue = System.Math.Max(definition.ProvisionsCost, city.Provisions),
+            Step = 1, Value = provisions, CustomMinimumSize = new Vector2(150, 30) });
+        var foodEdited = old is not null;
+        var updatingFoodDefault = false;
         void RefreshProvisions()
         {
-            provisions = ConstructionProvisionsFor60Days((int)amountSpin.Value, definition.ProvisionsCost);
-            provisionLabel.Text = $"{provisions:N0} · 60일분 (건설 비용 {definition.ProvisionsCost:N0} 포함)";
+            var recommended = ConstructionProvisionsFor60Days((int)amountSpin.Value, definition.ProvisionsCost);
+            if (!foodEdited)
+            {
+                updatingFoodDefault = true;
+                provisionSpin.Value = System.Math.Min(recommended, provisionSpin.MaxValue);
+                updatingFoodDefault = false;
+            }
+            provisions = (int)provisionSpin.Value;
+            provisionLabel.Text = $"60일 권장 {recommended:N0} · 건설 비용 {definition.ProvisionsCost:N0} 포함";
         }
         amountSpin.ValueChanged += _ => RefreshProvisions();
+        provisionSpin.ValueChanged += value =>
+        { if (!updatingFoodDefault) foodEdited = true; provisions = (int)value; };
         RefreshProvisions();
         left.AddChild(provisionLabel);
+        left.AddChild(provisionSpin);
         left.AddChild(DeployComposeResourceHeading("money.png", "휴대 금"));
         var goldSpin = ApplyNumberInputStyle(new SpinBox { MinValue = 0,
             MaxValue = city.Gold, Step = 1, Value = gold,
@@ -446,7 +461,8 @@ public sealed partial class CampaignMapScene
             && troopGrid.Columns == 2
             && _modalLayer?.FindChild("ConstructionComposeOfficer", true, false) is VBoxContainer
             && _modalLayer?.FindChild("ConstructionOfficerTable", true, false) is Tree
-            && _modalLayer?.FindChild("ConstructionProvision60Days", true, false) is Label;
+            && _modalLayer?.FindChild("ConstructionProvision60Days", true, false) is Label
+            && _modalLayer?.FindChild("ConstructionProvisionInput", true, false) is SpinBox;
         passed &= ConstructionProvisionsFor60Days(500, 0) == 1
             && ConstructionProvisionsFor60Days(10_000, 0) == 12
             && ConstructionProvisionsFor60Days(500, 5) == 6;
