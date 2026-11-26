@@ -72,6 +72,7 @@ public sealed partial class CampaignMapScene
                 : "GeneralResearchDetailText";
         _modalDetail.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         workspace.DetailHost.AddChild(_modalDetail);
+        if (recruitment) AddClearOfficerButton(workspace.DetailHost, city, command.Kind);
 
         workspace.DoctrineList.AddChild(MakeLabel(doctrine
             ? "연구할 전투교리를 선택하세요"
