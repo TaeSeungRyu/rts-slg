@@ -20,14 +20,14 @@ public static class CityStratagems
     public static bool RequiresScout(string code) => code != "scout";
 
     /// <summary>
-    /// 소요일 = 기본(7일 공작) + ⌈거리 ÷ 사절 속도(기병 3)⌉ × 2(왕복) — 항상 7일 초과.
+    /// 소요일 = (기본 공작일 + ⌈거리 ÷ 사절 속도⌉ × 2) × 70%, 소수점 버림.
     /// 발행 전 UI 확정 표시용(design-administration "명령 소요일").
     /// </summary>
     public static int Days(HexCoord from, HexCoord to, CommandBalance b)
     {
         var distance = from.Distance(to);
         var oneWay = (distance + b.CourierSpeed - 1) / b.CourierSpeed;
-        return b.CommandDays + oneWay * 2;
+        return System.Math.Max(1, (b.CommandDays + oneWay * 2) * 70 / 100);
     }
 
     /// <summary>

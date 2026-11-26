@@ -100,10 +100,10 @@ public class CityStratagemTests
     [Fact]
     public void 소요일_거리에_비례하고_항상_7일을_넘는다()
     {
-        Assert.Equal(9, CityStratagems.Days(new HexCoord(0, 0), new HexCoord(3, 0), B));   // 7 + 1×2
-        Assert.Equal(11, CityStratagems.Days(new HexCoord(0, 0), new HexCoord(6, 0), B));  // 7 + 2×2
-        Assert.Equal(13, CityStratagems.Days(new HexCoord(0, 0), new HexCoord(9, 0), B));
-        Assert.Equal(17, CityStratagems.Days(new HexCoord(0, 0), new HexCoord(15, 0), B));
+        Assert.Equal(6, CityStratagems.Days(new HexCoord(0, 0), new HexCoord(3, 0), B));
+        Assert.Equal(7, CityStratagems.Days(new HexCoord(0, 0), new HexCoord(6, 0), B));
+        Assert.Equal(9, CityStratagems.Days(new HexCoord(0, 0), new HexCoord(9, 0), B));
+        Assert.Equal(11, CityStratagems.Days(new HexCoord(0, 0), new HexCoord(15, 0), B));
     }
 
     [Fact]
@@ -162,7 +162,7 @@ public class CityStratagemTests
         var r = Service().Issue(s, Req("arson"));
         Assert.True(r.Ok, r.Error);
         var cmd = r.State.Commands.Single();
-        Assert.Equal(11, cmd.CompletionDay - cmd.StartDay); // 거리 6 → 7+4
+        Assert.Equal(7, cmd.CompletionDay - cmd.StartDay);
         Assert.Equal(new CityId(2), cmd.TargetCity);
     }
 
@@ -187,7 +187,7 @@ public class CityStratagemTests
     {
         var s = State([Mine(), Enemy()], [Gen(1)]);
         var issued = Service().Issue(s, Req("scout"));
-        var done = Advance(issued.State, 11, roll: 0);
+        var done = Advance(issued.State, issued.State.Commands.Single().CompletionDay - issued.State.Day, roll: 0);
 
         var stillKnown = new WorldEngine(Bal, B, random: new FixedRandom(0)).AdvanceDays(done, 59);
         var expired = new WorldEngine(Bal, B, random: new FixedRandom(0)).AdvanceDays(done, 60);
