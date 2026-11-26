@@ -22595,12 +22595,26 @@ ApplyUnitMenuFrame(panel);
     {
         var layer = new CanvasLayer();
         AddChild(layer);
+        var outer = new VBoxContainer { MouseFilter = Control.MouseFilterEnum.Pass };
+        outer.SetAnchorsPreset(Control.LayoutPreset.BottomRight);
+        outer.GrowHorizontal = Control.GrowDirection.Begin;
+        outer.GrowVertical = Control.GrowDirection.Begin;
+        outer.OffsetRight = -TurnProgressLayout.ScreenInset;
+        outer.OffsetBottom = -TurnProgressLayout.ScreenInset;
+        outer.AddThemeConstantOverride("separation", TurnProgressLayout.RowGap);
+        layer.AddChild(outer);
+
+        _dayLabel = MakeLabel("", TurnProgressLayout.DayFontSize, GoldBright);
+        _dayLabel.HorizontalAlignment = HorizontalAlignment.Center;
+        _dayLabel.Visible = false;
+        outer.AddChild(_dayLabel);
+
+        _dayTurnLabel = MakeLabel("", TurnProgressLayout.TurnFontSize, Parchment);
+        _dayTurnLabel.HorizontalAlignment = HorizontalAlignment.Center;
+        _dayTurnLabel.Visible = false;
+        outer.AddChild(_dayTurnLabel);
+
         var panel = new PanelContainer { MouseFilter = Control.MouseFilterEnum.Pass };
-        panel.SetAnchorsPreset(Control.LayoutPreset.BottomRight);
-        panel.GrowHorizontal = Control.GrowDirection.Begin;
-        panel.GrowVertical = Control.GrowDirection.Begin;
-        panel.OffsetRight = -TurnProgressLayout.ScreenInset;
-        panel.OffsetBottom = -TurnProgressLayout.ScreenInset;
         panel.CustomMinimumSize = new Vector2(TurnProgressLayout.PanelWidth, 0f);
         var frame = new StyleBoxFlat
         {
@@ -22615,20 +22629,10 @@ ApplyUnitMenuFrame(panel);
             ContentMarginBottom = TurnProgressLayout.PanelPadding,
         };
         panel.AddThemeStyleboxOverride("panel", frame);
-        layer.AddChild(panel);
+        outer.AddChild(panel);
         var vb = new VBoxContainer { Alignment = BoxContainer.AlignmentMode.End };
         vb.AddThemeConstantOverride("separation", TurnProgressLayout.RowGap);
         panel.AddChild(vb);
-
-        _dayLabel = MakeLabel("", TurnProgressLayout.DayFontSize, GoldBright);
-        _dayLabel.HorizontalAlignment = HorizontalAlignment.Center;
-        _dayLabel.Visible = false;
-        vb.AddChild(_dayLabel);
-
-        _dayTurnLabel = MakeLabel("", TurnProgressLayout.TurnFontSize, Parchment);
-        _dayTurnLabel.HorizontalAlignment = HorizontalAlignment.Center;
-        _dayTurnLabel.Visible = false;
-        vb.AddChild(_dayTurnLabel);
 
         var progress = new ProgressBar
         {
