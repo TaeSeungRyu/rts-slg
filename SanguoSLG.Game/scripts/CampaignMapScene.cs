@@ -328,6 +328,7 @@ public sealed partial class CampaignMapScene : Node3D
     private int _generalRosterGeneration;
     private int _generalRosterPage;
     private string _generalRosterQuery = "";
+    private int _generalRosterFilter;
     private const int GeneralRosterPageSize = 20;
     private Label? _modalDetail;
     private readonly List<PanelContainer> _optionCards = new();
@@ -822,6 +823,7 @@ public sealed partial class CampaignMapScene : Node3D
         if (args.Contains("--maptestportraitqa")) CallDeferred(nameof(RunPortraitLoaderQa));
         if (args.Contains("--maptestportraittreeqa")) CallDeferred(nameof(RunPortraitTreeQa));
         if (args.Contains("--maptestgeneralrosterqa")) CallDeferred(nameof(RunGeneralRosterPerformanceQa));
+        if (args.Contains("--maptestgeneralrosterfilterqa")) CallDeferred(nameof(RunGeneralRosterFilterQa));
         if (args.Contains("--maptestcityrosterbottomqa")) CallDeferred(nameof(RunCityRosterBottomQa));
         if (args.Contains("--maptestreportmodalqa")) CallDeferred(nameof(RunReportModalQa));
         if (args.Contains("--maptestnavalcomposeqa")) CallDeferred(nameof(RunNavalComposeQa));
@@ -11818,6 +11820,7 @@ return box;
     {
         _generalRosterPage = 0;
         _generalRosterQuery = "";
+        _generalRosterFilter = 0;
         OpenGeneralRoster();
     }
 
@@ -11898,8 +11901,13 @@ box.AddChild(topMargin);
 
         IEnumerable<General> OrderedGenerals()
         {
-            var generals = _state.Generals.Where(g => string.IsNullOrWhiteSpace(_generalRosterQuery)
-                || g.Name.Contains(_generalRosterQuery.Trim(), System.StringComparison.OrdinalIgnoreCase));
+            var generals = _state.Generals.Where(g =>
+                (_generalRosterFilter == 0
+                    || _generalRosterFilter == 1 && _state.PostingOf(g.Id)?.Faction == Player
+                    || _generalRosterFilter == 2 && _state.HeroStates.Any(s =>
+                        s.General == g.Id && s.Status == HeroUnlockStatus.Locked))
+                && (string.IsNullOrWhiteSpace(_generalRosterQuery)
+                    || g.Name.Contains(_generalRosterQuery.Trim(), System.StringComparison.OrdinalIgnoreCase)));
             IOrderedEnumerable<General> ordered = _generalRosterSortCol switch
             {
                 0 => _generalRosterSortAsc ? generals.OrderBy(g => g.Name, System.StringComparer.Ordinal) : generals.OrderByDescending(g => g.Name, System.StringComparer.Ordinal),
@@ -11936,6 +11944,11 @@ box.AddChild(topMargin);
         search.AddThemeStyleboxOverride("focus", Frame(InkHover, GoldBright, 1, 5, 6));
         searchRow.AddChild(search);
         NativeTextInputDialog.Attach(search);
+        var factionFilter = new OptionButton { Name = "GeneralRosterFactionFilter",
+            CustomMinimumSize = new Vector2(120, 32) };
+        foreach (var name in new[] { "전체", "아군", "미발견" }) factionFilter.AddItem(name);
+        factionFilter.Select(_generalRosterFilter);
+        searchRow.AddChild(factionFilter);
         var resultCount = MakeLabel("", 12, Parchment);
         searchRow.AddChild(resultCount);
         box.AddChild(searchRow);
@@ -12045,6 +12058,12 @@ var tree = new Tree
             TraceRoster($"rows-{portraitRows.Count}");
         }
 
+        factionFilter.ItemSelected += index =>
+        {
+            _generalRosterFilter = (int)index;
+            _generalRosterPage = 0;
+            RenderPage();
+        };
         search.TextChanged += text =>
         {
             _generalRosterQuery = text;
