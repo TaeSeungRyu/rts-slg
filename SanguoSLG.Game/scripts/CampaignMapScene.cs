@@ -1078,7 +1078,6 @@ public sealed partial class CampaignMapScene : Node3D
         // finalizer가 늦게 실행될 수 있다. UI가 잡은 네이티브 참조를 먼저 떼고, 캐시가 소유한
         // wrapper를 명시적으로 Dispose하여 Vulkan Texture RID가 종료 뒤까지 남지 않게 한다.
         if (_hudFace is not null && GodotObject.IsInstanceValid(_hudFace)) _hudFace.Texture = null;
-        if (_advanceBtn is not null && GodotObject.IsInstanceValid(_advanceBtn)) _advanceBtn.Icon = null;
 
         var textures = new Dictionary<ulong, ImageTexture>();
         void Track(ImageTexture? texture)
@@ -22591,42 +22590,51 @@ ApplyUnitMenuFrame(panel);
         GetTree().Quit(passed ? 0 : 1);
     }
 
-    // 진행 버튼(화면 우측 하단, 100×100 원형 아이콘) + 진행 중 "N일차" 텍스트(버튼 20px 위).
+    // 우하단 턴 진행 UI. 수치는 TurnProgressLayout에서 조정한다.
     private void BuildAdvanceControl()
     {
         var layer = new CanvasLayer();
         AddChild(layer);
-
+        var panel = new PanelContainer { MouseFilter = Control.MouseFilterEnum.Pass };
+        panel.SetAnchorsPreset(Control.LayoutPreset.BottomRight);
+        panel.GrowHorizontal = Control.GrowDirection.Begin;
+        panel.GrowVertical = Control.GrowDirection.Begin;
+        panel.OffsetRight = -TurnProgressLayout.ScreenInset;
+        panel.OffsetBottom = -TurnProgressLayout.ScreenInset;
+        panel.CustomMinimumSize = new Vector2(TurnProgressLayout.PanelWidth, 0f);
+        var frame = new StyleBoxFlat
+        {
+            BgColor = TurnProgressLayout.BodyColor,
+            BorderColor = TurnProgressLayout.Gold,
+            BorderWidthLeft = 2, BorderWidthRight = 2, BorderWidthTop = 2, BorderWidthBottom = 2,
+            CornerRadiusTopLeft = 9, CornerRadiusTopRight = 9,
+            CornerRadiusBottomLeft = 9, CornerRadiusBottomRight = 9,
+            ContentMarginLeft = TurnProgressLayout.PanelPadding,
+            ContentMarginRight = TurnProgressLayout.PanelPadding,
+            ContentMarginTop = TurnProgressLayout.PanelPadding,
+            ContentMarginBottom = TurnProgressLayout.PanelPadding,
+        };
+        panel.AddThemeStyleboxOverride("panel", frame);
+        layer.AddChild(panel);
         var vb = new VBoxContainer { Alignment = BoxContainer.AlignmentMode.End };
-        vb.AddThemeConstantOverride("separation", 20); // 일차 텍스트가 버튼 20px 위
-        vb.AnchorLeft = 1f; vb.AnchorTop = 1f; vb.AnchorRight = 1f; vb.AnchorBottom = 1f;
-        vb.GrowHorizontal = Control.GrowDirection.Begin;
-        vb.GrowVertical = Control.GrowDirection.Begin;
-        vb.OffsetLeft = -16f; vb.OffsetTop = -16f; vb.OffsetRight = -16f; vb.OffsetBottom = -16f;
-        layer.AddChild(vb);
+        vb.AddThemeConstantOverride("separation", TurnProgressLayout.RowGap);
+        panel.AddChild(vb);
 
-        _dayLabel = MakeLabel("", 24, GoldBright);
+        _dayLabel = MakeLabel("", TurnProgressLayout.DayFontSize, GoldBright);
         _dayLabel.HorizontalAlignment = HorizontalAlignment.Center;
-        _dayLabel.CustomMinimumSize = new Vector2(100, 0);
-        _dayLabel.AddThemeConstantOverride("outline_size", 6); // 배경 대비 — 어두운 외곽선
-        _dayLabel.AddThemeColorOverride("font_outline_color", new Color(0.05f, 0.03f, 0.02f, 0.95f));
         _dayLabel.Visible = false;
         vb.AddChild(_dayLabel);
 
-        _dayTurnLabel = MakeLabel("", 15, Parchment);
+        _dayTurnLabel = MakeLabel("", TurnProgressLayout.TurnFontSize, Parchment);
         _dayTurnLabel.HorizontalAlignment = HorizontalAlignment.Center;
-        _dayTurnLabel.CustomMinimumSize = new Vector2(100, 0);
-        _dayTurnLabel.AddThemeConstantOverride("outline_size", 5);
-        _dayTurnLabel.AddThemeColorOverride("font_outline_color", new Color(0.05f, 0.03f, 0.02f, 0.95f));
         _dayTurnLabel.Visible = false;
         vb.AddChild(_dayTurnLabel);
 
-        // 이미지는 교체 가능 — res://assets/icons/icon_advance.png 파일만 바꾸면 됨(없으면 ▶ 폴백).
         _advanceBtn = new AdvanceButton
         {
-            CustomMinimumSize = new Vector2(100, 100),
+            CustomMinimumSize = new Vector2(TurnProgressLayout.ButtonWidth, TurnProgressLayout.ButtonHeight),
             TextureFilter = CanvasItem.TextureFilterEnum.LinearWithMipmaps,
-            Icon = LoadAdvanceIcon(),
+            CaptionFont = _font,
         };
         _advanceBtn.Pressed = OnAdvance;
         vb.AddChild(_advanceBtn);
@@ -22759,14 +22767,5 @@ ApplyUnitMenuFrame(panel);
         GetTree().Quit(passed ? 0 : 1);
     }
 
-    // 진행 버튼 아이콘 로드(교체용). 파일 없으면 null → 버튼이 금색 ▶ 폴백을 그린다.
-    private static Texture2D? LoadAdvanceIcon()
-    {
-        const string path = "res://assets/icons/icon_advance.png";
-        if (!Godot.FileAccess.FileExists(path)) { return null; }
-        var img = Image.LoadFromFile(ProjectSettings.GlobalizePath(path));
-        img.GenerateMipmaps();
-        return ImageTexture.CreateFromImage(img);
-    }
 }
 
