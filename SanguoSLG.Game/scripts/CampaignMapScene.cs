@@ -22616,19 +22616,7 @@ ApplyUnitMenuFrame(panel);
 
         var panel = new PanelContainer { MouseFilter = Control.MouseFilterEnum.Pass };
         panel.CustomMinimumSize = new Vector2(TurnProgressLayout.PanelWidth, 0f);
-        var frame = new StyleBoxFlat
-        {
-            BgColor = TurnProgressLayout.BodyColor,
-            BorderColor = TurnProgressLayout.Gold,
-            BorderWidthLeft = 2, BorderWidthRight = 2, BorderWidthTop = 2, BorderWidthBottom = 2,
-            CornerRadiusTopLeft = 9, CornerRadiusTopRight = 9,
-            CornerRadiusBottomLeft = 9, CornerRadiusBottomRight = 9,
-            ContentMarginLeft = TurnProgressLayout.PanelPadding,
-            ContentMarginRight = TurnProgressLayout.PanelPadding,
-            ContentMarginTop = TurnProgressLayout.PanelPadding,
-            ContentMarginBottom = TurnProgressLayout.PanelPadding,
-        };
-        panel.AddThemeStyleboxOverride("panel", frame);
+        ApplyUnitMenuFrame(panel);
         outer.AddChild(panel);
         var vb = new VBoxContainer { Alignment = BoxContainer.AlignmentMode.End };
         vb.AddThemeConstantOverride("separation", TurnProgressLayout.RowGap);
