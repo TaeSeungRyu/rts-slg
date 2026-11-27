@@ -172,7 +172,7 @@ private static void NewGameRoundImage(TextureRect image, float radius)
 
         var panel = new PanelContainer { Name = "NewGamePanel", MouseFilter = MouseFilterEnum.Stop };
         center.AddChild(panel);
-        ApplyUnitMenuFrame(panel);
+        ApplyNewGameOuterFrame(panel);
         void FitPanel()
         {
             var viewport = GetViewport().GetVisibleRect().Size;
@@ -1397,4 +1397,113 @@ row.AddChild(text);
 
         UpdateFrame();
     }    
+
+
+//"res://assets/ui/new_game/new_game_outer_frame.png"
+
+private void ApplyNewGameOuterFrame(PanelContainer panel, int contentPadding = 16,
+        int patchMargin = 28, float frameScale = 0.15f)
+    {
+        // ========================================
+        // 디자인 설정
+        // ========================================
+        const int cornerRadius = 12;
+
+        // ========================================
+        // 내부 배경
+        // ========================================
+        panel.ClipContents = true;
+
+        panel.AddThemeStyleboxOverride("panel", new StyleBoxFlat
+        {
+            BgColor = new Color("160d0b", 0.96f),
+
+            CornerRadiusTopLeft = cornerRadius,
+            CornerRadiusTopRight = cornerRadius,
+            CornerRadiusBottomLeft = cornerRadius,
+            CornerRadiusBottomRight = cornerRadius,
+
+            CornerDetail = 16,
+
+            ContentMarginLeft = contentPadding,
+            ContentMarginTop = contentPadding,
+            ContentMarginRight = contentPadding,
+            ContentMarginBottom = contentPadding,
+
+            // 배경을 안쪽으로 3px 축소
+            ExpandMarginLeft = -5,
+            ExpandMarginTop = -5,
+            ExpandMarginRight = -5,
+            ExpandMarginBottom = -5,            
+        });
+
+        // ========================================
+        // 테두리 이미지 로드 및 축소
+        // ========================================
+        var frameTexture = GD.Load<Texture2D>(
+            "res://assets/ui/new_game/new_game_outer_frame.png"
+        );
+
+        var frameImage = frameTexture.GetImage();
+
+        frameImage.Resize(
+            Mathf.Max(1, Mathf.RoundToInt(
+                frameImage.GetWidth() * frameScale)),
+            Mathf.Max(1, Mathf.RoundToInt(
+                frameImage.GetHeight() * frameScale)),
+            Image.Interpolation.Lanczos
+        );
+
+        var resizedTexture =
+            ImageTexture.CreateFromImage(frameImage);
+
+        // ========================================
+        // 금색 외곽 테두리
+        // ========================================
+        var terrainFrame = new NinePatchRect
+        {
+            Name = "UnitMenuOrnateFrame",
+
+            Texture = resizedTexture,
+
+            PatchMarginLeft = patchMargin,
+            PatchMarginTop = patchMargin,
+            PatchMarginRight = patchMargin,
+            PatchMarginBottom = patchMargin,
+
+            DrawCenter = false,
+
+            TextureFilter = CanvasItem.TextureFilterEnum.Linear,
+            MouseFilter = Control.MouseFilterEnum.Ignore,
+
+            ZIndex = 10,
+        };
+
+        // PanelContainer의 내부 여백에 영향을 받지 않도록
+        // 일반 Control을 통해 테두리를 배치
+        var frameOverlay = new Control
+        {
+            Name = "UnitMenuFrameOverlay",
+            MouseFilter = Control.MouseFilterEnum.Ignore,
+        };
+
+        panel.AddChild(frameOverlay);
+
+        frameOverlay.AddChild(terrainFrame);
+
+        void UpdateFrame()
+        {
+            terrainFrame.Position = -frameOverlay.Position;
+            terrainFrame.Size = panel.Size;
+        }
+
+        panel.Resized += UpdateFrame;
+        frameOverlay.Resized += UpdateFrame;
+        frameOverlay.ItemRectChanged += UpdateFrame;
+
+        UpdateFrame();
+}
+
+
+
 }

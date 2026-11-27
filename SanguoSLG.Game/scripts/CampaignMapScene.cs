@@ -6769,7 +6769,7 @@ _terrainCard.AddChild(terrainFrame);
     }
 
 
-    private void ApplyUnitMenuFrame(PanelContainer panel, int contentPadding = 10,
+    public void ApplyUnitMenuFrame(PanelContainer panel, int contentPadding = 10,
         int patchMargin = 28, float frameScale = 0.15f)
     {
         // ========================================
