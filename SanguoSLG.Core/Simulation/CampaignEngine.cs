@@ -221,8 +221,15 @@ public sealed class CampaignEngine
 
             // 최초 출격 관제는 하루 시작에 한 번만 실행한다. 출구 밖 첫 칸에 배치된 부대는
             // 즉시 일반 야전 목록으로 넘어가며, 두 번째 칸부터는 기존 이동기만 관여한다.
+            var occupiedSites = work.Buildings
+                .Where(building => !building.IsExpired(simulationDay)
+                    && _fieldBuildingDefinitions.Any(definition => definition.Code == building.DefinitionCode
+                        && definition.Kind != FieldBuildingKind.ScoutPost))
+                .Select(building => building.Position)
+                .Concat(work.Ruins.Select(ruin => ruin.Position)).ToHashSet();
             var egress = DeploymentEgressController.Release(egressArmies, armies, work.Cities,
-                _field.CanEnter, _field.UsesContinuousMovement);
+                (domain, tile) => _field.CanEnter(domain, tile) && !occupiedSites.Contains(tile),
+                _field.UsesContinuousMovement);
             armies.AddRange(egress.Released);
             egressArmies = egress.Waiting.ToList();
 

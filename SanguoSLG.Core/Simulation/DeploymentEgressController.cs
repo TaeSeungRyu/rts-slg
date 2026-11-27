@@ -38,14 +38,14 @@ public static class DeploymentEgressController
             {
                 foreach (var candidate in queue)
                 {
-                    var candidateExit = candidate.EgressExit!.Value;
                     if (!citiesById.TryGetValue(group.Key.Origin, out var candidateOrigin)
                         || candidateOrigin.Owner != candidate.Field.Owner
-                        || !DeploymentEgressRules.ExitGroup(candidateOrigin, group.Key.Direction).Contains(candidateExit))
+                        || PassableExit(candidateOrigin, candidate, canEnter) is not { } usable)
                     {
                         remain.Add(candidate);
                         continue;
                     }
+                    var candidateExit = usable.Exit;
                     bool IsFree(HexCoord exit) => (canEnter?.Invoke(candidate.Field.Domain, exit) ?? true)
                         && !fieldArmies.Concat(released).Any(other => other.Pool.Active > 0
                             && other.Field.Owner != candidate.Field.Owner && other.Field.Position == exit);
@@ -54,7 +54,7 @@ public static class DeploymentEgressController
                     {
                         Field = candidate.Field with { Position = candidateExit },
                         RenewalPosition = RenewalMovement.RenewalHexSpace.Center(candidateExit),
-                        EgressDirection = group.Key.Direction,
+                        EgressDirection = usable.Direction,
                         EgressExit = candidateExit,
                         AwaitingEgress = false,
                     });
@@ -62,21 +62,21 @@ public static class DeploymentEgressController
                 continue;
             }
             var head = queue[0];
-            var exit = head.EgressExit!.Value;
             // 저장된 출구가 다른 방향/성의 타일로 오염되거나 원점이 함락되어도
             // 대기 병력이 엉뚱한 위치 또는 적 성에서 출격하지 않도록 한다.
             if (citiesById.TryGetValue(group.Key.Origin, out var origin)
                 && origin.Owner == head.Field.Owner
-                && DeploymentEgressRules.ExitGroup(origin, group.Key.Direction).Contains(exit)
-                && (canEnter?.Invoke(head.Field.Domain, exit) ?? true)
-                && !occupied.Contains(exit))
+                && PassableExit(origin, head, canEnter) is { } passable
+                && !occupied.Contains(passable.Exit))
             {
                 released.Add(head with
                 {
-                    Field = head.Field with { Position = exit },
+                    Field = head.Field with { Position = passable.Exit },
+                    EgressDirection = passable.Direction,
+                    EgressExit = passable.Exit,
                     AwaitingEgress = false,
                 });
-                occupied.Add(exit);
+                occupied.Add(passable.Exit);
                 remain.AddRange(queue.Skip(1));
             }
             else
@@ -98,4 +98,25 @@ public static class DeploymentEgressController
             && unit.OriginCity.HasValue
             && unit.EgressDirection.HasValue
             && unit.EgressExit.HasValue;
+
+    private static (DeploymentDirection Direction, HexCoord Exit)? PassableExit(
+        City origin, CombatUnit unit, Func<MovementDomain, HexCoord, bool>? canEnter)
+    {
+        var direction = unit.EgressDirection!.Value;
+        var saved = unit.EgressExit!.Value;
+        if (DeploymentEgressRules.ExitGroup(origin, direction).Contains(saved)
+            && (canEnter?.Invoke(unit.Field.Domain, saved) ?? true))
+            return (direction, saved);
+
+        return DeploymentEgressRules.Directions
+            .SelectMany(candidate => DeploymentEgressRules.ExitGroup(origin, candidate)
+                .Select(exit => (Direction: candidate, Exit: exit)))
+            .Where(candidate => canEnter?.Invoke(unit.Field.Domain, candidate.Exit) ?? true)
+            .OrderBy(candidate => candidate.Direction == direction ? 0 : 1)
+            .ThenBy(candidate => unit.Field.Target is { } target
+                ? candidate.Exit.Distance(target) : candidate.Exit.Distance(saved))
+            .ThenBy(candidate => (int)candidate.Direction)
+            .ThenBy(candidate => candidate.Exit.Q).ThenBy(candidate => candidate.Exit.R)
+            .Cast<(DeploymentDirection Direction, HexCoord Exit)?>().FirstOrDefault();
+    }
 }

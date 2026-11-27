@@ -141,6 +141,23 @@ public class DeploymentEgressControllerTests
     }
 
     [Fact]
+    public void 지정_출구가_통행불가이고_다른_출구가_열려있으면_우회출격한다()
+    {
+        var city = CityOf(CastleSize.Small);
+        var east = DeploymentEgressRules.RepresentativeExit(city, DeploymentDirection.East)!.Value;
+        var northEast = DeploymentEgressRules.RepresentativeExit(city, DeploymentDirection.NorthEast)!.Value;
+        var waiting = Unit(1, city, DeploymentDirection.East, east, 1);
+
+        var result = DeploymentEgressController.Release([waiting], [], [city],
+            (_, tile) => tile == northEast, allowFriendlyOverlap: true);
+
+        var released = Assert.Single(result.Released);
+        Assert.Equal(northEast, released.Field.Position);
+        Assert.Equal(DeploymentDirection.NorthEast, released.EgressDirection);
+        Assert.Empty(result.Waiting);
+    }
+
+    [Fact]
     public void 소형성_지정한_동쪽_출구가_막히면_다른_방향으로_바꾸지않고_기다린다()
     {
         var city = CityOf(CastleSize.Small);
