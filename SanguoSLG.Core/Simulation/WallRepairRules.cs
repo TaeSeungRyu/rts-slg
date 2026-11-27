@@ -8,6 +8,8 @@ public static class WallRepairRules
     {
         GateSize.Small => 2_000,
         GateSize.Medium => 3_000,
+        _ when city.Port == PortSize.Small => 1_000,
+        _ when city.Port == PortSize.Medium => 2_000,
         _ => CastleWall.Max(city.Castle, balance, city.WallLevel),
     };
 

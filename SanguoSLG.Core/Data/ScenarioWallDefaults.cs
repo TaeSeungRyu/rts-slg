@@ -8,6 +8,7 @@ public static class ScenarioWallDefaults
     public static int ForSite(MapEditorSite site, BalanceConfig balance)
     {
         if (site.Kind == "gate") return site.Size == "medium" ? 3000 : 2000;
+        if (site.Kind == "port") return site.Size == "medium" ? 2000 : 1000;
         var castle = site.Kind == "port" ? CastleSize.Small : site.Size switch
         {
             "large" => CastleSize.Large,

@@ -147,8 +147,8 @@ internal sealed class BalanceDto
     public int NoGovernorIncomePercent { get; init; } = 30;
     public int GovernorTaxAmplifyAt100 { get; init; } = 100;
     public int WallMaxSmall { get; init; } = 3000;
-    public int WallMaxMedium { get; init; } = 6000;
-    public int WallMaxLarge { get; init; } = 10000;
+    public int WallMaxMedium { get; init; } = 5000;
+    public int WallMaxLarge { get; init; } = 7000;
     public int MarketOrePrice { get; init; } = 1;
     public int MarketHorsePrice { get; init; } = 6;
     public int MarketElephantPrice { get; init; } = 3000;

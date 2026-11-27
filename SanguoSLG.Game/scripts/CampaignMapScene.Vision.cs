@@ -57,7 +57,7 @@ public sealed partial class CampaignMapScene
         if (gauge.Visible)
         {
             gauge.SetTitle(CityMapLabel(city, troops), MapRelationTextColor(city.Owner));
-            gauge.SetValues(wall, CastleWall.Max(city.Castle, _balance, city.WallLevel), troops);
+            gauge.SetValues(wall, WallRepairRules.MaxIntegrity(city, _balance), troops);
         }
     }
 
@@ -75,7 +75,7 @@ public sealed partial class CampaignMapScene
         var city = _state.Cities.First(c => c.Owner == Player);
         var gauge = _cityVitalsGauges[city.Id.Value];
         var troops = _state.Garrisons.Where(force => force.City == city.Id).Sum(force => force.Troops);
-        var expectedWallMax = CastleWall.Max(city.Castle, _balance, city.WallLevel);
+        var expectedWallMax = WallRepairRules.MaxIntegrity(city, _balance);
         var hiddenInitially = !gauge.Visible && _cityLabels[city.Id.Value].Visible
             && _cityLabels[city.Id.Value].Text == city.Name;
         SelectCity(city.Id);

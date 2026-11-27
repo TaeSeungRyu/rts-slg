@@ -8,10 +8,11 @@ using SanguoSLG.Core.Spatial;
 public sealed class ScenarioDraftTests
 {
     [Theory]
-    [InlineData("city", "small", 600)]
-    [InlineData("city", "medium", 1200)]
-    [InlineData("city", "large", 2000)]
-    [InlineData("port", "medium", 600)]
+    [InlineData("city", "small", 1000)]
+    [InlineData("city", "medium", 2000)]
+    [InlineData("city", "large", 3000)]
+    [InlineData("port", "small", 1000)]
+    [InlineData("port", "medium", 2000)]
     [InlineData("gate", "small", 2000)]
     [InlineData("gate", "medium", 3000)]
     public void ScenarioWallFollowsSiteSize(string kind, string size, int expected)

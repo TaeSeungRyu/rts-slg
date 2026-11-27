@@ -82,6 +82,7 @@ public static class ScenarioMapPresetApplier
                 Position = preset.ToAxial(site.Column, site.Row),
                 Castle = castle,
                 Wall = isGate ? site.Size == "medium" ? 3_000 : 2_000
+                    : isPort ? site.Size == "medium" ? 2_000 : 1_000
                     : CastleWall.Max(castle, source.Balance, template.WallLevel),
                 Port = isPort ? site.Size == "medium" ? PortSize.Medium : PortSize.Small : PortSize.None,
                 Gate = isGate ? site.Size == "medium" ? GateSize.Medium : GateSize.Small : null,

@@ -1242,7 +1242,7 @@ public sealed class WorldEngine
         switch (cmd.Facility)
         {
             case "wall_break":
-                var maxWall = CastleWall.Max(target.Castle, _balance, target.WallLevel);
+                var maxWall = WallRepairRules.MaxIntegrity(target, _balance);
                 cities[targetId] = target with { Wall = System.Math.Max(0, target.Wall - maxWall * _commands.StratagemWallBreakPercent / 100) };
                 break;
 

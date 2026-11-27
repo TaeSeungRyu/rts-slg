@@ -180,7 +180,7 @@ public sealed class FactionAI
                 && !building.IsCompleted(state.Day))) return state;
         foreach (var city in state.Cities.Where(city => city.Owner == faction && !city.IsPort
             && city.Security >= 70
-            && city.Wall * 2 >= CastleWall.Max(city.Castle, _economy, city.WallLevel)
+            && city.Wall * 2 >= WallRepairRules.MaxIntegrity(city, _economy)
             && city.Gold >= _config.MaintenanceReserveGold + 300
             && city.Provisions >= 500).OrderBy(city => city.Id.Value))
         {
@@ -501,7 +501,7 @@ public sealed class FactionAI
                     && command.Kind == CommandKind.Repair && command.TroopCode == FactionResearch.WallCode)
                 && !WallRepairRules.IsThreatened(state, city))
             {
-                var maxWall = CastleWall.Max(city.Castle, _economy, city.WallLevel);
+                var maxWall = WallRepairRules.MaxIntegrity(city, _economy);
                 if (wall * 4 < maxWall * 3)
                 {
                     var restore = Math.Min(maxWall - wall, Math.Max(1, maxWall * tier / 20));
@@ -537,7 +537,7 @@ public sealed class FactionAI
                 (city.RuinedPaddies > 0, "paddy"), (city.RuinedFarms > 0, "farm"),
                 (city.RuinedVillages > 0, "village"), (city.WorkshopRuined, "workshop"),
             };
-            var maxWall = CastleWall.Max(city.Castle, _economy, city.WallLevel);
+            var maxWall = WallRepairRules.MaxIntegrity(city, _economy);
             var repairs = new List<(string Facility, string TroopCode)>();
             if (city.Wall * 4 < maxWall * 3
                 && !pending.Any(command => command.TroopCode == FactionResearch.WallCode))

@@ -11,7 +11,7 @@ public sealed record AiWarCandidate(CityId Origin, CityId Target, int RouteTiles
 public static class AiWarCandidatePolicy
 {
     public static bool CanLaunch(City city, BalanceConfig balance) => city.Security >= 70
-        && city.Wall * 2 >= CastleWall.Max(city.Castle, balance, city.WallLevel);
+        && city.Wall * 2 >= WallRepairRules.MaxIntegrity(city, balance);
 
     public static IReadOnlyList<AiWarCandidate> Evaluate(GameState state, FactionId faction,
         HexMap map, BalanceConfig balance, int slowestSpeed)

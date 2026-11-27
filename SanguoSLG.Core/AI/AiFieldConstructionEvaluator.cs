@@ -35,7 +35,7 @@ public static class AiFieldConstructionEvaluator
         var balance = economy ?? new BalanceConfig(MonthlyTaxPerCity: 100);
         var ownedCities = state.Cities.Where(city => city.Owner == faction && !city.IsPort
             && city.Security >= 70
-            && city.Wall * 2 >= CastleWall.Max(city.Castle, balance, city.WallLevel))
+            && city.Wall * 2 >= WallRepairRules.MaxIntegrity(city, balance))
             .OrderBy(city => city.Id.Value).ToList();
         var threats = state.Armies.Where(unit => state.AreHostile(faction, unit.Field.Owner)
             && unit.Pool.Active > 0 && visible.Contains(unit.Field.Position))

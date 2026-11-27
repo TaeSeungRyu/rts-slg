@@ -30,11 +30,24 @@ public class WallResearchTests
     [Fact]
     public void 성벽최대_단계별_비율이_적용된다()
     {
-        // 소성 완료값 3000: 미연구 20%(600) → 4단계 100%(3000).
-        Assert.Equal(600, CastleWall.Max(CastleSize.Small, Bal, 0));
-        Assert.Equal(1200, CastleWall.Max(CastleSize.Small, Bal, 1));
+        Assert.Equal(1000, CastleWall.Max(CastleSize.Small, Bal, 0));
+        Assert.Equal(1500, CastleWall.Max(CastleSize.Small, Bal, 1));
+        Assert.Equal(2000, CastleWall.Max(CastleSize.Small, Bal, 2));
         Assert.Equal(3000, CastleWall.Max(CastleSize.Small, Bal, 4));
-        Assert.Equal(1200, CastleWall.Max(CastleSize.Medium, Bal, 0)); // 중성 6000의 20%
+        Assert.Equal(2000, CastleWall.Max(CastleSize.Medium, Bal, 0));
+        Assert.Equal(3500, CastleWall.Max(CastleSize.Medium, Bal, 2));
+        Assert.Equal(5000, CastleWall.Max(CastleSize.Medium, Bal, 4));
+        Assert.Equal(3000, CastleWall.Max(CastleSize.Large, Bal, 0));
+        Assert.Equal(5000, CastleWall.Max(CastleSize.Large, Bal, 2));
+        Assert.Equal(7000, CastleWall.Max(CastleSize.Large, Bal, 4));
+    }
+
+    [Fact]
+    public void 항구_최대내구도는_규모별로_고정된다()
+    {
+        var port = Town(1, CastleSize.Small, workshop: false, wall: 0);
+        Assert.Equal(1000, WallRepairRules.MaxIntegrity(port with { Port = PortSize.Small }, Bal));
+        Assert.Equal(2000, WallRepairRules.MaxIntegrity(port with { Port = PortSize.Medium }, Bal));
     }
 
     [Fact]
@@ -111,8 +124,8 @@ public class WallResearchTests
         var c2 = done.Cities.First(c => c.Id == new CityId(2));
         Assert.Equal(1, c1.WallLevel);
         Assert.Equal(0, c2.WallLevel);
-        // 1단계 최대치 2400이지만 현재 내구도 1200은 그대로다.
-        Assert.Equal(2400, CastleWall.Max(c1.Castle, Bal, c1.WallLevel));
+        // 1단계 최대치 2750이지만 현재 내구도 1200은 그대로다.
+        Assert.Equal(2750, CastleWall.Max(c1.Castle, Bal, c1.WallLevel));
         Assert.Equal(1200, c1.Wall);
         Assert.Equal(600, c2.Wall);
     }
