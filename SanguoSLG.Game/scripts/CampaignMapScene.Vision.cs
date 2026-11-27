@@ -223,9 +223,8 @@ public sealed partial class CampaignMapScene
         if (_selectedUnitId >= 0 && !display.Armies.Any(u => u.Id.Value == _selectedUnitId && CanSeeUnit(u)))
             HidePanels();
         if (_terrainCard.Visible && _terrainHex is { } terrain && !_visibleTiles.Contains(terrain)) HidePanels();
-        if (_advancing && _selected is { } cityId && _infoCard.Visible
-            && _state.Cities.FirstOrDefault(c => c.Id == cityId) is { } selectedCity && !CanInspectCity(selectedCity))
-            HidePanels();
+        // 진행 중에도 플레이어가 직접 연 시야 밖 거점 정보 카드는 유지한다.
+        // 시야 변경은 거점 상세 데이터의 공개 여부만 갱신하고 패널을 닫지 않는다.
         if (_intelPanel is not null && GodotObject.IsInstanceValid(_intelPanel) && !_intelPanel.IsQueuedForDeletion()
             && _modalLayer is not null && _modalLayer.IsAncestorOf(_intelPanel)
             && _intelPanelCity is { } intelCity && _state.Cities.FirstOrDefault(c => c.Id == intelCity) is { } cityInfo
