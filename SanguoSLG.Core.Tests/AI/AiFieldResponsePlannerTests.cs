@@ -139,6 +139,41 @@ public class AiFieldResponsePlannerTests
     }
 
     [Fact]
+    public void 정면_출구를_적이_차지해도_빈_측면으로_출격한다()
+    {
+        var state = Scenario(new HexCoord(7, 0), new HexCoord(2, 0), supply: false);
+        var city = state.Cities.First(c => c.Id == new CityId(1));
+        var siege = state.Armies.Single() with
+        {
+            Class = TroopClass.Siege,
+            TroopCode = "catapult",
+        };
+        var blocker = state.Armies.Single() with
+        {
+            Field = state.Armies.Single().Field with
+            {
+                Id = new UnitId(10), Position = new HexCoord(1, 0), Mode = UnitMode.Standby,
+            },
+        };
+        state = state with
+        {
+            Cities = state.Cities.Select(c => c.Id == city.Id ? c with { Wall = 0 } : c).ToList(),
+            GarrisonForces = [new GarrisonForce(city.Id, "cavalry", 20000, 60)],
+            Postings = state.Assignments.Select(p => p with { Location = city.Id }).ToList(),
+            FieldArmies = [siege, blocker],
+        };
+
+        var after = Planner(new HexMap(-2, 12, -3, 3)).PlanDefense(state, city.Owner);
+
+        var sortie = Assert.Single(after.Armies, unit => unit.Field.Owner == city.Owner);
+        Assert.NotEqual(blocker.Field.Position, sortie.EgressExit);
+        Assert.Contains(sortie.EgressExit!.Value, DeploymentEgressRules.ExteriorTiles(city));
+        var released = DeploymentEgressController.Release([sortie], [siege, blocker], after.Cities,
+            (_, tile) => new HexMap(-2, 12, -3, 3).Contains(tile), allowFriendlyOverlap: true);
+        Assert.Single(released.Released);
+    }
+
+    [Fact]
     public void 정찰망에서_발견한_고립_보급부대는_성_방어반경_밖이어도_기병이_견제한다()
     {
         var state = Scenario(new HexCoord(0, 0), new HexCoord(7, 0));

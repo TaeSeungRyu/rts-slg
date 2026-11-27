@@ -213,9 +213,13 @@ public sealed class AiFieldResponsePlanner
             && u.Pool.Active > 0 && state.AreHostile(origin.Owner, u.Field.Owner))
             .SelectMany(u => u.Field.Position.Neighbors().Append(u.Field.Position)).ToHashSet()
             : new HashSet<HexCoord>();
+        var occupiedByEnemy = state.Armies.Where(unit => unit.Pool.Active > 0
+                && state.AreHostile(origin.Owner, unit.Field.Owner))
+            .Select(unit => unit.Field.Position).ToHashSet();
         var exits = DeploymentEgressRules.ExteriorTiles(origin)
             .Where(tile => passability.CanEnter(MovementDomain.Land, tile)
-                && !danger.Contains(tile)).OrderBy(tile => tile.Q).ThenBy(tile => tile.R);
+                && !danger.Contains(tile) && !occupiedByEnemy.Contains(tile))
+            .OrderBy(tile => tile.Q).ThenBy(tile => tile.R);
         var goals = target.Field.Position.Neighbors()
             .Where(tile => passability.CanEnter(MovementDomain.Land, tile)
                 && !danger.Contains(tile)).ToHashSet();

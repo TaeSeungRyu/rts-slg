@@ -50,6 +50,7 @@ public sealed class CampaignEngine
     private readonly IReadOnlyList<AncientRelicDefinition> _ancientRelics;
     private readonly ClimateController? _climate;
     private readonly MerchantService? _merchantService;
+    private readonly Func<GameState, GameState>? _dailySiegeDefense;
 
     public CampaignEngine(IFieldAdvanceRunner field, WorldEngine world,
         CampaignSiege? siege = null, CityCapture? capture = null, IRandomSource? random = null,
@@ -62,7 +63,8 @@ public sealed class CampaignEngine
         IReadOnlyList<AncientRelicDefinition>? ancientRelics = null,
         ClimateController? climate = null,
         FieldConstructionService? fieldConstruction = null,
-        MerchantService? merchantService = null)
+        MerchantService? merchantService = null,
+        Func<GameState, GameState>? dailySiegeDefense = null)
     {
         _field = field;
         _world = world;
@@ -87,6 +89,7 @@ public sealed class CampaignEngine
         _ancientRelics = ancientRelics ?? [];
         _climate = climate;
         _merchantService = merchantService;
+        _dailySiegeDefense = dailySiegeDefense;
     }
 
     /// <summary>7일을 진행한 새 상태를 반환한다. 야전 진행 보고 목록은 <paramref name="turns"/>로.</summary>
@@ -139,6 +142,23 @@ public sealed class CampaignEngine
             || _eventHunts is not null || _summons is not null || _climate is not null))
         {
             var simulationDay = state.Day + (WeekDays - remaining);
+            if (_dailySiegeDefense is not null)
+            {
+                var currentArmies = armies.Concat(waitingArmies).Concat(egressArmies).ToList();
+                var existingIds = currentArmies.Select(unit => unit.Id).ToHashSet();
+                var defenseState = _dailySiegeDefense(work with
+                {
+                    Day = simulationDay,
+                    FieldArmies = currentArmies,
+                });
+                work = defenseState with { Day = work.Day };
+                foreach (var unit in defenseState.Armies.Where(unit => !existingIds.Contains(unit.Id)))
+                {
+                    if (unit.IsWaitingDate) waitingArmies.Add(unit);
+                    else if (unit.IsWaitingEgress) egressArmies.Add(unit);
+                    else armies.Add(unit);
+                }
+            }
             if (_climate is not null)
             {
                 var climate = work.Climate ?? ClimateState.Initial(state.Day * 7919 + state.StartYear);

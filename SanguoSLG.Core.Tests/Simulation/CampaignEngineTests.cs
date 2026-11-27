@@ -3,6 +3,7 @@ namespace SanguoSLG.Core.Tests.Simulation;
 using System.Collections.Generic;
 using System.Linq;
 using SanguoSLG.Core.Data;
+using SanguoSLG.Core.AI;
 using SanguoSLG.Core.Domain;
 using SanguoSLG.Core.Simulation;
 using SanguoSLG.Core.Spatial;
@@ -11,6 +12,42 @@ using Xunit;
 /// <summary>캠페인 진행 = 7일 고정, 이동+전투 자동 연속, 내정과 한 시계(2026-08-16 확정).</summary>
 public class CampaignEngineTests
 {
+    [Fact]
+    public void 진행_도중_성벽이_무너지면_다음날_수비대가_출격한다()
+    {
+        var map = new HexMap(0, 12, -5, 5);
+        var city = new City(new CityId(1), "남피", new HexCoord(5, 0), new FactionId(1),
+            10000, Wall: 1);
+        var enemy = new City(new CityId(2), "공격측", new HexCoord(11, 0), new FactionId(2), 10000);
+        var officers = Enumerable.Range(1, 3).Select(id => new General(new GeneralId(id), $"g{id}",
+            new Dictionary<TroopClass, AptitudeGrade>(), 70, 60, 60)).ToList();
+        var attacker = Army(9, 2, new HexCoord(6, 0), UnitMode.Attack, city.Position, 5000)
+            with { Field = Army(9, 2, new HexCoord(6, 0), UnitMode.Attack, city.Position, 5000).Field
+                with { Speed = 0 } };
+        var state = new GameState(1, 190, [], [city, enemy], officers,
+            Postings: officers.Select(officer => new GeneralPosting(officer.Id, city.Owner, city.Id)).ToList(),
+            GarrisonForces: [new GarrisonForce(city.Id, "swordsman", 20000, 60)],
+            FieldArmies: [attacker]);
+        var troops = T.Values.ToList();
+        var defender = new AiFieldResponsePlanner(new DeployService(new CommandBalance(), troops,
+            new ActiveSkillLoader().LoadFromDirectory(TestData.DataDirectory()),
+            new PassiveSkillLoader().LoadFromDirectory(TestData.DataDirectory())),
+            new AiConfig(), map);
+        var movement = new MovementSimulator(new PassabilityMap(map, [], [city, enemy]));
+        var field = new AdvanceOrchestrator(movement,
+            new CombatPhaseResolver(new BattleResolver(60), 70));
+        var engine = new CampaignEngine(field,
+            new WorldEngine(new BalanceConfig(MonthlyTaxPerCity: 0)),
+            new CampaignSiege(new BattleResolver(60), troops),
+            dailySiegeDefense: current => defender.PlanDefense(current, city.Owner));
+
+        engine.AdvanceWeek(state, out var turns, out var sieges);
+
+        Assert.Contains(sieges, exchange => exchange.City == city.Id && exchange.NewWall == 0);
+        Assert.Contains(turns.Skip(1), turn => (turn.ReleasedDeployments ?? []).Any(unit =>
+            unit.Field.Owner == city.Owner && unit.OriginCity == city.Id));
+    }
+
     [Fact]
     public void 상인_유물은_장착시에만_부대_능력치에_적용된다()
     {

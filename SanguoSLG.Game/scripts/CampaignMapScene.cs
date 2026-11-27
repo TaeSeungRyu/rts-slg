@@ -682,6 +682,7 @@ public sealed partial class CampaignMapScene : Node3D
         GD.Print(args.Contains("--legacy-movement")
             ? "[movement-mode] legacy"
             : "[movement-mode] renewal-phase18d");
+        var siegeDefense = new AiFieldResponsePlanner(_deployer, new AiConfig(), _map, _balance);
         _engine = new CampaignEngine(
             field,
             world,
@@ -701,7 +702,14 @@ public sealed partial class CampaignMapScene : Node3D
                 minDurationDays: scenario.Balance.ClimateMinDurationDays,
                 maxDurationDays: scenario.Balance.ClimateMaxDurationDays),
             fieldConstruction: _fieldConstruction,
-            merchantService: new MerchantService(_map));
+            merchantService: new MerchantService(_map),
+            dailySiegeDefense: current =>
+            {
+                foreach (var faction in current.Factions.Where(faction => faction.Id != Player)
+                    .OrderBy(faction => faction.Id.Value))
+                    current = siegeDefense.PlanDefense(current, faction.Id);
+                return current;
+            });
         _vision = new BattlefieldVision(scenario.Balance, _troops, _fieldBuildingDefinitions);
         _fog = new BattlefieldFogView(_view);
         _fog.RegisterMap();
