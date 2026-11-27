@@ -219,9 +219,11 @@ public sealed partial class CampaignMapScene
             {
                 var cloudMaterial = new ShaderMaterial
                 {
-                    Shader = new Shader { Code = "shader_type spatial; render_mode unshaded, depth_draw_never; void fragment() { ALBEDO = vec3(0.82, 0.87, 0.92); float facing = abs(dot(normalize(NORMAL), normalize(VIEW))); ALPHA = 0.14 * smoothstep(0.05, 0.8, facing); }" },
+                    Shader = new Shader { Code = "shader_type spatial; render_mode unshaded, depth_draw_never; void fragment() { ALBEDO = vec3(0.82, 0.87, 0.92); float facing = abs(dot(normalize(NORMAL), normalize(VIEW))); ALPHA = 0.045 * pow(smoothstep(0.2, 0.95, facing), 2.0); }" },
                 };
-                foreach (var tile in tiles.Where((_, index) => index % Math.Max(1, tiles.Count / 3) == 0).Take(3))
+                // 6×6 강우 패치의 일부에만 큰 구름을 두면 한곳에 뭉쳐 보인다.
+                // 타일마다 작은 저채도 구름을 놓아 강우 영역 전체에 엷게 분산한다.
+                foreach (var tile in tiles)
                 {
                     var cloud = new MeshInstance3D
                     {
@@ -230,7 +232,7 @@ public sealed partial class CampaignMapScene
                         CastShadow = GeometryInstance3D.ShadowCastingSetting.Off,
                         Position = _view.HexToWorld(tile) - originWorld
                             + new Vector3(0f, _view.TileTopY + 0.75f, 0f),
-                        Scale = Vector3.One * 2.6f,
+                        Scale = Vector3.One * 1.35f,
                     };
                     cloud.SetMeta("climate_cloud_q", tile.Q);
                     cloud.SetMeta("climate_cloud_r", tile.R);
@@ -314,7 +316,7 @@ public sealed partial class CampaignMapScene
         var softClouds = rain is not null && _climatePatchViews[rain.Id].Node
             .GetChildren().OfType<MeshInstance3D>()
             .Count(child => child.HasMeta("climate_cloud_q")
-                && child.MaterialOverride is ShaderMaterial) == 3;
+                && child.MaterialOverride is ShaderMaterial) == _climateController.Tiles(rain).Count();
         var terrainInfo = rain is not null && snow is not null
             && ClimateCombatRules.At(_displayClimate, rain.Origin) == ClimateKind.Rain
             && ClimateCombatRules.At(_displayClimate, snow.Origin) == ClimateKind.Snow;
