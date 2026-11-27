@@ -87,6 +87,7 @@ public partial class UnitController3D : Node3D
         ("res://assets/models/troop-supply.glb", true, MovementDomain.Land),
         ("res://assets/models/troop-army-group.glb", true, MovementDomain.Land),
         ("res://assets/models/troop-phoenix.glb", true, MovementDomain.Land),
+        ("res://assets/models/troop-pirate-ship.glb", true, MovementDomain.DeepWater),
     };
 
     public static int SupplyModelIndex => TroopModels.Length - 3;

@@ -214,6 +214,8 @@ public sealed partial class CampaignMapScene : Node3D
         ["horse_archer"] = 16, ["turtleship"] = 17, ["waeseon"] = 18,
         ["bandit"] = 19, ["great_tiger"] = 20, ["dragon"] = 22, ["phoenix"] = 26,
         ["army_group"] = 25,
+        [WorldEngine.MountainBanditTroopCode] = 19,
+        [WorldEngine.PirateTroopCode] = 27,
     };
     private GameState _pendingState = null!;
     private string _pendingNote = "";
@@ -652,7 +654,8 @@ public sealed partial class CampaignMapScene : Node3D
         }
         var world = new WorldEngine(_balance, _cb, random: new SeededRandomSource(sessionSeed),
             banditLandSpawnAllowed: hex => _passability.CanEnter(MovementDomain.Land, hex),
-            divineBeastPercent: divineBeastPercent, ancientRelics: _ancientRelics);
+            divineBeastPercent: divineBeastPercent, ancientRelics: _ancientRelics,
+            wanderMap: _map, wanderPassability: _passability);
         var legacyField = new AdvanceOrchestrator(movement,
             new CombatPhaseResolver(new BattleResolver(60), 70),
             navalProvisionsPercent: scenario.Balance.NavalProvisionsPercent,
@@ -2981,6 +2984,7 @@ public sealed partial class CampaignMapScene : Node3D
 
     private static string UnitCardCode(CombatUnit unit)
         => unit.IsConstructionUnit ? "supply"
+            : unit.TroopCode == WorldEngine.MountainBanditTroopCode ? WorldEngine.BanditTroopCode
             : unit.IsArmyGroup ? "army_group"
             : unit.IsTransport ? "transport"
             : unit.IsSupply ? "supply"
@@ -10243,6 +10247,8 @@ private void ApplyBuildingButtonEffect(Button button)
         : code == FactionResearch.CommandTroopsCode ? "통솔 병력"
         : code == FactionResearch.ArmyGroupCode ? "집단군"
         : code == WorldEngine.BanditTroopCode ? "도적"
+        : code == WorldEngine.MountainBanditTroopCode ? "산적"
+        : code == WorldEngine.PirateTroopCode ? "해적"
         : FactionResearch.IsGeneralResearch(code) ? GeneralResearchRules.Name(code)
         : FactionResearch.IsStratagemResearch(code) ? StratagemResearchRules.Name(code)
         : _troops.FirstOrDefault(t => t.Code == code)?.Name ?? code;
