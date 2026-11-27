@@ -63,7 +63,8 @@ public sealed record CombatUnit(
     bool IsConstructionUnit = false,
     string? ConstructionDefinitionCode = null,
     HexCoord? ConstructionPlot = null,
-    int MerchantBaseMovementTenths = 0)
+    int MerchantBaseMovementTenths = 0,
+    int WanderingExpiresDay = 0)
 {
     public UnitId Id => Field.Id;
 

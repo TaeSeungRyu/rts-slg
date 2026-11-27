@@ -12,6 +12,8 @@ public sealed class WorldEngine
 {
     public static readonly FactionId BanditFaction = new(0);
     public const string BanditTroopCode = "bandit";
+    public const string MountainBanditTroopCode = "mountain_bandit";
+    public const string PirateTroopCode = "pirate";
     public const int PortSmallWeeklyGold = 25;
     public const int PortSmallWeeklyProvisions = 100;
 
@@ -21,11 +23,14 @@ public sealed class WorldEngine
     private readonly Func<HexCoord, bool>? _banditLandSpawnAllowed;
     private readonly int _divineBeastPercent;
     private readonly IReadOnlyList<AncientRelicDefinition> _ancientRelics;
+    private readonly HexMap? _wanderMap;
+    private readonly PassabilityMap? _wanderPassability;
 
     public WorldEngine(BalanceConfig balance, CommandBalance? commands = null,
         IReadOnlyList<Domain.AdminSkill>? adminSkills = null, IRandomSource? random = null,
         Func<HexCoord, bool>? banditLandSpawnAllowed = null, int divineBeastPercent = 1,
-        IReadOnlyList<AncientRelicDefinition>? ancientRelics = null)
+        IReadOnlyList<AncientRelicDefinition>? ancientRelics = null,
+        HexMap? wanderMap = null, PassabilityMap? wanderPassability = null)
     {
         _balance = balance;
         _commands = commands ?? new CommandBalance();
@@ -34,6 +39,8 @@ public sealed class WorldEngine
         _banditLandSpawnAllowed = banditLandSpawnAllowed;
         _divineBeastPercent = divineBeastPercent;
         _ancientRelics = ancientRelics ?? [];
+        _wanderMap = wanderMap;
+        _wanderPassability = wanderPassability;
     }
 
     private readonly IRandomSource _random;
@@ -67,7 +74,11 @@ public sealed class WorldEngine
             Day = state.Day + 1,
             Factions = state.Factions.OrderBy(f => f.Id.Value).ToList(),
             Cities = state.Cities.OrderBy(c => c.Id.Value).ToList(),
+            // 만료일을 부대에 직렬화하므로 저장 후 재개해도 3주 수명이 유지된다.
+            FieldArmies = state.Armies.Where(a => a.WanderingExpiresDay <= 0
+                || a.WanderingExpiresDay > state.Day + 1).ToList(),
         };
+        if (next.Day % 21 == 0) next = SpawnWanderingEnemies(next);
         next = HiddenFactionArrivalService.Advance(next);
         next = AutoShipyardService.Advance(next);
         next = ConsumeGateProvisions(next);
@@ -435,6 +446,51 @@ public sealed class WorldEngine
     private static int ApplyGeneralOutputBonus(GameState state, FactionId faction, string researchCode, int amount)
         => GeneralResearchRules.ApplyPercent(amount,
             GeneralResearchRules.OutputPercent(state.ResearchOf(faction, researchCode)));
+
+    private GameState SpawnWanderingEnemies(GameState state)
+    {
+        if (_wanderMap is null || _wanderPassability is null) return state;
+        var armies = state.Armies.ToList();
+        var occupied = armies.Select(a => a.Field.Position)
+            .Concat(state.Cities.SelectMany(CastleFootprint.TilesFor))
+            .Concat(state.Placements.Select(p => p.Plot))
+            .Concat(state.Buildings.Where(b => !b.IsExpired(state.Day)).Select(b => b.Position))
+            .Concat(state.Ruins.Select(r => r.Position))
+            .Concat(state.Merchants.Select(m => m.Position)).ToHashSet();
+        var nextId = System.Math.Max(1_000_000 + state.Day * 100,
+            armies.Count == 0 ? 1 : armies.Max(a => a.Id.Value) + 1);
+
+        Spawn(MountainBanditTroopCode, MovementDomain.Land, t => t == TerrainType.Mountain);
+        Spawn(PirateTroopCode, MovementDomain.DeepWater,
+            t => t is TerrainType.River or TerrainType.WaterShallow or TerrainType.WaterDeep);
+        return state with { FieldArmies = armies.OrderBy(a => a.Id.Value).ToList() };
+
+        void Spawn(string code, MovementDomain domain, Func<TerrainType, bool> matches)
+        {
+            // 소하천은 육상 수로라 선박 통행은 금지되지만, 정지한 해적의 출현 위치로는 허용한다.
+            var candidates = _wanderMap.Tiles().Where(tile => !occupied.Contains(tile)
+                && matches(_wanderMap.TerrainAt(tile))
+                && (code == PirateTroopCode && _wanderMap.TerrainAt(tile) == TerrainType.River
+                    || _wanderPassability.CanEnter(domain, tile))).ToList();
+            for (var i = 0; i < 6 && candidates.Count > 0; i++)
+            {
+                var index = _random.Next(0, candidates.Count);
+                var position = candidates[index];
+                candidates[index] = candidates[^1];
+                candidates.RemoveAt(candidates.Count - 1);
+                occupied.Add(position);
+                var field = new FieldUnit(new UnitId(nextId++), BanditFaction, position,
+                    Speed: 2, Detection: 2, AttackRange: 1, domain, UnitMode.Attack,
+                    Target: null, CommandOrder: 0);
+                armies.Add(new CombatUnit(field, new CombatStats(4000, 3, 1, 80),
+                    new TroopPool(4000, 0), UnitCombatState.Create(30), Might: 50,
+                    Intellect: 30, MaxTroops: 4000,
+                    Class: code == PirateTroopCode ? TroopClass.Naval : TroopClass.Infantry,
+                    Provisions: 100, Training: 40, TroopCode: code, LootGold: 100,
+                    WanderingExpiresDay: state.Day + 21));
+            }
+        }
+    }
 
     private GameState SpawnLowSecurityBandits(GameState state)
     {

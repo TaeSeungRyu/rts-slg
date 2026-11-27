@@ -9,6 +9,39 @@ namespace SanguoSLG.Core.Tests.Simulation;
 public class WorldEngineTests
 {
     [Fact]
+    public void 산적과_해적은_세주마다_각각_여섯부대가_나타나고_세주뒤_교체된다()
+    {
+        var terrain = new Dictionary<HexCoord, TerrainType>();
+        for (var q = 0; q < 10; q++)
+        {
+            terrain[new HexCoord(q, 0)] = TerrainType.Mountain;
+            terrain[new HexCoord(q, 1)] = TerrainType.WaterDeep;
+        }
+        var map = new HexMap(0, 9, 0, 2, terrain);
+        var engine = new WorldEngine(new BalanceConfig(MonthlyTaxPerCity: 100),
+            random: new SeededRandomSource(7), wanderMap: map,
+            wanderPassability: new PassabilityMap(map, [], []));
+        var initial = new GameState(20, 190, [], [], []);
+
+        var spawned = engine.AdvanceDays(initial, 1);
+        Assert.Equal(6, spawned.Armies.Count(a => a.TroopCode == WorldEngine.MountainBanditTroopCode));
+        Assert.Equal(6, spawned.Armies.Count(a => a.TroopCode == WorldEngine.PirateTroopCode));
+        Assert.All(spawned.Armies, a =>
+        {
+            Assert.Equal(4000, a.Pool.Active);
+            Assert.Equal(100, a.LootGold);
+            Assert.Equal(100, a.Provisions);
+            Assert.Equal(42, a.WanderingExpiresDay);
+            Assert.Null(a.Field.Target);
+        });
+        Assert.Equal(12, spawned.Armies.Select(a => a.Field.Position).Distinct().Count());
+
+        var next = engine.AdvanceDays(spawned, 21);
+        Assert.Equal(12, next.Armies.Count);
+        Assert.DoesNotContain(next.Armies, a => spawned.Armies.Any(old => old.Id == a.Id));
+    }
+
+    [Fact]
     public void 숨은세력은_예정된_연도에_가까운_거점에서_등장하고_저장된다()
     {
         var owner = new Faction(new FactionId(1), "기존", new GeneralId(1), 0, "#3366aa");
