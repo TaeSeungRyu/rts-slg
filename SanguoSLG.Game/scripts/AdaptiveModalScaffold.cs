@@ -444,7 +444,8 @@ public sealed partial class AdaptiveModalScaffold : PanelContainer
         return profile switch
         {
             WorkspaceProfile.EmptyCompact => (220f, 340f),
-            WorkspaceProfile.EmptyWide => (220f, 340f),
+            // 동맹 대상이 없어도 대상이 있을 때의 작업 공간 높이를 유지한다.
+            WorkspaceProfile.EmptyWide => (640f, 780f + largeViewportBonus),
             WorkspaceProfile.CardSelection => (580f, 740f + largeViewportBonus),
             WorkspaceProfile.DoctrineWorkflow => (808f, 860f + largeViewportBonus),
             WorkspaceProfile.DenseResearch => (700f, 780f + largeViewportBonus),
