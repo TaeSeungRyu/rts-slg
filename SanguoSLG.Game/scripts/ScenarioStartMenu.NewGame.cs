@@ -79,16 +79,33 @@ public sealed partial class ScenarioStartMenu
             new Color("d7ad59"), 1, 4, 0));
     }
 
-    private static void NewGameRoundImage(TextureRect image, float radius)
+private static void NewGameRoundImage(TextureRect image, float radius)
+{
+    var material = new ShaderMaterial
     {
-        var material = new ShaderMaterial
-        {
-            Shader = GD.Load<Shader>("res://assets/ui/new_game/rounded_image.gdshader")
-        };
-        material.SetShaderParameter("corner_radius", radius);
-        image.Material = material;
-        image.Resized += () => material.SetShaderParameter("rect_size", image.Size);
+        Shader = GD.Load<Shader>(
+            "res://assets/ui/new_game/rounded_image.gdshader"
+        )
+    };
+
+    material.SetShaderParameter("corner_radius", radius);
+
+    image.Material = material;
+
+    void UpdateRectSize()
+    {
+        material.SetShaderParameter("rect_size", image.Size);
     }
+
+    // 현재 크기 즉시 반영
+    UpdateRectSize();
+
+    // 레이아웃 계산 이후 크기 반영
+    Callable.From(UpdateRectSize).CallDeferred();
+
+    // 이후 크기 변경 시 반영
+    image.Resized += UpdateRectSize;
+}
 
     private static void NewGameRulerImage(TextureRect image, float radius)
     {
@@ -718,14 +735,50 @@ public sealed partial class ScenarioStartMenu
             StretchMode = TextureRect.StretchModeEnum.KeepAspectCovered,
             MouseFilter = MouseFilterEnum.Ignore
         };
-        NewGameRoundImage(thumbnail, 6);
-        row.AddChild(thumbnail);
-        var text = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill, MouseFilter = MouseFilterEnum.Ignore };
-        text.AddThemeConstantOverride("separation", 2);
-        row.AddChild(text);
+var thumbnailFrame = new Panel
+{
+    CustomMinimumSize = new Vector2(132, 74),
+    SizeFlagsVertical = SizeFlags.ExpandFill,
+    MouseFilter = MouseFilterEnum.Ignore,
+    ClipChildren = CanvasItem.ClipChildrenMode.Only
+};
+
+var thumbnailStyle = new StyleBoxFlat
+{
+    BgColor = Colors.White
+};
+
+// 이미지 모서리 둥글기
+thumbnailStyle.SetCornerRadiusAll(12);
+
+thumbnailFrame.AddThemeStyleboxOverride("panel", thumbnailStyle);
+
+row.AddChild(thumbnailFrame);
+
+thumbnailFrame.AddChild(thumbnail);
+thumbnail.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+
+// 이미지 위아래 3px씩 잘라내기
+thumbnail.OffsetTop = -3;
+thumbnail.OffsetBottom = 3;
+
+
+
+var text = new VBoxContainer
+{
+    SizeFlagsHorizontal = SizeFlags.ExpandFill,
+    SizeFlagsVertical = SizeFlags.ExpandFill,
+    Alignment = BoxContainer.AlignmentMode.Center,
+    MouseFilter = MouseFilterEnum.Ignore
+};
+text.AddThemeConstantOverride("separation", 2);
+row.AddChild(text);
+
+
+
         var year = new Label { Text = $"{draft.StartYear}년", MouseFilter = MouseFilterEnum.Ignore };
         year.AddThemeFontOverride("font", NewGameSerif(700));
-        year.AddThemeFontSizeOverride("font_size", 13);
+        year.AddThemeFontSizeOverride("font_size", 14);
         year.AddThemeColorOverride("font_color", NewGameGold);
         text.AddChild(year);
         var displayTitle = draft.Title.StartsWith($"{draft.StartYear}년,", StringComparison.Ordinal)
@@ -741,17 +794,17 @@ public sealed partial class ScenarioStartMenu
         text.AddChild(title);
         var rawSynopsis = ScenarioDescription(draft, displayTitle);
         var synopsis = rawSynopsis.Length > 24 ? rawSynopsis[..24] + "…" : rawSynopsis;
-        var description = new Label
-        {
-            Text = synopsis,
-            ClipText = true,
-            TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis,
-            MouseFilter = MouseFilterEnum.Ignore
-        };
-        description.AddThemeFontOverride("font", NewGameBodyFont());
-        description.AddThemeFontSizeOverride("font_size", 12);
-        description.AddThemeColorOverride("font_color", NewGameMuted);
-        text.AddChild(description);
+        // var description = new Label
+        // {
+        //     Text = synopsis,
+        //     ClipText = true,
+        //     TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis,
+        //     MouseFilter = MouseFilterEnum.Ignore
+        // };
+        // description.AddThemeFontOverride("font", NewGameBodyFont());
+        // description.AddThemeFontSizeOverride("font_size", 12);
+        // description.AddThemeColorOverride("font_color", NewGameMuted);
+        // text.AddChild(description);
         var selectedMark = new Label
         {
             Name = "SelectionDiamond",
@@ -765,7 +818,7 @@ public sealed partial class ScenarioStartMenu
         selectedMark.Position = new Vector2(-24, -10);
         selectedMark.Size = new Vector2(18, 20);
         selectedMark.AddThemeFontOverride("font", NewGameSerif(700));
-        selectedMark.AddThemeFontSizeOverride("font_size", 15);
+        selectedMark.AddThemeFontSizeOverride("font_size", 17);
         selectedMark.AddThemeColorOverride("font_color", NewGameGoldBright);
         card.AddChild(selectedMark);
         return card;
