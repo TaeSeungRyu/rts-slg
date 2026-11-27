@@ -171,9 +171,8 @@ private static void NewGameRoundImage(TextureRect image, float radius)
         AddChild(center);
 
         var panel = new PanelContainer { Name = "NewGamePanel", MouseFilter = MouseFilterEnum.Stop };
-        panel.AddThemeStyleboxOverride("panel", NewGameFrame(
-            new Color(0.10f, 0.038f, 0.035f, 0.982f), NewGameGold, 1, 9, 20));
         center.AddChild(panel);
+        ApplyUnitMenuFrame(panel);
         void FitPanel()
         {
             var viewport = GetViewport().GetVisibleRect().Size;
@@ -272,9 +271,8 @@ private static void NewGameRoundImage(TextureRect image, float radius)
     {
         column.AddChild(NewGameSectionTitle("시나리오 선택"));
         var frame = new PanelContainer { SizeFlagsVertical = SizeFlags.ExpandFill };
-        frame.AddThemeStyleboxOverride("panel", NewGameFrame(
-            new Color(0.065f, 0.027f, 0.025f, 0.92f), new Color("846637"), 1, 6, 8));
         column.AddChild(frame);
+        ApplyUnitMenuFrame(frame);
         var scroll = new ScrollContainer
         {
             Name = "ScenarioCardScroll",
@@ -296,9 +294,8 @@ private static void NewGameRoundImage(TextureRect image, float radius)
     {
         column.AddChild(NewGameSectionTitle("세력 배치 지도"));
         var mapFrame = new PanelContainer { SizeFlagsVertical = SizeFlags.ExpandFill };
-        mapFrame.AddThemeStyleboxOverride("panel", NewGameFrame(
-            new Color(0.04f, 0.045f, 0.04f, 0.96f), NewGameGold, 1, 6, 8));
         column.AddChild(mapFrame);
+        ApplyUnitMenuFrame(mapFrame);
         _newGameFactionMap = new ScenarioFactionMap
         {
             Name = "ScenarioFactionMap",
@@ -310,9 +307,8 @@ private static void NewGameRoundImage(TextureRect image, float radius)
         mapFrame.AddChild(_newGameFactionMap);
 
         var infoFrame = new PanelContainer { CustomMinimumSize = new Vector2(0, 128) };
-        infoFrame.AddThemeStyleboxOverride("panel", NewGameFrame(
-            new Color(0.09f, 0.035f, 0.032f, 0.94f), new Color("846637"), 1, 5, 8));
         column.AddChild(infoFrame);
+        ApplyUnitMenuFrame(infoFrame);
         var info = new VBoxContainer();
         info.AddThemeConstantOverride("separation", 3);
         infoFrame.AddChild(info);
@@ -370,9 +366,8 @@ private static void NewGameRoundImage(TextureRect image, float radius)
             SizeFlagsVertical = SizeFlags.ExpandFill,
             CustomMinimumSize = new Vector2(0, 390)
         };
-        details.AddThemeStyleboxOverride("panel", NewGameFrame(
-            new Color(0.07f, 0.027f, 0.025f, 0.95f), new Color("846637"), 1, 6, 13));
         column.AddChild(details);
+        ApplyUnitMenuFrame(details);
         var detailColumn = new VBoxContainer
         {
             Alignment = BoxContainer.AlignmentMode.Begin,
@@ -792,8 +787,8 @@ row.AddChild(text);
         title.AddThemeFontSizeOverride("font_size", 16);
         title.AddThemeColorOverride("font_color", NewGameIvory);
         text.AddChild(title);
-        var rawSynopsis = ScenarioDescription(draft, displayTitle);
-        var synopsis = rawSynopsis.Length > 24 ? rawSynopsis[..24] + "…" : rawSynopsis;
+        //var rawSynopsis = ScenarioDescription(draft, displayTitle);
+        //var synopsis = rawSynopsis.Length > 24 ? rawSynopsis[..24] + "…" : rawSynopsis;
         // var description = new Label
         // {
         //     Text = synopsis,
@@ -808,7 +803,7 @@ row.AddChild(text);
         var selectedMark = new Label
         {
             Name = "SelectionDiamond",
-            Text = "◆",
+            Text = "",
             Visible = false,
             HorizontalAlignment = HorizontalAlignment.Center,
             VerticalAlignment = VerticalAlignment.Center,
@@ -1297,4 +1292,109 @@ row.AddChild(text);
         if (_newGameFactionMap is { FirstSelectableFactionId: > 0 } map)
             map.SelectFactionAt(map.FirstSelectableSitePosition);
     }
+
+
+
+    public void ApplyUnitMenuFrame(PanelContainer panel, int contentPadding = 10,
+        int patchMargin = 28, float frameScale = 0.15f)
+    {
+        // ========================================
+        // 디자인 설정
+        // ========================================
+        const int cornerRadius = 12;
+
+        // ========================================
+        // 내부 배경
+        // ========================================
+        panel.ClipContents = true;
+
+        panel.AddThemeStyleboxOverride("panel", new StyleBoxFlat
+        {
+            BgColor = new Color("160d0b", 0.96f),
+
+            CornerRadiusTopLeft = cornerRadius,
+            CornerRadiusTopRight = cornerRadius,
+            CornerRadiusBottomLeft = cornerRadius,
+            CornerRadiusBottomRight = cornerRadius,
+
+            CornerDetail = 16,
+
+            ContentMarginLeft = contentPadding,
+            ContentMarginTop = contentPadding,
+            ContentMarginRight = contentPadding,
+            ContentMarginBottom = contentPadding,
+
+            // 배경을 안쪽으로 3px 축소
+            ExpandMarginLeft = -3,
+            ExpandMarginTop = -3,
+            ExpandMarginRight = -3,
+            ExpandMarginBottom = -3,            
+        });
+
+        // ========================================
+        // 테두리 이미지 로드 및 축소
+        // ========================================
+        var frameTexture = GD.Load<Texture2D>(
+            "res://assets/ui/game/terrain/terrain_info_frame.png"
+        );
+
+        var frameImage = frameTexture.GetImage();
+
+        frameImage.Resize(
+            Mathf.Max(1, Mathf.RoundToInt(
+                frameImage.GetWidth() * frameScale)),
+            Mathf.Max(1, Mathf.RoundToInt(
+                frameImage.GetHeight() * frameScale)),
+            Image.Interpolation.Lanczos
+        );
+
+        var resizedTexture =
+            ImageTexture.CreateFromImage(frameImage);
+
+        // ========================================
+        // 금색 외곽 테두리
+        // ========================================
+        var terrainFrame = new NinePatchRect
+        {
+            Name = "UnitMenuOrnateFrame",
+
+            Texture = resizedTexture,
+
+            PatchMarginLeft = patchMargin,
+            PatchMarginTop = patchMargin,
+            PatchMarginRight = patchMargin,
+            PatchMarginBottom = patchMargin,
+
+            DrawCenter = false,
+
+            TextureFilter = CanvasItem.TextureFilterEnum.Linear,
+            MouseFilter = Control.MouseFilterEnum.Ignore,
+
+            ZIndex = 10,
+        };
+
+        // PanelContainer의 내부 여백에 영향을 받지 않도록
+        // 일반 Control을 통해 테두리를 배치
+        var frameOverlay = new Control
+        {
+            Name = "UnitMenuFrameOverlay",
+            MouseFilter = Control.MouseFilterEnum.Ignore,
+        };
+
+        panel.AddChild(frameOverlay);
+
+        frameOverlay.AddChild(terrainFrame);
+
+        void UpdateFrame()
+        {
+            terrainFrame.Position = -frameOverlay.Position;
+            terrainFrame.Size = panel.Size;
+        }
+
+        panel.Resized += UpdateFrame;
+        frameOverlay.Resized += UpdateFrame;
+        frameOverlay.ItemRectChanged += UpdateFrame;
+
+        UpdateFrame();
+    }    
 }
