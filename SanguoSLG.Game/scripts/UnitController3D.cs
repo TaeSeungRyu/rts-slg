@@ -90,8 +90,11 @@ public partial class UnitController3D : Node3D
         ("res://assets/models/troop-pirate-ship.glb", true, MovementDomain.DeepWater),
     };
 
-    public static int SupplyModelIndex => TroopModels.Length - 3;
-    public static int ArmyGroupModelIndex => TroopModels.Length - 2;
+    // 새 병종을 목록 끝에 추가해도 특수 부대 모델 인덱스가 밀리지 않게 파일명으로 찾는다.
+    public static int SupplyModelIndex => System.Array.FindIndex(TroopModels,
+        model => model.File.EndsWith("troop-supply.glb", System.StringComparison.Ordinal));
+    public static int ArmyGroupModelIndex => System.Array.FindIndex(TroopModels,
+        model => model.File.EndsWith("troop-army-group.glb", System.StringComparison.Ordinal));
     public static string ModelFileAt(int index) => index >= 0 && index < TroopModels.Length
         ? TroopModels[index].File
         : string.Empty;
