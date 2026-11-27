@@ -865,11 +865,9 @@ public sealed class CommandService
             return CommandResult.Fail("성벽 수리에는 경제 설정이 필요하다.", state);
         }
 
-        var maxWall = WallRepairRules.MaxIntegrity(city, _balance);
-        // 축성(재임 태수): 성벽 수리 회복량 +10/20/30%p(기본 25%·공방 +25%p와 합산 — design-skill-admin).
-        var recovery = _b.WallRepairPercent + (city.Workshop ? _b.WallRepairWorkshopBonus : 0)
-            + GovernorBucket(state, city, "wall");
-        var restore = System.Math.Min(maxWall - city.Wall, maxWall * recovery / 100);
+        var restore = WallRepairRules.RestoreAmount(city, _balance, _b,
+            state.Generals.First(general => general.Id == req.Main).Might,
+            GovernorBucket(state, city, "wall"));
         if (restore <= 0)
         {
             return CommandResult.Fail("수리할 성벽 손상이 없다.", state);

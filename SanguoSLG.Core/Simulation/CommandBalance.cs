@@ -125,7 +125,7 @@ public sealed record CommandBalance
     public int WallRepairDays { get; init; } = 7;
 
     /// <summary>성벽 수리 회복량(명령당 연구 최대치의 %).</summary>
-    public int WallRepairPercent { get; init; } = 25;
+    public int WallRepairPercent { get; init; } = 10;
 
     /// <summary>성벽 수리 공방 가산(%p) — 공방 있는 도시.</summary>
     public int WallRepairWorkshopBonus { get; init; } = 25;

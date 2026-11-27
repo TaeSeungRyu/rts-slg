@@ -18956,9 +18956,9 @@ if (_modalLayer is not null) { _modalLayer.Name = "ExplorationResultsModal"; }
         {
             var repairCity = _state.Cities.First(c => c.Id == city);
             var maxWall = WallRepairRules.MaxIntegrity(repairCity, _balance);
-            var recovery = _cb.WallRepairPercent + (repairCity.Workshop ? _cb.WallRepairWorkshopBonus : 0)
-                + GovernorAdminBucket(repairCity, "wall");
-            var restore = System.Math.Min(maxWall - repairCity.Wall, maxWall * recovery / 100);
+            var repairOfficer = _state.Generals.First(g => g.Id == general);
+            var restore = WallRepairRules.RestoreAmount(repairCity, _balance, _cb,
+                repairOfficer.Might, GovernorAdminBucket(repairCity, "wall"));
             extra = $"\n성벽 내구도 {repairCity.Wall:N0} → {repairCity.Wall + restore:N0} / {maxWall:N0}"
                 + $"\n수리량 +{restore:N0} · 비용 {restore / _cb.WallRepairGoldDivisor:N0}금"
                 + $"\n[소요 {_cb.WallRepairDays}일]";

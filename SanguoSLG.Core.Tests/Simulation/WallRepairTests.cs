@@ -8,7 +8,7 @@ using SanguoSLG.Core.Simulation;
 using SanguoSLG.Core.Spatial;
 using Xunit;
 
-/// <summary>건물 수리 A단계 — 성벽 수리(명령당 최대치 25%·공방 +25%p·비용=회복÷5·15일).</summary>
+/// <summary>성벽 수리: 기본 10% + 수행 장수 무력의 10%, 기존 공방·태수 가산.</summary>
 public class WallRepairTests
 {
     private static readonly CommandBalance B = new();
@@ -36,6 +36,20 @@ public class WallRepairTests
     private static readonly IReadOnlyList<AdminSkill> AdminSkills =
         new AdminSkillLoader().LoadFromDirectory(TestData.DataDirectory());
 
+    [Theory]
+    [InlineData(50, 300)]
+    [InlineData(100, 400)]
+    public void 수행장수_무력에_따라_기본회복률이_변한다(int might, int expected)
+    {
+        var city = Town(1, wall: 0);
+        var officer = Pol(1) with { Might = might };
+        var state = new GameState(1, 1, [], [city], [officer]);
+        var issued = Service().Issue(state, Req());
+
+        Assert.True(issued.Ok, issued.Error);
+        Assert.Equal(expected, issued.State.Commands.Single().Amount);
+    }
+
     [Fact]
     public void 축성_태수면_성벽_수리_회복량이_커진다()
     {
@@ -51,20 +65,20 @@ public class WallRepairTests
         var without = Service().Issue(State(Town(1, wall: 0, gold: 5000)), Req());
 
         Assert.True(withGov.Ok, withGov.Error);
-        Assert.Equal(2000 * 25 / 100, without.State.Commands.Single().Amount);
-        Assert.Equal(2000 * 55 / 100, withGov.State.Commands.Single().Amount);
+        Assert.Equal(2000 * 15 / 100, without.State.Commands.Single().Amount);
+        Assert.Equal(2000 * 45 / 100, withGov.State.Commands.Single().Amount);
     }
 
     [Fact]
     public void 발행_손상된_성벽을_수리예약하고_금을_차감한다()
     {
-        // 중형성 0단계 최대 2000. 회복 25% = 500, 비용은 100금.
+        // 중형성 0단계 최대 2000. 무력 50이면 회복 15% = 300.
         var s = State(Town(1, wall: 600, gold: 5000));
         var r = Service().Issue(s, Req());
 
         Assert.True(r.Ok, r.Error);
-        Assert.Equal(5000 - 100, r.State.Cities.Single().Gold);
-        Assert.Equal(500, r.State.Commands.Single().Amount);
+        Assert.Equal(5000 - 60, r.State.Cities.Single().Gold);
+        Assert.Equal(300, r.State.Commands.Single().Amount);
         Assert.Equal(7, r.State.Commands.Single().CompletionDay - r.State.Day);
     }
 
@@ -77,20 +91,20 @@ public class WallRepairTests
         var issued = Service().Issue(s, Req());
         var done = world.AdvanceDays(issued.State, B.WallRepairDays);
 
-        Assert.Equal(1100, done.Cities.Single().Wall);
+        Assert.Equal(900, done.Cities.Single().Wall);
         Assert.Empty(done.Commands);
     }
 
     [Fact]
     public void 발행_공방이_있으면_회복량이_커진다()
     {
-        // 공방 +25%p → 회복 50%. 최대 2000×50% = 1000.
+        // 공방 +25%p → 회복 40%. 최대 2000×40% = 800.
         var s = State(Town(1, wall: 600, workshop: true, gold: 5000));
         var r = Service().Issue(s, Req());
 
         Assert.True(r.Ok, r.Error);
-        Assert.Equal(1000, r.State.Commands.Single().Amount);
-        Assert.Equal(1000 / 5, 5000 - r.State.Cities.Single().Gold);
+        Assert.Equal(800, r.State.Commands.Single().Amount);
+        Assert.Equal(800 / 5, 5000 - r.State.Cities.Single().Gold);
     }
 
     [Fact]
@@ -132,11 +146,11 @@ public class WallRepairTests
     [Fact]
     public void 발행_성벽연구가_높으면_최대치가_커져_더_많이_수리한다()
     {
-        // 성벽 연구 4단계 → 중형성 최대 5000. 회복 25% = 1250.
+        // 성벽 연구 4단계 → 중형성 최대 5000. 무력 50이면 15% = 750.
         var s = State(Town(1, wall: 600, gold: 5000, wallLevel: 4));
         var r = Service().Issue(s, Req());
 
         Assert.True(r.Ok, r.Error);
-        Assert.Equal(1250, r.State.Commands.Single().Amount);
+        Assert.Equal(750, r.State.Commands.Single().Amount);
     }
 }
