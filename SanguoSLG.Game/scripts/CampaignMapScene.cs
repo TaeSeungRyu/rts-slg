@@ -12301,7 +12301,7 @@ CenterAndDrag(panel, titleRow, mw, mh, box);
 
 
 
-        var box = SystemView("\n단서·보물 보관함", mw, out var scroll, out var panel, out var titleRow, useModalChrome: true);
+        var box = SystemView("단서·보물 보관함", mw, out var scroll, out var panel, out var titleRow, useModalChrome: true);
         panel.CustomMinimumSize = new Vector2(mw, mh);
 
 
@@ -12317,8 +12317,17 @@ CenterAndDrag(panel, titleRow, mw, mh, box);
             .OrderByDescending(x => x.Max(v => v.Discovery.Day))
             .ToList();
 
-        box.AddChild(MakeLabel($"보유 단서  {clues.Count}종 · 총 {clues.Sum(x => x.Count())}개", 14, GoldBright));
-        box.AddChild(MakeLabel("같은 종류의 고대유물 단서 2개가 모이면 유물 1개를 자동 획득합니다.", 11, new Color(Parchment, 0.75f)));
+        box.AddChild(MakeLabel($"\n보유 단서  {clues.Count}종 · 총 {clues.Sum(x => x.Count())}개", 14, GoldBright));
+var guide = MakeLabel(
+    "같은 종류의 고대유물 단서 2개가 모이면 유물 1개를 자동 획득합니다.",
+    11,
+    new Color(Parchment, 0.75f)
+);
+
+guide.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+guide.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+
+box.AddChild(guide);
         box.AddChild(GoldRule());
         if (clues.Count == 0)
         {
@@ -12331,9 +12340,16 @@ CenterAndDrag(panel, titleRow, mw, mh, box);
                 var latest = group.OrderByDescending(x => x.Discovery.Day).First().Discovery;
                 var count = MakeLabel($"보유 {group.Count()}개 · 최근 발견 {_state.StartYear + (latest.Day - 1) / 360}년 {((latest.Day - 1) % 360) / 30 + 1}월", 11, new Color(Gold, 0.82f));
                 box.AddChild(count);
-                var card = BuildExplorationRewardCard(latest);
-                card.SetMeta("inventory_count", group.Count());
-                box.AddChild(card);
+
+
+var card = BuildExplorationRewardCard(latest);
+
+card.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+
+card.SetMeta("inventory_count", group.Count());
+box.AddChild(card);
+
+
             }
         }
 
@@ -12362,8 +12378,17 @@ CenterAndDrag(panel, titleRow, mw, mh, box);
             emptyItem.SetMeta("treasure_slot", "empty");
             box.AddChild(emptyItem);
         }
-        else
-            foreach (var treasure in treasures) box.AddChild(BuildTreasureCard(treasure));
+else
+{
+    foreach (var treasure in treasures)
+    {
+        var card = BuildTreasureCard(treasure);
+
+        card.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+
+        box.AddChild(card);
+    }
+}
         foreach (var encounter in _state.Encounters.Where(x => x.RewardFaction == Player && x.RewardChoicePending))
         {
             var claim = MakeButton($"{TroopName(encounter.Code)} 보상 선택", accent: true);
@@ -12374,9 +12399,25 @@ CenterAndDrag(panel, titleRow, mw, mh, box);
         foreach (var encounter in _state.Encounters.Where(encounter => encounter.DiscoveringFaction == Player
             && encounter.DefeatedDay is null))
             box.AddChild(MakeLabel($"{TroopName(encounter.Code)} 사냥 · {EventHuntStatus(encounter)}", 12, Gold));
-        var contentH = box.GetCombinedMinimumSize().Y;
-        scroll.CustomMinimumSize = new Vector2(mw, Mathf.Min(contentH, mh));
-        CenterAndDrag(panel, titleRow, mw, mh, box);
+
+// 스크롤 최소 크기 제한 제거
+scroll.CustomMinimumSize = Vector2.Zero;
+
+scroll.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+scroll.SizeFlagsVertical = Control.SizeFlags.ExpandFill;
+
+// 가로 스크롤 비활성화, 세로 스크롤 허용
+scroll.HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled;
+scroll.VerticalScrollMode = ScrollContainer.ScrollMode.Auto;
+// 내부 아이템과 스크롤바 사이 간격
+scroll.AddThemeConstantOverride("separation", 5);
+
+box.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+
+CenterAndDrag(panel, titleRow, mw, mh, box);
+// 하단 여백
+scroll.OffsetBottom -= 10f;
+
     }
 
     private void OpenLegacyClueConversion()

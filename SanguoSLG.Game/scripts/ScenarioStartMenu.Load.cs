@@ -115,14 +115,81 @@ public sealed partial class ScenarioStartMenu
 
         var store = new SaveSlotStore(ProjectSettings.GlobalizePath("user://saves"),
             ProjectSettings.GlobalizePath("user://sanguo-save.json"));
-        var scroll = new ScrollContainer { CustomMinimumSize = new Vector2(1036, 184),
-            SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        content.AddChild(scroll);
-        var grid = new GridContainer { Columns = 2, SizeFlagsHorizontal = SizeFlags.ExpandFill,
-            MouseFilter = MouseFilterEnum.Pass };
-        grid.AddThemeConstantOverride("h_separation", 12);
-        grid.AddThemeConstantOverride("v_separation", 12);
-        scroll.AddChild(grid);
+var scroll = new ScrollContainer
+{
+    CustomMinimumSize = new Vector2(1036, 184),
+    SizeFlagsHorizontal = SizeFlags.ExpandFill
+};
+
+content.AddChild(scroll); // 누락된 코드 추가
+
+var vScroll = scroll.GetVScrollBar();
+
+// 스크롤바 배경
+var scrollTrack = new StyleBoxFlat
+{
+    BgColor = new Color("30231c"),
+};
+scrollTrack.SetCornerRadiusAll(4);
+
+// 기본 손잡이
+var scrollGrabber = new StyleBoxFlat
+{
+    BgColor = new Color("96703c"),
+};
+scrollGrabber.SetCornerRadiusAll(4);
+
+// 마우스 호버
+var scrollHover = new StyleBoxFlat
+{
+    BgColor = new Color("c49a55"),
+};
+scrollHover.SetCornerRadiusAll(4);
+
+// 마우스 클릭
+var scrollPressed = new StyleBoxFlat
+{
+    BgColor = new Color("e0b86b"),
+};
+scrollPressed.SetCornerRadiusAll(4);
+
+// 스타일 적용
+vScroll.AddThemeStyleboxOverride("scroll", scrollTrack);
+vScroll.AddThemeStyleboxOverride("grabber", scrollGrabber);
+vScroll.AddThemeStyleboxOverride("grabber_highlight", scrollHover);
+vScroll.AddThemeStyleboxOverride("grabber_pressed", scrollPressed);
+
+// 스크롤바 너비
+vScroll.CustomMinimumSize = new Vector2(8, 0);
+
+        // var grid = new GridContainer { Columns = 2, SizeFlagsHorizontal = SizeFlags.ExpandFill,
+        //     MouseFilter = MouseFilterEnum.Pass };
+        // grid.AddThemeConstantOverride("h_separation", 12);
+        // grid.AddThemeConstantOverride("v_separation", 12);
+        // scroll.AddChild(grid);
+
+var scrollInset = new MarginContainer
+{
+    SizeFlagsHorizontal = SizeFlags.ExpandFill,
+    MouseFilter = MouseFilterEnum.Pass,
+};
+
+// 스크롤바와 카드 사이 여백
+scrollInset.AddThemeConstantOverride("margin_right", 12);
+
+scroll.AddChild(scrollInset);
+
+var grid = new GridContainer
+{
+    Columns = 2,
+    SizeFlagsHorizontal = SizeFlags.ExpandFill,
+    MouseFilter = MouseFilterEnum.Pass,
+};
+
+grid.AddThemeConstantOverride("h_separation", 12);
+grid.AddThemeConstantOverride("v_separation", 12);
+
+scrollInset.AddChild(grid);        
 
         var pager = new HBoxContainer { Alignment = BoxContainer.AlignmentMode.Center };
         pager.AddThemeConstantOverride("separation", 12);

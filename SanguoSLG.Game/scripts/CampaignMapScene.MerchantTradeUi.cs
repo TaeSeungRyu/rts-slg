@@ -34,7 +34,7 @@ public sealed partial class CampaignMapScene
         if (chrome is not null) chrome.HeaderHost.AddChild(header);
         else body.AddChild(header);
         header.AddChild(new Control { CustomMinimumSize = new Vector2(MerchantModalLayout.CloseButtonSize, 0f) });
-        var title = MakeLabel($"◆ 상인 교역소 · {city.Name} ◆", MerchantModalLayout.TitleSize, GoldBright);
+        var title = MakeLabel($"상인 교역소 · {city.Name}", MerchantModalLayout.TitleSize, GoldBright);
         title.HorizontalAlignment = HorizontalAlignment.Center;
         title.VerticalAlignment = VerticalAlignment.Center;
         title.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
@@ -53,8 +53,19 @@ public sealed partial class CampaignMapScene
             SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
             SizeFlagsVertical = Control.SizeFlags.ExpandFill,
         };
-        columns.AddThemeConstantOverride("separation", (int)MerchantModalLayout.ColumnGap);
-        body.AddChild(columns);
+columns.AddThemeConstantOverride("separation", (int)MerchantModalLayout.ColumnGap);
+
+var bodyMargin = new MarginContainer
+{
+    Name = "MerchantBodyMargin",
+    SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+    SizeFlagsVertical = Control.SizeFlags.ExpandFill,
+};
+
+bodyMargin.AddThemeConstantOverride("margin_top", 8);
+
+body.AddChild(bodyMargin);
+bodyMargin.AddChild(columns);
         var innerWidth = width - 2f * ModalChrome.BodyHorizontalInset - 24f;
         var left = new PanelContainer
         {
