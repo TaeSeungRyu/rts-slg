@@ -33,6 +33,7 @@ public class WorldEngineTests
             Assert.Equal(100, a.Provisions);
             Assert.Equal(42, a.WanderingExpiresDay);
             Assert.Null(a.Field.Target);
+            Assert.Equal(UnitMode.Standby, a.Field.Mode);
         });
         Assert.Equal(12, spawned.Armies.Select(a => a.Field.Position).Distinct().Count());
 

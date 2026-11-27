@@ -13,6 +13,61 @@ using Xunit;
 public class CampaignEngineTests
 {
     [Fact]
+    public void 산적은_원거리_피격후_다음_진행에서만_공격기동한다()
+    {
+        var at = new HexCoord(5, 4);
+        var mountainBandit = Army(31, 0, at, UnitMode.Standby, null, 4000) with
+        {
+            TroopCode = WorldEngine.MountainBanditTroopCode,
+            WanderingExpiresDay = 50,
+            Provisions = 100,
+            LootGold = 100,
+            Stats = new CombatStats(4000, 3, 50, 80),
+        };
+        var archer = Army(32, 1, new HexCoord(7, 4), UnitMode.Standby, null,
+            1000, "archer") with
+        {
+            Field = Army(32, 1, new HexCoord(7, 4), UnitMode.Standby, null,
+                1000, "archer").Field with { AttackRange = 3 },
+        };
+        Assert.False(mountainBandit.CanInitiateCombat);
+
+        var after = Engine().AdvanceWeek(World(mountainBandit, archer), out var turns);
+        var survivor = Assert.Single(after.Armies, u => u.Id == mountainBandit.Id);
+        Assert.Equal(at, survivor.Field.Position);
+        Assert.Equal(archer.Field.Position, survivor.Field.Target);
+        Assert.True(survivor.CanInitiateCombat);
+        Assert.Contains(turns, turn => turn.Combat?.DamageTaken.GetValueOrDefault(mountainBandit.Id) > 0);
+    }
+
+    [Fact]
+    public void 산적을_처치하면_금과_군량을_노획하고_장수가_전투경험치를_얻는다()
+    {
+        var general = new General(new GeneralId(51), "장수",
+            new Dictionary<TroopClass, AptitudeGrade>(), 80, 60, 50);
+        var attacker = Army(41, 1, new HexCoord(4, 4), UnitMode.Attack, null)
+            with { VanguardId = general.Id, Provisions = 10 };
+        var bandit = Army(42, 0, new HexCoord(5, 4), UnitMode.Standby, null, 100)
+            with
+            {
+                TroopCode = WorldEngine.MountainBanditTroopCode,
+                WanderingExpiresDay = 50,
+                Provisions = 100,
+                LootGold = 100,
+                Stats = new CombatStats(100, 1, 1),
+            };
+        var state = World(attacker, bandit) with { Generals = [general] };
+
+        var after = Engine().AdvanceWeek(state, out _);
+
+        Assert.DoesNotContain(after.Armies, u => u.Id == bandit.Id);
+        var winner = Assert.Single(after.Armies, u => u.Id == attacker.Id);
+        Assert.Equal(100, winner.LootGold);
+        Assert.True(winner.Provisions > 10);
+        Assert.True(Assert.Single(after.Generals).Experience > 0);
+    }
+
+    [Fact]
     public void 진행_도중_성벽이_무너지면_다음날_수비대가_출격한다()
     {
         var map = new HexMap(0, 12, -5, 5);

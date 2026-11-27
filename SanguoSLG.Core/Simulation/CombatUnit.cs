@@ -85,6 +85,7 @@ public sealed record CombatUnit(
 
     /// <summary>수송부대는 물자 운반 전용이라 공격·반격·공성·점령을 할 수 없다. 집단군은 전투 가능하다.</summary>
     public bool CanInitiateCombat => !IsTransport && !IsConstructionUnit && !IsConstructing && !IsWildBeast && BanditWaitDays <= 0
+        && (WanderingExpiresDay <= 0 || Field.Target is not null)
         && SummonLockDay is null;
 
     public bool CanCounterCombat => !IsTransport && !IsConstructionUnit && !IsConstructing && SummonLockDay is null;

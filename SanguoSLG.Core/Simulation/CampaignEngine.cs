@@ -122,6 +122,7 @@ public sealed class CampaignEngine
         var captureReports = new List<CaptureReport>();
         var plunderReports = new List<PlunderReport>();
         var casualtyReports = new List<CasualtyReport>();
+        var mountainBanditAttackers = new Dictionary<UnitId, UnitId>();
         _campaignEvents.Clear();
         _climateDays.Clear();
         var work = (_eventHunts?.ScheduleDiscoveries(state) ?? state).CancelAlliedAttackOrders();
@@ -415,6 +416,18 @@ public sealed class CampaignEngine
                 (work, turn) = _eventHunts.ApplyPhoenixRecovery(work, armies, turn);
             }
             turn = ApplyFieldSpoils(work, armies, turn);
+            // 첫 피격이 발생한 진행에서는 제자리를 지키고, 다음 7일 진행부터 공격자를 추격한다.
+            // 교환 기록의 공격자와 실제 피해를 함께 확인해 반격만 한 경우를 제외한다.
+            foreach (var exchange in turn.FieldCombatExchanges)
+            {
+                var target = armies.FirstOrDefault(u => u.Id == exchange.Target);
+                var attacker = armies.FirstOrDefault(u => u.Id == exchange.Attacker);
+                if (target?.TroopCode == WorldEngine.MountainBanditTroopCode
+                    && target.Field.Target is null && attacker is not null
+                    && attacker.Field.AttackRange > 1
+                    && turn.Combat?.DamageTaken.GetValueOrDefault(target.Id) > 0)
+                    mountainBanditAttackers.TryAdd(target.Id, attacker.Id);
+            }
             if (_eventHunts is not null)
             {
                 work = _eventHunts.ResolveCombat(work, armies, turn, simulationDay, out var huntRewards);
@@ -618,6 +631,11 @@ public sealed class CampaignEngine
             waitingArmies = countdown.Where(u => u.IsWaitingDate).ToList();
         }
 
+        armies = armies.Select(unit => mountainBanditAttackers.TryGetValue(unit.Id, out var attackerId)
+                && armies.FirstOrDefault(other => other.Id == attackerId) is { } attacker
+                ? unit with { Field = unit.Field with { Mode = UnitMode.Attack,
+                    Target = attacker.Field.Position } }
+                : unit).ToList();
         var afterField = work with
         {
             FieldArmies = armies.Concat(waitingArmies).Concat(egressArmies)

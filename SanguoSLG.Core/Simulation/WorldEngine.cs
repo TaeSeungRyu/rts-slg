@@ -480,7 +480,7 @@ public sealed class WorldEngine
                 candidates.RemoveAt(candidates.Count - 1);
                 occupied.Add(position);
                 var field = new FieldUnit(new UnitId(nextId++), BanditFaction, position,
-                    Speed: 2, Detection: 2, AttackRange: 1, domain, UnitMode.Attack,
+                    Speed: 2, Detection: 2, AttackRange: 1, domain, UnitMode.Standby,
                     Target: null, CommandOrder: 0);
                 armies.Add(new CombatUnit(field, new CombatStats(4000, 3, 1, 80),
                     new TroopPool(4000, 0), UnitCombatState.Create(30), Might: 50,
